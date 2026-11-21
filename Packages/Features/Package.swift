@@ -25,6 +25,7 @@ let package = Package(
     dependencies: [
         .package(path: "../AppCore"),
         .package(path: "../DesignSystem"),
+        .package(path: "../Processing"),
     ],
     targets: [
         .target(
@@ -37,7 +38,10 @@ let package = Package(
         .target(name: "FeatureMeetings", dependencies: base, swiftSettings: strict),
         .target(name: "FeatureLive", dependencies: base, swiftSettings: strict),
         .target(name: "FeatureMenuBar", dependencies: base + ["FeatureLive"], swiftSettings: strict),
-        .target(name: "FeatureSettings", dependencies: base, swiftSettings: strict),
+        .target(
+            name: "FeatureSettings",
+            dependencies: base + [.product(name: "Processing", package: "Processing")],
+            swiftSettings: strict),
         .target(
             name: "FeatureShell",
             dependencies: base + ["FeatureHome", "FeatureQueue", "FeatureLibrary", "FeatureMeetings", "FeatureLive"],

@@ -54,7 +54,7 @@ public struct EditDelta: Sendable, Hashable {
 
     /// A delta from a Processing change set (one Replace All is one undo step).
     public init(name: String, changeSet: ChangeSet) {
-         self.init(name: name, replaced: changeSet.changes.map { Replacement(before: $0.before, after: $0.after) })
+        self.init(name: name, replaced: changeSet.changes.map { Replacement(before: $0.before, after: $0.after) })
     }
 
     public var isEmpty: Bool { replaced.isEmpty && removed.isEmpty && inserted.isEmpty && speakers == nil }

@@ -1,10 +1,11 @@
 import AVFoundation
 import AppCore
-@testable import FeatureEditor
 import FeatureSupport
 import Foundation
 import SwiftUI
 import Testing
+
+@testable import FeatureEditor
 
 private struct FindBarHost: View {
     let model: TranscriptEditorModel
@@ -131,7 +132,11 @@ enum RenderGate {
         return url
     }
 
-    struct LatencyStats { var median: Double; var p95: Double; var max: Double }
+    struct LatencyStats {
+        var median: Double
+        var p95: Double
+        var max: Double
+    }
 
     /// Click-handler path while playing: word lookup + frame-accurate (zero tolerance) AVPlayer seek, awaited to completion.
     private func measure(url: URL, duration: Double, samples: Int = 40) async throws -> LatencyStats {

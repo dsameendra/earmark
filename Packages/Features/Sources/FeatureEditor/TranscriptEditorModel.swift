@@ -43,7 +43,10 @@ public struct RevealRequest: Equatable, Sendable {
 /// through `TranscriptRepository` (EDIT-AC-18).
 @MainActor @Observable
 public final class TranscriptEditorModel {
-    public enum LoadState: Equatable { case loading, loaded, failed(String) }
+    public enum LoadState: Equatable {
+        case loading, loaded
+        case failed(String)
+    }
 
     public let transcriptID: TranscriptID
     public private(set) var loadState: LoadState = .loading

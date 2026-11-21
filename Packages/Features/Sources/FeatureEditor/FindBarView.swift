@@ -17,7 +17,11 @@ struct FindBarView: View {
                     .focused($fieldFocused)
                     .onSubmit { find.next() }
                     .onKeyPress(.return, phases: .down) { press in
-                        press.modifiers.contains(.shift) ? { find.previous(); return .handled }() : .ignored
+                        press.modifiers.contains(.shift)
+                            ? {
+                                find.previous()
+                                return .handled
+                            }() : .ignored
                     }
                     .frame(minWidth: 160)
                     .accessibilityLabel("Find")
@@ -26,10 +30,18 @@ struct FindBarView: View {
                     .foregroundStyle(find.errorMessage == nil ? DSColor.secondaryText : DSColor.danger)
                     .lineLimit(1)
                     .frame(minWidth: 60, alignment: .leading)
-                Button { find.previous() } label: { Image(systemName: "chevron.up") }
-                    .disabled(find.matches.isEmpty).help("Previous match (⇧⏎)")
-                Button { find.next() } label: { Image(systemName: "chevron.down") }
-                    .disabled(find.matches.isEmpty).help("Next match (⏎)")
+                Button {
+                    find.previous()
+                } label: {
+                    Image(systemName: "chevron.up")
+                }
+                .disabled(find.matches.isEmpty).help("Previous match (⇧⏎)")
+                Button {
+                    find.next()
+                } label: {
+                    Image(systemName: "chevron.down")
+                }
+                .disabled(find.matches.isEmpty).help("Next match (⏎)")
                 Toggle("Aa", isOn: $find.matchCase).toggleStyle(.button).help("Match case")
                 Toggle("Word", isOn: $find.wholeWord).toggleStyle(.button).help("Whole word")
                 Toggle(".*", isOn: $find.isRegex).toggleStyle(.button).help("Regular expression")
@@ -42,9 +54,17 @@ struct FindBarView: View {
                     ForEach(model.languageChoices, id: \.self) { Text("Language: \($0.rawValue)").tag(FindScopeChoice.language($0)) }
                 }
                 .labelsHidden().frame(width: 150)
-                Button { find.toggleReplace() } label: { Image(systemName: "arrow.triangle.swap") }
-                    .help("Show replace (⌥⌘F)")
-                Button { find.close() } label: { Image(systemName: "xmark") }.help("Close")
+                Button {
+                    find.toggleReplace()
+                } label: {
+                    Image(systemName: "arrow.triangle.swap")
+                }
+                .help("Show replace (⌥⌘F)")
+                Button {
+                    find.close()
+                } label: {
+                    Image(systemName: "xmark")
+                }.help("Close")
             }
             if find.showsReplace {
                 HStack(spacing: DSSpacing.sm) {

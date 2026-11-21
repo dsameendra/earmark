@@ -150,8 +150,9 @@ struct WordFlowView: View {
             ForEach(items) { item in
                 WordView(
                     item: item, typography: typography, onTap: onTap, onSplit: onSplit, onBookmark: onBookmark,
-                    onHighlight: onHighlight)
-                    .equatable()
+                    onHighlight: onHighlight
+                )
+                .equatable()
             }
         }
     }

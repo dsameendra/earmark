@@ -54,7 +54,9 @@ struct SpeakerRow: View {
             }
             HStack(spacing: DSSpacing.xs) {
                 ForEach(SpeakerColors.paletteHexes, id: \.self) { hex in
-                    Button { model.setSpeakerColor(speaker.id, hex: hex) } label: {
+                    Button {
+                        model.setSpeakerColor(speaker.id, hex: hex)
+                    } label: {
                         Circle().fill(EditorColors.color(.hex(hex, fallbackSlot: 0))).frame(width: 14, height: 14)
                             .overlay { if speaker.colorHex.uppercased() == hex { Circle().stroke(Color.primary, lineWidth: 2) } }
                     }
@@ -77,7 +79,11 @@ struct BookmarksPanel: View {
             HStack {
                 Text("Bookmarks & Highlights").font(DSTypography.headline)
                 Spacer()
-                Button { model.addBookmark() } label: { Label("Bookmark Playhead", systemImage: "bookmark") }
+                Button {
+                    model.addBookmark()
+                } label: {
+                    Label("Bookmark Playhead", systemImage: "bookmark")
+                }
             }
             if model.bookmarks.isEmpty && model.highlights.isEmpty {
                 Text("Add bookmarks at the playhead, or right-click a word or segment to bookmark or highlight it.")
@@ -231,7 +237,9 @@ struct ExportSheet: View {
                 if let shareURL {
                     ShareLink(item: shareURL) { Label("Share", systemImage: "square.and.arrow.up") }
                 } else {
-                    Button { Task { shareURL = await export.prepareShareFile() } } label: {
+                    Button {
+                        Task { shareURL = await export.prepareShareFile() }
+                    } label: {
                         Label("Prepare to Share", systemImage: "square.and.arrow.up")
                     }
                 }

@@ -8,6 +8,8 @@ public struct LibraryQuery: Sendable, Hashable {
     public var languages: Set<LanguageCode>
     public var folderID: FolderID?
     public var tags: Set<String>
+    /// Matches transcripts that have **any** of these speaker names (SCR-001).
+    public var speakerNames: Set<String> = []
     public var dateRange: ClosedRange<Date>?
     public var durationRange: ClosedRange<TimeInterval>?
     public var sort: LibrarySort
@@ -17,13 +19,15 @@ public struct LibraryQuery: Sendable, Hashable {
     public init(
         text: String? = nil, sources: Set<TranscriptSource> = [], languages: Set<LanguageCode> = [], folderID: FolderID? = nil,
         tags: Set<String> = [], dateRange: ClosedRange<Date>? = nil, durationRange: ClosedRange<TimeInterval>? = nil,
-        sort: LibrarySort = .createdDesc, deletedOnly: Bool = false, limit: Int? = nil
+        sort: LibrarySort = .createdDesc, deletedOnly: Bool = false, limit: Int? = nil,
+        speakerNames: Set<String> = []
     ) {
         self.text = text
         self.sources = sources
         self.languages = languages
         self.folderID = folderID
         self.tags = tags
+        self.speakerNames = speakerNames
         self.dateRange = dateRange
         self.durationRange = durationRange
         self.sort = sort

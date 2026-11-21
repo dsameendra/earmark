@@ -235,6 +235,11 @@ public struct SQLiteTranscriptRepository: TranscriptRepository {
             args += StatementArguments(query.tags.sorted())
             args += [query.tags.count]
         }
+        if !query.speakerNames.isEmpty {
+            let marks = placeholders(query.speakerNames.count)
+            clauses.append("EXISTS (SELECT 1 FROM json_each(t.speakers) WHERE json_extract(value, '$.name') IN (\(marks)))")
+            args += StatementArguments(query.speakerNames.sorted())
+        }
         if let range = query.dateRange {
             clauses.append("t.createdAt BETWEEN ? AND ?")
             args += [range.lowerBound.epoch, range.upperBound.epoch]

@@ -12,11 +12,16 @@ public struct AppServices: Sendable {
     public var permissions: any PermissionsServicing
     public var audioDevices: any AudioDeviceProviding
     public var settings: any SettingsStore
+    /// Media assets for the editor's player; nil means the player shows the media-missing state.
+    public var media: (any MediaRepository)?
+    /// Export presets for the editor's export sheet; nil hides the presets section.
+    public var presets: (any PresetRepository)?
 
     public init(
         jobQueue: any JobQueue, transcripts: any TranscriptRepository, meetings: any MeetingRepository, models: any ModelManaging,
         live: any LiveSessionControlling, meetingDetector: any MeetingDetector, hardware: any HardwareTierProviding,
-        permissions: any PermissionsServicing, audioDevices: any AudioDeviceProviding, settings: any SettingsStore
+        permissions: any PermissionsServicing, audioDevices: any AudioDeviceProviding, settings: any SettingsStore,
+        media: (any MediaRepository)? = nil, presets: (any PresetRepository)? = nil
     ) {
         self.jobQueue = jobQueue
         self.transcripts = transcripts
@@ -28,6 +33,8 @@ public struct AppServices: Sendable {
         self.permissions = permissions
         self.audioDevices = audioDevices
         self.settings = settings
+        self.media = media
+        self.presets = presets
     }
 
     /// Fully in-memory services for previews and tests.

@@ -17,8 +17,8 @@ private struct Harness {
     let apple = FakeAppleAssets()
     var manifests: [ModelID: [RemoteFile]] = [:]
 
-    init() {
-        for name in WhisperTokenizerFiles.fileNames {
+    init(serveTokenizer: Bool = true) {
+        for name in WhisperTokenizerFiles.fileNames where serveTokenizer {
             downloader.serve(tokenizerURL(name), Data("tokenizer:\(name)".utf8))
         }
     }
@@ -29,8 +29,8 @@ private struct Harness {
     }
 }
 
-private func twoFileHarness() -> (Harness, Data, Data) {
-    var harness = Harness()
+private func twoFileHarness(serveTokenizer: Bool = true) -> (Harness, Data, Data) {
+    var harness = Harness(serveTokenizer: serveTokenizer)
     let a = Data(repeating: 1, count: 600)
     let b = Data(repeating: 2, count: 400)
     harness.downloader.serve(hf("a.bin"), a)
@@ -101,6 +101,22 @@ struct ModelManagerDownloadTests {
             Issue.record("model should stay installed")
             return
         }
+    }
+
+    @Test("a tokenizer failure after the model downloaded keeps the model installed and retries only the tokenizer")
+    func tokenizerFailureDoesNotRedownloadModel() async throws {
+        let (harness, _, _) = twoFileHarness(serveTokenizer: false)
+        let manager = harness.manager()
+        await #expect(throws: AppError.self) { _ = try await collect(manager.ensureAvailable(small)) }
+        guard case .installed = await manager.state(of: small) else {
+            Issue.record("model must stay installed")
+            return
+        }
+        for name in WhisperTokenizerFiles.fileNames { harness.downloader.serve(tokenizerURL(name), Data("tokenizer:\(name)".utf8)) }
+        let before = harness.downloader.calls.count
+        let events = try await collect(manager.ensureAvailable(small))
+        #expect(events.last == .completed)
+        #expect(harness.downloader.calls.count - before == WhisperTokenizerFiles.fileNames.count)
     }
 
     @Test("tokenizer repos exist for built-in Whisper models only")

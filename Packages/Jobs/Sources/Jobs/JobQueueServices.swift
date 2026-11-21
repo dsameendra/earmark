@@ -8,6 +8,9 @@ import Transcription
 /// Supplies the auto-export writer for the current watch-folder setting (`nil` skips auto-export).
 public typealias AutoExportProvider = @Sendable () async -> AutoExportWriter?
 
+/// Creates the file pipeline for one job given its engine plan.
+public typealias PipelineFactory = @Sendable (EnginePlan) -> FileTranscriptionPipeline
+
 /// Everything the queue needs, injected so tests can run it without AVFoundation, WhisperKit or FluidAudio.
 public struct JobQueueServices: Sendable {
     public var jobs: any JobRepository
@@ -19,8 +22,9 @@ public struct JobQueueServices: Sendable {
     public var hardware: any HardwareTierProviding
     /// Engine instances by id; the router's plan picks from these.
     public var engines: [EngineID: any TranscriptionEngine]
-    /// Chunking pipeline (build it with the decoder, VAD and language identifier for production).
-    public var pipeline: FileTranscriptionPipeline
+    /// Builds the chunking pipeline for a job from its engine plan, so the language identifier can use the model the plan
+    /// routed to (a fixed identifier model would swap models under a running job).
+    public var pipeline: PipelineFactory
     /// Used for media duration; should be the decoder the pipeline uses.
     public var decoder: any AudioFileDecoder
     /// Offline diarizer for jobs with `settings.diarize` (`nil` skips diarization).
@@ -32,7 +36,7 @@ public struct JobQueueServices: Sendable {
     public init(
         jobs: any JobRepository, transcripts: any TranscriptRepository, media: any MediaRepository, rules: any RuleRepository,
         settings: any SettingsStore, models: any ModelManaging, hardware: any HardwareTierProviding,
-        engines: [EngineID: any TranscriptionEngine], pipeline: FileTranscriptionPipeline = FileTranscriptionPipeline(),
+        engines: [EngineID: any TranscriptionEngine], pipeline: @escaping PipelineFactory = { _ in FileTranscriptionPipeline() },
         decoder: any AudioFileDecoder = AVFileDecoder(), diarizer: (any Diarizer)? = nil,
         postProcessor: any TranscriptPostProcessor = PostProcessingChain(), autoExport: AutoExportProvider? = nil,
         notifier: (any JobNotifier)? = nil

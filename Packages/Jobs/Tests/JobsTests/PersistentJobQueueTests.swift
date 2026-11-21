@@ -317,6 +317,39 @@ struct PersistentJobQueueTests {
         #expect(await h.waitFor(id, .completed))
     }
 
+    @Test("FILE-AC-15: memory pressure unloads the engines once no job is running")
+    func memoryPressureUnloads() async throws {
+        let h = try Harness(memoryHold: .seconds(5))
+        h.engine.hold(true)
+        await h.queue.resumeInterrupted()
+        let id = try #require(try await h.queue.enqueue(files: [try h.makeFile()], settings: JobSettings(), recursive: false).first)
+        #expect(await h.until { h.engine.active == 1 })
+        h.hardware.sendMemoryPressure()
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(h.engine.unloads == 0, "a running job keeps its model")
+        h.engine.hold(false)
+        #expect(await h.waitFor(id, .completed))
+        #expect(await h.until { h.engine.unloads == 1 })
+    }
+
+    @Test("the pipeline factory receives the routed plan, so language ID can use the routed model")
+    func pipelineFactoryGetsPlan() async throws {
+        let h = try Harness()
+        let id = try #require(try await h.queue.enqueue(files: [try h.makeFile()], settings: JobSettings(), recursive: false).first)
+        #expect(await h.waitFor(id, .completed))
+        let plan = try #require(h.plans.plans.first)
+        #expect(plan.assignments.first?.engine == "whisperkit")
+        #expect(plan.assignments.first?.model == Harness.largeModel)
+    }
+
+    @Test("installed models still go through ensureAvailable (tokenizer backfill, ENG-AC-14) but show no download note")
+    func installedModelsAreEnsured() async throws {
+        let h = try Harness()
+        let id = try #require(try await h.queue.enqueue(files: [try h.makeFile()], settings: JobSettings(), recursive: false).first)
+        #expect(await h.waitFor(id, .completed))
+        #expect(h.models.ensured == [Harness.largeModel])
+    }
+
     @Test("FILE-AC-07: reorder is honoured by the scheduler")
     func ordering() async throws {
         let h = try Harness()

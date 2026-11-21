@@ -46,6 +46,7 @@ public actor PersistentJobQueue: JobQueue {
     private var userMaxConcurrency: Int?
     private var thermal: ThermalPressure = .nominal
     private var memoryHoldUntil: Date?
+    private var unloadWhenIdle = false
     private var monitors: [Task<Void, Never>] = []
 
     public init(services: JobQueueServices, configuration: JobQueueConfiguration = JobQueueConfiguration()) {
@@ -329,14 +330,26 @@ public actor PersistentJobQueue: JobQueue {
         await schedule()
     }
 
-    /// FILE-AC-15: hold new starts briefly; the model manager unloads idle models on the same signal.
+    /// FILE-AC-15: hold new starts briefly and unload the engines' models as soon as no job is using them. (Models are
+    /// only in use while a job runs, so "idle" means "no running job".)
     private func memoryPressureFired() async {
         let hold = configuration.memoryPressureHold
         let seconds = Double(hold.components.seconds) + Double(hold.components.attoseconds) / 1e18
         memoryHoldUntil = configuration.now().addingTimeInterval(seconds)
+        unloadWhenIdle = true
+        await unloadEnginesIfIdle()
         Task { [weak self] in
             try? await Task.sleep(for: hold)
             await self?.schedule()
         }
+    }
+
+    /// Unloads every engine's model once nothing is running. Only done inside the memory-pressure hold, which keeps new
+    /// jobs from starting (and loading a model) while the engines unload.
+    func unloadEnginesIfIdle() async {
+        guard unloadWhenIdle, running.isEmpty else { return }
+        unloadWhenIdle = false
+        guard let until = memoryHoldUntil, configuration.now() < until else { return }
+        for engine in services.engines.values { await engine.unload() }
     }
 }

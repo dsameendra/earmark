@@ -76,7 +76,13 @@ final class AppEnvironment {
         let whisper = WhisperKitEngine(models: models, tokenizerFolder: models.tokenizerFolder)
         let apple = AppleSpeechEngine()
         let decoder = AVFileDecoder()
-        let pipeline = FileTranscriptionPipeline(decoder: decoder, identifier: WhisperLanguageIdentifier(engine: whisper))
+        // Language ID must use the model the plan routed to; a fixed model would swap WhisperKit's single resident model.
+        let whisperID = whisper.id
+        let pipeline: PipelineFactory = { plan in
+            let model = plan.assignments.first { $0.engine == whisperID }?.model
+            return FileTranscriptionPipeline(
+                decoder: decoder, identifier: model.map { WhisperLanguageIdentifier(engine: whisper, model: $0) })
+        }
         return PersistentJobQueue(
             services: JobQueueServices(
                 jobs: database.jobs, transcripts: database.transcripts, media: database.media, rules: database.rules,

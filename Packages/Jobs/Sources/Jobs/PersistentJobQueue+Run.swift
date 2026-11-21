@@ -17,6 +17,7 @@ extension PersistentJobQueue {
             await finish(id, error: error)
         }
         running[id] = nil
+        await unloadEnginesIfIdle()
         await schedule()
     }
 
@@ -55,20 +56,22 @@ extension PersistentJobQueue {
 
         let plan = try await planEngines(for: settings)
         await mutate(id) { $0.engine = plan.assignments.first?.engine }
-        for model in Set(plan.assignments.filter(\.requiresDownload).compactMap(\.model)) { try await ensureModel(model, for: id) }
+        try await ensureModels(of: plan, for: id)
 
         try await transcribe(id, input: input, transcriptID: header.id, plan: plan, checkpoint: checkpoint, total: total)
 
         var segments = try await services.transcripts.segments(for: header.id)
         if settings.diarize { header.speakers = try await diarize(id, input: input, settings: settings, segments: &segments) }
         segments = try await postProcess(segments, settings: settings)
-        try await services.transcripts.replaceSegments(segments, for: header.id)
 
         header.duration = max(total, segments.map(\.end).max() ?? 0)
         header.languages = languages(of: segments, settings: settings, detected: detected[id] ?? [])
         header.modifiedAt = configuration.now()
-        try await services.transcripts.save(header)
+        // Last cancellation point. Replacement rules are not idempotent, so once the processed segments are written the
+        // job must complete; until then the raw segments plus the checkpoint make a retry safe.
         try Task.checkCancellation()
+        try await services.transcripts.save(header)
+        try await services.transcripts.replaceSegments(segments, for: header.id)
 
         if settings.translateTo != nil { setNote(id, "Translation was skipped: it is not available yet.") }
         await mutate(id) {
@@ -131,10 +134,21 @@ extension PersistentJobQueue {
         return try DefaultEngineRouter(catalog: catalog).plan(for: request)
     }
 
+    /// Makes every model of the plan available (system-managed Apple assets excluded). Installed models finish at once, but
+    /// still go through `ensureAvailable` so the model manager can complete missing pieces such as the Whisper tokenizer
+    /// (ENG-AC-14).
+    private func ensureModels(of plan: EnginePlan, for id: JobID) async throws {
+        let catalog = await services.models.catalog()
+        var seen = Set<ModelID>()
+        for model in plan.assignments.compactMap(\.model) where seen.insert(model).inserted {
+            if catalog.first(where: { $0.id == model })?.runtime == .appleAsset { continue }
+            try await ensureModel(model, for: id)
+        }
+    }
+
     /// Downloads `model` if needed. The job stays `.running` and reports the download as progress plus a status note.
     func ensureModel(_ model: ModelID, for id: JobID) async throws {
         let name = await services.models.catalog().first { $0.id == model }?.displayName ?? model.rawValue
-        setNote(id, "Downloading \(name)")
         for try await event in services.models.ensureAvailable(model) {
             try Task.checkCancellation()
             switch event {
@@ -163,7 +177,7 @@ extension PersistentJobQueue {
         let resolver = EngineBinding.resolver(plan: plan, engines: services.engines)
 
         do {
-            for try await event in services.pipeline.run(file: input, options: options, resumeFrom: checkpoint, engines: resolver) {
+            for try await event in services.pipeline(plan).run(file: input, options: options, resumeFrom: checkpoint, engines: resolver) {
                 try Task.checkCancellation()
                 switch event {
                 case .languageDetected(let scores):

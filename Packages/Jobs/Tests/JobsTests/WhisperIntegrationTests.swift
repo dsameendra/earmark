@@ -80,7 +80,7 @@ struct WhisperIntegrationTests {
             services: JobQueueServices(
                 jobs: db.jobs, transcripts: db.transcripts, media: db.media, rules: db.rules, settings: db.makeSettingsStore(),
                 models: MockModelManager(descriptors: BuiltInCatalog.models, installed: [small]), hardware: TestHardware(),
-                engines: [engine.id: engine], pipeline: FileTranscriptionPipeline(decoder: decoder), decoder: decoder))
+                engines: [engine.id: engine], pipeline: { _ in FileTranscriptionPipeline(decoder: decoder) }, decoder: decoder))
 
         let id = try await queue.enqueue(
             Job(

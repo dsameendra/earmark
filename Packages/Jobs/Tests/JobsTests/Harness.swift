@@ -22,6 +22,7 @@ final class TestEngine: TranscriptionEngine, Sendable {
         var active = 0
         var maxActive = 0
         var chunkStarts: [TimeInterval] = []
+        var unloads = 0
     }
     let id: EngineID = "whisperkit"
     private let state = OSAllocatedUnfairLock(initialState: State())
@@ -29,6 +30,7 @@ final class TestEngine: TranscriptionEngine, Sendable {
     var maxActive: Int { state.withLock { $0.maxActive } }
     var active: Int { state.withLock { $0.active } }
     var chunkStarts: [TimeInterval] { state.withLock { $0.chunkStarts } }
+    var unloads: Int { state.withLock { $0.unloads } }
     func hold(_ value: Bool, afterChunks: Int = 0) {
         state.withLock {
             $0.held = value
@@ -39,7 +41,7 @@ final class TestEngine: TranscriptionEngine, Sendable {
 
     func supportedLanguages(model: ModelID?) async -> Set<LanguageCode> { ["en"] }
     func prepare(model: ModelID) async throws {}
-    func unload() async {}
+    func unload() async { state.withLock { $0.unloads += 1 } }
     func transcribe(file: URL, options: TranscriptionOptions) -> AsyncThrowingStream<TranscriptionEvent, any Error> {
         AsyncThrowingStream { $0.finish() }
     }
@@ -113,6 +115,39 @@ final class FakeDecoder: AudioFileDecoder, Sendable {
     func duration(of file: URL) async throws -> TimeInterval { total }
 }
 
+/// Wraps the mock model manager and records `ensureAvailable` calls.
+final class SpyModelManager: ModelManaging, Sendable {
+    private let inner: MockModelManager
+    private let ensuredIDs = OSAllocatedUnfairLock<[ModelID]>(initialState: [])
+    init(_ inner: MockModelManager) { self.inner = inner }
+    var ensured: [ModelID] { ensuredIDs.withLock { $0 } }
+
+    func catalog() async -> [ModelDescriptor] { await inner.catalog() }
+    func state(of model: ModelID) async -> ModelState { await inner.state(of: model) }
+    func stateChanges() -> AsyncStream<(ModelID, ModelState)> { inner.stateChanges() }
+    func installedModels() async -> Set<ModelID> { await inner.installedModels() }
+    func ensureAvailable(_ model: ModelID) -> AsyncThrowingStream<ModelDownloadEvent, any Error> {
+        ensuredIDs.withLock { $0.append(model) }
+        return inner.ensureAvailable(model)
+    }
+    func pauseDownload(_ model: ModelID) async { await inner.pauseDownload(model) }
+    func resumeDownload(_ model: ModelID) async { await inner.resumeDownload(model) }
+    func cancelDownload(_ model: ModelID) async { await inner.cancelDownload(model) }
+    func delete(_ model: ModelID) async throws { try await inner.delete(model) }
+    func importModel(folder: URL, displayName: String, languages: Set<LanguageCode>) async throws -> ModelDescriptor {
+        try await inner.importModel(folder: folder, displayName: displayName, languages: languages)
+    }
+    func diskUsage() async -> DiskUsage { await inner.diskUsage() }
+    func location(of model: ModelID) async throws -> URL { try await inner.location(of: model) }
+}
+
+/// Records the engine plans the queue hands to the pipeline factory.
+final class PlanRecorder: Sendable {
+    private let recorded = OSAllocatedUnfairLock<[EnginePlan]>(initialState: [])
+    var plans: [EnginePlan] { recorded.withLock { $0 } }
+    func record(_ plan: EnginePlan) { recorded.withLock { $0.append(plan) } }
+}
+
 final class TestHardware: HardwareTierProviding, Sendable {
     private struct State {
         var onBattery = false
@@ -168,7 +203,8 @@ struct Harness {
     let decoder: FakeDecoder
     let hardware = TestHardware()
     let notifier = RecordingNotifier()
-    let models: MockModelManager
+    let models: SpyModelManager
+    let plans = PlanRecorder()
     let settings: SQLiteSettingsStore
     let exportFolder = FileManager.default.temporaryDirectory.appendingPathComponent("jobs-export-\(UUID().uuidString)")
     let folder = FileManager.default.temporaryDirectory.appendingPathComponent("jobs-input-\(UUID().uuidString)")
@@ -183,12 +219,17 @@ struct Harness {
         let db = try database ?? AppDatabase.inMemory()
         self.database = db
         self.decoder = decoder
-        models = MockModelManager(descriptors: BuiltInCatalog.models, installed: installed)
+        models = SpyModelManager(MockModelManager(descriptors: BuiltInCatalog.models, installed: installed))
         settings = db.makeSettingsStore()
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        var config = FileTranscriptionPipeline.Configuration()
-        config.chunkSeconds = 10
-        let pipeline = FileTranscriptionPipeline(decoder: decoder, vad: nil, identifier: nil, configuration: config)
+        var chunking = FileTranscriptionPipeline.Configuration()
+        chunking.chunkSeconds = 10
+        let config = chunking
+        let plans = plans
+        let pipeline: PipelineFactory = { plan in
+            plans.record(plan)
+            return FileTranscriptionPipeline(decoder: decoder, vad: nil, identifier: nil, configuration: config)
+        }
         let exportFolder = exportFolder
         let presets = db.presets
         var configuration = JobQueueConfiguration()

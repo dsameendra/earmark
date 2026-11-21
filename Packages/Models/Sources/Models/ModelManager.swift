@@ -303,20 +303,19 @@ public actor ModelManager: ModelManaging {
             if descriptor.runtime == .appleAsset {
                 try await installAppleAsset(descriptor)
             } else {
-                if !job.tokenizerOnly { try await perform(descriptor) }
+                if !job.tokenizerOnly {
+                    try await perform(descriptor)
+                    // The model folder is in place: record the install now, so a tokenizer failure below cannot
+                    // force the (large) model to be downloaded again. The rest of this run only fetches the tokenizer.
+                    persisted.installed[model.rawValue] = directorySize(folder(for: model))
+                    persisted.paused[model.rawValue] = nil
+                    save()
+                    job.tokenizerOnly = true
+                }
                 try await provisionTokenizer(for: descriptor)
             }
             jobs[model] = nil
             let size = descriptor.runtime == .appleAsset ? 0 : directorySize(folder(for: model))
-            if job.tokenizerOnly {
-                publish(model, .installed(bytesOnDisk: size))
-                for continuation in job.subscribers.values {
-                    continuation.yield(.completed)
-                    continuation.finish()
-                }
-                return
-            }
-            if descriptor.runtime != .appleAsset, !job.tokenizerOnly { persisted.installed[model.rawValue] = size }
             persisted.paused[model.rawValue] = nil
             save()
             publish(model, .installed(bytesOnDisk: size))

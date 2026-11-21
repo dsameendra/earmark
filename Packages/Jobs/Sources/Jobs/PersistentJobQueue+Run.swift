@@ -1,0 +1,360 @@
+import AppCore
+import AudioCapture
+import Diarization
+import Export
+import Foundation
+import Processing
+import Transcription
+
+// The per-job pipeline: prepare -> models -> transcribe (checkpointed) -> diarize -> post-process -> save -> export -> notify.
+
+extension PersistentJobQueue {
+    /// Runs one job to a final state. Never throws; every error ends in `finish(_:error:)`.
+    func execute(_ id: JobID) async {
+        do {
+            try await run(id)
+        } catch {
+            await finish(id, error: error)
+        }
+        running[id] = nil
+        await schedule()
+    }
+
+    // MARK: - Pipeline
+
+    private func run(_ id: JobID) async throws {
+        guard let queued = store[id],
+            await apply(
+                id, .start,
+                {
+                    $0.failureReason = nil
+                    $0.etaSeconds = nil
+                })
+        else { return }
+        setNote(id, nil)
+        failures[id] = nil
+        guard queued.kind == .transcribeFile else {
+            throw AppError.unsupportedFormat("The queue cannot run \(queued.kind.rawValue) jobs yet.")
+        }
+        guard let declaredInput = queued.input else { throw AppError.other("The job has no input file.") }
+
+        var transcript = try await existingTranscript(for: queued)
+        let input = await resolvedInput(declaredInput, transcript: transcript)
+        let scoped = input.startAccessingSecurityScopedResource()
+        defer { if scoped { input.stopAccessingSecurityScopedResource() } }
+        let assetID = transcript?.mediaAssetID ?? Self.mediaAssetID(for: queued)
+        guard FileManager.default.fileExists(atPath: input.path) else { throw AppError.mediaMissing(assetID) }
+
+        let total = (try? await services.decoder.duration(of: input)) ?? 0
+        if transcript == nil {
+            transcript = try await createTranscript(for: queued, input: input, assetID: assetID, duration: total)
+        }
+        guard var header = transcript else { return }
+        let checkpoint = try await trimToCheckpoint(header.id, checkpoint: store[id]?.checkpoint)
+        let settings = queued.settings
+
+        let plan = try await planEngines(for: settings)
+        await mutate(id) { $0.engine = plan.assignments.first?.engine }
+        for model in Set(plan.assignments.filter(\.requiresDownload).compactMap(\.model)) { try await ensureModel(model, for: id) }
+
+        try await transcribe(id, input: input, transcriptID: header.id, plan: plan, checkpoint: checkpoint, total: total)
+
+        var segments = try await services.transcripts.segments(for: header.id)
+        if settings.diarize { header.speakers = try await diarize(id, input: input, settings: settings, segments: &segments) }
+        segments = try await postProcess(segments, settings: settings)
+        try await services.transcripts.replaceSegments(segments, for: header.id)
+
+        header.duration = max(total, segments.map(\.end).max() ?? 0)
+        header.languages = languages(of: segments, settings: settings, detected: detected[id] ?? [])
+        header.modifiedAt = configuration.now()
+        try await services.transcripts.save(header)
+        try Task.checkCancellation()
+
+        if settings.translateTo != nil { setNote(id, "Translation was skipped: it is not available yet.") }
+        await mutate(id) {
+            $0.state = .completed
+            $0.progress = 1
+            $0.etaSeconds = nil
+        }
+        detected[id] = nil
+        let exported = await autoExport(id, document: TranscriptDocument(transcript: header, segments: segments))
+        await jobReachedFinalState(id, title: header.title, exportedTo: exported)
+    }
+
+    private func existingTranscript(for job: Job) async throws -> Transcript? {
+        guard let id = job.transcriptID else { return nil }
+        return try await services.transcripts.transcript(id)
+    }
+
+    /// The referenced file, or the one the stored security-scoped bookmark resolves to when it moved.
+    private func resolvedInput(_ declared: URL, transcript: Transcript?) async -> URL {
+        if FileManager.default.fileExists(atPath: declared.path) { return declared }
+        guard let assetID = transcript?.mediaAssetID, let asset = try? await services.media.asset(assetID), let bookmark = asset.bookmark
+        else { return declared }
+        var stale = false
+        let resolved = try? URL(
+            resolvingBookmarkData: bookmark, options: [.withSecurityScope], relativeTo: nil, bookmarkDataIsStale: &stale)
+        return resolved ?? declared
+    }
+
+    private func createTranscript(for job: Job, input: URL, assetID: MediaAssetID, duration: TimeInterval) async throws -> Transcript {
+        let video = ["mp4", "mov", "m4v"].contains(input.pathExtension.lowercased())
+        let asset = MediaAsset(
+            id: assetID, kind: video ? .video : .audio, bookmark: try? input.bookmarkData(options: [.withSecurityScope]),
+            duration: duration)
+        try await services.media.save(asset)
+        let transcript = Transcript(
+            title: input.deletingPathExtension().lastPathComponent, source: .file, duration: duration, mediaAssetID: assetID,
+            createdAt: configuration.now(), modifiedAt: configuration.now())
+        try await services.transcripts.save(transcript)
+        await mutate(job.id) { $0.transcriptID = transcript.id }
+        return transcript
+    }
+
+    /// Drops segments at or after the checkpoint so a chunk caught between "segments saved" and "checkpoint saved" by a crash
+    /// is not duplicated when it is transcribed again (FILE-AC-08). Without a checkpoint the run starts from scratch.
+    private func trimToCheckpoint(_ id: TranscriptID, checkpoint: JobCheckpoint?) async throws -> JobCheckpoint? {
+        let existing = try await services.transcripts.segments(for: id)
+        let kept = checkpoint.map { cp in existing.filter { $0.start < cp.mediaTime } } ?? []
+        if kept.count != existing.count { try await services.transcripts.replaceSegments(kept, for: id) }
+        return checkpoint
+    }
+
+    // MARK: - Engines and models
+
+    private func planEngines(for settings: JobSettings) async throws -> EnginePlan {
+        let catalog = await services.models.catalog()
+        let installed = await services.models.installedModels()
+        let request = RoutingRequest(
+            languageMode: settings.languageMode, useCase: .file, tier: services.hardware.profile.tier, installedModels: installed,
+            explicitModel: settings.modelID)
+        return try DefaultEngineRouter(catalog: catalog).plan(for: request)
+    }
+
+    /// Downloads `model` if needed. The job stays `.running` and reports the download as progress plus a status note.
+    func ensureModel(_ model: ModelID, for id: JobID) async throws {
+        let name = await services.models.catalog().first { $0.id == model }?.displayName ?? model.rawValue
+        setNote(id, "Downloading \(name)")
+        for try await event in services.models.ensureAvailable(model) {
+            try Task.checkCancellation()
+            switch event {
+            case .progress(let fraction, _, _):
+                setNote(id, "Downloading \(name) (\(Int((fraction * 100).rounded()))%)")
+                await mutate(id, persist: false) { $0.progress = min(1, max(0, fraction)) }
+            case .verifying: setNote(id, "Verifying \(name)")
+            case .completed: break
+            }
+        }
+        try Task.checkCancellation()
+        setNote(id, nil)
+    }
+
+    // MARK: - Transcription
+
+    private func transcribe(
+        _ id: JobID, input: URL, transcriptID: TranscriptID, plan: EnginePlan, checkpoint: JobCheckpoint?, total: TimeInterval
+    ) async throws {
+        guard let job = store[id] else { return }
+        let options = TranscriptionOptions(languageMode: job.settings.languageMode, useCase: .file, modelID: job.settings.modelID)
+        let startFraction = total > 0 ? min(1, (checkpoint?.mediaTime ?? 0) / total) : 0
+        await mutate(id, persist: false) { $0.progress = startFraction }
+        let estimator = ETAEstimator(startedAt: configuration.now(), startFraction: startFraction)
+        var lastBroadcast = Date.distantPast
+        let resolver = EngineBinding.resolver(plan: plan, engines: services.engines)
+
+        do {
+            for try await event in services.pipeline.run(file: input, options: options, resumeFrom: checkpoint, engines: resolver) {
+                try Task.checkCancellation()
+                switch event {
+                case .languageDetected(let scores):
+                    if let top = scores.max(by: { $0.probability < $1.probability }) { detected[id, default: []].insert(top.language) }
+                case .chunkCompleted(let segments, let marker):
+                    // Segments first, then the checkpoint: a crash in between re-transcribes the chunk, and the
+                    // trim in `trimToCheckpoint` removes its orphaned segments.
+                    if !segments.isEmpty { try await services.transcripts.upsertSegments(segments, for: transcriptID) }
+                    let fraction = total > 0 ? min(1, marker.mediaTime / total) : 0
+                    let eta = estimator.eta(fraction: fraction, now: configuration.now())
+                    await mutate(id) {
+                        $0.checkpoint = marker
+                        $0.progress = fraction
+                        $0.etaSeconds = eta
+                    }
+                    lastBroadcast = configuration.now()
+                case .progress(let fraction, _):
+                    let now = configuration.now()
+                    guard now.timeIntervalSince(lastBroadcast) >= configuration.progressInterval else { continue }
+                    lastBroadcast = now
+                    let eta = estimator.eta(fraction: fraction, now: now)
+                    await mutate(id, persist: false) {
+                        $0.progress = max($0.progress, fraction)
+                        $0.etaSeconds = eta
+                    }
+                }
+            }
+        } catch AppError.mediaMissing {
+            // The decoder only knows the file, not the asset; attribute the error to this job's asset.
+            throw AppError.mediaMissing(Self.mediaAssetID(for: job))
+        }
+        try Task.checkCancellation()  // a cancelled consumer ends the stream quietly instead of throwing
+    }
+
+    // MARK: - Diarization and post-processing
+
+    private func diarize(_ id: JobID, input: URL, settings: JobSettings, segments: inout [Segment]) async throws -> [Speaker] {
+        guard let diarizer = services.diarizer else {
+            setNote(id, "Speaker identification is unavailable in this build.")
+            return []
+        }
+        try await ensureModel(DiarizationModelID.community1, for: id)
+        setNote(id, "Identifying speakers")
+        await mutate(id, persist: false) { $0.etaSeconds = nil }
+        let turns = try await diarizer.diarize(file: input, options: Self.diarizationOptions(settings.diarization))
+        try Task.checkCancellation()
+        setNote(id, nil)
+        return Self.assignSpeakers(turns: turns, to: &segments)
+    }
+
+    /// `["exact": n]` or `["min": a, "max": b]`; anything else (or empty) is automatic.
+    static func diarizationOptions(_ raw: [String: Int]) -> DiarizationOptions {
+        if let exact = raw["exact"], exact > 0 { return DiarizationOptions(speakerCount: .exact(exact)) }
+        if let lower = raw["min"], let upper = raw["max"], lower > 0, upper >= lower {
+            return DiarizationOptions(speakerCount: .range(min: lower, max: upper))
+        }
+        return DiarizationOptions()
+    }
+
+    private static let speakerColors = ["#4F8EF7", "#F5A623", "#7ED321", "#BD10E0", "#50E3C2", "#D0021B", "#8B572A", "#9B9B9B"]
+
+    /// Labels each segment with the speaker whose turns overlap it most; speakers are numbered by slot.
+    static func assignSpeakers(turns: [SpeakerTurn], to segments: inout [Segment]) -> [Speaker] {
+        var bySlot: [Int: Speaker] = [:]
+        for slot in Set(turns.map(\.slot)).sorted() {
+            let number = bySlot.count + 1
+            bySlot[slot] = Speaker(name: "Speaker \(number)", colorHex: speakerColors[(number - 1) % speakerColors.count])
+        }
+        for index in segments.indices {
+            if let slot = TurnAssigner.slot(for: segments[index].range, in: turns) { segments[index].speakerID = bySlot[slot]?.id }
+        }
+        let used = Set(segments.compactMap(\.speakerID))
+        return bySlot.keys.sorted().compactMap { bySlot[$0] }.filter { used.contains($0.id) }
+    }
+
+    private func postProcess(_ segments: [Segment], settings: JobSettings) async throws -> [Segment] {
+        let context = PostProcessingContext(
+            ignoreRules: try await services.rules.ignoreRules(), replacementRules: try await services.rules.replacementRules(),
+            applyReplacements: settings.applyReplacements, enableHallucinationFilter: true)
+        return await services.postProcessor.process(segments, context: context)
+    }
+
+    private func languages(of segments: [Segment], settings: JobSettings, detected: Set<LanguageCode>) -> Set<LanguageCode> {
+        var result = detected
+        for segment in segments { if let code = segment.languageCode { result.insert(code.primary) } }
+        if result.isEmpty {
+            switch settings.languageMode {
+            case .single(let code): result = [code]
+            case .multilingual(let set): result = set
+            case .autoDetect: break
+            }
+        }
+        return result
+    }
+
+    // MARK: - Completion
+
+    private func autoExport(_ id: JobID, document: TranscriptDocument) async -> URL? {
+        guard let presetID = store[id]?.settings.autoExportPresetID, let provider = services.autoExport,
+            let writer = await provider()
+        else { return nil }
+        switch await writer.exportCompleted(document, presetID: presetID) {
+        case .written(let url): return url
+        case .skipped: return nil
+        case .failed(let reason):
+            setNote(id, "Auto-export failed: \(reason)")
+            return nil
+        }
+    }
+
+    /// Records how a run that threw ended: pause or cancel as requested, otherwise a retryable failure.
+    private func finish(_ id: JobID, error: any Error) async {
+        let intent = running[id]?.intent
+        let isCancellation = error is CancellationError || (error as? AppError) == .cancelled || Task.isCancelled
+        if isCancellation, intent != nil || Task.isCancelled {
+            setNote(id, nil)
+            switch intent {
+            case .pause: await apply(id, .pause) { $0.etaSeconds = nil }
+            case .cancel:
+                await apply(id, .cancel) { $0.etaSeconds = nil }
+                await jobReachedFinalState(id)
+            case nil: await apply(id, .interrupt) { $0.etaSeconds = nil }  // shut down mid-run; resumes from the checkpoint
+            }
+            return
+        }
+        guard let job = store[id] else { return }
+        var appError = AppError.mapping(error, engine: "jobs")
+        if case .mediaMissing = appError { appError = .mediaMissing(await mediaAssetID(of: job)) }
+        failures[id] = appError
+        log.error("Job \(id.description, privacy: .public) failed: \(String(describing: appError), privacy: .public)")
+        setNote(id, nil)
+        await apply(id, .fail) {
+            $0.failureReason = Self.describe(appError, input: job.input)
+            $0.etaSeconds = nil
+        }
+        await jobReachedFinalState(id)
+    }
+
+    private func mediaAssetID(of job: Job) async -> MediaAssetID {
+        guard let tid = job.transcriptID, let transcript = try? await services.transcripts.transcript(tid) else {
+            return Self.mediaAssetID(for: job)
+        }
+        return transcript.mediaAssetID ?? Self.mediaAssetID(for: job)
+    }
+
+    /// Notifies the app once a job (or, for multi-file batches, the whole batch) is done.
+    func jobReachedFinalState(_ id: JobID, title: String? = nil, exportedTo: URL? = nil) async {
+        guard let job = store[id], JobStateMachine.isTerminal(job.state) else { return }
+        if let batchID = batchOf[id], var batch = batches[batchID] {
+            switch job.state {
+            case .completed: batch.completed += 1
+            case .failed: batch.failed += 1
+            default: batch.cancelled += 1
+            }
+            batch.remaining.remove(id)
+            if batch.remaining.isEmpty {
+                batches[batchID] = nil
+                for member in batch.jobIDs { batchOf[member] = nil }
+                await services.notifier?.batchFinished(
+                    JobBatchSummary(jobIDs: batch.jobIDs, completed: batch.completed, failed: batch.failed, cancelled: batch.cancelled))
+            } else {
+                batches[batchID] = batch
+            }
+            return
+        }
+        switch job.state {
+        case .completed: await services.notifier?.jobCompleted(JobCompletionInfo(job: job, transcriptTitle: title, exportedTo: exportedTo))
+        case .failed: await services.notifier?.jobFailed(job)
+        default: break
+        }
+    }
+
+    /// User-facing text for a failure (shown with the Retry action).
+    static func describe(_ error: AppError, input: URL?) -> String {
+        let name = input?.lastPathComponent ?? "the file"
+        switch error {
+        case .cancelled: return "Cancelled."
+        case .modelNotInstalled(let model): return "The model \(model) is not installed."
+        case .modelDownloadFailed(let model, let reason): return "Downloading \(model) failed: \(reason)"
+        case .checksumMismatch(let model): return "The downloaded \(model) files were corrupt. Retry to download them again."
+        case .unsupportedLanguage(let language): return "No available model supports the language \(language)."
+        case .unsupportedFormat(let message): return "\(name) cannot be transcribed: \(message)"
+        case .engineFailure(let engine, let reason): return "The \(engine) engine failed: \(reason)"
+        case .permissionDenied(let kind): return "Permission denied (\(kind))."
+        case .captureSilent(let reason): return reason
+        case .deviceUnavailable: return "The audio device is unavailable."
+        case .mediaMissing: return "The media file \(name) is missing. Move it back or add it again, then retry."
+        case .persistence(let reason): return "Could not save the transcript: \(reason)"
+        case .exportFailed(let reason): return "Export failed: \(reason)"
+        case .outOfMemory: return "Ran out of memory. Close other apps or pick a smaller model, then retry."
+        case .other(let message): return message
+        }
+    }
+}

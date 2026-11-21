@@ -9,11 +9,19 @@ private let small: ModelID = "whisperkit/small"
 
 private func sha(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
 
+private func tokenizerURL(_ name: String) -> URL { URL(string: "https://huggingface.co/openai/whisper-small/resolve/main/\(name)")! }
+
 private struct Harness {
     let root = makeTempDirectory()
     let downloader = FakeDownloader()
     let apple = FakeAppleAssets()
     var manifests: [ModelID: [RemoteFile]] = [:]
+
+    init() {
+        for name in WhisperTokenizerFiles.fileNames {
+            downloader.serve(tokenizerURL(name), Data("tokenizer:\(name)".utf8))
+        }
+    }
 
     func manager() -> ModelManager {
         ModelManager(
@@ -62,6 +70,45 @@ struct ModelManagerDownloadTests {
         #expect(try Data(contentsOf: location.appendingPathComponent("sub/b.bin")) == b)
         #expect(!FileManager.default.fileExists(atPath: harness.root.appendingPathComponent(".partial/whisperkit__small").path))
         #expect(await manager.installedModels().contains(small))
+    }
+
+    @Test("ENG-AC-14: the Whisper tokenizer is provisioned in the Hub layout WhisperKit reads")
+    func tokenizerProvisioned() async throws {
+        let (harness, _, _) = twoFileHarness()
+        let manager = harness.manager()
+        _ = try await collect(manager.ensureAvailable(small))
+        let folder = WhisperTokenizerFiles.folder(repo: "openai/whisper-small", under: manager.tokenizerFolder)
+        for name in WhisperTokenizerFiles.fileNames {
+            #expect(try Data(contentsOf: folder.appendingPathComponent(name)) == Data("tokenizer:\(name)".utf8))
+        }
+        #expect(harness.downloader.calls.allSatisfy { $0.url.host == "huggingface.co" })
+        #expect(manager.tokenizerFolder.path.hasPrefix(harness.root.path))
+    }
+
+    @Test("an installed model without a tokenizer fetches only the tokenizer on ensureAvailable")
+    func tokenizerBackfill() async throws {
+        let (harness, _, _) = twoFileHarness()
+        let manager = harness.manager()
+        _ = try await collect(manager.ensureAvailable(small))
+        try FileManager.default.removeItem(at: manager.tokenizerFolder)
+        let before = harness.downloader.calls.count
+        let events = try await collect(manager.ensureAvailable(small))
+        #expect(events.last == .completed)
+        let newCalls = harness.downloader.calls.dropFirst(before)
+        #expect(newCalls.count == WhisperTokenizerFiles.fileNames.count)
+        #expect(newCalls.allSatisfy { $0.url.path.contains("openai/whisper-small") })
+        guard case .installed = await manager.state(of: small) else {
+            Issue.record("model should stay installed")
+            return
+        }
+    }
+
+    @Test("tokenizer repos exist for built-in Whisper models only")
+    func tokenizerRepos() {
+        #expect(WhisperTokenizerFiles.repo(for: "whisperkit/large-v3-v20240930_626MB") == "openai/whisper-large-v3")
+        #expect(WhisperTokenizerFiles.repo(for: "whisperkit/small") == "openai/whisper-small")
+        #expect(WhisperTokenizerFiles.repo(for: "mlx/qwen3-asr-0.6b-sinhala-8bit") == nil)
+        #expect(WhisperTokenizerFiles.repo(for: "custom/abc") == nil)
     }
 
     @Test("state survives a restart")

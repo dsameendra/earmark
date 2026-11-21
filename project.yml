@@ -18,6 +18,9 @@ packages:
   Models: { path: Packages/Models }
   AudioCapture: { path: Packages/AudioCapture }
   Features: { path: Packages/Features }
+  Transcription: { path: Packages/Transcription }
+  Diarization: { path: Packages/Diarization }
+  Jobs: { path: Packages/Jobs }
 targets:
   Earmark:
     type: application
@@ -38,6 +41,9 @@ targets:
       - package: DesignSystem
       - package: Models
       - package: AudioCapture
+      - package: Transcription
+      - package: Diarization
+      - package: Jobs
       - package: AppCore
         product: AppCoreTesting   # debug `-UseMocks` composition only
       - package: Features

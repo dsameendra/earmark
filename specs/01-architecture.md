@@ -84,7 +84,13 @@ Pure-Swift exporters with golden-file tests; DOCX via ZIPFoundation; PDF via WKW
 - Idle budget: menu-bar-only < 1 % CPU, < 150 MB RAM, no polling timers (event-driven detection; coalesced timers with tolerance).
 - Live paths prefer ANE/CoreML where the engine allows; MLX (GPU) for Sinhala; avoid running GPU + ANE heavy engines concurrently on `tier8`.
 - Battery: lower QoS / concurrency on battery (setting); thermal-state observer throttles.
-- **Benchmark plan (serial, after spikes finish; recorded in `/specs/research/benchmarks.md`)**: model load time, RTF per engine/model, live first-partial latency, memory high-water, idle CPU/RAM, library load time. Run on this M3 Pro 18 GB; M1/8 GB extrapolated with documented assumptions until real hardware is available (**open: any M1/8 GB machine to test?**).
+- **Measured on M3 Pro 18 GB (serial, AC power; machine not fully idle, 5.5 GB swap in use; see `/specs/research/benchmarks.md`)**:
+  - WhisperKit turbo-626MB files: 13–17x realtime; warm load ~1.1 s; first load after download 115 s (show progress). Live decode per window 0.74 s (3 s) to 1.15 s (10 s): meets the <1.5 s target (decode only; end-to-end needs mic run).
+  - SpeechAnalyzer files 55–134x realtime.
+  - Diarization 1049 s meeting: FluidAudio offline 264x (0.9 GB), SpeakerKit 101x, LS-EEND streaming 88x (138 MB, ~1% CPU), Sortformer 8–24x.
+  - Sinhala (Python reference): Qwen 8.4x, whisper-small-si 11.3x, ~2.3 GB peak.
+  - ASR + LS-EEND concurrently: ASR unaffected, diarization ~15% slower, so one-heavy-model residency is a **memory** rule (8 GB tier, Sinhala), not a compute rule.
+  - **M1 extrapolation (unverified):** turbo files ~7–12x on M1 Pro, so the 10x target is not safe there; M1 8 GB is memory-bound. Real M1/8 GB hardware still needed (**open**).
 - Perf regressions guarded by `XCTMetric`/Swift Testing perf tests in Phase 7.
 
 ## 8. UI architecture

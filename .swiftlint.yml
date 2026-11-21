@@ -1,0 +1,24 @@
+included:
+  - Packages
+  - App
+excluded:
+  - "**/.build"
+  - spikes
+line_length:
+  warning: 140
+  error: 200
+  ignores_comments: true
+identifier_name:
+  min_length: 1
+  excluded: [id]
+disabled_rules:
+  - switch_case_alignment   # swift-format owns formatting
+  - trailing_comma
+  - nesting
+  - type_body_length
+  - file_length
+  - function_parameter_count
+  - large_tuple
+  - cyclomatic_complexity
+type_name:
+  min_length: 2

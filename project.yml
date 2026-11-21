@@ -17,6 +17,7 @@ packages:
   DesignSystem: { path: Packages/DesignSystem }
   Models: { path: Packages/Models }
   AudioCapture: { path: Packages/AudioCapture }
+  Features: { path: Packages/Features }
 targets:
   Earmark:
     type: application
@@ -37,3 +38,23 @@ targets:
       - package: DesignSystem
       - package: Models
       - package: AudioCapture
+      - package: AppCore
+        product: AppCoreTesting   # debug `-UseMocks` composition only
+      - package: Features
+        product: FeatureShell
+      - package: Features
+        product: FeatureSupport
+      - package: Features
+        product: FeatureMenuBar
+      - package: Features
+        product: FeatureSettings
+      - package: Features
+        product: FeatureHome
+      - package: Features
+        product: FeatureQueue
+      - package: Features
+        product: FeatureLibrary
+      - package: Features
+        product: FeatureMeetings
+      - package: Features
+        product: FeatureLive

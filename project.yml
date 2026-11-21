@@ -18,6 +18,10 @@ packages:
   Models: { path: Packages/Models }
   AudioCapture: { path: Packages/AudioCapture }
   Features: { path: Packages/Features }
+  Transcription: { path: Packages/Transcription }
+  Diarization: { path: Packages/Diarization }
+  Processing: { path: Packages/Processing }
+  Export: { path: Packages/Export }
 targets:
   Earmark:
     type: application
@@ -58,3 +62,9 @@ targets:
         product: FeatureMeetings
       - package: Features
         product: FeatureLive
+      - package: Features
+        product: FeatureEditor
+      - package: Transcription
+      - package: Diarization
+      - package: Processing
+      - package: Export

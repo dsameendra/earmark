@@ -21,10 +21,13 @@ let package = Package(
         .library(name: "FeatureLive", targets: ["FeatureLive"]),
         .library(name: "FeatureMenuBar", targets: ["FeatureMenuBar"]),
         .library(name: "FeatureSettings", targets: ["FeatureSettings"]),
+        .library(name: "FeatureEditor", targets: ["FeatureEditor"]),
     ],
     dependencies: [
         .package(path: "../AppCore"),
         .package(path: "../DesignSystem"),
+        .package(path: "../Processing"),
+        .package(path: "../Export"),
     ],
     targets: [
         .target(
@@ -37,17 +40,22 @@ let package = Package(
         .target(name: "FeatureMeetings", dependencies: base, swiftSettings: strict),
         .target(name: "FeatureLive", dependencies: base, swiftSettings: strict),
         .target(name: "FeatureMenuBar", dependencies: base + ["FeatureLive"], swiftSettings: strict),
-        .target(name: "FeatureSettings", dependencies: base, swiftSettings: strict),
+        .target(name: "FeatureSettings", dependencies: base + [
+            .product(name: "Processing", package: "Processing"), .product(name: "Export", package: "Export"),
+        ], swiftSettings: strict),
+        .target(name: "FeatureEditor", dependencies: base + [
+            .product(name: "Processing", package: "Processing"), .product(name: "Export", package: "Export"),
+        ], swiftSettings: strict),
         .target(
             name: "FeatureShell",
-            dependencies: base + ["FeatureHome", "FeatureQueue", "FeatureLibrary", "FeatureMeetings", "FeatureLive"],
+            dependencies: base + ["FeatureHome", "FeatureQueue", "FeatureLibrary", "FeatureMeetings", "FeatureLive", "FeatureEditor"],
             swiftSettings: strict),
         .testTarget(
             name: "FeaturesTests",
             dependencies: base + [
                 .product(name: "AppCoreTesting", package: "AppCore"),
                 "FeatureShell", "FeatureHome", "FeatureQueue", "FeatureLibrary", "FeatureMeetings", "FeatureLive", "FeatureMenuBar",
-                "FeatureSettings",
+                "FeatureSettings", "FeatureEditor",
             ]),
     ],
     swiftLanguageModes: [.v6]

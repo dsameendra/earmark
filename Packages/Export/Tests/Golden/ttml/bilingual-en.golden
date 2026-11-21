@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:tts="http://www.w3.org/ns/ttml#styling" xmlns:ttm="http://www.w3.org/ns/ttml#metadata" xml:lang="en">
+  <head>
+    <metadata>
+      <ttm:title>Team Sync</ttm:title>
+      <ttm:agent xml:id="spk-1" type="person"><ttm:name type="full">Alice</ttm:name></ttm:agent>
+      <ttm:agent xml:id="spk-2" type="person"><ttm:name type="full">Dumindu</ttm:name></ttm:agent>
+    </metadata>
+    <styling>
+      <style xml:id="default" tts:textAlign="center"/>
+    </styling>
+  </head>
+  <body>
+    <div>
+      <p begin="00:00:00.000" end="00:00:03.200" xml:lang="en" ttm:agent="spk-1">Good morning everyone. Let's start the<br/>weekly sync.</p>
+      <p begin="00:00:03.500" end="00:00:06.000" xml:lang="si" ttm:agent="spk-2"><span xml:lang="si">ආයුබෝවන්, අද රැස්වීමේ කාර්ය සූචිය බලමු.</span><br/><span xml:lang="en">Hello, let's look at today's agenda.</span></p>
+      <p begin="00:00:06.200" end="00:00:08.000" xml:lang="si" ttm:agent="spk-2"><span xml:lang="si">මම හොඳින්, ස්තුතියි.</span><br/><span xml:lang="en">I'm fine, thank you.</span></p>
+      <p begin="00:00:09.500" end="00:00:10.744" xml:lang="en" ttm:agent="spk-1">The quarterly numbers look good,</p>
+      <p begin="00:00:10.824" end="00:00:13.126" xml:lang="en" ttm:agent="spk-1">but we need to improve the Sinhala<br/>transcription accuracy,</p>
+      <p begin="00:00:13.206" end="00:00:14.206" xml:lang="en" ttm:agent="spk-1">especially for names.</p>
+      <p begin="00:00:14.500" end="00:00:18.000" xml:lang="en" ttm:agent="spk-2">Agreed. I'll review the rules with Zoom &amp;<br/>Teams &lt;beta&gt; next week.</p>
+      <p begin="00:00:25.000" end="00:00:28.000" xml:lang="en" ttm:agent="spk-1">After a long pause: a quote &quot;hello&quot;, and a<br/>comma.</p>
+    </div>
+  </body>
+</tt>

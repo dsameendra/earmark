@@ -1,0 +1,7 @@
+index,start,end,speaker,language,text,translation_language,translation
+1,0.000,3.200,Alice,en,Good morning everyone. Let's start the weekly sync.,,
+2,3.500,6.000,Dumindu,si,"ආයුබෝවන්, අද රැස්වීමේ කාර්ය සූචිය බලමු.",en,"Hello, let's look at today's agenda."
+3,6.200,8.000,Dumindu,si,"මම හොඳින්, ස්තුතියි.",en,"I'm fine, thank you."
+4,9.500,14.000,Alice,en,"The quarterly numbers look good, but we need to improve the Sinhala transcription accuracy, especially for names.",,
+5,14.500,18.000,Dumindu,en,Agreed. I'll review the rules with Zoom & Teams <beta> next week.,,
+6,25.000,28.000,Alice,en,"After a long pause: a quote ""hello"", and a comma.",,

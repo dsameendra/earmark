@@ -56,5 +56,38 @@ case "dualtrack":
     let merged = (gated + others.turns).sorted { $0.start < $1.start }
     try RTTM.write(merged, uri: "dual", to: outDir.appendingPathComponent("dualtrack.rttm"))
     print("You spans: \(you.count) (\(gated.count) after bleed gate); remote speakers: \(others.embeddings.count)")
+case "stream":
+    // stream <kind> <audio> --out dir --cache dir [--chunk 0.1] ; kinds: see FluidStreamEngine.run
+    guard a.count >= 3 else { die("stream <kind> <audio>") }
+    let url = URL(fileURLWithPath: a[2]); let uri = url.deletingPathExtension().deletingPathExtension().lastPathComponent
+    let chunk = arg("--chunk", in: a).flatMap(Double.init) ?? (a[1] == "legacy" ? 5.0 : 0.1)
+    let samples = try Audio.load16kMono(url)
+    let r = try await FluidStreamEngine().run(kind: a[1], samples: samples, cache: cache, chunk: chunk)
+    try RTTM.write(r.turns, uri: uri, to: outDir.appendingPathComponent("stream-\(a[1])-\(uri).rttm"))
+    try JSONEncoder().encode(r).write(to: outDir.appendingPathComponent("stream-\(a[1])-\(uri).json"))
+    print("\(a[1]) \(uri): \(r.turns.count) finalized turns, \(r.updates.count) updates, slots=\(r.maxSlots)")
+case "stream-dual":
+    // Live dual-track simulation: mic -> streaming VAD ("You"), remote -> streaming diarizer; both fed in lockstep
+    // in 100 ms steps (as fast as possible, no pacing). --bleed g mixes g*remote into the mic track (speaker bleed).
+    guard a.count >= 3 else { die("stream-dual <mic> <remote>") }
+    var mic = try Audio.load16kMono(URL(fileURLWithPath: a[1]))
+    var remote = try Audio.load16kMono(URL(fileURLWithPath: a[2]))
+    let n = min(mic.count, remote.count); mic = Array(mic.prefix(n)); remote = Array(remote.prefix(n))
+    if let g = arg("--bleed", in: a).flatMap(Float.init) { for i in 0..<n { mic[i] += g * remote[i] } }
+    let kind = arg("--kind", in: a) ?? "lseend-ami"
+    let gate = arg("--gate", in: a) != "off"
+    let vad = LiveMicVAD(); try await vad.start(cache: cache)
+    // remote diarization runs on its own; mic VAD runs in lockstep. Spans are merged on the fly with the gate.
+    let rr = try await FluidStreamEngine().run(kind: kind, samples: remote, cache: cache, chunk: 0.1)
+    var youAll: [Turn] = []
+    var i = 0
+    while i < n { let j = min(i + 1600, n); youAll += try await vad.feed(Array(mic[i..<j])); i = j }
+    youAll += await vad.finish()
+    func ov(_ s: Turn) -> Double { rr.turns.reduce(0) { $0 + max(0, min(s.end, $1.end) - max(s.start, $1.start)) } / max(s.end - s.start, 1e-6) }
+    let you = gate ? youAll.filter { ov($0) < 0.5 } : youAll
+    let tag = (arg("--tag", in: a) ?? "dual")
+    try RTTM.write(you + rr.turns.map { Turn(speaker: "R" + $0.speaker, start: $0.start, end: $0.end) }, uri: tag, to: outDir.appendingPathComponent("\(tag).rttm"))
+    try RTTM.write(youAll, uri: tag, to: outDir.appendingPathComponent("\(tag)-you-raw.rttm"))
+    print("\(tag): You spans raw \(youAll.count) kept \(you.count); remote turns \(rr.turns.count)")
 default: die("unknown command")
 }

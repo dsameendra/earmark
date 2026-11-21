@@ -1,0 +1,61 @@
+## lseend-ami ES2004a
+lseend-ami ES2004a: 246 finalized turns, 10485 updates, slots=4
+           145801216  maximum resident set size
+           137691760  peak memory footprint
+## lseend-ami ES2004b
+lseend-ami ES2004b: 412 finalized turns, 23446 updates, slots=4
+           311705600  maximum resident set size
+           303678160  peak memory footprint
+## lseend-ami IS1009a
+lseend-ami IS1009a: 215 finalized turns, 8380 updates, slots=4
+           119078912  maximum resident set size
+           110690880  peak memory footprint
+## lseend-dihard3 ES2004a
+lseend-dihard3 ES2004a: 504 finalized turns, 10485 updates, slots=10
+           146096128  maximum resident set size
+           137724528  peak memory footprint
+## lseend-dihard3 ES2004b
+lseend-dihard3 ES2004b: 1035 finalized turns, 23446 updates, slots=10
+           310640640  maximum resident set size
+           303694544  peak memory footprint
+## lseend-dihard3 IS1009a
+lseend-dihard3 IS1009a: 467 finalized turns, 8380 updates, slots=10
+           121405440  maximum resident set size
+           110707288  peak memory footprint
+## sortformer-fastV2 ES2004a
+sortformer-fastV2 ES2004a: 481 finalized turns, 2185 updates, slots=4
+           558579712  maximum resident set size
+           234570736  peak memory footprint
+## sortformer-fastV2 ES2004b
+sortformer-fastV2 ES2004b: 950 finalized turns, 4886 updates, slots=4
+           311951360  maximum resident set size
+           303678184  peak memory footprint
+## sortformer-fastV2 IS1009a
+sortformer-fastV2 IS1009a: 368 finalized turns, 1747 updates, slots=4
+           161562624  maximum resident set size
+           198968280  peak memory footprint
+## sortformer-balancedV2 ES2004a
+sortformer-balancedV2 ES2004a: 483 finalized turns, 2185 updates, slots=4
+           642465792  maximum resident set size
+           185336792  peak memory footprint
+## sortformer-balancedV2 ES2004b
+sortformer-balancedV2 ES2004b: 853 finalized turns, 4886 updates, slots=4
+           311967744  maximum resident set size
+           303678184  peak memory footprint
+## sortformer-balancedV2 IS1009a
+sortformer-balancedV2 IS1009a: 351 finalized turns, 1747 updates, slots=4
+           136921088  maximum resident set size
+           180847456  peak memory footprint
+## legacy ES2004a
+legacy ES2004a: 220 finalized turns, 210 updates, slots=1
+           911294464  maximum resident set size
+           866354712  peak memory footprint
+## legacy ES2004b
+legacy ES2004b: 517 finalized turns, 470 updates, slots=1
+          1259421696  maximum resident set size
+          1614677936  peak memory footprint
+## legacy IS1009a
+legacy IS1009a: 175 finalized turns, 168 updates, slots=1
+           636600320  maximum resident set size
+           696272120  peak memory footprint
+FINISHED

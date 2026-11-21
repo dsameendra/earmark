@@ -1,0 +1,209 @@
+{
+ "qwen/slr30": {
+  "slr30_clean_read / all": {
+   "n": 40,
+   "cer_raw": 6.2,
+   "cer_cut": 6.2,
+   "cer_keepzw_raw": 6.26,
+   "cer_keepzw_cut": 6.26,
+   "wer_raw": 34.63,
+   "wer_cut": 34.63,
+   "runaway_clips": 0,
+   "ref_latin_frac": 0.0,
+   "hyp_latin_frac": 0.006,
+   "empty_hyp": 0
+  },
+  "slr30_clean_read / sinhala-only": {
+   "n": 40,
+   "cer_raw": 6.2,
+   "cer_cut": 6.2,
+   "cer_keepzw_raw": 6.26,
+   "cer_keepzw_cut": 6.26,
+   "wer_raw": 34.63,
+   "wer_cut": 34.63,
+   "runaway_clips": 0,
+   "ref_latin_frac": 0.0,
+   "hyp_latin_frac": 0.006,
+   "empty_hyp": 0
+  }
+ },
+ "qwen/speak": {
+  "speak_heldout_channels / all": {
+   "n": 60,
+   "cer_raw": 21.49,
+   "cer_cut": 21.49,
+   "cer_keepzw_raw": 21.65,
+   "cer_keepzw_cut": 21.65,
+   "wer_raw": 43.26,
+   "wer_cut": 43.26,
+   "runaway_clips": 0,
+   "ref_latin_frac": 0.2,
+   "hyp_latin_frac": 0.155,
+   "empty_hyp": 0
+  },
+  "speak_heldout_channels / mixed": {
+   "n": 30,
+   "cer_raw": 27.48,
+   "cer_cut": 27.48,
+   "cer_keepzw_raw": 27.79,
+   "cer_keepzw_cut": 27.79,
+   "wer_raw": 47.26,
+   "wer_cut": 47.26,
+   "runaway_clips": 0,
+   "ref_latin_frac": 0.393,
+   "hyp_latin_frac": 0.298,
+   "empty_hyp": 0
+  },
+  "speak_heldout_channels / sinhala-only": {
+   "n": 30,
+   "cer_raw": 14.83,
+   "cer_cut": 14.83,
+   "cer_keepzw_raw": 14.87,
+   "cer_keepzw_cut": 14.87,
+   "wer_raw": 38.63,
+   "wer_cut": 38.63,
+   "runaway_clips": 0,
+   "ref_latin_frac": 0.006,
+   "hyp_latin_frac": 0.011,
+   "empty_hyp": 0
+  }
+ },
+ "run12/slr30": {
+  "slr30_clean_read / all": {
+   "n": 40,
+   "cer_raw": 5.51,
+   "cer_cut": 5.51,
+   "cer_keepzw_raw": 5.51,
+   "cer_keepzw_cut": 5.51,
+   "wer_raw": 32.54,
+   "wer_cut": 32.54,
+   "runaway_clips": 0,
+   "ref_latin_frac": 0.0,
+   "hyp_latin_frac": 0.0,
+   "empty_hyp": 0
+  },
+  "slr30_clean_read / sinhala-only": {
+   "n": 40,
+   "cer_raw": 5.51,
+   "cer_cut": 5.51,
+   "cer_keepzw_raw": 5.51,
+   "cer_keepzw_cut": 5.51,
+   "wer_raw": 32.54,
+   "wer_cut": 32.54,
+   "runaway_clips": 0,
+   "ref_latin_frac": 0.0,
+   "hyp_latin_frac": 0.0,
+   "empty_hyp": 0
+  }
+ },
+ "run12/speak": {
+  "speak_heldout_channels / all": {
+   "n": 60,
+   "cer_raw": 4.73,
+   "cer_cut": 4.73,
+   "cer_keepzw_raw": 4.77,
+   "cer_keepzw_cut": 4.77,
+   "wer_raw": 14.84,
+   "wer_cut": 14.84,
+   "runaway_clips": 0,
+   "ref_latin_frac": 0.2,
+   "hyp_latin_frac": 0.191,
+   "empty_hyp": 0
+  },
+  "speak_heldout_channels / mixed": {
+   "n": 30,
+   "cer_raw": 5.31,
+   "cer_cut": 5.31,
+   "cer_keepzw_raw": 5.38,
+   "cer_keepzw_cut": 5.38,
+   "wer_raw": 14.56,
+   "wer_cut": 14.56,
+   "runaway_clips": 0,
+   "ref_latin_frac": 0.393,
+   "hyp_latin_frac": 0.375,
+   "empty_hyp": 0
+  },
+  "speak_heldout_channels / sinhala-only": {
+   "n": 30,
+   "cer_raw": 4.09,
+   "cer_cut": 4.09,
+   "cer_keepzw_raw": 4.1,
+   "cer_keepzw_cut": 4.1,
+   "wer_raw": 15.16,
+   "wer_cut": 15.16,
+   "runaway_clips": 0,
+   "ref_latin_frac": 0.006,
+   "hyp_latin_frac": 0.006,
+   "empty_hyp": 0
+  }
+ },
+ "turbo/slr30": {
+  "slr30_clean_read / all": {
+   "n": 40,
+   "cer_raw": 145.87,
+   "cer_cut": 104.76,
+   "cer_keepzw_raw": 145.87,
+   "cer_keepzw_cut": 104.76,
+   "wer_raw": 178.21,
+   "wer_cut": 110.45,
+   "runaway_clips": 22,
+   "ref_latin_frac": 0.0,
+   "hyp_latin_frac": 0.101,
+   "empty_hyp": 0
+  },
+  "slr30_clean_read / sinhala-only": {
+   "n": 40,
+   "cer_raw": 145.87,
+   "cer_cut": 104.76,
+   "cer_keepzw_raw": 145.87,
+   "cer_keepzw_cut": 104.76,
+   "wer_raw": 178.21,
+   "wer_cut": 110.45,
+   "runaway_clips": 22,
+   "ref_latin_frac": 0.0,
+   "hyp_latin_frac": 0.101,
+   "empty_hyp": 0
+  }
+ },
+ "turbo/speak": {
+  "speak_heldout_channels / all": {
+   "n": 60,
+   "cer_raw": 167.55,
+   "cer_cut": 94.17,
+   "cer_keepzw_raw": 166.51,
+   "cer_keepzw_cut": 94.03,
+   "wer_raw": 127.75,
+   "wer_cut": 98.19,
+   "runaway_clips": 53,
+   "ref_latin_frac": 0.2,
+   "hyp_latin_frac": 0.069,
+   "empty_hyp": 0
+  },
+  "speak_heldout_channels / mixed": {
+   "n": 30,
+   "cer_raw": 154.73,
+   "cer_cut": 91.33,
+   "cer_keepzw_raw": 154.26,
+   "cer_keepzw_cut": 91.35,
+   "wer_raw": 123.84,
+   "wer_cut": 96.2,
+   "runaway_clips": 28,
+   "ref_latin_frac": 0.393,
+   "hyp_latin_frac": 0.096,
+   "empty_hyp": 0
+  },
+  "speak_heldout_channels / sinhala-only": {
+   "n": 30,
+   "cer_raw": 181.82,
+   "cer_cut": 97.34,
+   "cer_keepzw_raw": 180.06,
+   "cer_keepzw_cut": 96.98,
+   "wer_raw": 132.27,
+   "wer_cut": 100.49,
+   "runaway_clips": 25,
+   "ref_latin_frac": 0.006,
+   "hyp_latin_frac": 0.041,
+   "empty_hyp": 0
+  }
+ }
+}

@@ -82,3 +82,7 @@ spikes/**/.venv/
 *.mov
 *.mp4
 !specs/**/*.md
+*.webm
+*.ogg
+*.oga
+*.ogv

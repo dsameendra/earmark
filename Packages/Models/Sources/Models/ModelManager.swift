@@ -1,0 +1,487 @@
+import AppCore
+import CryptoKit
+import Foundation
+import os
+
+/// Persisted manager state (`state.json` in the models root).
+private struct PersistedState: Codable {
+    var customModels: [ModelDescriptor] = []
+    var installed: [String: Int64] = [:]
+    var paused: [String: Double] = [:]
+}
+
+/// Fan-out of values to any number of `AsyncStream` subscribers; safe to subscribe from non-isolated code.
+final class Broadcaster<Element: Sendable>: Sendable {
+    private let subscribers = OSAllocatedUnfairLock<[UUID: AsyncStream<Element>.Continuation]>(initialState: [:])
+
+    func stream() -> AsyncStream<Element> {
+        let (stream, continuation) = AsyncStream<Element>.makeStream()
+        let id = UUID()
+        subscribers.withLock { $0[id] = continuation }
+        continuation.onTermination = { [weak self] _ in
+            self?.subscribers.withLock { _ = $0.removeValue(forKey: id) }
+        }
+        return stream
+    }
+
+    func send(_ element: Element) {
+        let all = subscribers.withLock { Array($0.values) }
+        for continuation in all { continuation.yield(element) }
+    }
+}
+
+/// Latest `(received, total)` pair reported by a downloader callback; read back by an ordered actor hop.
+private final class ProgressRelay: Sendable {
+    private let value = OSAllocatedUnfairLock<(Int64, Int64?)>(initialState: (0, nil))
+    func set(_ received: Int64, _ total: Int64?) { value.withLock { $0 = (received, total) } }
+    func get() -> (Int64, Int64?) { value.withLock { $0 } }
+}
+
+/// Catalog, download engine, installed-model bookkeeping and custom import (ENG-AC-02..08, 14, 18).
+///
+/// Layout under `rootDirectory` (default `Application Support/Earmark/Models`):
+/// - `<model>/` final, verified model folder (moved in atomically)
+/// - `.partial/<model>/payload` files staged so far; `.partial/<model>/resume` per-file resume data
+/// - `state.json` installed sizes, paused fractions and custom models
+///
+/// The manager never touches the network except while running a download started by ``ensureAvailable(_:)``
+/// or ``resumeDownload(_:)``, and only against ``HostAllowList`` hosts.
+public actor ModelManager: ModelManaging {
+    private enum Phase { case running, pausing, paused, cancelling }
+
+    private final class Job {
+        var task: Task<Void, Never>?
+        var phase: Phase = .running
+        var fraction: Double
+        var subscribers: [UUID: AsyncThrowingStream<ModelDownloadEvent, any Error>.Continuation] = [:]
+        init(fraction: Double) { self.fraction = fraction }
+    }
+
+    /// `Application Support/Earmark/Models`.
+    public static var defaultRootDirectory: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return base.appendingPathComponent("Earmark/Models", isDirectory: true)
+    }
+
+    /// LRU residency tracker owned by this manager; engines report loads/unloads here.
+    public nonisolated let residency: ModelResidencyTracker
+
+    private let root: URL
+    private let downloader: any Downloading
+    private let manifests: any ManifestResolving
+    private let appleAssets: (any AppleAssetProviding)?
+    private let allowList: HostAllowList
+    private let fm = FileManager.default
+    private let changes = Broadcaster<(ModelID, ModelState)>()
+    private var persisted: PersistedState
+    private var jobs: [ModelID: Job] = [:]
+    private var failures: [ModelID: String] = [:]
+
+    /// - Parameters:
+    ///   - rootDirectory: where models and state live.
+    ///   - downloader: transport; inject a fake in tests.
+    ///   - manifests: file-list resolver for a model.
+    ///   - appleAssets: hook for system-managed assets; `nil` means they are reported as not installed.
+    ///   - hardware: used to size the residency tracker (defaults to tier16 semantics when `nil`).
+    public init(
+        rootDirectory: URL = ModelManager.defaultRootDirectory, downloader: any Downloading = URLSessionDownloader(),
+        manifests: any ManifestResolving = HuggingFaceManifestResolver(), appleAssets: (any AppleAssetProviding)? = nil,
+        allowList: HostAllowList = .models, hardware: (any HardwareTierProviding)? = nil
+    ) {
+        self.root = rootDirectory
+        self.downloader = downloader
+        self.manifests = manifests
+        self.appleAssets = appleAssets
+        self.allowList = allowList
+        self.residency = ModelResidencyTracker(tier: hardware?.profile.tier ?? .tier16)
+        try? FileManager.default.createDirectory(at: rootDirectory, withIntermediateDirectories: true)
+        let saved = try? Data(contentsOf: rootDirectory.appendingPathComponent("state.json"))
+        self.persisted = saved.flatMap { try? JSONDecoder().decode(PersistedState.self, from: $0) } ?? PersistedState()
+    }
+
+    // MARK: ModelManaging
+
+    public func catalog() -> [ModelDescriptor] { BuiltInCatalog.models + persisted.customModels }
+
+    public func state(of model: ModelID) async -> ModelState {
+        if let job = jobs[model] {
+            return job.phase == .paused ? .paused(fraction: job.fraction) : .downloading(fraction: job.fraction)
+        }
+        if let reason = failures[model] { return .failed(reason: reason) }
+        guard let descriptor = descriptor(model) else { return .notInstalled }
+        if descriptor.runtime == .appleAsset {
+            return await appleAssets?.isInstalled(model) == true ? .installed(bytesOnDisk: 0) : .notInstalled
+        }
+        if persisted.installed[model.rawValue] != nil, fm.fileExists(atPath: folder(for: model).path) {
+            return .installed(bytesOnDisk: directorySize(folder(for: model)))
+        }
+        if let fraction = persisted.paused[model.rawValue] { return .paused(fraction: fraction) }
+        return .notInstalled
+    }
+
+    public nonisolated func stateChanges() -> AsyncStream<(ModelID, ModelState)> { changes.stream() }
+
+    public func installedModels() async -> Set<ModelID> {
+        var result: Set<ModelID> = []
+        for descriptor in catalog() {
+            if case .installed = await state(of: descriptor.id) { result.insert(descriptor.id) }
+        }
+        return result
+    }
+
+    public nonisolated func ensureAvailable(_ model: ModelID) -> AsyncThrowingStream<ModelDownloadEvent, any Error> {
+        let (stream, continuation) = AsyncThrowingStream<ModelDownloadEvent, any Error>.makeStream()
+        let subscriber = UUID()
+        continuation.onTermination = { [self] _ in Task { await detach(model, subscriber) } }
+        Task { await attach(model, subscriber: subscriber, continuation: continuation) }
+        return stream
+    }
+
+    public func pauseDownload(_ model: ModelID) async {
+        guard let job = jobs[model], job.phase == .running else { return }
+        job.phase = .pausing
+        job.task?.cancel()
+        await job.task?.value
+    }
+
+    public func resumeDownload(_ model: ModelID) async {
+        if let job = jobs[model] {
+            guard job.phase == .paused else { return }
+            job.phase = .running
+            startTask(for: model)
+        } else if persisted.paused[model.rawValue] != nil, descriptor(model) != nil {
+            let job = Job(fraction: persisted.paused[model.rawValue] ?? 0)
+            jobs[model] = job
+            startTask(for: model)
+        }
+    }
+
+    public func cancelDownload(_ model: ModelID) async {
+        if let job = jobs[model] {
+            if job.phase == .paused {
+                finishCancelled(model, job: job)
+            } else {
+                job.phase = .cancelling
+                job.task?.cancel()
+                await job.task?.value
+            }
+        } else if persisted.paused[model.rawValue] != nil {
+            removePartial(model)
+            persisted.paused[model.rawValue] = nil
+            save()
+            publish(model, .notInstalled)
+        }
+    }
+
+    public func delete(_ model: ModelID) async throws {
+        guard let descriptor = descriptor(model) else { throw AppError.modelNotInstalled(model) }
+        if descriptor.runtime == .appleAsset {
+            throw AppError.unsupportedFormat("\(descriptor.displayName) is managed by macOS and cannot be deleted here.")
+        }
+        await cancelDownload(model)
+        await residency.evict(model)
+        await residency.markUnloaded(model)
+        let dir = folder(for: model)
+        if fm.fileExists(atPath: dir.path) { try fm.removeItem(at: dir) }
+        removePartial(model)
+        persisted.installed[model.rawValue] = nil
+        persisted.paused[model.rawValue] = nil
+        if descriptor.isCustom { persisted.customModels.removeAll { $0.id == model } }
+        failures[model] = nil
+        save()
+        publish(model, .notInstalled)
+    }
+
+    public func importModel(folder source: URL, displayName: String, languages: Set<LanguageCode>) async throws -> ModelDescriptor {
+        var isDirectory: ObjCBool = false
+        guard fm.fileExists(atPath: source.path, isDirectory: &isDirectory), isDirectory.boolValue else {
+            throw AppError.unsupportedFormat("Not a folder: \(source.lastPathComponent)")
+        }
+        let required = ["AudioEncoder.mlmodelc", "TextDecoder.mlmodelc", "MelSpectrogram.mlmodelc"]
+        let missing = required.filter { !fm.fileExists(atPath: source.appendingPathComponent($0).path) }
+        guard missing.isEmpty else {
+            throw AppError.unsupportedFormat("Not a WhisperKit CoreML folder; missing \(missing.joined(separator: ", ")).")
+        }
+        guard !languages.isEmpty else { throw AppError.unsupportedFormat("Choose at least one language.") }
+
+        let id = ModelID("custom/\(UUID().uuidString.prefix(8).lowercased())")
+        let staging = partialDirectory(for: id).appendingPathComponent("import", isDirectory: true)
+        try fm.createDirectory(at: staging.deletingLastPathComponent(), withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: partialDirectory(for: id)) }
+        try fm.copyItem(at: source, to: staging)
+        try fm.moveItem(at: staging, to: folder(for: id))
+
+        let size = directorySize(folder(for: id))
+        let descriptor = ModelDescriptor(
+            id: id, displayName: displayName, kind: .asr, runtime: .coreML, engine: "whisperkit", languages: languages,
+            sizeBytes: size, license: LicenseInfo(spdx: "NOASSERTION", attribution: "User-imported model."), isExperimental: true,
+            notes: "Imported from \(source.lastPathComponent).", isCustom: true)
+        persisted.customModels.append(descriptor)
+        persisted.installed[id.rawValue] = size
+        save()
+        publish(id, .installed(bytesOnDisk: size))
+        return descriptor
+    }
+
+    public func diskUsage() -> DiskUsage {
+        var perModel: [ModelID: Int64] = [:]
+        for key in persisted.installed.keys {
+            let id = ModelID(key)
+            let dir = folder(for: id)
+            if fm.fileExists(atPath: dir.path) { perModel[id] = directorySize(dir) }
+        }
+        return DiskUsage(totalBytes: perModel.values.reduce(0, +), perModel: perModel)
+    }
+
+    public func location(of model: ModelID) async throws -> URL {
+        guard let descriptor = descriptor(model) else { throw AppError.modelNotInstalled(model) }
+        if descriptor.runtime == .appleAsset {
+            guard await appleAssets?.isInstalled(model) == true else { throw AppError.modelNotInstalled(model) }
+            return root
+        }
+        guard persisted.installed[model.rawValue] != nil, fm.fileExists(atPath: folder(for: model).path) else {
+            throw AppError.modelNotInstalled(model)
+        }
+        return folder(for: model)
+    }
+
+    // MARK: Subscription handling
+
+    private func attach(
+        _ model: ModelID, subscriber: UUID, continuation: AsyncThrowingStream<ModelDownloadEvent, any Error>.Continuation
+    ) async {
+        guard descriptor(model) != nil else {
+            continuation.finish(throwing: AppError.modelNotInstalled(model))
+            return
+        }
+        if let job = jobs[model] {
+            job.subscribers[subscriber] = continuation
+            if job.phase == .paused { await resumeDownload(model) }
+            return
+        }
+        if case .installed = await state(of: model) {
+            continuation.yield(.completed)
+            continuation.finish()
+            return
+        }
+        let job = Job(fraction: persisted.paused[model.rawValue] ?? 0)
+        job.subscribers[subscriber] = continuation
+        jobs[model] = job
+        failures[model] = nil
+        startTask(for: model)
+    }
+
+    private func detach(_ model: ModelID, _ subscriber: UUID) { jobs[model]?.subscribers[subscriber] = nil }
+
+    // MARK: Download engine
+
+    private func startTask(for model: ModelID) {
+        publish(model, .downloading(fraction: jobs[model]?.fraction ?? 0))
+        let task = Task { await self.run(model) }
+        jobs[model]?.task = task
+    }
+
+    private func run(_ model: ModelID) async {
+        guard let descriptor = descriptor(model), let job = jobs[model] else { return }
+        do {
+            if descriptor.runtime == .appleAsset {
+                try await installAppleAsset(descriptor)
+            } else {
+                try await perform(descriptor)
+            }
+            jobs[model] = nil
+            let size = descriptor.runtime == .appleAsset ? 0 : directorySize(folder(for: model))
+            if descriptor.runtime != .appleAsset { persisted.installed[model.rawValue] = size }
+            persisted.paused[model.rawValue] = nil
+            save()
+            publish(model, .installed(bytesOnDisk: size))
+            for continuation in job.subscribers.values {
+                continuation.yield(.completed)
+                continuation.finish()
+            }
+        } catch {
+            handleFailure(error, model: model, job: job)
+        }
+    }
+
+    private func handleFailure(_ error: any Error, model: ModelID, job: Job) {
+        switch job.phase {
+        case .pausing:
+            job.phase = .paused
+            persisted.paused[model.rawValue] = job.fraction
+            save()
+            publish(model, .paused(fraction: job.fraction))
+        case .cancelling:
+            finishCancelled(model, job: job)
+        default:
+            jobs[model] = nil
+            let appError = error as? AppError ?? AppError.modelDownloadFailed(model, reason: Self.reason(for: error))
+            let hasPartial = fm.fileExists(atPath: partialDirectory(for: model).path)
+            if case .checksumMismatch = appError {
+                removePartial(model)
+            } else if hasPartial {
+                persisted.paused[model.rawValue] = job.fraction
+                save()
+            }
+            failures[model] = Self.reason(for: appError)
+            publish(model, .failed(reason: failures[model] ?? "Failed"))
+            for continuation in job.subscribers.values { continuation.finish(throwing: appError) }
+        }
+    }
+
+    private func finishCancelled(_ model: ModelID, job: Job) {
+        jobs[model] = nil
+        removePartial(model)
+        persisted.paused[model.rawValue] = nil
+        save()
+        publish(model, .notInstalled)
+        for continuation in job.subscribers.values { continuation.finish(throwing: AppError.cancelled) }
+    }
+
+    private func installAppleAsset(_ descriptor: ModelDescriptor) async throws {
+        guard let provider = appleAssets else {
+            throw AppError.modelDownloadFailed(descriptor.id, reason: "System asset installation is unavailable.")
+        }
+        let model = descriptor.id
+        let relay = ProgressRelay()
+        try await provider.install(model) { fraction in
+            relay.set(Int64(fraction * 1_000_000), 1_000_000)
+            Task { await self.emitProgress(model, base: 0, total: 1_000_000, relay: relay) }
+        }
+    }
+
+    // swiftlint:disable:next function_body_length
+    private func perform(_ descriptor: ModelDescriptor) async throws {
+        let model = descriptor.id
+        let files = try await manifests.files(for: descriptor)
+        guard !files.isEmpty else { throw AppError.modelDownloadFailed(model, reason: "Empty file list") }
+        for file in files where !allowList.permits(file.url) {
+            throw AppError.modelDownloadFailed(model, reason: "Host not allow-listed: \(file.url.host ?? "unknown")")
+        }
+        let known = files.compactMap(\.sizeBytes).reduce(0, +)
+        let total = max(known > 0 && files.allSatisfy({ $0.sizeBytes != nil }) ? known : descriptor.sizeBytes, 1)
+
+        let payload = partialDirectory(for: model).appendingPathComponent("payload", isDirectory: true)
+        let resumeDir = partialDirectory(for: model).appendingPathComponent("resume", isDirectory: true)
+        try fm.createDirectory(at: payload, withIntermediateDirectories: true)
+        try fm.createDirectory(at: resumeDir, withIntermediateDirectories: true)
+
+        var done: Int64 = 0
+        for file in files {
+            try Task.checkCancellation()
+            let destination = payload.appendingPathComponent(file.relativePath)
+            if let existing = fileSize(destination), file.sizeBytes == nil || existing == file.sizeBytes {
+                done += existing
+                continue
+            }
+            let resumeFile = resumeDir.appendingPathComponent(SHA256.hash(data: Data(file.relativePath.utf8)).hex)
+            let relay = ProgressRelay()
+            let base = done
+            let temp: URL
+            do {
+                temp = try await downloader.download(
+                    from: file.url, resumeData: try? Data(contentsOf: resumeFile)
+                ) { received, expected in
+                    relay.set(received, expected)
+                    Task { await self.emitProgress(model, base: base, total: total, relay: relay) }
+                }
+            } catch let interrupted as DownloadInterruptedError {
+                if let data = interrupted.resumeData { try? data.write(to: resumeFile, options: .atomic) }
+                throw interrupted
+            }
+            try? fm.removeItem(at: resumeFile)
+            let expectedHash = file.sha256 ?? (files.count == 1 ? descriptor.sha256 : nil)
+            if let expectedHash {
+                publishVerifying(model)
+                let actual = try Self.sha256Hex(of: temp)
+                guard actual.caseInsensitiveCompare(expectedHash) == .orderedSame else {
+                    try? fm.removeItem(at: temp)
+                    removePartial(model)
+                    throw AppError.checksumMismatch(model)
+                }
+            }
+            try fm.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+            if fm.fileExists(atPath: destination.path) { try fm.removeItem(at: destination) }
+            try fm.moveItem(at: temp, to: destination)
+            done += fileSize(destination) ?? 0
+        }
+        publishVerifying(model)
+        let final = folder(for: model)
+        if fm.fileExists(atPath: final.path) { try fm.removeItem(at: final) }
+        try fm.moveItem(at: payload, to: final)  // atomic within the same volume
+        removePartial(model)
+    }
+
+    private func emitProgress(_ model: ModelID, base: Int64, total: Int64, relay: ProgressRelay) {
+        guard let job = jobs[model], job.phase == .running else { return }
+        let (received, _) = relay.get()
+        let bytes = min(base + received, total)
+        let fraction = max(job.fraction, min(1, Double(bytes) / Double(total)))
+        job.fraction = fraction
+        publish(model, .downloading(fraction: fraction))
+        for continuation in job.subscribers.values {
+            continuation.yield(.progress(fraction: fraction, bytesReceived: bytes, bytesTotal: total))
+        }
+    }
+
+    private func publishVerifying(_ model: ModelID) {
+        for continuation in jobs[model]?.subscribers.values ?? [:].values { continuation.yield(.verifying) }
+    }
+
+    // MARK: Helpers
+
+    private func descriptor(_ id: ModelID) -> ModelDescriptor? { catalog().first { $0.id == id } }
+
+    private func publish(_ model: ModelID, _ state: ModelState) { changes.send((model, state)) }
+
+    private func folder(for model: ModelID) -> URL {
+        root.appendingPathComponent(model.rawValue.replacingOccurrences(of: "/", with: "__"), isDirectory: true)
+    }
+
+    private func partialDirectory(for model: ModelID) -> URL {
+        root.appendingPathComponent(".partial", isDirectory: true)
+            .appendingPathComponent(model.rawValue.replacingOccurrences(of: "/", with: "__"), isDirectory: true)
+    }
+
+    private func removePartial(_ model: ModelID) { try? fm.removeItem(at: partialDirectory(for: model)) }
+
+    private func save() {
+        guard let data = try? JSONEncoder().encode(persisted) else { return }
+        try? data.write(to: root.appendingPathComponent("state.json"), options: .atomic)
+    }
+
+    private func fileSize(_ url: URL) -> Int64? {
+        (try? fm.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? nil
+    }
+
+    private func directorySize(_ url: URL) -> Int64 {
+        guard let enumerator = fm.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey]) else { return 0 }
+        var total: Int64 = 0
+        for case let file as URL in enumerator {
+            let values = try? file.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
+            if values?.isRegularFile == true { total += Int64(values?.fileSize ?? 0) }
+        }
+        return total
+    }
+
+    private static func reason(for error: any Error) -> String {
+        switch error {
+        case AppError.checksumMismatch: "Checksum mismatch; the download was discarded."
+        case AppError.modelDownloadFailed(_, let reason): reason
+        case is DownloadInterruptedError: "The download was interrupted."
+        default: error.localizedDescription
+        }
+    }
+
+    static func sha256Hex(of url: URL) throws -> String {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        while let chunk = try handle.read(upToCount: 1 << 20), !chunk.isEmpty { hasher.update(data: chunk) }
+        return hasher.finalize().hex
+    }
+}
+
+extension Digest {
+    fileprivate var hex: String { map { String(format: "%02x", $0) }.joined() }
+}

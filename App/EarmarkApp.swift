@@ -22,7 +22,7 @@ struct EarmarkApp: App {
         .commands { ShellCommands(model: environment.shell) }
 
         Settings {
-            SettingsRootView(store: environment.services.settings)
+            SettingsRootView(dependencies: environment.settingsDependencies)
         }
 
         MenuBarExtra {

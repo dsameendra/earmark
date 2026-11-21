@@ -161,16 +161,36 @@ struct TransportBar: View {
     var body: some View {
         let playback = model.playback
         HStack(spacing: DSSpacing.sm) {
-            Button { playback.skip(by: -PlaybackShortcut.longSkip) } label: { Image(systemName: "gobackward.15") }
-                .help("Back 15 seconds")
-            Button { playback.skip(by: -PlaybackShortcut.shortSkip) } label: { Image(systemName: "gobackward.5") }
-                .help("Back 5 seconds (J or ←)")
-            Button { playback.togglePlay() } label: { Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill") }
-                .help("Play/Pause (Space or K)")
-            Button { playback.skip(by: PlaybackShortcut.shortSkip) } label: { Image(systemName: "goforward.5") }
-                .help("Forward 5 seconds (L or →)")
-            Button { playback.skip(by: PlaybackShortcut.longSkip) } label: { Image(systemName: "goforward.15") }
-                .help("Forward 15 seconds")
+            Button {
+                playback.skip(by: -PlaybackShortcut.longSkip)
+            } label: {
+                Image(systemName: "gobackward.15")
+            }
+            .help("Back 15 seconds")
+            Button {
+                playback.skip(by: -PlaybackShortcut.shortSkip)
+            } label: {
+                Image(systemName: "gobackward.5")
+            }
+            .help("Back 5 seconds (J or ←)")
+            Button {
+                playback.togglePlay()
+            } label: {
+                Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
+            }
+            .help("Play/Pause (Space or K)")
+            Button {
+                playback.skip(by: PlaybackShortcut.shortSkip)
+            } label: {
+                Image(systemName: "goforward.5")
+            }
+            .help("Forward 5 seconds (L or →)")
+            Button {
+                playback.skip(by: PlaybackShortcut.longSkip)
+            } label: {
+                Image(systemName: "goforward.15")
+            }
+            .help("Forward 15 seconds")
             Text("\(TimeFormat.clock(playback.currentTime)) / \(TimeFormat.clock(playback.duration))")
                 .font(DSTypography.timestamp).foregroundStyle(DSColor.secondaryText)
             if playback.canPlay, !playback.isVideo || playback.isDetached == false {
@@ -185,7 +205,9 @@ struct TransportBar: View {
             }
             Menu {
                 ForEach(PlaybackSpeed.steps, id: \.self) { speed in
-                    Button { model.setPlaybackSpeed(speed) } label: {
+                    Button {
+                        model.setPlaybackSpeed(speed)
+                    } label: {
                         if speed == playback.speed { Label(speedLabel(speed), systemImage: "checkmark") } else { Text(speedLabel(speed)) }
                     }
                 }
@@ -198,7 +220,9 @@ struct TransportBar: View {
                 Image(systemName: "waveform")
             }
             .toggleStyle(.button).help("Show waveform")
-            Button { playback.isDetached.toggle() } label: {
+            Button {
+                playback.isDetached.toggle()
+            } label: {
                 Image(systemName: playback.isDetached ? "rectangle.on.rectangle.slash" : "rectangle.on.rectangle")
             }
             .help(playback.isDetached ? "Dock player" : "Detach player")

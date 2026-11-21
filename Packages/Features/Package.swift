@@ -40,12 +40,16 @@ let package = Package(
         .target(name: "FeatureMeetings", dependencies: base, swiftSettings: strict),
         .target(name: "FeatureLive", dependencies: base, swiftSettings: strict),
         .target(name: "FeatureMenuBar", dependencies: base + ["FeatureLive"], swiftSettings: strict),
-        .target(name: "FeatureSettings", dependencies: base + [
-            .product(name: "Processing", package: "Processing"), .product(name: "Export", package: "Export"),
-        ], swiftSettings: strict),
-        .target(name: "FeatureEditor", dependencies: base + [
-            .product(name: "Processing", package: "Processing"), .product(name: "Export", package: "Export"),
-        ], swiftSettings: strict),
+        .target(
+            name: "FeatureSettings",
+            dependencies: base + [
+                .product(name: "Processing", package: "Processing"), .product(name: "Export", package: "Export"),
+            ], swiftSettings: strict),
+        .target(
+            name: "FeatureEditor",
+            dependencies: base + [
+                .product(name: "Processing", package: "Processing"), .product(name: "Export", package: "Export"),
+            ], swiftSettings: strict),
         .target(
             name: "FeatureShell",
             dependencies: base + ["FeatureHome", "FeatureQueue", "FeatureLibrary", "FeatureMeetings", "FeatureLive", "FeatureEditor"],

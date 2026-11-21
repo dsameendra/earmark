@@ -26,13 +26,16 @@ import Transcription
 @MainActor
 final class AppEnvironment {
     let services: AppServices
+    /// Full wiring for the Settings scene (rules and presets persist through the database).
+    let settingsDependencies: SettingsDependencies
     let shell: ShellModel
     let menuBar: MenuBarModel
     private let activation: ActivationPolicyController
 
     init() {
-        let services = Self.makeServices()
+        let (services, settingsDependencies) = Self.makeServices()
         self.services = services
+        self.settingsDependencies = settingsDependencies
         shell = ShellModel(services: services)
         menuBar = MenuBarModel(services: services)
         activation = ActivationPolicyController(settings: services.settings)
@@ -52,20 +55,29 @@ final class AppEnvironment {
         #endif
     }
 
-    private static func makeServices() -> AppServices {
+    private static func makeServices() -> (AppServices, SettingsDependencies) {
         #if DEBUG
-            if usesMocks { return mockServices() }
+            if usesMocks {
+                let mocks = mockServices()
+                return (mocks, .standalone(store: mocks.settings))
+            }
         #endif
         let database = openDatabase()
         let hardware = SystemHardwareTierProvider()
         let models = ModelManager(hardware: hardware)
         // One settings store instance: its change streams are tied to it, and the queue observes the same one.
         let settings = database.makeSettingsStore()
-        return AppServices(
+        let permissions = PlaceholderPermissions()
+        let audioDevices = PlaceholderAudioDevices()
+        let services = AppServices(
             jobQueue: makeJobQueue(database: database, models: models, hardware: hardware, settings: settings),
             transcripts: database.transcripts, meetings: database.meetings, models: models, live: PlaceholderLiveSession(),
-            meetingDetector: PlaceholderMeetingDetector(), hardware: hardware, permissions: PlaceholderPermissions(),
-            audioDevices: PlaceholderAudioDevices(), settings: settings)
+            meetingDetector: PlaceholderMeetingDetector(), hardware: hardware, permissions: permissions,
+            audioDevices: audioDevices, settings: settings, media: database.media, presets: database.presets)
+        let settingsDependencies = SettingsDependencies(
+            store: settings, models: models, hardware: hardware, audioDevices: audioDevices, permissions: permissions,
+            rules: database.rules, presets: database.presets, transcripts: database.transcripts)
+        return (services, settingsDependencies)
     }
 
     /// The real file-transcription queue: WhisperKit (tokenizer provisioned by the model manager, so no implicit network,

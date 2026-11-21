@@ -1,5 +1,6 @@
 import AppCore
 import DesignSystem
+import FeatureEditor
 import FeatureHome
 import FeatureLibrary
 import FeatureLive
@@ -63,13 +64,29 @@ public struct ShellView: View {
     }
 
     @ViewBuilder private var detail: some View {
+        if let id = model.openedTranscript {
+            TranscriptEditorView(transcriptID: id, services: model.services)
+                .id(id)
+                .toolbar {
+                    ToolbarItem(placement: .navigation) {
+                        Button("Back", systemImage: "chevron.backward") { model.closeTranscript() }
+                            .help("Back to \(model.selection.title)")
+                            .keyboardShortcut("[", modifiers: [.command])
+                    }
+                }
+        } else {
+            sectionDetail
+        }
+    }
+
+    @ViewBuilder private var sectionDetail: some View {
         switch model.selection {
         case .home: HomeView(model: model.home, actions: model.homeActions)
-        case .queue: QueueView(model: model.queue)
+        case .queue: QueueView(model: model.queue, onOpenTranscript: { model.openTranscript($0) })
         case .meetings: MeetingsView(model: model.meetings)
         case .live: LiveView(model: model.live)
-        case .library: LibraryView(model: model.library)
-        case .recentlyDeleted: LibraryView(model: model.recentlyDeleted)
+        case .library: LibraryView(model: model.library, onOpenTranscript: { model.openTranscript($0) })
+        case .recentlyDeleted: LibraryView(model: model.recentlyDeleted, onOpenTranscript: { model.openTranscript($0) })
         }
     }
 }

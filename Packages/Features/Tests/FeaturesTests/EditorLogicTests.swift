@@ -1,10 +1,11 @@
 import AppCore
-@testable import FeatureEditor
 import FeatureSupport
 import Foundation
 import Processing
 import SwiftUI
 import Testing
+
+@testable import FeatureEditor
 
 @Suite struct EditorLogicTests {
     // MARK: Word re-alignment (EDIT-AC-06)

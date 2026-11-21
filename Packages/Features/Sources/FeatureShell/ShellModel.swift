@@ -13,6 +13,8 @@ import Observation
 public final class ShellModel {
     public private(set) var selection: AppSection = .home
     public var isQuickOpenPresented = false
+    /// The transcript currently open in the editor (replaces the section detail until closed).
+    public var openedTranscript: TranscriptID?
     public var isImporterPresented = false
     public private(set) var errorMessage: String?
 
@@ -24,7 +26,7 @@ public final class ShellModel {
     public let recentlyDeleted: LibraryModel
     public let quickOpen: QuickOpenModel
 
-    @ObservationIgnored private let services: AppServices
+    @ObservationIgnored public let services: AppServices
     @ObservationIgnored private let persistence: SectionPersistence
 
     public init(services: AppServices) {
@@ -45,6 +47,7 @@ public final class ShellModel {
     /// Selects `section` and remembers it.
     public func select(_ section: AppSection) {
         selection = section
+        openedTranscript = nil
         let persistence = persistence
         Task { await persistence.save(section) }
     }
@@ -55,11 +58,14 @@ public final class ShellModel {
         isQuickOpenPresented = true
     }
 
-    /// Opens a quick-open result. The transcript editor arrives with T12; until then this reveals the Library.
+    /// Opens a transcript in the editor (from quick open, Library, Queue or Home).
     public func openTranscript(_ id: TranscriptID) {
         isQuickOpenPresented = false
-        select(.library)
+        openedTranscript = id
     }
+
+    /// Closes the editor and returns to the selected section.
+    public func closeTranscript() { openedTranscript = nil }
 
     /// Shows the file chooser (Transcribe File…).
     public func presentImporter() {

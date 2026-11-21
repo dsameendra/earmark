@@ -79,36 +79,72 @@ private struct EditorContent: View {
                 Text(model.hiddenIgnoredCount > 0 && !model.showIgnored ? "Show ignored (\(model.hiddenIgnoredCount))" : "Show ignored")
             }
             .toggleStyle(.checkbox)
-            Button { model.undo() } label: { Image(systemName: "arrow.uturn.backward") }
-                .disabled(!model.canUndo || model.editingSegmentID != nil)
-                .keyboardShortcut("z", modifiers: .command)
-                .help(model.canUndo ? "Undo \(model.undoActionName)" : "Undo")
-            Button { model.redo() } label: { Image(systemName: "arrow.uturn.forward") }
-                .disabled(!model.canRedo || model.editingSegmentID != nil)
-                .keyboardShortcut("z", modifiers: [.command, .shift])
-                .help(model.canRedo ? "Redo \(model.redoActionName)" : "Redo")
+            Button {
+                model.undo()
+            } label: {
+                Image(systemName: "arrow.uturn.backward")
+            }
+            .disabled(!model.canUndo || model.editingSegmentID != nil)
+            .keyboardShortcut("z", modifiers: .command)
+            .help(model.canUndo ? "Undo \(model.undoActionName)" : "Undo")
+            Button {
+                model.redo()
+            } label: {
+                Image(systemName: "arrow.uturn.forward")
+            }
+            .disabled(!model.canRedo || model.editingSegmentID != nil)
+            .keyboardShortcut("z", modifiers: [.command, .shift])
+            .help(model.canRedo ? "Redo \(model.redoActionName)" : "Redo")
             Button {
                 find.open()
                 findFocused = true
-            } label: { Image(systemName: "magnifyingglass") }
+            } label: {
+                Image(systemName: "magnifyingglass")
+            }
             .keyboardShortcut("f", modifiers: .command).help("Find (⌘F)")
             Button {
                 find.open(replace: true)
                 findFocused = true
-            } label: { Image(systemName: "arrow.triangle.swap") }
+            } label: {
+                Image(systemName: "arrow.triangle.swap")
+            }
             .keyboardShortcut("f", modifiers: [.command, .option]).help("Find and Replace (⌥⌘F)")
-            Button { find.next() } label: { EmptyView() }
-                .keyboardShortcut("g", modifiers: .command).frame(width: 0, height: 0).opacity(0).accessibilityHidden(true)
-            Button { find.previous() } label: { EmptyView() }
-                .keyboardShortcut("g", modifiers: [.command, .shift]).frame(width: 0, height: 0).opacity(0).accessibilityHidden(true)
-            Button { showSpeakers.toggle() } label: { Image(systemName: "person.2") }
-                .help("Speakers").popover(isPresented: $showSpeakers) { SpeakersPanel(model: model) }
-            Button { showBookmarks.toggle() } label: { Image(systemName: "bookmark") }
-                .help("Bookmarks and highlights").popover(isPresented: $showBookmarks) { BookmarksPanel(model: model) }
-            Button { showOptions.toggle() } label: { Image(systemName: "textformat.size") }
-                .help("View options").popover(isPresented: $showOptions) { ViewOptionsPanel(model: model) }
-            Button { showExport = true } label: { Image(systemName: "square.and.arrow.up") }
-                .help("Export")
+            Button {
+                find.next()
+            } label: {
+                EmptyView()
+            }
+            .keyboardShortcut("g", modifiers: .command).frame(width: 0, height: 0).opacity(0).accessibilityHidden(true)
+            Button {
+                find.previous()
+            } label: {
+                EmptyView()
+            }
+            .keyboardShortcut("g", modifiers: [.command, .shift]).frame(width: 0, height: 0).opacity(0).accessibilityHidden(true)
+            Button {
+                showSpeakers.toggle()
+            } label: {
+                Image(systemName: "person.2")
+            }
+            .help("Speakers").popover(isPresented: $showSpeakers) { SpeakersPanel(model: model) }
+            Button {
+                showBookmarks.toggle()
+            } label: {
+                Image(systemName: "bookmark")
+            }
+            .help("Bookmarks and highlights").popover(isPresented: $showBookmarks) { BookmarksPanel(model: model) }
+            Button {
+                showOptions.toggle()
+            } label: {
+                Image(systemName: "textformat.size")
+            }
+            .help("View options").popover(isPresented: $showOptions) { ViewOptionsPanel(model: model) }
+            Button {
+                showExport = true
+            } label: {
+                Image(systemName: "square.and.arrow.up")
+            }
+            .help("Export")
         }
         .buttonStyle(.borderless)
         .padding(.horizontal, DSSpacing.md)

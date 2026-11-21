@@ -188,7 +188,8 @@ struct SegmentRowView: View {
         .background(rowBackground)
         .contentShape(Rectangle())
         .simultaneousGesture(
-            TapGesture(count: 2).onEnded { if !isEditing { model.playback.playFrom(segment) } })
+            TapGesture(count: 2).onEnded { if !isEditing { model.playback.playFrom(segment) } }
+        )
         .contextMenu { SegmentContextMenu(model: model, segment: segment) }
         .accessibilityElement(children: .contain)
     }

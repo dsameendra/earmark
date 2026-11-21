@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earmark handoff tokens and SwiftUI mapping</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500&display=swap">
+<style>
+body{margin:0}
+td,th{text-align:left;padding:8px 10px;border-bottom:1px solid rgba(28,27,24,.1);vertical-align:top;font-size:12.5px;line-height:1.45}
+th{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:#6B675D;font-weight:600}
+code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:#F3EEE5;border-radius:5px;padding:1px 5px}
+</style>
+</helmet>
+<div style="width:1440px;height:1500px;box-sizing:border-box;background:#F3EEE5;color:#1C1B18;font-family:-apple-system,'SF Pro Text',system-ui,sans-serif;padding:56px 64px;display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:40px">
+<div><div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6B675D;font-weight:600">Handoff 1 of 2 · Final design v1</div>
+<div style="font-family:Newsreader,serif;font-size:48px;line-height:1.05;letter-spacing:-.025em;margin-top:8px">Tokens and SwiftUI mapping</div></div>
+<div style="max-width:470px;font-size:13.5px;line-height:1.55;color:#5A564E">Everything M8 needs to rebuild the look in code. Extend the existing <code>Packages/DesignSystem</code> (Tokens, GlassPolicy, Components); do not create a second design package. Hex values are authoritative; the HTML boards are the visual reference.</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px">
+<div style="background:#FCFAF6;border:1px solid rgba(28,27,24,.12);border-radius:20px;padding:20px 22px">
+<div style="font-size:15px;font-weight:600;margin-bottom:6px">Colour tokens</div>
+<table style="width:100%;border-collapse:collapse"><tr><th>Token</th><th>Light</th><th>Dark</th><th>Use</th></tr>
+<sc-for list="{{colors}}" as="c" hint-placeholder-count="12"><tr><td><code>{{c.t}}</code></td><td><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:{{c.l}};border:1px solid rgba(0,0,0,.15);vertical-align:-1px;margin-right:6px"></span>{{c.l}}</td><td><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:{{c.d}};border:1px solid rgba(0,0,0,.15);vertical-align:-1px;margin-right:6px"></span>{{c.d}}</td><td>{{c.u}}</td></tr></sc-for></table>
+<div style="font-size:12px;color:#5A564E;margin-top:10px;line-height:1.5">Ember is a fixed brand accent: set it as the asset-catalog AccentColor and also apply <code>.tint(DSColor.ember)</code> at the root so it wins over the system accent. Ember text on Sheet is 4.8:1 (AA); never use Ember for body text below 14 pt. Colours that must be told apart (speakers) differ in lightness as well as hue.</div>
+</div>
+<div style="background:#FCFAF6;border:1px solid rgba(28,27,24,.12);border-radius:20px;padding:20px 22px">
+<div style="font-size:15px;font-weight:600;margin-bottom:6px">Glass materials and the budget</div>
+<table style="width:100%;border-collapse:collapse"><tr><th>Name</th><th>Spec in boards</th><th>SwiftUI mapping (verify at T31)</th></tr>
+<sc-for list="{{glass}}" as="g" hint-placeholder-count="4"><tr><td><b>{{g.n}}</b></td><td>{{g.s}}</td><td>{{g.m}}</td></tr></sc-for></table>
+<div style="font-size:12.5px;line-height:1.6;color:#3A372F;margin-top:10px"><b>Budget: three glass layers per screen at most</b> (sidebar; one floating toolbar group, never a full-width bar; one transient floater). Cards, inspectors, lists, settings and transcripts are solid in two tiers: <b>Sheet</b> (primary content, <code>#FCFAF6</code> / <code>#1B1A17</code>) and <b>Inset</b> (secondary, <code>#F7F3EB</code> / <code>#22211D</code>). No glass on glass. Wrap adjacent glass in one <code>GlassEffectContainer</code>. <b>Migration:</b> existing <code>GlassCard</code> and <code>GlassPanel</code> in Components.swift put glass on content; replace their use on content with solid <code>SheetCard</code>/<code>InsetCard</code> and keep glass only for the three allowed layers. Reduce Transparency / Increase Contrast route through the existing <code>AccessibilityPolicy.usesSolidSurface</code>.</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px">
+<div style="background:#FCFAF6;border:1px solid rgba(28,27,24,.12);border-radius:20px;padding:20px 22px">
+<div style="font-size:15px;font-weight:600;margin-bottom:6px">Type scale</div>
+<table style="width:100%;border-collapse:collapse"><tr><th>Role</th><th>Font</th><th>Size / weight</th></tr>
+<sc-for list="{{types}}" as="t" hint-placeholder-count="10"><tr><td>{{t.r}}</td><td>{{t.f}}</td><td>{{t.s}}</td></tr></sc-for></table>
+<div style="font-size:12px;color:#5A564E;margin-top:10px;line-height:1.5">New York = <code>.font(.system(size:, design: .serif))</code>. Sinhala text relies on the existing <code>SinhalaFont</code> cascade; verify shaping at every size. Brand/marketing uses Newsreader (not shipped in the app). Use Dynamic Type text styles where macOS supports them; the sizes above are the default-size targets.</div>
+</div>
+<div style="background:#FCFAF6;border:1px solid rgba(28,27,24,.12);border-radius:20px;padding:20px 22px">
+<div style="font-size:15px;font-weight:600;margin-bottom:6px">Layout, shape, spacing</div>
+<table style="width:100%;border-collapse:collapse"><tr><th>Item</th><th>Value</th></tr>
+<sc-for list="{{layout}}" as="l" hint-placeholder-count="10"><tr><td>{{l.i}}</td><td>{{l.v}}</td></tr></sc-for></table>
+</div>
+<div style="background:#FCFAF6;border:1px solid rgba(28,27,24,.12);border-radius:20px;padding:20px 22px">
+<div style="font-size:15px;font-weight:600;margin-bottom:6px">Motion tokens</div>
+<table style="width:100%;border-collapse:collapse"><tr><th>Token</th><th>Curve</th><th>Time</th></tr>
+<sc-for list="{{motion}}" as="m" hint-placeholder-count="6"><tr><td><b>{{m.n}}</b></td><td><code>{{m.c}}</code></td><td>{{m.t}}</td></tr></sc-for></table>
+<div style="font-size:12px;color:#5A564E;margin-top:10px;line-height:1.5">Implement as <code>DSMotion.settle/glide/exit</code> returning <code>Animation?</code> through <code>AccessibilityPolicy.animation(_:)</code>, so Reduce Motion becomes a 120 ms crossfade (never a hard cut for content that moves). Recording pulse is the only looping animation; it stops under Reduce Motion but the red dot stays.</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+renderVals() {
+const C=(t,l,d,u)=>({t,l,d,u});
+return {
+colors:[
+ C('paper','#F3EEE5','#12110F','Window background (with ambient gradients)'),
+ C('sheet','#FCFAF6','#1B1A17','Primary content surface'),
+ C('inset','#F7F3EB','#22211D','Secondary surface, rows, chips'),
+ C('ink','#1C1B18','#F3EFE7','Primary text'),
+ C('ink2','#5A564E','#B5B0A5','Secondary text'),
+ C('ink3','#6B675D','#9A9589','Tertiary text, labels (AA on sheet)'),
+ C('line','rgba(28,27,24,.12)','rgba(243,239,231,.14)','Hairlines, 1 px'),
+ C('ember','#C44B16','#F28A57','Brand accent: primary action, selection, detail strokes'),
+ C('emberTint','#F7E4D8','rgba(242,138,87,.16)','Selected row, chip, karaoke highlight'),
+ C('recording','#D1352B','#FF6B5E','Recording dot and Stop (never Ember)'),
+ C('success','#2F7A4F','#6CC48F','Ready, installed'),
+ C('danger','#B3321F','#FF8A7A','Failed jobs, destructive text')
+],
+glass:[
+ {n:'Clear',s:'blur 16, fill 30%',m:'.glassEffect(.clear, in:), small floating pills over media'},
+ {n:'Regular',s:'blur 28, fill 58%',m:'.glassEffect(.regular, in:); sidebar via NavigationSplitView; toolbar groups via ToolbarItemGroup + .buttonStyle(.glass)'},
+ {n:'Prominent',s:'blur 40, fill 72-82%',m:'.regular with a stronger tint or NSPanel + NSVisualEffectView for overlay, HUD, prompt'},
+ {n:'Solid twin',s:'opaque sheet, 1 px stronger line',m:'selected when AccessibilityPolicy.usesSolidSurface'}
+],
+types:[
+ {r:'Display',f:'New York',s:'46 / 400, -2.5% tracking'},
+ {r:'Title 1',f:'New York',s:'34-40 / 400'},
+ {r:'Title 2',f:'New York',s:'24-28 / 400'},
+ {r:'Headline',f:'SF Pro',s:'15 / 600'},
+ {r:'Body / row title',f:'SF Pro',s:'13.5-14 / 400-600'},
+ {r:'Caption',f:'SF Pro',s:'12-12.5 / 400'},
+ {r:'Label caps',f:'SF Pro',s:'11-12 / 600, +7% tracking'},
+ {r:'Transcript',f:'New York + Sinhala',s:'19 / 400, line 1.6'},
+ {r:'Live caption',f:'SF Pro',s:'24-26 / 500, line 1.35'},
+ {r:'Timestamp',f:'SF Pro',s:'12 tabular numerals'}
+],
+layout:[
+ {i:'Window panels',v:'inset 12 pt, gap 12 pt'},
+ {i:'Sidebar width',v:'232 pt (glass, radius 26)'},
+ {i:'Toolbar height',v:'44 pt, floating groups'},
+ {i:'Control height',v:'32 pt toolbar, 36-40 pt prominent (mac minimum 28)'},
+ {i:'Radii',v:'chip 10-16, card 20-24, panel 26, capsule 999'},
+ {i:'Spacing',v:'4 / 8 / 12 / 16 / 24 / 32'},
+ {i:'Concentric rule',v:'inner radius = outer radius - padding'},
+ {i:'Primary action',v:'one solid Ember capsule per view'},
+ {i:'Divider',v:'hairlines only, no heavy borders'},
+ {i:'Shadows',v:'warm, 14-24 pt blur, 7-14% alpha'}
+],
+motion:[
+ {n:'settle',c:'cubic-bezier(.2,.9,.3,1.1)',t:'320-500 ms'},
+ {n:'glide',c:'cubic-bezier(.4,0,.2,1)',t:'200-280 ms'},
+ {n:'exit',c:'cubic-bezier(.4,0,1,1)',t:'140 ms'},
+ {n:'reduce',c:'linear crossfade',t:'120 ms'},
+ {n:'pulse',c:'cubic-bezier(.2,.7,.2,1)',t:'2 s loop'},
+ {n:'shimmer',c:'linear',t:'1.6-2.4 s loop'}
+]
+};
+}
+}
+</script>
+</body>
+</html>

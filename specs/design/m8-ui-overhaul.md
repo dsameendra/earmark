@@ -1,7 +1,7 @@
 # M8 UI/UX Overhaul and Visual Identity: locked decisions
 
 Status: **DESIGN LOCKED (2026-11-22)**, implementation scheduled as the last milestone (T31-T40 in `/specs/tasks.md`).
-Mockups: `/specs/design/m8-mockups/*.dc.html` (Claude Design canvas sources; `canvas.json` holds the layout). Boards `Logo.dc.html`-`Logo4.dc.html`, `Color.dc.html`, `Symbols.dc.html` record the options that were considered.
+Canvas: https://claude.ai/artifact/FzAtjj7ZdYAkp1WHPeFSVF (final v1, version id `1795296177-4e67`). Sources: `/specs/design/m8-mockups/*.dc.html` (`canvas.json` holds the layout). Rejected options: `/specs/design/m8-mockups/archive/`. How to build it, acceptance criteria and open items: `/specs/design/m8-handoff.md`. **M8 must start with the kickoff gate in that document (ask the user for the canvas link).**
 
 ## Governing rule
 Earmark is a macOS 26 app: Apple HIG applies to every in-app surface. Brand and marketing pieces may use brand fonts and custom artwork.
@@ -20,9 +20,9 @@ Earmark is a macOS 26 app: Apple HIG applies to every in-app surface. Brand and 
 | Controls | macOS 26 sizing: 28 pt minimum control height in the app (mockups use 32-40 pt capsules), concentric radii, capsule buttons, prominent Ember button for the single primary action per view. |
 
 ## Screens covered by the mockups
-Brand identity, icon set, glass and motion, sidebar, Home (A and B; B chosen), Queue, Library, Editor + player (dark), Meetings, Live, floating surfaces (menu bar popover, live overlay, dictation HUD, meeting prompt), Settings > Models, Onboarding, Export sheet, motion spec.
+Brand identity, icon set, glass and motion, sidebar, Home (Workbench), Queue, Library, Editor + player (dark), Meetings, Live, floating surfaces (menu bar popover, live overlay, dictation HUD, meeting prompt), Settings > Models, Onboarding, Export sheet, motion spec.
 
 ## Notes for implementers
-- Mockups use web fonts as stand-ins (Newsreader for New York, system stack for SF Pro). Build with the real system fonts.
-- Mockup glyphs are approximations of the T33 symbols; the authoritative geometry is in `m8-mockups/Icons.dc.html` and `Symbols.dc.html`.
+- Mockups use web fonts as stand-ins; build with the real system fonts (see handoff).
+- Authoritative icon and symbol geometry is in `m8-mockups/Main.dc.html` and `Icons.dc.html`.
 - Copy in mockups is illustrative; real strings come from the feature specs.

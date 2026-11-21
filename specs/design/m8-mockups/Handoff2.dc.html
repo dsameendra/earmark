@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earmark handoff screens and open items</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500&display=swap">
+<style>
+body{margin:0}
+td,th{text-align:left;padding:8px 10px;border-bottom:1px solid rgba(28,27,24,.1);vertical-align:top;font-size:12.5px;line-height:1.45}
+th{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:#6B675D;font-weight:600}
+code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:#F3EEE5;border-radius:5px;padding:1px 5px}
+li{margin-bottom:6px}
+</style>
+</helmet>
+<div style="width:1440px;height:1900px;box-sizing:border-box;background:#F3EEE5;color:#1C1B18;font-family:-apple-system,'SF Pro Text',system-ui,sans-serif;padding:56px 64px;display:flex;flex-direction:column;gap:26px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:40px">
+<div><div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6B675D;font-weight:600">Handoff 2 of 2 · Final design v1</div>
+<div style="font-family:Newsreader,serif;font-size:48px;line-height:1.05;letter-spacing:-.025em;margin-top:8px">Screens, assets, and what is not drawn yet</div></div>
+<div style="max-width:470px;font-size:13.5px;line-height:1.55;color:#5A564E">Each artboard maps to a feature spec and a task. Where the boards are silent, derive from the rules in Handoff 1 and the patterns here; the last card lists exactly where that applies.</div>
+</div>
+
+<div style="background:#FCFAF6;border:1px solid rgba(28,27,24,.12);border-radius:20px;padding:20px 22px">
+<div style="font-size:15px;font-weight:600;margin-bottom:6px">Screen inventory</div>
+<table style="width:100%;border-collapse:collapse"><tr><th style="width:150px">Artboard</th><th style="width:210px">Feature specs · task</th><th>Key components</th><th style="width:70px">Glass</th><th style="width:300px">Build notes</th></tr>
+<sc-for list="{{screens}}" as="s" hint-placeholder-count="12"><tr><td><code>{{s.a}}</code></td><td>{{s.f}}</td><td>{{s.c}}</td><td>{{s.g}}</td><td>{{s.n}}</td></tr></sc-for></table>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px">
+<div style="background:#FCFAF6;border:1px solid rgba(28,27,24,.12);border-radius:20px;padding:20px 22px">
+<div style="font-size:15px;font-weight:600;margin-bottom:6px">Brand asset specification (T32)</div>
+<ul style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.5;color:#3A372F">
+<li><b>App icon.</b> Icon Composer document with layers: squircle background (gradient <code>#E8794A → #C44B16 → #8F360E</code>), ear (cream stroke), arc (<code>#FFD7BF</code>), curl (shaded corner triangle plus folded flap, 28% of the tile). Geometry on the 100-unit grid is in <code>Main.dc.html</code>: ear path with stroke 4.8, group transform <code>translate(12 16) scale(1.15)</code> (this is the locked left-2.5% offset), arc <code>M44 20a15 15 0 0 1 0 20</code>, curl triangle <code>M72 0H100V28Z</code>, flap <code>M72 0V24a4 4 0 0 0 4 4H100Z</code>. No baked gloss or shadow.</li>
+<li><b>Appearances.</b> Default (Ember), Dark (night tile, cream ear, <code>#F28A57</code> arc and flap), Tinted and Clear as Icon Composer derives them. Check legibility at 16, 32, 64, 128, 256, 512, 1024.</li>
+<li><b>Menu bar glyph.</b> Template image of the ear and arc only, 18 pt, monochrome. Recording state adds a small red dot (<code>#D1352B</code>) bottom-right, never Ember. Idle shows no dot.</li>
+<li><b>Symbols.</b> 24 symbols in <code>Icons.dc.html</code> (asset names shown on each tile) plus the ear glyph (the app mark at symbol size); ink line plus one Ember detail; Ultralight-Black, small/medium/large; monochrome, hierarchical and palette rendering; fall back to stock SF Symbols if a custom glyph fails review.</li>
+<li><b>Marketing/DMG.</b> Newsreader wordmark <code>earmark</code> lowercase, lockups in <code>Main.dc.html</code>; Ember on paper or cream on night.</li>
+</ul>
+</div>
+<div style="background:#FCFAF6;border:1px solid rgba(28,27,24,.12);border-radius:20px;padding:20px 22px">
+<div style="font-size:15px;font-weight:600;margin-bottom:6px">Caveats and how they are resolved</div>
+<table style="width:100%;border-collapse:collapse"><tr><th>Caveat</th><th>Resolution</th></tr>
+<sc-for list="{{caveats}}" as="c" hint-placeholder-count="8"><tr><td>{{c.c}}</td><td>{{c.r}}</td></tr></sc-for></table>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px">
+<div style="background:#FCFAF6;border:1px solid rgba(28,27,24,.12);border-radius:20px;padding:20px 22px">
+<div style="font-size:15px;font-weight:600;margin-bottom:6px">Not drawn yet: derive from these rules</div>
+<table style="width:100%;border-collapse:collapse"><tr><th>Missing</th><th>Derive as</th></tr>
+<sc-for list="{{gaps}}" as="g" hint-placeholder-count="12"><tr><td>{{g.m}}</td><td>{{g.d}}</td></tr></sc-for></table>
+</div>
+<div style="background:#FCFAF6;border:1px solid rgba(28,27,24,.12);border-radius:20px;padding:20px 22px;display:flex;flex-direction:column;gap:12px">
+<div style="font-size:15px;font-weight:600">Kickoff gate for M8 (mandatory)</div>
+<ol style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.55;color:#3A372F">
+<li>Before any M8 work, <b>ask the user for the Claude Design canvas link</b>. Do not assume access from a previous session.</li>
+<li>Read it with the Artifact tool (<code>action: "read"</code>). Confirm it is the final design: the board <b>Handoff 1</b> shows "Final design v1" and the canvas title reads "Final v1".</li>
+<li>Compare against the repo copy in <code>specs/design/m8-mockups/</code>. If they differ, stop and ask the user which is authoritative.</li>
+<li>Read <code>specs/design/m8-handoff.md</code> and <code>specs/design/m8-ui-overhaul.md</code> in full.</li>
+<li>Run the T31 spike on glass APIs and symbol weights; record findings in <code>specs/design/m8-spike.md</code> before building screens.</li>
+<li>Treat <b>archive/</b> boards as rejected options. Do not reintroduce them.</li>
+</ol>
+<div style="border-radius:14px;background:#F7E4D8;padding:12px 14px;font-size:12.5px;line-height:1.5;color:#7A2D0B"><b>Locked, do not reopen without the user:</b> listening-ear mark with 28% curl and ear offset left 2.5%; fixed Ember accent; fully custom duotone symbols; Workbench Home; glass budget of three layers; HIG in-app, brand freedom for marketing.</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+renderVals() {
+const S=(a,f,c,g,n)=>({a,f,c,g,n});
+return {
+screens:[
+ S('Sidebar.dc.html','07 App shell · T34','Section rows with duotone symbols, count badges, Folders list, model status chip, Settings row','1','Use NavigationSplitView sidebar material; custom row style. Selected row: raised pill, Ember wakes in the icon. ⌘1-⌘6 select sections.'),
+ S('Home.dc.html','07, 09 · T35','Toolbar (title, ⌘K search, solid Transcribe), four action cards with shortcuts, Recent quote cards, Working on, drop zone','1','Cards are solid Sheet. Action cards map to quick actions; undownloaded model starts inline download (NAV-AC-07).'),
+ S('Queue.dc.html','09 · T35','Grouped jobs (Working on, Waiting, Needs attention), progress with shimmer, Pause/Retry, concurrency group','2','Error row uses danger tint with a Retry; never a modal. Shimmer only on running jobs.'),
+ S('Library.dc.html','10, SCR-001 · T35','Filter chips (folders, speaker, earmarked), table with language and speaker stacks, selected row tint','2','Skeleton rows while loading. Speaker filter chip per SCR-001.'),
+ S('Editor.dc.html','11, 17, 18, 04 · T36','Transcript sheet, speaker labels, karaoke word, language badges, ignored segment (faded), inspector (Speakers, Earmarks, Hidden), floating player dock with waveform and earmark pins','3','Dark shown; light is the same layout. Inspector cards are solid. Dock is the one transient glass floater. Find bar slides under the toolbar.'),
+ S('Meetings.dc.html','05, 04 · T37','Inline detection banner (Dismiss, Transcribe, Transcribe and record), meeting rows with thumbnail, source badge, recording flags','2','Banner is solid, not glass. Recording red pulses only while capturing.'),
+ S('Live.dc.html','15, 01 · T37','Live toolbar (source group, Stop), transcript with volatile text in italics, input meters, engine summary','2','Volatile text finalises in place with a 200 ms crossfade, no reflow.'),
+ S('Floating.dc.html','08, 15, 16, 05 · T37','Menu bar item with recording dot, popover, live overlay, dictation HUD, meeting prompt','1 each','Each is a separate surface in context; never shown together. Overlay is a click-through non-activating NSPanel. HUD uses listening bars.'),
+ S('Settings.dc.html','12, 02 · T38','Toolbar tab group, Models list with download progress, licence badge, disk usage','1','Separate Settings scene. Other tabs reuse the same list and card patterns.'),
+ S('Onboarding.dc.html','13 · T38','Ember panel with the icon, step dots, language chips, recommended model with background download','0','Only step 2 drawn; see gaps. Panel uses the Prominent glass icon tile and no content glass.'),
+ S('Export.dc.html','14 · T38','Format chips (documents, subtitles), option rows, live preview, primary Export button','0','Presented as a native sheet. Preview is monospaced on Night.'),
+ S('Main, Icons, Glass, Motion','brand references','Identity, symbols, materials, motion demos','-','Reference only; not screens. Motion boards are the acceptance reference for T39.')
+],
+caveats:[
+ {c:'Web fonts stand in for New York and SF Pro in the boards',r:'Specified as real system fonts in the type table (Handoff 1). Build with system fonts; do not bundle Newsreader.'},
+ {c:'Symbols are web approximations',r:'The path data in Icons.dc.html is the authoritative geometry; T33 redraws on the SF Symbols template and must pass a side-by-side weight check against SF at each weight.'},
+ {c:'Custom duotone is the least native symbol option',r:'Accepted by the user. Mitigation: palette rendering, matched weights, stock-symbol fallbacks, and a T33 review gate.'},
+ {c:'Glass API names may differ in the shipping SDK',r:'Mapping is stated as intent. The T31 spike confirms real API (glassEffect, GlassEffectContainer, glass button styles) and records results.'},
+ {c:'Copy and data are illustrative',r:'Real strings come from the feature specs and localisation. Names, durations and quotes in boards are placeholders.'},
+ {c:'Only some appearances are drawn',r:'Editor is dark, others light. Both appearances use the same tokens (Handoff 1); build both and snapshot-test each.'},
+ {c:'Mockups are 1440 x 900',r:'Minimum window 960 x 600. Below 1100 pt width hide the Editor inspector behind a toolbar toggle; below 800 pt collapse the sidebar.'},
+ {c:'Contrast was checked by calculation, not in a rendered build',r:'T40 verifies every token pair at AA in both appearances, plus Increase Contrast.'}
+],
+gaps:[
+ {m:'Onboarding steps 1, 3, 4, 5',d:'Same split layout. Welcome (icon + tagline), Model (as drawn), Permissions (one just-in-time card per permission with an Ember Allow button and a System Settings link), Menu bar tour (annotated popover).'},
+ {m:'Recently Deleted',d:'Library table with a retention banner (Inset), Restore and Delete now actions, countdown column.'},
+ {m:'Empty states',d:'EmptyState: duotone symbol 44 pt, New York title, one sentence, up to two buttons (primary Ember). NAV-AC-08.'},
+ {m:'Error and permission-denied states',d:'Inline banner on danger tint with Retry; permission denial links to System Settings.'},
+ {m:'Settings tabs other than Models',d:'Grouped forms on Sheet; rows on Inset; toggles and pickers are native controls, tinted Ember.'},
+ {m:'Find and replace bar',d:'One capsule field under the toolbar (solid), match count, next/previous, Replace row on expand.'},
+ {m:'Speaker editing and merge',d:'Popover on the speaker chip (solid): rename, colour from the palette, merge into, voice profile toggle.'},
+ {m:'Translation views',d:'Segmented control (Original, Translated, Bilingual) in the toolbar group; bilingual stacks the translated line in ink2 under the original.'},
+ {m:'Live overlay presets and position',d:'Overlay as drawn; presets change size, lines (1-3) and opacity; per-display memory.'},
+ {m:'Light Editor, dark everything else',d:'Swap tokens; no layout change.'},
+ {m:'Narrow and wide windows',d:'See caveat on window sizes; content max width 1120 pt, centred.'},
+ {m:'Dock and Finder icon states',d:'Badge uses the recording red, never Ember.'}
+]
+};
+}
+}
+</script>
+</body>
+</html>

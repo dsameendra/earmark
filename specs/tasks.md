@@ -53,19 +53,20 @@ Status: FROZEN at Phase 5 gate. Milestones follow the brief (M1–M7), plus M8 U
 | T30 | XCUITest flows + manual QA scripts (`/specs/qa/manual.md`) | Test eng | M2+ | all |
 
 ## M8 UI/UX overhaul and visual identity (last milestone; starts only after M7 is complete)
-Source of truth: `/specs/design/m8-ui-overhaul.md` (locked decisions) and `/specs/design/m8-mockups/` (Claude Design canvas sources, one `.dc.html` per screen). Constraint on every task: Apple HIG for macOS 26, glass budget of three layers per screen, Reduce Transparency / Reduce Motion / Increase Contrast honoured, no behaviour or contract changes (UI layer only; anything else goes through an SCR).
+**KICKOFF GATE (mandatory, before T31): ask the user for the Claude Design canvas link.** The final design lives in a Claude Design canvas: https://claude.ai/artifact/FzAtjj7ZdYAkp1WHPeFSVF (final v1, published version id `1795296177-4e67`; private to the user, so access must be re-confirmed in the session that starts M8). Steps: (1) ask the user for the link and confirm it matches; (2) read it with the Artifact tool (`action: "read"`); (3) compare with the repo copy `/specs/design/m8-mockups/`; if they differ, ask which is authoritative; (4) read `/specs/design/m8-handoff.md` and `/specs/design/m8-ui-overhaul.md` in full. Do not start building from memory or from the archive boards.
+Source of truth: `/specs/design/m8-handoff.md` (how to build it), `/specs/design/m8-ui-overhaul.md` (locked decisions), `/specs/design/m8-mockups/` (canvas sources; `archive/` holds rejected options, never reintroduce them). Constraint on every task: Apple HIG for macOS 26, glass budget of three layers per screen, Reduce Transparency / Reduce Motion / Increase Contrast honoured, UI layer only (behaviour or contract changes go through an SCR). Each task's Definition of Done is the global DoD plus its acceptance criteria in `m8-handoff.md` section 7, plus side-by-side screenshots against the matching mockup artboard in both appearances.
 | ID | Task | Owner | Deps | Covers |
 |----|------|-------|------|--------|
-| T31 | `DesignSystem` v2: Ember/paper/ink/night tokens (+ status red, speaker palette), two solid surface tiers, glass policy (3-layer budget, Regular/Prominent/Clear + solid twins), New York + SF Pro type scale, motion tokens (settle/glide/exit) | UI eng 1 | T30 | NAV, PROD-AC-04 |
-| T32 | Brand assets: Icon Composer app icon (squircle, ear, arc, 28% curl, ear offset left 2.5%, light/dark), menu bar template glyph, accent colour asset, about/DMG art | Brand/UI eng | T31 | PROD |
-| T33 | Custom duotone symbol set (~40) on the SF Symbols template, 3 weights x 3 scales, Ember detail via palette rendering, accessibility labels, SF Symbol fallbacks | Brand/UI eng | T31 | NAV |
-| T34 | App shell: glass sidebar, floating toolbar groups (no full-width bar), window chrome, selection glide | UI eng 1 | T31, T33 | NAV |
-| T35 | Home (Workbench layout), Queue, Library restyle | UI eng 1 | T34 | NAV, FILE, LIB |
-| T36 | Editor + player restyle (light/dark), floating player dock, speakers/earmarks inspector, karaoke highlight | UI eng 2 | T34 | EDIT |
+| T31 | Kickoff gate, then spike (glass APIs, SF Symbols weight matching, Icon Composer) written to `/specs/design/m8-spike.md`; `DesignSystem` v2: Ember/paper/ink/night tokens (+ recording/success/danger, speaker palette), Sheet/Inset solid tiers, glass policy (3-layer budget, Clear/Regular/Prominent + solid twins), New York + SF Pro type scale, motion tokens (settle/glide/exit/reduce); migrate `GlassCard`/`GlassPanel` | UI eng 1 | T30 | NAV, PROD-AC-04 |
+| T32 | Brand assets: Icon Composer app icon (squircle, ear, arc, 28% curl, ear offset left 2.5%, default/dark/tinted/clear), menu bar template glyph (idle, recording), AccentColor asset, About/DMG art | Brand/UI eng | T31 | PROD |
+| T33 | Custom duotone symbol set (24 in the mockups plus the ear glyph) on the SF Symbols template, Ultralight-Black, 3 scales, palette/hierarchical rendering, accessibility labels, stock SF Symbol fallbacks; weight-match review gate | Brand/UI eng | T31 | NAV |
+| T34 | App shell: glass sidebar (system material, custom rows), floating toolbar groups (no full-width bar), window chrome, selection glide, min window size behaviours | UI eng 1 | T31, T33 | NAV |
+| T35 | Home (Workbench layout), Queue, Library restyle, plus derived Recently Deleted and empty/error states | UI eng 1 | T34 | NAV, FILE, LIB |
+| T36 | Editor + player restyle (light and dark), floating player dock, speakers/earmarks/hidden inspector, karaoke highlight, derived find/replace bar and speaker popover | UI eng 2 | T34 | EDIT, FR, DIA |
 | T37 | Meetings, Live view, floating surfaces (menu bar popover, live overlay, dictation HUD, meeting prompt) restyle | UI eng 2 | T34 | MTG, LIVE, DICT, MENU |
-| T38 | Settings (toolbar tabs) + Models, Onboarding, Export sheet restyle | UI eng 1 | T34 | SET, ONB, EXP |
+| T38 | Settings (toolbar tabs) + Models and derived tabs, Onboarding (all 5 steps), Export sheet restyle | UI eng 1 | T34 | SET, ONB, EXP |
 | T39 | Motion pass per `m8-mockups/Motion.dc.html`; Reduce Motion crossfade variants | UI eng 2 | T35-T38 | NAV |
-| T40 | Final HIG + accessibility audit (contrast, Increase Contrast, Reduce Transparency, VoiceOver, Dynamic Type), re-run T28 perf checks and T30 XCUITests, snapshot tests, glass-cost profiling | Test eng + HIG | T39 | NFR |
+| T40 | Final HIG + accessibility audit (contrast AA both appearances, Increase Contrast, Reduce Transparency, VoiceOver, Dynamic Type), re-run T28 perf checks and T30 XCUITests, snapshot tests, glass-cost profiling | Test eng + HIG | T39 | NFR |
 
 Release note: T29 (Sparkle, signing, notarization) can be prepared earlier, but the first public release build is cut after T40.
 

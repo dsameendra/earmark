@@ -1,0 +1,6 @@
+# XcodeGen spec (minimal, Phase 0). Packages and targets are added in Phase 3.
+name: Earmark
+options:
+  bundleIdPrefix: lk.dumindu.earmark   # placeholder, pending user sign-off
+  deploymentTarget:
+    macOS: "26.0"                      # pending user sign-off

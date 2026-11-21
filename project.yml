@@ -1,6 +1,39 @@
-# XcodeGen spec (minimal, Phase 0). Packages and targets are added in Phase 3.
 name: Earmark
 options:
-  bundleIdPrefix: lk.dumindu.earmark   # placeholder, pending user sign-off
+  bundleIdPrefix: lk.dumindu.earmark
   deploymentTarget:
-    macOS: "26.0"                      # pending user sign-off
+    macOS: "26.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_IDENTITY: "-"          # ad-hoc until an Apple Developer identity exists
+    ENABLE_HARDENED_RUNTIME: YES
+packages:
+  AppCore: { path: Packages/AppCore }
+  Persistence: { path: Packages/Persistence }
+  DesignSystem: { path: Packages/DesignSystem }
+  Models: { path: Packages/Models }
+  AudioCapture: { path: Packages/AudioCapture }
+targets:
+  Earmark:
+    type: application
+    platform: macOS
+    sources: [App]
+    entitlements:
+      path: App/Earmark.entitlements
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Earmark
+        LSMinimumSystemVersion: "26.0"
+        NSMicrophoneUsageDescription: Earmark transcribes your microphone audio on this Mac. Nothing leaves your device.
+        NSAudioCaptureUsageDescription: Earmark captures meeting and system audio on this Mac for live captions and transcripts. Nothing leaves your device.
+    dependencies:
+      - package: AppCore
+      - package: Persistence
+      - package: DesignSystem
+      - package: Models
+      - package: AudioCapture

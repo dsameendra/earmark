@@ -14,7 +14,11 @@ let package = Package(
             name: "Persistence",
             dependencies: [.product(name: "AppCore", package: "AppCore"), .product(name: "GRDB", package: "GRDB.swift")],
             swiftSettings: [.treatAllWarnings(as: .error)]),
-        .testTarget(name: "PersistenceTests", dependencies: ["Persistence", .product(name: "AppCoreTesting", package: "AppCore")]),
+        .testTarget(
+            name: "PersistenceTests",
+            dependencies: [
+                "Persistence", .product(name: "AppCoreTesting", package: "AppCore"), .product(name: "GRDB", package: "GRDB.swift"),
+            ]),
     ],
     swiftLanguageModes: [.v6]
 )

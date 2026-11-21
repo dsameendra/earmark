@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>lk.dumindu.earmark.capture-spike</string>
+<key>CFBundleName</key><string>capture-spike</string>
+<key>CFBundleVersion</key><string>1</string>
+<key>NSMicrophoneUsageDescription</key><string>Spike: records your microphone to test capture.</string>
+<key>NSAudioCaptureUsageDescription</key><string>Spike: captures meeting app audio to test capture.</string>
+</dict></plist>

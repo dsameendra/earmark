@@ -1,0 +1,10 @@
+### fluid
+hyp->ref (purity)  A: {'S1': ('FEE013', 0.92), 'S2': ('MEO015', 0.9), 'S3': ('MEE014', 0.96), 'S4': ('FEE016', 0.94)}
+hyp->ref (purity)  B: {'S1': ('FEE013', 0.94), 'S2': ('FEE016', 0.95), 'S3': ('MEE014', 0.96), 'S4': ('MEO015', 0.91)}
+SAME-person distances: [(0.032, 'S4', 'S2', 'FEE016', 'FEE016'), (0.038, 'S3', 'S3', 'MEE014', 'MEE014'), (0.061, 'S1', 'S1', 'FEE013', 'FEE013'), (0.076, 'S2', 'S4', 'MEO015', 'MEO015')]
+same: n=4 max=0.076 | diff: n=12 min=0.678 median=0.929
+### speakerkit
+hyp->ref (purity)  A: {'SPK0': ('FEE013', 0.96), 'SPK1': ('MEO015', 0.59), 'SPK2': ('MEO015', 0.96), 'SPK3': ('FEE016', 0.97), 'SPK4': ('MEE014', 0.97)}
+hyp->ref (purity)  B: {'SPK0': ('FEE016', 0.58), 'SPK1': ('FEE013', 0.97), 'SPK2': ('FEE016', 0.98), 'SPK3': ('MEE014', 0.97), 'SPK4': ('MEO015', 0.63), 'SPK5': ('MEO015', 0.92)}
+SAME-person distances: [(0.029, 'SPK3', 'SPK2', 'FEE016', 'FEE016'), (0.06, 'SPK2', 'SPK5', 'MEO015', 'MEO015'), (0.062, 'SPK0', 'SPK1', 'FEE013', 'FEE013'), (0.073, 'SPK4', 'SPK3', 'MEE014', 'MEE014'), (0.495, 'SPK2', 'SPK4', 'MEO015', 'MEO015'), (0.531, 'SPK1', 'SPK4', 'MEO015', 'MEO015'), (0.669, 'SPK1', 'SPK5', 'MEO015', 'MEO015'), (0.89, 'SPK3', 'SPK0', 'FEE016', 'FEE016')]
+same: n=8 max=0.890 | diff: n=22 min=0.591 median=0.920

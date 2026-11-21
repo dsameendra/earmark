@@ -1,0 +1,20 @@
+== fluid protocol A(collar0,overlap scored)
+ES2004a: DER 22.2%  miss 16.2 fa 2.9 conf 3.1  ref_spk 4 hyp_spk 4
+ES2004b: DER 14.8%  miss 9.2 fa 3.1 conf 2.4  ref_spk 4 hyp_spk 4
+IS1009a: DER 23.1%  miss 12.8 fa 4.6 conf 5.7  ref_spk 4 hyp_spk 4
+POOLED: DER 18.1%
+== fluid protocol B(collar0.25,overlap skipped)
+ES2004a: DER 9.8%  miss 5.9 fa 2.8 conf 1.1  ref_spk 4 hyp_spk 4
+ES2004b: DER 5.7%  miss 2.2 fa 2.6 conf 0.9  ref_spk 4 hyp_spk 4
+IS1009a: DER 11.1%  miss 4.4 fa 3.8 conf 2.9  ref_spk 4 hyp_spk 4
+POOLED: DER 7.5%
+== speakerkit protocol A(collar0,overlap scored)
+ES2004a: DER 22.5%  miss 19.1 fa 2.1 conf 1.3  ref_spk 4 hyp_spk 5
+ES2004b: DER 16.6%  miss 11.7 fa 2.8 conf 2.2  ref_spk 4 hyp_spk 6
+IS1009a: DER 23.0%  miss 15.4 fa 3.7 conf 3.9  ref_spk 4 hyp_spk 4
+POOLED: DER 19.2%
+== speakerkit protocol B(collar0.25,overlap skipped)
+ES2004a: DER 7.7%  miss 5.1 fa 1.8 conf 0.8  ref_spk 4 hyp_spk 5
+ES2004b: DER 4.9%  miss 1.6 fa 2.4 conf 0.9  ref_spk 4 hyp_spk 6
+IS1009a: DER 8.9%  miss 2.9 fa 3.3 conf 2.7  ref_spk 4 hyp_spk 4
+POOLED: DER 6.2%

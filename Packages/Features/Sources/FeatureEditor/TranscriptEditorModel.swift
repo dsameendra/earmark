@@ -54,6 +54,9 @@ public final class TranscriptEditorModel {
     /// Paragraph ID for each segment (paragraph view scrolling), empty in segment view.
     public private(set) var paragraphIDBySegment: [SegmentID: SegmentID] = [:]
     public private(set) var showWaveform = true
+    public private(set) var listFocusToken = 0
+    /// Speaker-coloured regions for the scrubber, rebuilt only when segments change.
+    public private(set) var speakerRegions: [SpeakerRegion] = []
     public internal(set) var bookmarks: [TranscriptBookmark] = []
     public internal(set) var highlights: [TextHighlight] = []
     public private(set) var persistenceError: String?
@@ -197,6 +200,7 @@ public final class TranscriptEditorModel {
         paragraphIDBySegment = Dictionary(
             paragraphs.flatMap { paragraph in paragraph.segments.map { ($0.id, paragraph.id) } }, uniquingKeysWith: { first, _ in first })
         indexByID = Dictionary(uniqueKeysWithValues: segments.enumerated().map { ($1.id, $0) })
+        speakerRegions = SpeakerRegions.make(from: segments)
         playback.setTimeline(WordTimeline(segments: segments))
     }
 
@@ -253,6 +257,9 @@ public final class TranscriptEditorModel {
         }
         await loadMedia(for: current, overrideURL: url)
     }
+
+    /// Asks the view to give the transcript keyboard focus (so Space/J/K/L keep working after clicks and edits).
+    public func requestListFocus() { listFocusToken &+= 1 }
 
     public func reveal(_ id: SegmentID) { revealRequest = RevealRequest(segmentID: id) }
 

@@ -167,7 +167,10 @@ struct SegmentRowView: View {
                 } else {
                     WordFlowView(
                         items: wordItems(for: segment, model: model, find: find), typography: typography,
-                        onTap: { model.playback.seekToWord(in: segment, wordIndex: $0.index) },
+                        onTap: {
+                            model.requestListFocus()
+                            model.playback.seekToWord(in: segment, wordIndex: $0.index)
+                        },
                         onSplit: { model.split(segment.id, beforeWord: $0.index) },
                         onBookmark: { model.addBookmark(at: SeekTarget.time(for: segment, wordIndex: $0.index)) },
                         onHighlight: { model.addHighlight(segmentID: segment.id, wordRange: $0.index...$0.index) })
@@ -184,7 +187,8 @@ struct SegmentRowView: View {
         .opacity(segment.isIgnored ? 0.5 : 1)
         .background(rowBackground)
         .contentShape(Rectangle())
-        .simultaneousGesture(TapGesture(count: 2).onEnded { model.playback.playFrom(segment) })
+        .simultaneousGesture(
+            TapGesture(count: 2).onEnded { if !isEditing { model.playback.playFrom(segment) } })
         .contextMenu { SegmentContextMenu(model: model, segment: segment) }
         .accessibilityElement(children: .contain)
     }
@@ -277,7 +281,10 @@ struct ParagraphRowView: View {
             SegmentGutter(model: model, speakerID: paragraph.speakerID, start: paragraph.start, language: paragraph.languageCode)
             WordFlowView(
                 items: items, typography: typography,
-                onTap: { item in if let s = byID[item.segmentID] { model.playback.seekToWord(in: s, wordIndex: item.index) } },
+                onTap: { item in
+                    model.requestListFocus()
+                    if let s = byID[item.segmentID] { model.playback.seekToWord(in: s, wordIndex: item.index) }
+                },
                 onSplit: { item in model.split(item.segmentID, beforeWord: item.index) },
                 onBookmark: { item in
                     if let s = byID[item.segmentID] { model.addBookmark(at: SeekTarget.time(for: s, wordIndex: item.index)) }

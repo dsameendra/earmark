@@ -205,6 +205,8 @@ public final class AVPlayerEngine: PlayerControlling {
         item.audioTimePitchAlgorithm = .spectral
         player = AVPlayer(playerItem: item)
         player.actionAtItemEnd = .pause
+        // Local files: start immediately after a seek instead of pre-rolling a stall-avoidance buffer.
+        player.automaticallyWaitsToMinimizeStalling = false
         timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(value: 1, timescale: 30), queue: .main) { [weak self] time in
             MainActor.assumeIsolated { self?.onTick?(time.seconds) }
         }
@@ -217,7 +219,10 @@ public final class AVPlayerEngine: PlayerControlling {
         if let timeObserver { player.removeTimeObserver(timeObserver) }
     }
 
+    private var isSeeking = false
+
     private func syncPlaying() {
+        guard !isSeeking else { return }
         let playing = player.timeControlStatus != .paused
         guard playing != lastPlaying else { return }
         lastPlaying = playing
@@ -229,7 +234,7 @@ public final class AVPlayerEngine: PlayerControlling {
         let value = player.currentItem?.duration.seconds ?? 0
         return value.isFinite ? value : 0
     }
-    public var isPlaying: Bool { player.timeControlStatus != .paused }
+    public var isPlaying: Bool { isSeeking || player.timeControlStatus != .paused }
 
     /// Whether the item has a video track.
     public func hasVideo() async -> Bool {
@@ -237,16 +242,35 @@ public final class AVPlayerEngine: PlayerControlling {
         return ((try? await asset.loadTracks(withMediaType: .video)) ?? []).isEmpty == false
     }
 
-    /// Waits until the item is ready or failed; returns false when it cannot be played.
-    public func waitUntilReady() async -> Bool {
+    /// Waits until the item can play; returns false when it fails or does not become ready within `timeout` seconds.
+    public func waitUntilReady(timeout: TimeInterval = 10) async -> Bool {
         guard let item = player.currentItem else { return false }
-        if let playable = try? await item.asset.load(.isPlayable), playable { return true }
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            switch item.status {
+            case .readyToPlay: return true
+            case .failed: return false
+            default: try? await Task.sleep(for: .milliseconds(10))
+            }
+        }
         return false
     }
 
+    /// Frame-accurate seek. While playing, the player is paused around the seek so the position is reached without
+    /// waiting for the audio pipeline to flush and re-prime (about 100 ms on audio files); playback resumes right after,
+    /// and the play/pause state reported to the UI does not flicker.
     public func seek(to time: TimeInterval) async {
+        let wasPlaying = isPlaying
+        if wasPlaying {
+            isSeeking = true
+            player.pause()
+        }
         _ = await player.seek(to: CMTime(seconds: time, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
         onTick?(player.currentTime().seconds)
+        if wasPlaying {
+            player.rate = speed
+            isSeeking = false
+        }
     }
 
     public func play() {

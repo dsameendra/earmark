@@ -1,12 +1,12 @@
 import AppCore
-import FeatureEditor
+@testable import FeatureEditor
 import FeatureSupport
 import Foundation
 import Processing
 import SwiftUI
 import Testing
 
-@Suite @MainActor struct EditorLogicTests {
+@Suite struct EditorLogicTests {
     // MARK: Word re-alignment (EDIT-AC-06)
 
     @Test func editKeepsUnchangedWordTimings() {
@@ -169,9 +169,21 @@ import Testing
         #expect(SeekTarget.time(for: segment, wordIndex: 99) == 10)
     }
 
+    @Test func findOverTenThousandSegmentsStaysResponsiveInDebugBuilds() throws {  // FR-AC-09
+        let segments = (0..<10_000).map { Fixtures.segment("the quick brown fox number \($0) jumps over the lazy dog", start: Double($0)) }
+        let query = FindQuery(text: "fox", matchCase: false, wholeWord: true)
+        _ = FindReplaceModel.search(query, in: segments)  // warm up
+        let clock = ContinuousClock()
+        var outcome = FindOutcome()
+        let elapsed = clock.measure { outcome = FindReplaceModel.search(query, in: segments) }
+        print("FIND_10K_MS", elapsed)
+        #expect(outcome.matches.count == 10_000)
+        #expect(elapsed < .milliseconds(400))  // unoptimised debug build; ~100 ms measured
+    }
+
     // MARK: Undo / redo (EDIT-AC-12)
 
-    @Test func everyEditKindUndoesAndRedoesExactly() async throws {
+    @MainActor @Test func everyEditKindUndoesAndRedoesExactly() async throws {
         let (model, _) = await Fixtures.model()
         let original = model.segments
         let originalSpeakers = model.speakers
@@ -201,7 +213,7 @@ import Testing
         #expect(model.speakers == finalSpeakers)
     }
 
-    @Test func undoActionNamesDescribeTheEdit() async {
+    @MainActor @Test func undoActionNamesDescribeTheEdit() async {
         let (model, _) = await Fixtures.model()
         model.editText(model.segments[0].id, to: "changed")
         #expect(model.undoActionName == "Edit Text")
@@ -210,7 +222,7 @@ import Testing
         #expect(!model.canUndo && model.canRedo)
     }
 
-    @Test func splitThenUndoRestoresSingleSegmentAtSameIndex() async {
+    @MainActor @Test func splitThenUndoRestoresSingleSegmentAtSameIndex() async {
         let (model, _) = await Fixtures.model()
         let original = model.segments
         #expect(model.split(original[1].id, beforeWord: 2))
@@ -222,7 +234,7 @@ import Testing
 
     // MARK: Persistence (EDIT-AC-18)
 
-    @Test func editsPersistIncrementallyAndStructuralEditsRewrite() async {
+    @MainActor @Test func editsPersistIncrementallyAndStructuralEditsRewrite() async {
         let (model, repo) = await Fixtures.model()
         let id = model.segments[0].id
         model.editText(id, to: "persisted text")
@@ -239,14 +251,14 @@ import Testing
         #expect(await repo.stored[model.transcriptID]?.count == 3)
     }
 
-    @Test func speakerChangesSaveTheHeader() async {
+    @MainActor @Test func speakerChangesSaveTheHeader() async {
         let (model, repo) = await Fixtures.model()
         model.renameSpeaker(Fixtures.alice.id, to: "Alicia")
         await model.flush()
         #expect(await repo.headers[model.transcriptID]?.speakers.first?.name == "Alicia")
     }
 
-    @Test func typingNeverWaitsForPersistence() async {
+    @MainActor @Test func typingNeverWaitsForPersistence() async {
         let (model, _) = await Fixtures.model(persistDelay: .seconds(30))
         let clock = ContinuousClock()
         let elapsed = clock.measure {
@@ -259,7 +271,7 @@ import Testing
 
     // MARK: Speakers (EDIT-AC-08)
 
-    @Test func renameMergeAndColourSpeakers() async {
+    @MainActor @Test func renameMergeAndColourSpeakers() async {
         let (model, _) = await Fixtures.model()
         model.renameSpeaker(Fixtures.bob.id, to: "Robert")
         #expect(model.speaker(Fixtures.bob.id)?.name == "Robert")
@@ -277,7 +289,7 @@ import Testing
         #expect(model.segments[0].speakerID == added)
     }
 
-    @Test func languageChangeAppliesToSelection() async {
+    @MainActor @Test func languageChangeAppliesToSelection() async {
         let (model, _) = await Fixtures.model()
         let ids = Set(model.segments.prefix(2).map(\.id))
         model.setLanguage("si", for: ids)
@@ -288,7 +300,7 @@ import Testing
 
     // MARK: Ignored (EDIT-AC-10)
 
-    @Test func showIgnoredTogglesVisibility() async {
+    @MainActor @Test func showIgnoredTogglesVisibility() async {
         var segments = Fixtures.segments()
         segments[1].isIgnored = true
         let (model, _) = await Fixtures.model(segments: segments)
@@ -312,7 +324,7 @@ import Testing
 
     // MARK: View options (EDIT-AC-14)
 
-    @Test func globalDefaultsAndPerTranscriptOverrideArePersisted() async {
+    @MainActor @Test func globalDefaultsAndPerTranscriptOverrideArePersisted() async {
         let settings = InMemorySettingsStore()
         let (first, _) = await Fixtures.model(settings: settings)
         first.updateOptions { $0.fontSize = 20 }
@@ -344,7 +356,7 @@ import Testing
         #expect(reopened.options.fontSize == 20)
     }
 
-    @Test func optionValuesAreClamped() async {
+    @MainActor @Test func optionValuesAreClamped() async {
         let (model, _) = await Fixtures.model()
         model.updateOptions {
             $0.fontSize = 500
@@ -364,7 +376,7 @@ import Testing
 
     // MARK: Bookmarks & highlights (EDIT-AC-13)
 
-    @Test func bookmarksAndHighlightsPersistWithNotes() async {
+    @MainActor @Test func bookmarksAndHighlightsPersistWithNotes() async {
         let settings = InMemorySettingsStore()
         let (model, repo) = await Fixtures.model(settings: settings)
         model.playback.seek(to: 4)
@@ -386,7 +398,7 @@ import Testing
 
     // MARK: Find / replace integration (EDIT-AC-11, FR-AC-01...06)
 
-    @Test func findHighlightsAndStepsThroughMatches() async {
+    @MainActor @Test func findHighlightsAndStepsThroughMatches() async {
         let (model, _) = await Fixtures.model()
         let find = FindReplaceModel(editor: model)
         find.open()
@@ -409,7 +421,7 @@ import Testing
         #expect(find.matches.isEmpty && find.statusText == "No results")
     }
 
-    @Test func invalidRegexShowsInlineErrorAndSearchesNothing() async {
+    @MainActor @Test func invalidRegexShowsInlineErrorAndSearchesNothing() async {
         let (model, _) = await Fixtures.model()
         let find = FindReplaceModel(editor: model)
         find.open()
@@ -420,7 +432,7 @@ import Testing
         #expect(!find.canReplace)
     }
 
-    @Test func scopeRestrictsMatches() async {
+    @MainActor @Test func scopeRestrictsMatches() async {
         let (model, _) = await Fixtures.model()
         let find = FindReplaceModel(editor: model)
         find.open()
@@ -434,7 +446,7 @@ import Testing
         #expect(Set(find.matches.map(\.segmentID)) == [model.segments[2].id])
     }
 
-    @Test func ignoredSegmentsAreSearchedOnlyWhenShown() async {
+    @MainActor @Test func ignoredSegmentsAreSearchedOnlyWhenShown() async {
         var segments = Fixtures.segments()
         segments[1].isIgnored = true
         let (model, _) = await Fixtures.model(segments: segments)
@@ -448,7 +460,7 @@ import Testing
         #expect(find.matches.count == 1)
     }
 
-    @Test func debouncedSearchRunsOffMainAndUpdates() async {
+    @MainActor @Test func debouncedSearchRunsOffMainAndUpdates() async {
         let (model, _) = await Fixtures.model()
         let find = FindReplaceModel(editor: model)
         find.open()
@@ -459,7 +471,7 @@ import Testing
         #expect(find.matchedWords[model.segments[1].id] == [4])
     }
 
-    @Test func replaceAllShowsPreviewThenAppliesAsOneUndoStep() async {
+    @MainActor @Test func replaceAllShowsPreviewThenAppliesAsOneUndoStep() async {
         let (model, _) = await Fixtures.model()
         let original = model.segments
         let find = FindReplaceModel(editor: model)
@@ -482,7 +494,7 @@ import Testing
         #expect(!model.canUndo)
     }
 
-    @Test func replaceCurrentReplacesOneAndAdvances() async {
+    @MainActor @Test func replaceCurrentReplacesOneAndAdvances() async {
         let (model, _) = await Fixtures.model()
         let find = FindReplaceModel(editor: model)
         find.open(replace: true)
@@ -497,7 +509,7 @@ import Testing
         #expect(model.segments[1].text == "this is the second segment")
     }
 
-    @Test func readOnlyTranscriptKeepsFindButDisablesReplace() async {
+    @MainActor @Test func readOnlyTranscriptKeepsFindButDisablesReplace() async {
         let (model, _) = await Fixtures.model()
         model.setReadOnly(true)
         let find = FindReplaceModel(editor: model)
@@ -511,7 +523,7 @@ import Testing
 
     // MARK: Playback model (EDIT-AC-03...05)
 
-    @Test func clickingAWordSeeksToItsStartAndDoubleClickPlays() async {
+    @MainActor @Test func clickingAWordSeeksToItsStartAndDoubleClickPlays() async {
         let (model, _) = await Fixtures.model()
         let player = FakePlayer()
         model.playback.attach(player, isVideo: false)
@@ -524,7 +536,7 @@ import Testing
         #expect(player.seeks.last == segment.start && player.isPlaying)
     }
 
-    @Test func karaokeHighlightFollowsTicksAndOnlyChangesWhenWordChanges() async {
+    @MainActor @Test func karaokeHighlightFollowsTicksAndOnlyChangesWhenWordChanges() async {
         let (model, _) = await Fixtures.model()
         let player = FakePlayer()
         model.playback.attach(player, isVideo: false)
@@ -538,7 +550,7 @@ import Testing
         #expect(model.playback.scrollTargetID == segments[1].id)
     }
 
-    @Test func autoScrollPausesOnManualScrollAndReturns() async {
+    @MainActor @Test func autoScrollPausesOnManualScrollAndReturns() async {
         let (model, _) = await Fixtures.model()
         let player = FakePlayer()
         model.playback.attach(player, isVideo: false)
@@ -556,7 +568,7 @@ import Testing
         #expect(model.playback.scrollRequest > paused)
     }
 
-    @Test func speedIsClampedAndSkipsMoveRelative() async {
+    @MainActor @Test func speedIsClampedAndSkipsMoveRelative() async {
         let (model, _) = await Fixtures.model()
         let player = FakePlayer()
         model.playback.attach(player, isVideo: false)
@@ -586,7 +598,7 @@ import Testing
         #expect(PlaybackSpeed.steps.first == 0.5 && PlaybackSpeed.steps.last == 3)
     }
 
-    @Test func missingMediaDisablesPlaybackButKeepsTextEditable() async {
+    @MainActor @Test func missingMediaDisablesPlaybackButKeepsTextEditable() async {
         let (model, _) = await Fixtures.model()
         #expect(model.playback.mediaState == .missing && !model.playback.canPlay)
         model.editText(model.segments[0].id, to: "still editable")
@@ -612,7 +624,7 @@ import Testing
 
     // MARK: Export (EDIT-AC export sheet)
 
-    @Test func copyAsTextAndMarkdownUsesExportService() async {
+    @MainActor @Test func copyAsTextAndMarkdownUsesExportService() async {
         let (model, _) = await Fixtures.model()
         var copied: [String] = []
         let box = CopyBox()
@@ -626,7 +638,7 @@ import Testing
         #expect(export.statusMessage == "Copied as Markdown")
     }
 
-    @Test func exportWritesChosenFormatAndSharesTempFile() async throws {
+    @MainActor @Test func exportWritesChosenFormatAndSharesTempFile() async throws {
         let (model, _) = await Fixtures.model()
         let export = EditorExportModel(editor: model, copyToPasteboard: { _ in })
         export.options.format = .srt
@@ -639,7 +651,7 @@ import Testing
         #expect(share != nil && share!.pathExtension == "srt")
     }
 
-    @Test func invalidExportOptionsSurfaceAReadableError() async {
+    @MainActor @Test func invalidExportOptionsSurfaceAReadableError() async {
         let (model, _) = await Fixtures.model()
         let export = EditorExportModel(editor: model, copyToPasteboard: { _ in })
         export.options.translation = .replace  // no language chosen

@@ -54,6 +54,12 @@ private struct EditorContent: View {
         .onChange(of: model.showIgnored) { find.refresh() }
         .onChange(of: model.playback.isDetached) { updateDetachedWindow() }
         .onChange(of: find.isVisible) { if !find.isVisible { listFocused = true } }
+        .onChange(of: model.listFocusToken) { listFocused = true }
+        .onChange(of: model.editingSegmentID) { if model.editingSegmentID == nil { listFocused = true } }
+        .onChange(of: showSpeakers) { if !showSpeakers { listFocused = true } }
+        .onChange(of: showBookmarks) { if !showBookmarks { listFocused = true } }
+        .onChange(of: showOptions) { if !showOptions { listFocused = true } }
+        .onChange(of: showExport) { if !showExport { listFocused = true } }
         .onDisappear {
             playerWindow?.close()
             Task { await model.flush() }

@@ -78,10 +78,41 @@ struct WaveformScrubber: View {
     var body: some View {
         let playback = model.playback
         let duration = max(playback.duration, model.waveform?.duration ?? 0, 0.001)
-        let regions = SpeakerRegions.make(from: model.segments)
+        GeometryReader { proxy in
+            ZStack {
+                WaveformBackdrop(model: model, duration: duration)
+                PlayheadOverlay(playback: playback, duration: duration)
+            }
+            .background(DSColor.contentBackground, in: RoundedRectangle(cornerRadius: DSRadius.small))
+            .overlay(RoundedRectangle(cornerRadius: DSRadius.small).stroke(DSColor.hairline))
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0).onChanged { value in
+                    guard playback.canPlay else { return }
+                    let fraction = min(1, max(0, value.location.x / max(1, proxy.size.width)))
+                    playback.seek(to: fraction * duration)
+                }
+            )
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Playback position")
+        .accessibilityAdjustableAction { direction in
+            playback.skip(by: direction == .increment ? 5 : -5)
+        }
+    }
+}
+
+/// Speaker regions, waveform and bookmarks. Does not read the playhead, so it redraws only when the document changes.
+private struct WaveformBackdrop: View {
+    let model: TranscriptEditorModel
+    let duration: TimeInterval
+
+    var body: some View {
+        let regions = model.speakerRegions
         let colors = Dictionary(
             uniqueKeysWithValues: model.speakers.map { ($0.id, EditorColors.color(model.color(for: $0.id))) })
-        GeometryReader { proxy in
+        let peaks = model.waveform?.peaks ?? []
+        let marks = model.bookmarks.map(\.time)
         Canvas { context, size in
             for region in regions {
                 let rect = CGRect(
@@ -90,7 +121,7 @@ struct WaveformScrubber: View {
                 let color = region.speakerID.flatMap { colors[$0] } ?? Color.gray
                 context.fill(Path(rect), with: .color(color.opacity(0.22)))
             }
-            if let peaks = model.waveform?.peaks, !peaks.isEmpty {
+            if !peaks.isEmpty {
                 let barWidth = size.width / CGFloat(peaks.count)
                 for (index, peak) in peaks.enumerated() {
                     let height = max(1, CGFloat(peak) * size.height * 0.9)
@@ -99,30 +130,27 @@ struct WaveformScrubber: View {
                     context.fill(Path(rect), with: .color(.secondary))
                 }
             }
-            for bookmark in model.bookmarks {
-                let x = bookmark.time / duration * size.width
+            for time in marks {
+                let x = time / duration * size.width
                 context.fill(Path(CGRect(x: x - 1, y: 0, width: 2, height: size.height)), with: .color(.orange))
             }
-            let x = playback.currentTime / duration * size.width
+        }
+    }
+}
+
+/// The only scrubber view that reads `currentTime` (about 30 Hz).
+private struct PlayheadOverlay: View {
+    let playback: PlaybackModel
+    let duration: TimeInterval
+
+    var body: some View {
+        let time = playback.currentTime
+        Canvas { context, size in
+            let x = time / duration * size.width
             context.fill(Path(CGRect(x: x - 1, y: 0, width: 2, height: size.height)), with: .color(.accentColor))
         }
-        .background(DSColor.contentBackground, in: RoundedRectangle(cornerRadius: DSRadius.small))
-        .overlay(RoundedRectangle(cornerRadius: DSRadius.small).stroke(DSColor.hairline))
-        .contentShape(Rectangle())
-        .gesture(
-            DragGesture(minimumDistance: 0).onChanged { value in
-                guard playback.canPlay else { return }
-                let fraction = min(1, max(0, value.location.x / max(1, proxy.size.width)))
-                playback.seek(to: fraction * duration)
-            }
-        )
-        }
-        .accessibilityElement()
-        .accessibilityLabel("Playback position")
-        .accessibilityValue(TimeFormat.clock(playback.currentTime))
-        .accessibilityAdjustableAction { direction in
-            playback.skip(by: direction == .increment ? 5 : -5)
-        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 

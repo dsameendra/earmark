@@ -121,13 +121,22 @@ public struct PlaceholderHardware: HardwareTierProviding {
 
 /// Empty, inert model manager for previews.
 public struct StaticModels: ModelManaging {
-    public init() {}
-    public func catalog() async -> [ModelDescriptor] { [] }
-    public func state(of model: ModelID) async -> ModelState { .notInstalled }
+    private let descriptors: [ModelDescriptor]
+    private let installed: Set<ModelID>
+    public init(catalog: [ModelDescriptor] = [], installed: Set<ModelID> = []) {
+        descriptors = catalog
+        self.installed = installed
+    }
+    public func catalog() async -> [ModelDescriptor] { descriptors }
+    public func state(of model: ModelID) async -> ModelState { installed.contains(model) ? .installed(bytesOnDisk: 1) : .notInstalled }
     public func stateChanges() -> AsyncStream<(ModelID, ModelState)> { AsyncStream { _ in } }
-    public func installedModels() async -> Set<ModelID> { [] }
+    public func installedModels() async -> Set<ModelID> { installed }
     public func ensureAvailable(_ model: ModelID) -> AsyncThrowingStream<ModelDownloadEvent, any Error> {
-        AsyncThrowingStream { $0.finish() }
+        AsyncThrowingStream { continuation in
+            if !installed.contains(model) { continuation.yield(.progress(fraction: 0.5, bytesReceived: 1, bytesTotal: 2)) }
+            continuation.yield(.completed)
+            continuation.finish()
+        }
     }
     public func pauseDownload(_ model: ModelID) async {}
     public func resumeDownload(_ model: ModelID) async {}
@@ -170,16 +179,38 @@ public final class InMemorySettingsStore: SettingsStore {
     }
 }
 
-/// In-memory transcript repository supporting list, soft delete, restore and naive title search.
+/// In-memory transcript repository honouring every `LibraryQuery` filter, sort, segments and a naive full-text search.
 public actor InMemoryTranscripts: TranscriptRepository {
     private var items: [Transcript]
+    private var segmentStore: [TranscriptID: [Segment]] = [:]
 
-    public init(items: [Transcript] = []) { self.items = items }
+    public init(items: [Transcript] = [], segments: [TranscriptID: [Segment]] = [:]) {
+        self.items = items
+        segmentStore = segments
+    }
 
     public func list(_ query: LibraryQuery) async throws -> [Transcript] {
         var result = items.filter { ($0.deletedAt != nil) == query.deletedOnly }
-        if let text = query.text, !text.isEmpty { result = result.filter { $0.title.localizedCaseInsensitiveContains(text) } }
-        result.sort { $0.createdAt > $1.createdAt }
+        if !query.sources.isEmpty { result = result.filter { query.sources.contains($0.source) } }
+        if !query.languages.isEmpty { result = result.filter { !$0.languages.isDisjoint(with: query.languages) } }
+        if let folder = query.folderID { result = result.filter { $0.folderID == folder } }
+        if !query.tags.isEmpty { result = result.filter { query.tags.isSubset(of: Set($0.tags)) } }
+        if !query.speakerNames.isEmpty { result = result.filter { !Set($0.speakers.map(\.name)).isDisjoint(with: query.speakerNames) } }
+        if let range = query.dateRange { result = result.filter { range.contains($0.createdAt) } }
+        if let range = query.durationRange { result = result.filter { range.contains($0.duration) } }
+        if let text = query.text, !text.isEmpty {
+            result = result.filter { item in
+                item.title.localizedCaseInsensitiveContains(text)
+                    || (segmentStore[item.id] ?? []).contains { !$0.isIgnored && $0.text.localizedCaseInsensitiveContains(text) }
+            }
+        }
+        switch query.sort {
+        case .createdDesc: result.sort { $0.createdAt > $1.createdAt }
+        case .createdAsc: result.sort { $0.createdAt < $1.createdAt }
+        case .titleAsc: result.sort { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        case .durationDesc: result.sort { $0.duration > $1.duration }
+        case .modifiedDesc: result.sort { $0.modifiedAt > $1.modifiedAt }
+        }
         if let limit = query.limit { result = Array(result.prefix(limit)) }
         return result
     }
@@ -187,17 +218,34 @@ public actor InMemoryTranscripts: TranscriptRepository {
     public func save(_ transcript: Transcript) async throws {
         if let index = items.firstIndex(where: { $0.id == transcript.id }) { items[index] = transcript } else { items.append(transcript) }
     }
-    public func segments(for id: TranscriptID) async throws -> [Segment] { [] }
-    public func upsertSegments(_ segments: [Segment], for id: TranscriptID) async throws {}
-    public func replaceSegments(_ segments: [Segment], for id: TranscriptID) async throws {}
-    public func search(_ text: String, limit: Int) async throws -> [SearchHit] { [] }
+    public func segments(for id: TranscriptID) async throws -> [Segment] { segmentStore[id] ?? [] }
+    public func upsertSegments(_ segments: [Segment], for id: TranscriptID) async throws {
+        var current = segmentStore[id] ?? []
+        for segment in segments {
+            if let index = current.firstIndex(where: { $0.id == segment.id }) { current[index] = segment } else { current.append(segment) }
+        }
+        segmentStore[id] = current
+    }
+    public func replaceSegments(_ segments: [Segment], for id: TranscriptID) async throws { segmentStore[id] = segments }
+    public func search(_ text: String, limit: Int) async throws -> [SearchHit] {
+        var hits: [SearchHit] = []
+        for item in items where item.deletedAt == nil {
+            for segment in segmentStore[item.id] ?? [] where !segment.isIgnored && segment.text.localizedCaseInsensitiveContains(text) {
+                hits.append(SearchHit(transcriptID: item.id, segmentID: segment.id, snippet: segment.text, time: segment.start))
+            }
+        }
+        return Array(hits.prefix(limit))
+    }
     public func softDelete(_ ids: [TranscriptID], at date: Date) async throws {
         for index in items.indices where ids.contains(items[index].id) { items[index].deletedAt = date }
     }
     public func restore(_ ids: [TranscriptID]) async throws {
         for index in items.indices where ids.contains(items[index].id) { items[index].deletedAt = nil }
     }
-    public func purge(_ ids: [TranscriptID]) async throws { items.removeAll { ids.contains($0.id) } }
+    public func purge(_ ids: [TranscriptID]) async throws {
+        items.removeAll { ids.contains($0.id) }
+        for id in ids { segmentStore[id] = nil }
+    }
     public func purgeDeleted(before date: Date) async throws -> Int {
         let before = items.count
         items.removeAll { ($0.deletedAt ?? .distantFuture) < date }
@@ -205,6 +253,15 @@ public actor InMemoryTranscripts: TranscriptRepository {
     }
     public func bookmarks(for id: TranscriptID) async throws -> [TranscriptBookmark] { [] }
     public func save(_ bookmark: TranscriptBookmark) async throws {}
+}
+
+/// In-memory media repository.
+public actor InMemoryMedia: MediaRepository {
+    private var items: [MediaAssetID: MediaAsset]
+    public init(items: [MediaAsset] = []) { self.items = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) }) }
+    public func asset(_ id: MediaAssetID) async throws -> MediaAsset? { items[id] }
+    public func save(_ asset: MediaAsset) async throws { items[asset.id] = asset }
+    public func softDelete(_ id: MediaAssetID) async throws { items[id]?.deletedAt = Date() }
 }
 
 /// In-memory meeting repository.

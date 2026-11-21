@@ -12,4 +12,12 @@ public enum SettingsKey {
     public static let inputDeviceUID = "audio.inputDeviceUID"
     /// `Bool`; auto-record meetings.
     public static let autoRecord = "meetings.autoRecord"
+    /// `String` ("grid" or "list"); Library layout (LIB-AC-04).
+    public static let libraryLayout = "library.layout"
+    /// `Int`; days soft-deleted items are kept before auto-purge (LIB-AC-08). 0 means never.
+    public static let libraryRetentionDays = "library.retentionDays"
+    /// `[LibraryFolder]`; Library folder names (folders have no repository, only `Transcript.folderID`).
+    public static let libraryFolders = "library.folders"
+    /// `Int`; maximum parallel jobs (FILE-AC-07).
+    public static let queueMaxConcurrency = "queue.maxConcurrency"
 }

@@ -2,56 +2,116 @@ import AppCore
 import DesignSystem
 import FeatureSupport
 import SwiftUI
+import UniformTypeIdentifiers
 
-/// Queue: job rows with progress, ETA, engine and per-state actions; empty state when idle.
+/// Queue: sections of job rows with progress, ETA, engine, language and per-state actions; batch add with settings sheet.
 public struct QueueView: View {
     @Bindable private var model: QueueModel
+    private let onOpenTranscript: (TranscriptID) -> Void
+    @State private var isImporterPresented = false
 
-    public init(model: QueueModel) { self.model = model }
+    public init(model: QueueModel, onOpenTranscript: @escaping (TranscriptID) -> Void = { _ in }) {
+        self.model = model
+        self.onOpenTranscript = onOpenTranscript
+    }
 
     public var body: some View {
-        Group {
-            if model.isLoading {
-                VStack(alignment: .leading, spacing: DSSpacing.md) {
-                    ForEach(0..<3, id: \.self) { _ in Skeleton(height: 28) }
-                    Spacer()
-                }
-                .padding(DSSpacing.xl)
-            } else if model.jobs.isEmpty {
-                EmptyState(
-                    systemImage: "tray.full", title: "Queue is empty",
-                    message: "Files you add are processed one after another. Drop files on the window to start.")
-            } else {
-                List {
-                    ForEach(model.jobs) { job in
-                        QueueRow(job: job, model: model)
+        content
+            .navigationTitle("Queue")
+            .toolbar { toolbarContent }
+            .dropDestination(for: URL.self) { urls, _ in
+                model.presentBatch(urls: urls)
+                return !urls.isEmpty
+            }
+            .fileImporter(
+                isPresented: $isImporterPresented, allowedContentTypes: [.audiovisualContent, .folder], allowsMultipleSelection: true
+            ) { result in
+                if case .success(let urls) = result { model.presentBatch(urls: urls) }
+            }
+            .sheet(item: $model.batch) { batch in
+                BatchSettingsSheet(model: batch, onCancel: { model.batch = nil }, onAdd: { Task { await model.submitBatch() } })
+            }
+            .task { await model.run() }
+    }
+
+    @ViewBuilder private var content: some View {
+        if model.isLoading {
+            VStack(alignment: .leading, spacing: DSSpacing.md) {
+                ForEach(0..<3, id: \.self) { _ in Skeleton(height: 44) }
+                Spacer()
+            }
+            .padding(DSSpacing.xl)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Loading queue")
+        } else if model.jobs.isEmpty {
+            EmptyState(
+                systemImage: "tray.full", title: "Queue is empty",
+                message: "Files you add are processed one after another. Drop files or folders here, or add them.",
+                actionTitle: "Add Files…"
+            ) { isImporterPresented = true }
+        } else {
+            VStack(spacing: 0) {
+                if let message = model.errorMessage {
+                    HStack {
+                        Label(message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(DSColor.danger)
+                        Spacer()
+                        Button("Dismiss") { model.dismissError() }
                     }
-                    .onMove(perform: model.move)
+                    .padding(DSSpacing.md)
+                }
+                List {
+                    ForEach(model.visibleGroups) { group in
+                        Section(group.title) {
+                            if group == .pending {
+                                ForEach(model.jobs(in: group)) { job in
+                                    QueueRow(job: job, model: model, onOpenTranscript: onOpenTranscript)
+                                }
+                                .onMove { source, destination in Task { await model.movePending(from: source, to: destination) } }
+                            } else {
+                                ForEach(model.jobs(in: group)) { job in
+                                    QueueRow(job: job, model: model, onOpenTranscript: onOpenTranscript)
+                                }
+                            }
+                        }
+                    }
                 }
                 .accessibilityLabel("Transcription queue")
             }
         }
-        .navigationTitle("Queue")
-        .toolbar {
-            ToolbarItem {
-                Stepper("Parallel jobs: \(model.maxConcurrency)", value: $model.maxConcurrency, in: 1...4)
-                    .onChange(of: model.maxConcurrency) { model.applyConcurrency() }
-                    .accessibilityHint("Number of jobs processed at the same time")
-            }
-        }
-        .task { await model.run() }
     }
+
+    @ToolbarContentBuilder private var toolbarContent: some ToolbarContent {
+        ToolbarItemGroup {
+            Button("Add Files…", systemImage: "plus") { isImporterPresented = true }
+                .help("Add audio or video files or folders")
+            Menu("Queue Actions", systemImage: "ellipsis.circle") {
+                Button("Pause All", systemImage: "pause.fill") { Task { await model.pauseAll() } }
+                Button("Resume All", systemImage: "play.fill") { Task { await model.resumeAll() } }
+                Button("Retry Failed", systemImage: "arrow.clockwise") { Task { await model.retryAllFailed() } }
+            }
+            Stepper(
+                "Parallel jobs: \(model.maxConcurrency)",
+                value: Binding(get: { model.maxConcurrency }, set: { value in Task { await model.setConcurrency(value) } }), in: 1...4
+            )
+            .accessibilityHint("Number of jobs processed at the same time")
+        }
+    }
+}
+
+extension BatchSettingsModel: Identifiable {
+    public nonisolated var id: ObjectIdentifier { ObjectIdentifier(self) }
 }
 
 private struct QueueRow: View {
     let job: Job
     let model: QueueModel
+    let onOpenTranscript: (TranscriptID) -> Void
 
     var body: some View {
         HStack(spacing: DSSpacing.md) {
             VStack(alignment: .leading, spacing: DSSpacing.xs) {
                 ProgressRow(
-                    title: job.input?.lastPathComponent ?? "Job", detail: detail,
+                    title: job.input?.lastPathComponent ?? "Job", detail: QueueFormatting.detail(for: job),
                     fraction: job.state == .running || job.state == .paused ? job.progress : nil)
                 if let reason = job.failureReason { Text(reason).font(DSTypography.caption).foregroundStyle(DSColor.danger) }
             }
@@ -59,28 +119,29 @@ private struct QueueRow: View {
             actionButtons
         }
         .accessibilityElement(children: .contain)
+        .accessibilityLabel(job.input?.lastPathComponent ?? "Job")
+        .accessibilityValue(accessibilityValue)
     }
 
-    private var detail: String {
-        var parts: [String] = []
-        if let engine = job.engine { parts.append(engine.rawValue) }
-        if case .single(let language) = job.settings.languageMode { parts.append(language.rawValue.uppercased()) }
-        if let eta = job.etaSeconds, job.state == .running { parts.append("about \(Int(eta / 60) + 1) min left") }
-        return parts.joined(separator: " · ")
+    private var accessibilityValue: String {
+        var parts = [job.state.rawValue]
+        if job.state == .running || job.state == .paused { parts.append("\(Int(job.progress * 100)) percent") }
+        if let reason = job.failureReason { parts.append(reason) }
+        return parts.joined(separator: ", ")
     }
 
     @ViewBuilder private var actionButtons: some View {
         switch job.state {
         case .pending, .running:
-            Button("Pause", systemImage: "pause.fill") { model.pause(job.id) }.labelStyle(.iconOnly)
-            Button("Cancel", systemImage: "xmark") { model.cancel(job.id) }.labelStyle(.iconOnly)
+            Button("Pause", systemImage: "pause.fill") { Task { await model.pause(job.id) } }.labelStyle(.iconOnly)
+            Button("Cancel", systemImage: "xmark") { Task { await model.cancel(job.id) } }.labelStyle(.iconOnly)
         case .paused:
-            Button("Resume", systemImage: "play.fill") { model.resume(job.id) }.labelStyle(.iconOnly)
-            Button("Cancel", systemImage: "xmark") { model.cancel(job.id) }.labelStyle(.iconOnly)
+            Button("Resume", systemImage: "play.fill") { Task { await model.resume(job.id) } }.labelStyle(.iconOnly)
+            Button("Cancel", systemImage: "xmark") { Task { await model.cancel(job.id) } }.labelStyle(.iconOnly)
         case .failed, .cancelled:
-            Button("Retry", systemImage: "arrow.clockwise") { model.retry(job.id) }.labelStyle(.iconOnly)
+            Button("Retry", systemImage: "arrow.clockwise") { Task { await model.retry(job.id) } }.labelStyle(.iconOnly)
         case .completed:
-            EmptyView()
+            if let id = job.transcriptID { Button("Open Transcript") { onOpenTranscript(id) } }
         }
     }
 }
@@ -91,7 +152,10 @@ private struct QueueRow: View {
     QueueView(
         model: QueueModel(
             services: .preview(jobs: [
-                Job(kind: .transcribeFile, state: .running, input: URL(fileURLWithPath: "/tmp/interview.m4a"), progress: 0.4),
+                Job(
+                    kind: .transcribeFile, state: .running, input: URL(fileURLWithPath: "/tmp/interview.m4a"), progress: 0.4,
+                    etaSeconds: 130, engine: "whisperkit"),
+                Job(kind: .transcribeFile, state: .pending, input: URL(fileURLWithPath: "/tmp/a.m4a")),
                 Job(
                     kind: .transcribeFile, state: .failed, input: URL(fileURLWithPath: "/tmp/talk.mp4"),
                     failureReason: "Model failed to load"),

@@ -49,6 +49,24 @@ struct TranscriptRepositoryTests {
         #expect(try await ids(LibraryQuery(text: "100%")).isEmpty)
     }
 
+    @Test func listFiltersBySpeakerNamesAnyOf() async throws {  // SCR-001
+        let repo = try makeDB().transcripts
+        var a = makeTranscript("with-ann")
+        a.speakers = [Speaker(name: "Ann", colorHex: "#111111")]
+        var b = makeTranscript("with-ann-bob")
+        b.speakers = [Speaker(name: "Ann", colorHex: "#111111"), Speaker(name: "Bob", colorHex: "#222222")]
+        var c = makeTranscript("with-cy")
+        c.speakers = [Speaker(name: "Cy", colorHex: "#333333")]
+        for t in [a, b, c, makeTranscript("nobody")] { try await repo.save(t) }
+        func titles(_ names: Set<String>) async throws -> Set<String> {
+            Set(try await repo.list(LibraryQuery(speakerNames: names)).map(\.title))
+        }
+        #expect(try await titles(["Ann"]) == ["with-ann", "with-ann-bob"])
+        #expect(try await titles(["Bob", "Cy"]) == ["with-ann-bob", "with-cy"])  // any-of
+        #expect(try await titles(["Zed"]).isEmpty)
+        #expect(try await titles([]).count == 4)
+    }
+
     @Test func listTextMatchesSegmentContent() async throws {
         let repo = try makeDB().transcripts
         let t = makeTranscript("Untitled")

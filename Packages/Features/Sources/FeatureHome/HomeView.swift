@@ -66,6 +66,7 @@ public struct HomeView: View {
                 quickActions
                 if let download = model.download { downloadRow(download) }
                 if model.summary.isActive { jobsSummary }
+                dropZone
                 recentSection
                 modelStatus
             }
@@ -111,11 +112,39 @@ public struct HomeView: View {
                 ProgressRow(
                     title: "Active jobs", detail: "\(model.summary.running) running, \(model.summary.pending) waiting",
                     fraction: model.summary.aggregateProgress)
+                ForEach(model.activeJobs.prefix(3)) { job in
+                    Text(job.input?.lastPathComponent ?? "Job")
+                        .font(DSTypography.caption)
+                        .foregroundStyle(DSColor.secondaryText)
+                        .lineLimit(1)
+                        .accessibilityLabel("\(job.input?.lastPathComponent ?? "Job"), \(Int(job.progress * 100)) percent")
+                }
                 Button("Open Queue", action: actions.openQueue)
             }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Active jobs summary")
+    }
+
+    private var dropZone: some View {
+        VStack(spacing: DSSpacing.xs) {
+            Image(systemName: "square.and.arrow.down.on.square").font(.title).accessibilityHidden(true)
+            Text("Drop audio, video or folders here").font(DSTypography.headline)
+            Text("They are added to the queue.").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+        }
+        .frame(maxWidth: .infinity, minHeight: 96)
+        .padding(DSSpacing.md)
+        .overlay {
+            RoundedRectangle(cornerRadius: DSRadius.large, style: .continuous)
+                .strokeBorder(DSColor.hairline, style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+        }
+        .dropDestination(for: URL.self) { urls, _ in
+            Task { if await model.enqueue(urls) { actions.openQueue() } }
+            return !urls.isEmpty
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Drop zone")
+        .accessibilityHint("Drop audio or video files or folders to add them to the queue")
     }
 
     private var recentSection: some View {
@@ -146,13 +175,26 @@ public struct HomeView: View {
     }
 
     private var modelStatus: some View {
-        HStack(spacing: DSSpacing.sm) {
-            Image(systemName: "cpu").accessibilityHidden(true)
-            Text("This Mac: \(model.hardwareDescription). Models run on-device.")
-                .font(DSTypography.caption)
-                .foregroundStyle(DSColor.secondaryText)
+        VStack(alignment: .leading, spacing: DSSpacing.xs) {
+            if let status = model.modelStatus {
+                HStack(spacing: DSSpacing.sm) {
+                    Image(systemName: status.isInstalled ? "checkmark.seal" : "arrow.down.circle").accessibilityHidden(true)
+                    Text(status.isInstalled ? "\(status.name) is ready." : "\(status.name) is not downloaded yet.")
+                    if !status.isInstalled && model.download == nil {
+                        Button("Download") { Task { _ = await model.ensureDefaultModel() } }
+                    }
+                }
+                .font(DSTypography.body)
+                .accessibilityElement(children: .combine)
+            }
+            HStack(spacing: DSSpacing.sm) {
+                Image(systemName: "cpu").accessibilityHidden(true)
+                Text("This Mac: \(model.hardwareDescription). Models run on-device.")
+                    .font(DSTypography.caption)
+                    .foregroundStyle(DSColor.secondaryText)
+            }
+            .accessibilityElement(children: .combine)
         }
-        .accessibilityElement(children: .combine)
     }
 }
 

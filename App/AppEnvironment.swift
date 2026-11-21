@@ -1,12 +1,16 @@
 import AppCore
 import AppKit
+import AudioCapture
+import Diarization
 import FeatureMenuBar
 import FeatureSettings
 import FeatureShell
 import FeatureSupport
 import Foundation
+import Jobs
 import Models
 import Persistence
+import Transcription
 
 #if DEBUG
     import AppCoreTesting
@@ -14,8 +18,9 @@ import Persistence
 
 /// Composition root: builds the concrete services behind the AppCore protocols and the feature models that use them.
 ///
-/// Real implementations are wired where they exist (`AppDatabase`, `ModelManager`, `SystemHardwareTierProvider`);
-/// `Placeholder*` stand-ins cover protocols without a real implementation yet (JobQueue, live session, meeting detector,
+/// Real implementations are wired where they exist (`AppDatabase`, `ModelManager`, `SystemHardwareTierProvider`, the
+/// `PersistentJobQueue` with its engines);
+/// `Placeholder*` stand-ins cover protocols without a real implementation yet (live session, meeting detector,
 /// permissions, audio devices). Debug builds launched with `-UseMocks` (or `EARMARK_USE_MOCKS=1`) use fully in-memory
 /// services with sample data and the `AppCoreTesting` model manager.
 @MainActor
@@ -33,6 +38,9 @@ final class AppEnvironment {
         activation = ActivationPolicyController(settings: services.settings)
         menuBar.start()
         activation.start()
+        // FILE-AC-08: jobs left running by a crash or quit continue from their last checkpoint.
+        let queue = services.jobQueue
+        Task { await queue.resumeInterrupted() }
     }
 
     /// `true` when the debug mock flag is set.
@@ -50,11 +58,38 @@ final class AppEnvironment {
         #endif
         let database = openDatabase()
         let hardware = SystemHardwareTierProvider()
+        let models = ModelManager(hardware: hardware)
+        // One settings store instance: its change streams are tied to it, and the queue observes the same one.
+        let settings = database.makeSettingsStore()
         return AppServices(
-            jobQueue: PlaceholderJobQueue(), transcripts: database.transcripts, meetings: database.meetings,
-            models: ModelManager(hardware: hardware), live: PlaceholderLiveSession(), meetingDetector: PlaceholderMeetingDetector(),
-            hardware: hardware, permissions: PlaceholderPermissions(), audioDevices: PlaceholderAudioDevices(),
-            settings: database.makeSettingsStore())
+            jobQueue: makeJobQueue(database: database, models: models, hardware: hardware, settings: settings),
+            transcripts: database.transcripts, meetings: database.meetings, models: models, live: PlaceholderLiveSession(),
+            meetingDetector: PlaceholderMeetingDetector(), hardware: hardware, permissions: PlaceholderPermissions(),
+            audioDevices: PlaceholderAudioDevices(), settings: settings)
+    }
+
+    /// The real file-transcription queue: WhisperKit (tokenizer provisioned by the model manager, so no implicit network,
+    /// ENG-AC-14) and Apple Speech engines behind the router, offline diarization, auto-export and notifications.
+    private static func makeJobQueue(
+        database: AppDatabase, models: ModelManager, hardware: any HardwareTierProviding, settings: any SettingsStore
+    ) -> any JobQueue {
+        let whisper = WhisperKitEngine(models: models, tokenizerFolder: models.tokenizerFolder)
+        let apple = AppleSpeechEngine()
+        let decoder = AVFileDecoder()
+        // Language ID must use the model the plan routed to; a fixed model would swap WhisperKit's single resident model.
+        let whisperID = whisper.id
+        let pipeline: PipelineFactory = { plan in
+            let model = plan.assignments.first { $0.engine == whisperID }?.model
+            return FileTranscriptionPipeline(
+                decoder: decoder, identifier: model.map { WhisperLanguageIdentifier(engine: whisper, model: $0) })
+        }
+        return PersistentJobQueue(
+            services: JobQueueServices(
+                jobs: database.jobs, transcripts: database.transcripts, media: database.media, rules: database.rules,
+                settings: settings, models: models, hardware: hardware, engines: [whisper.id: whisper, apple.id: apple],
+                pipeline: pipeline, decoder: decoder, diarizer: FluidAudioDiarizer(models: models),
+                autoExport: WatchFolderExport.provider(settings: settings, presets: database.presets),
+                notifier: SystemJobNotifier()))
     }
 
     private static func openDatabase() -> AppDatabase {

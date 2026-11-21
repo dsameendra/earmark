@@ -22,6 +22,7 @@ packages:
   Diarization: { path: Packages/Diarization }
   Processing: { path: Packages/Processing }
   Export: { path: Packages/Export }
+  Jobs: { path: Packages/Jobs }
 targets:
   Earmark:
     type: application
@@ -42,6 +43,9 @@ targets:
       - package: DesignSystem
       - package: Models
       - package: AudioCapture
+      - package: Transcription
+      - package: Diarization
+      - package: Jobs
       - package: AppCore
         product: AppCoreTesting   # debug `-UseMocks` composition only
       - package: Features
@@ -64,7 +68,5 @@ targets:
         product: FeatureLive
       - package: Features
         product: FeatureEditor
-      - package: Transcription
-      - package: Diarization
       - package: Processing
       - package: Export

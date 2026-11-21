@@ -53,6 +53,8 @@ public actor ModelManager: ModelManaging {
         var task: Task<Void, Never>?
         var phase: Phase = .running
         var fraction: Double
+        /// Only the tokenizer files are missing for an already installed model.
+        var tokenizerOnly = false
         var subscribers: [UUID: AsyncThrowingStream<ModelDownloadEvent, any Error>.Continuation] = [:]
         init(fraction: Double) { self.fraction = fraction }
     }
@@ -65,6 +67,9 @@ public actor ModelManager: ModelManaging {
 
     /// LRU residency tracker owned by this manager; engines report loads/unloads here.
     public nonisolated let residency: ModelResidencyTracker
+
+    /// Folder to pass to WhisperKit as `tokenizerFolder`; the Whisper tokenizers are provisioned here with the models.
+    public nonisolated let tokenizerFolder: URL
 
     private let root: URL
     private let downloader: any Downloading
@@ -94,6 +99,7 @@ public actor ModelManager: ModelManaging {
         self.appleAssets = appleAssets
         self.allowList = allowList
         self.residency = ModelResidencyTracker(tier: hardware?.profile.tier ?? .tier16)
+        self.tokenizerFolder = rootDirectory.appendingPathComponent("Tokenizers", isDirectory: true)
         try? FileManager.default.createDirectory(at: rootDirectory, withIntermediateDirectories: true)
         let saved = try? Data(contentsOf: rootDirectory.appendingPathComponent("state.json"))
         self.persisted = saved.flatMap { try? JSONDecoder().decode(PersistedState.self, from: $0) } ?? PersistedState()
@@ -260,8 +266,18 @@ public actor ModelManager: ModelManaging {
             return
         }
         if case .installed = await state(of: model) {
-            continuation.yield(.completed)
-            continuation.finish()
+            guard needsTokenizer(model) else {
+                continuation.yield(.completed)
+                continuation.finish()
+                return
+            }
+            // Installed before tokenizers were provisioned: fetch only those small files.
+            let tokenizerJob = Job(fraction: 0)
+            tokenizerJob.tokenizerOnly = true
+            tokenizerJob.subscribers[subscriber] = continuation
+            jobs[model] = tokenizerJob
+            failures[model] = nil
+            startTask(for: model)
             return
         }
         let job = Job(fraction: persisted.paused[model.rawValue] ?? 0)
@@ -287,11 +303,19 @@ public actor ModelManager: ModelManaging {
             if descriptor.runtime == .appleAsset {
                 try await installAppleAsset(descriptor)
             } else {
-                try await perform(descriptor)
+                if !job.tokenizerOnly {
+                    try await perform(descriptor)
+                    // The model folder is in place: record the install now, so a tokenizer failure below cannot
+                    // force the (large) model to be downloaded again. The rest of this run only fetches the tokenizer.
+                    persisted.installed[model.rawValue] = directorySize(folder(for: model))
+                    persisted.paused[model.rawValue] = nil
+                    save()
+                    job.tokenizerOnly = true
+                }
+                try await provisionTokenizer(for: descriptor)
             }
             jobs[model] = nil
             let size = descriptor.runtime == .appleAsset ? 0 : directorySize(folder(for: model))
-            if descriptor.runtime != .appleAsset { persisted.installed[model.rawValue] = size }
             persisted.paused[model.rawValue] = nil
             save()
             publish(model, .installed(bytesOnDisk: size))
@@ -305,6 +329,14 @@ public actor ModelManager: ModelManaging {
     }
 
     private func handleFailure(_ error: any Error, model: ModelID, job: Job) {
+        if job.tokenizerOnly {
+            // The model itself stays installed; only the tokenizer fetch failed (retried on the next ensureAvailable).
+            jobs[model] = nil
+            let appError = error as? AppError ?? AppError.modelDownloadFailed(model, reason: Self.reason(for: error))
+            publish(model, .installed(bytesOnDisk: directorySize(folder(for: model))))
+            for continuation in job.subscribers.values { continuation.finish(throwing: appError) }
+            return
+        }
         switch job.phase {
         case .pausing:
             job.phase = .paused
@@ -410,6 +442,39 @@ public actor ModelManager: ModelManaging {
         if fm.fileExists(atPath: final.path) { try fm.removeItem(at: final) }
         try fm.moveItem(at: payload, to: final)  // atomic within the same volume
         removePartial(model)
+    }
+
+    /// `true` when `model` is a built-in Whisper model whose tokenizer files are not on disk yet.
+    private func needsTokenizer(_ model: ModelID) -> Bool {
+        guard let repo = WhisperTokenizerFiles.repo(for: model) else { return false }
+        let folder = WhisperTokenizerFiles.folder(repo: repo, under: tokenizerFolder)
+        return !WhisperTokenizerFiles.fileNames.allSatisfy { fm.fileExists(atPath: folder.appendingPathComponent($0).path) }
+    }
+
+    /// Downloads the Whisper tokenizer files into the Hub-layout folder WhisperKit reads (skips files already present).
+    private func provisionTokenizer(for descriptor: ModelDescriptor) async throws {
+        let model = descriptor.id
+        guard needsTokenizer(model), let repo = WhisperTokenizerFiles.repo(for: model) else { return }
+        let folder = WhisperTokenizerFiles.folder(repo: repo, under: tokenizerFolder)
+        try fm.createDirectory(at: folder, withIntermediateDirectories: true)
+        for file in WhisperTokenizerFiles.remoteFiles(repo: repo) {
+            try Task.checkCancellation()
+            let destination = folder.appendingPathComponent(file.relativePath)
+            if fm.fileExists(atPath: destination.path) { continue }
+            guard allowList.permits(file.url) else {
+                throw AppError.modelDownloadFailed(model, reason: "Host not allow-listed: \(file.url.host ?? "unknown")")
+            }
+            do {
+                let temp = try await downloader.download(from: file.url, resumeData: nil) { _, _ in }
+                try fm.moveItem(at: temp, to: destination)
+            } catch let interrupted as DownloadInterruptedError {
+                throw interrupted
+            } catch let error as AppError {
+                throw error
+            } catch {
+                throw AppError.modelDownloadFailed(model, reason: "Tokenizer download failed: \(error.localizedDescription)")
+            }
+        }
     }
 
     private func emitProgress(_ model: ModelID, base: Int64, total: Int64, relay: ProgressRelay) {

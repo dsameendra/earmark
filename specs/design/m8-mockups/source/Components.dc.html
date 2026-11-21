@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earmark editor components and presets</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Noto+Sans+Sinhala:wght@400;600&display=swap">
+<style>
+body{margin:0}
+.gl{background:rgba(255,252,247,.58);-webkit-backdrop-filter:blur(28px) saturate(1.7);backdrop-filter:blur(28px) saturate(1.7);box-shadow:0 0 0 1px rgba(255,255,255,.7) inset,0 10px 28px rgba(60,40,20,.12)}
+.g2{background:rgba(30,28,25,.55);-webkit-backdrop-filter:blur(36px) saturate(1.8);backdrop-filter:blur(36px) saturate(1.8);box-shadow:0 0 0 1px rgba(255,255,255,.16) inset,0 20px 48px rgba(0,0,0,.35)}
+mark{background:#F7E4D8;color:#7A2D0B;border-radius:4px;padding:0 2px}
+mark.cur{background:#C44B16;color:#fff}
+</style>
+</helmet>
+<div style="width:1440px;height:940px;box-sizing:border-box;background:#F3EEE5;color:#1C1B18;font-family:-apple-system,'SF Pro Text',system-ui,sans-serif;padding:48px 64px;display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:40px">
+<div><div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6B675D;font-weight:600">Components · light Editor, find, speakers, translation, overlay presets</div>
+<div style="font-family:Newsreader,serif;font-size:44px;line-height:1.05;letter-spacing:-.025em;margin-top:8px">The pieces around the transcript</div></div>
+<div style="max-width:430px;font-size:13.5px;line-height:1.55;color:#5A564E">Everything here is solid except the one allowed floater per screen. The dark Editor is the full-screen board; this is the same layout in light tokens, plus the controls it opens.</div>
+</div>
+<div style="display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:20px;flex:1">
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="border-radius:24px;padding:18px;background:radial-gradient(500px 300px at 10% 0%,rgba(196,75,22,.16),transparent 60%),radial-gradient(500px 300px at 100% 100%,rgba(27,122,116,.12),transparent 60%),#EFE7D9;display:flex;flex-direction:column;gap:12px;position:relative">
+<div style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:#6B675D;font-weight:600">Editor, light appearance</div>
+<div style="display:flex;gap:10px;align-items:center"><div class="gl" style="width:36px;height:36px;border-radius:18px;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-label="Back" role="img"><path d="M14.5 5.5 8 12l6.5 6.5" stroke="#1C1B18" stroke-width="2"/></svg></div><div style="flex:1;font-size:14px;font-weight:600">Interview — Perera, part 1<span style="font-weight:400;color:#6B675D;margin-left:8px;font-size:12px">48:12</span></div><div class="gl" style="display:flex;gap:2px;padding:3px;border-radius:19px;font-size:12px;font-weight:500"><span style="height:30px;border-radius:15px;padding:0 12px;display:flex;align-items:center;background:rgba(255,255,255,.75)">Speakers</span><span style="height:30px;border-radius:15px;padding:0 12px;display:flex;align-items:center;color:#5A564E">Translate</span></div><span style="height:36px;border-radius:18px;padding:0 16px;display:flex;align-items:center;font-size:12.5px;font-weight:600;background:#C44B16;color:#fff">Export</span></div>
+<div style="border-radius:18px;background:#FCFAF6;box-shadow:0 0 0 1px rgba(28,27,24,.08);padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:13px">
+<div style="flex:1;height:32px;border-radius:16px;background:#F3EEE5;display:flex;align-items:center;padding:0 14px;gap:8px"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M10.5 4.5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM15 15l5 5" stroke="#6B675D" stroke-width="1.6"/><path d="M8 10.5h5" stroke="#C44B16" stroke-width="2.1"/></svg>first take</div>
+<span style="font-size:12px;color:#6B675D;font-variant-numeric:tabular-nums">2 of 5</span>
+<div style="flex:1;height:32px;border-radius:16px;background:#F3EEE5;display:flex;align-items:center;padding:0 14px;color:#6B675D">Replace with…</div>
+<span style="height:30px;border-radius:15px;padding:0 13px;display:flex;align-items:center;font-size:12px;font-weight:600;background:#F3EEE5">Replace</span><span style="height:30px;border-radius:15px;padding:0 13px;display:flex;align-items:center;font-size:12px;font-weight:600;background:#F3EEE5">All</span></div>
+<div style="border-radius:20px;background:#FCFAF6;box-shadow:0 0 0 1px rgba(28,27,24,.08);padding:20px 24px;display:flex;flex-direction:column;gap:16px;position:relative">
+<div style="display:grid;grid-template-columns:86px minmax(0,1fr);gap:14px"><div style="font-size:12px;font-weight:600;color:#1B7A74;display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#1B7A74"></span>Interviewer</div><div style="font-family:Newsreader,serif;font-size:17px;line-height:1.55">And when you look back at the early footage, what do you keep?</div></div>
+<div style="display:grid;grid-template-columns:86px minmax(0,1fr);gap:14px"><div style="font-size:12px;font-weight:600;color:#C44B16;display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#C44B16"></span>Nimali</div><div style="font-family:Newsreader,serif;font-size:17px;line-height:1.55">I always keep the <mark>first take</mark>. The second one is for the editor, but the <mark class="cur">first take</mark> is for me. It still has the room in it.</div></div>
+<div class="gl" style="align-self:center;display:flex;align-items:center;gap:14px;height:56px;border-radius:28px;padding:0 20px 0 8px;margin-top:6px"><span style="width:40px;height:40px;border-radius:20px;background:#C44B16;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="16" height="16" aria-label="Play" role="img"><path d="M8.5 6v12l10-6z" fill="#fff"/></svg></span><span style="font-size:12px;font-variant-numeric:tabular-nums">14:32</span><span style="width:200px;height:4px;border-radius:2px;background:rgba(28,27,24,.15);position:relative"><span style="position:absolute;left:0;top:0;bottom:0;width:30%;border-radius:2px;background:#C44B16"></span></span><span style="font-size:12px;color:#6B675D;font-variant-numeric:tabular-nums">48:12</span></div>
+</div>
+<div style="font-size:12px;color:#5A564E;line-height:1.5">Find bar is solid and sits under the toolbar (⌘F; ⌥⌘F opens Replace). Matches use Ember tint, the current match solid Ember with white text.</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px">
+<div style="background:#FCFAF6;border-radius:22px;box-shadow:0 0 0 1px rgba(28,27,24,.12);padding:20px;display:flex;flex-direction:column;gap:12px">
+<div style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:#6B675D;font-weight:600">Speaker popover (DIA)</div>
+<div style="border-radius:16px;background:#fff;box-shadow:0 0 0 1px rgba(28,27,24,.1),0 14px 34px rgba(60,40,20,.16);padding:14px;display:flex;flex-direction:column;gap:10px">
+<div style="height:32px;border-radius:10px;background:#F3EEE5;display:flex;align-items:center;padding:0 12px;font-size:13px;font-weight:600">Nimali Perera</div>
+<div style="display:flex;gap:7px"><span style="width:22px;height:22px;border-radius:50%;background:#C44B16;box-shadow:0 0 0 2px #fff,0 0 0 4px #1C1B18"></span><span style="width:22px;height:22px;border-radius:50%;background:#1B7A74"></span><span style="width:22px;height:22px;border-radius:50%;background:#5558D6"></span><span style="width:22px;height:22px;border-radius:50%;background:#A67A0B"></span><span style="width:22px;height:22px;border-radius:50%;background:#9A3E7A"></span><span style="width:22px;height:22px;border-radius:50%;background:#5B6B7A"></span></div>
+<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0"><span>Merge into…</span><span style="color:#6B675D">Interviewer ›</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:4px 0"><span>Save voice profile on this Mac</span><span style="width:34px;height:20px;border-radius:10px;background:rgba(28,27,24,.2);position:relative"><span style="position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3)"></span></span></div>
+</div></div>
+<div style="background:#FCFAF6;border-radius:22px;box-shadow:0 0 0 1px rgba(28,27,24,.12);padding:20px;display:flex;flex-direction:column;gap:12px">
+<div style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:#6B675D;font-weight:600">Translation views (TRN)</div>
+<div style="display:flex;padding:3px;border-radius:17px;background:#F3EEE5;font-size:12px;font-weight:600"><span style="flex:1;text-align:center;padding:5px 0;color:#5A564E">Original</span><span style="flex:1;text-align:center;padding:5px 0;color:#5A564E">Translated</span><span style="flex:1;text-align:center;padding:5px 0;border-radius:14px;background:#fff;box-shadow:0 1px 4px rgba(60,40,20,.14)">Bilingual</span></div>
+<div style="font-family:'Noto Sans Sinhala',Newsreader,serif;font-size:16px;line-height:1.5">අද පාඩමේදී අපි ක්‍රියා පද ගැන කතා කරමු.</div>
+<div style="font-family:Newsreader,serif;font-size:14.5px;line-height:1.5;color:#5A564E;font-style:italic;border-top:1px dashed rgba(28,27,24,.15);padding-top:8px">In today's lesson we will talk about verbs.</div>
+<div style="font-size:11.5px;color:#6B675D">Translated line sits under the original in secondary ink. Exports follow the chosen view.</div>
+</div></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="border-radius:24px;padding:18px;background:radial-gradient(400px 260px at 20% 30%,#F0B48A,transparent 70%),radial-gradient(500px 300px at 90% 20%,#7FB9B3,transparent 70%),radial-gradient(500px 300px at 60% 100%,#8E7BC8,transparent 70%),#D8C7AE;display:flex;flex-direction:column;gap:14px;color:#F3EFE7">
+<div style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:#2B2822;font-weight:600">Live overlay presets (LIVE)</div>
+<sc-for list="{{presets}}" as="p" hint-placeholder-count="3"><div><div style="font-size:11.5px;color:#2B2822;margin-bottom:5px;font-weight:600">{{p.n}}</div><div class="g2" style="border-radius:{{p.r}}px;padding:{{p.pd}};opacity:{{p.op}};font-size:{{p.fs}}px;line-height:1.35;font-weight:500;font-family:-apple-system,'Noto Sans Sinhala',sans-serif;width:{{p.w}}px">{{p.t}}</div></div></sc-for>
+<div style="font-size:11.5px;color:#2B2822;line-height:1.5">Presets change size, lines (1-3), opacity and position. Position is remembered per display. The overlay is click-through and never takes focus. Prominent material with a Night tint stays legible over any wallpaper.</div>
+</div>
+<div style="background:#FCFAF6;border-radius:22px;box-shadow:0 0 0 1px rgba(28,27,24,.12);padding:20px;display:flex;flex-direction:column;gap:10px">
+<div style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:#6B675D;font-weight:600">Segment states in the transcript</div>
+<sc-for list="{{segs}}" as="s" hint-placeholder-count="4"><div style="display:flex;gap:10px;align-items:center;font-size:12.5px;padding:7px 10px;border-radius:11px;background:{{s.bg}};opacity:{{s.op}}"><span style="width:8px;height:8px;border-radius:50%;background:{{s.c}};flex:none"></span><span style="flex:1">{{s.t}}</span><span style="font-size:11px;color:#6B675D">{{s.l}}</span></div></sc-for>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+renderVals() {
+return {
+ presets:[
+  {n:'Compact · 1 line · 85%',r:20,pd:'10px 18px',op:.92,fs:17,w:380,t:'We patch the one line, and the room sound'},
+  {n:'Standard · 2 lines · 100%',r:26,pd:'14px 22px',op:1,fs:22,w:470,t:'Almost never. We patch the one line, and the room sound stays the same across the edit.'},
+  {n:'Large · 3 lines · accessibility',r:30,pd:'18px 26px',op:1,fs:30,w:510,t:'Almost never. We patch the one line, and the room sound stays the same across the whole edit.'}
+ ],
+ segs:[
+  {c:'#C44B16',t:'Current word follows the audio',l:'karaoke',bg:'#F7E4D8',op:1},
+  {c:'#6B675D',t:'[Music] ignored by a rule',l:'hidden, restorable',bg:'#F3EEE5',op:.55},
+  {c:'#1B7A74',t:'Edited segment keeps its timings',l:'revision saved',bg:'#F7F3EB',op:1},
+  {c:'#A67A0B',t:'Low-confidence words underlined',l:'dotted ink2',bg:'#F7F3EB',op:1}
+ ]
+};
+}
+}
+</script>
+</body>
+</html>

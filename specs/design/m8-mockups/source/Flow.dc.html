@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earmark onboarding flow</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Noto+Sans+Sinhala:wght@400;600&display=swap">
+<style>
+body{margin:0}
+@keyframes sh{0%{background-position:-200px 0}100%{background-position:200px 0}}
+.dl{background:linear-gradient(90deg,#E8794A 0%,#C44B16 40%,#F29A6E 50%,#C44B16 60%,#C44B16 100%);background-size:200px 100%;animation:sh 2.4s linear infinite}
+@media (prefers-reduced-motion:reduce){.dl{animation:none}}
+</style>
+</helmet>
+<div style="width:1440px;height:1170px;box-sizing:border-box;background:#F3EEE5;color:#1C1B18;font-family:-apple-system,'SF Pro Text',system-ui,sans-serif;padding:48px 64px;display:flex;flex-direction:column;gap:24px">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="fg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E8794A"/><stop offset=".55" stop-color="#C44B16"/><stop offset="1" stop-color="#8F360E"/></linearGradient><clipPath id="fc"><path d="M22 0H78a22 22 0 0 1 22 22V78a22 22 0 0 1-22 22H22A22 22 0 0 1 0 78V22A22 22 0 0 1 22 0Z"/></clipPath></defs></svg>
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:40px">
+<div><div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6B675D;font-weight:600">Onboarding · all five steps (ONB)</div>
+<div style="font-family:Newsreader,serif;font-size:44px;line-height:1.05;letter-spacing:-.025em;margin-top:8px">Welcome to just-in-time permissions</div></div>
+<div style="max-width:430px;font-size:13.5px;line-height:1.55;color:#5A564E">Same split layout as the detailed step 2 board: an Ember panel with the icon on the left, content on Sheet on the right. No glass in content. Permissions are asked only when a feature needs them; this step explains and defers.</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;flex:1">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="5">
+<div style="border-radius:22px;background:#FCFAF6;box-shadow:0 0 0 1px rgba(28,27,24,.12),0 18px 40px rgba(60,40,20,.12);overflow:hidden;display:grid;grid-template-columns:118px minmax(0,1fr);min-height:480px">
+<div style="background:linear-gradient(155deg,#E8794A,#C44B16 55%,#8F360E);display:flex;align-items:center;justify-content:center;position:relative">
+<svg viewBox="0 0 100 100" width="72" height="72" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 0H78a22 22 0 0 1 22 22V78a22 22 0 0 1-22 22H22A22 22 0 0 1 0 78V22A22 22 0 0 1 22 0Z" fill="#FFF8F1" fill-opacity=".18" stroke="rgba(255,255,255,.55)"/><g transform="translate(12 16) scale(1.15)"><path d="M30 8c-9 0-16 7-16 16v6c0 5 3 7 6 10 2 2 3 4 3 7a6 6 0 0 0 11 3M30 20c-4 0-7 3-7 7" fill="none" stroke="#FFFCF6" stroke-width="5"/><path d="M44 20a15 15 0 0 1 0 20" fill="none" stroke="#FFD7BF" stroke-width="4.4"/></g><g clip-path="url(#fc)"><path d="M72 0H100V28Z" fill="rgba(70,20,0,.35)"/><path d="M72 0V24a4 4 0 0 0 4 4H100Z" fill="#FFE9DA"/></g></svg>
+</div>
+<div style="padding:22px 22px 18px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;gap:6px;align-items:center"><sc-for list="{{s.dots}}" as="d" hint-placeholder-count="5"><span style="height:5px;width:{{d.w}}px;border-radius:3px;background:{{d.c}}"></span></sc-for><span style="margin-left:6px;font-size:11px;color:#6B675D">Step {{s.n}} of 5</span></div>
+<div style="font-family:Newsreader,serif;font-size:24px;line-height:1.15;letter-spacing:-.02em">{{s.t}}</div>
+<div style="font-size:12.5px;color:#5A564E;line-height:1.5">{{s.s}}</div>
+<div style="display:flex;flex-direction:column;gap:7px">
+<sc-for list="{{s.rows}}" as="r" hint-placeholder-count="4"><div style="border-radius:13px;background:#F7F3EB;padding:9px 11px;display:flex;align-items:center;gap:10px"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="{{r.p}}" stroke="#1C1B18" stroke-width="1.6"/><path d="{{r.a}}" stroke="#C44B16" stroke-width="2.1"/></svg><div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:600">{{r.t}}</div><div style="font-size:11.5px;color:#5A564E;margin-top:1px;line-height:1.35">{{r.d}}</div></div><span style="font-size:11px;font-weight:600;padding:2px 9px;border-radius:9px;{{r.cs}}">{{r.c}}</span></div></sc-for>
+</div>
+<div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12.5px;color:#5A564E;font-weight:500">{{s.back}}</span><span style="height:32px;border-radius:16px;padding:0 18px;display:flex;align-items:center;font-size:12.5px;font-weight:600;background:#C44B16;color:#fff">{{s.cta}}</span></div>
+</div>
+</div>
+</sc-for>
+<div style="border-radius:22px;background:#EDE5D6;padding:22px;display:flex;flex-direction:column;gap:10px;font-size:12.5px;line-height:1.55;color:#3A372F"><b style="font-size:14px">Rules for this flow</b><div>Skippable except the model choice. Back is always available. Quitting mid-flow resumes at the same step.</div><div>The recording consent notice is shown once, in step 3, in plain words: you are responsible for telling participants.</div><div>Each permission links to its System Settings pane after a denial. Denied never blocks the rest of the app.</div><div>Reduce Motion: the icon stops floating; steps crossfade in 120 ms.</div></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1170}}'>
+class Component extends DCLogic {
+renderVals() {
+const dots=(n)=>[1,2,3,4,5].map(i=>({w:i===n?20:7,c:i<=n?'#C44B16':'rgba(28,27,24,.15)'}));
+const ok='background:#DDEFE4;color:#1E5E3A', ask='background:#F3EEE5;color:#5A564E', on='background:#F7E4D8;color:#9E3A10';
+const P={wave:['M4 10v4M8 7v10M16 8v8M20 10.5v3','M12 4v16'],shield:['M12 3.5 5 6v5.5c0 4 3 7 7 9 4-2 7-5 7-9V6z','M9.5 12l2 2 3.5-4'],mic:['M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3zM6 11.5a6 6 0 0 0 12 0','M12 17.5V21M9 21h6'],spk:['M4 9.8v4.4h3.4l4.6 3.6V6.2L7.4 9.8z','M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11'],ax:['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z','M12 8v5M9 11h6'],bell:['M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z','M10 20.5h4'],ear:['M12 3.5c-3.3 0-6 2.6-6 6v2.3c0 1.9 1.1 2.6 2.2 3.8.7.8 1.1 1.5 1.1 2.6a2.3 2.3 0 0 0 4.1 1.1','M16.5 8.3a5.6 5.6 0 0 1 0 7.4'],up:['M5 13.5V18a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4.5','M12 15V4.5M8 8.4l4-3.9 4 3.9'],lang:['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z','M3.5 12h17'],model:['M8 6.5h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 16V8A1.5 1.5 0 0 1 8 6.5z','M10.5 10.5h3v3h-3z'],live:['M4 6h16a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-7l-4 3.5V16H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z','M7 10h4M7 13h8']};
+const R=(k,t,d,c,cs)=>({p:P[k][0],a:P[k][1],t,d,c,cs});
+return { steps:[
+ {n:1,dots:dots(1),t:'Your voice stays on your Mac',s:'Earmark turns speech into transcripts you can edit and export. Everything runs on this Mac.',back:'',cta:'Get started',rows:[R('shield','Private by default','No accounts, no cloud, no analytics.','',''),R('wave','Fast on Apple silicon','Transcribe files, meetings and live audio.','',''),R('lang','English and Sinhala','Plus 97 more languages, mixed in one transcript.','','')]},
+ {n:2,dots:dots(2),t:'Which languages do you speak?',s:'English is the default. Earmark picks the right model for each language.',back:'Back',cta:'Continue',rows:[R('lang','English','Default','On',on),R('lang','සිංහල · Sinhala','Qwen3-ASR for best accuracy','On',on),R('model','Whisper large-v3 turbo','Recommended · 1.6 GB, downloading','42%',ask)]},
+ {n:3,dots:dots(3),t:'Permissions, only when needed',s:'Nothing is requested now. Each is asked at the moment a feature needs it.',back:'Back',cta:'Continue',rows:[R('mic','Microphone','Live captions, dictation, meetings','Ask later',ask),R('spk','System audio','Captions and meetings from other apps','Ask later',ask),R('ax','Accessibility','Dictation into other apps','Ask later',ask),R('bell','Notifications','Meeting detected, job finished','Ask later',ask)]},
+ {n:4,dots:dots(4),t:'Earmark lives in your menu bar',s:'Close the window and it keeps listening for meetings when you choose.',back:'Back',cta:'Continue',rows:[R('ear','Menu bar icon','Shows a red dot while capturing.','',''),R('live','One-click live captions','Start or stop, and see the last lines.','',''),R('up','Drop files on the icon','Transcribe without opening a window.','','')]},
+ {n:5,dots:dots(5),t:'You are ready',s:'Drop a file to begin, or start live captions. Recording consent is explained once, here.',back:'Back',cta:'Open Earmark',rows:[R('shield','Recording consent','You are responsible for telling participants before you record.','Got it',ok),R('up','Transcribe a file','Drag audio or video onto Home.','',''),R('live','Start live captions','Hold Fn for dictation anytime.','','')]}
+] };
+}
+}
+</script>
+</body>
+</html>

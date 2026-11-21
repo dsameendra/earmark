@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earmark settings tabs</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500&display=swap">
+<style>
+body{margin:0}
+.gl{background:rgba(255,252,247,.6);-webkit-backdrop-filter:blur(28px) saturate(1.7);backdrop-filter:blur(28px) saturate(1.7);box-shadow:0 0 0 1px rgba(255,255,255,.7) inset,0 8px 22px rgba(60,40,20,.1)}
+</style>
+</helmet>
+<div style="width:1440px;height:820px;position:relative;overflow:hidden;font-family:-apple-system,'SF Pro Text',system-ui,sans-serif;color:#1C1B18;background:radial-gradient(700px 500px at 20% 30%,#F0B48A,transparent 70%),radial-gradient(800px 600px at 80% 20%,#7FB9B3,transparent 70%),radial-gradient(900px 600px at 60% 100%,#8E7BC8,transparent 70%),#D8C7AE">
+<sc-for list="{{wins}}" as="w" hint-placeholder-count="2">
+<div style="position:absolute;left:{{w.x}}px;top:60px;width:660px;height:700px;border-radius:26px;background:#F3EEE5;box-shadow:0 0 0 1px rgba(28,27,24,.12),0 40px 90px rgba(30,20,10,.35);overflow:hidden;display:flex;flex-direction:column">
+<div style="height:68px;flex:none;display:flex;align-items:center;gap:10px;padding:0 18px">
+<div style="display:flex;gap:7px"><span style="width:11px;height:11px;border-radius:50%;background:#FF5F57"></span><span style="width:11px;height:11px;border-radius:50%;background:#FEBC2E"></span><span style="width:11px;height:11px;border-radius:50%;background:#28C840"></span></div>
+<div style="flex:1;display:flex;justify-content:center"><div class="gl" style="display:flex;gap:1px;padding:3px;border-radius:22px;font-size:10.5px;font-weight:500">
+<sc-for list="{{w.tabs}}" as="t" hint-placeholder-count="7"><div style="width:62px;height:44px;border-radius:17px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;{{t.st}}"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.p}}" stroke="{{t.ik}}" stroke-width="1.6"/><path d="{{t.a}}" stroke="#C44B16" stroke-width="2.1"/></svg>{{t.n}}</div></sc-for>
+</div></div><div style="width:50px"></div></div>
+<div style="flex:1;padding:4px 26px 24px;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+<div><div style="font-family:Newsreader,serif;font-size:28px;letter-spacing:-.02em">{{w.title}}</div><div style="font-size:12.5px;color:#5A564E;margin-top:2px;line-height:1.45">{{w.sub}}</div></div>
+<div style="background:#FCFAF6;border-radius:18px;box-shadow:0 0 0 1px rgba(28,27,24,.08);display:flex;flex-direction:column">
+<sc-for list="{{w.rows}}" as="r" hint-placeholder-count="6"><div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:{{r.bb}}"><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600">{{r.t}}</div><div style="font-size:12px;color:#5A564E;margin-top:2px;line-height:1.4">{{r.d}}</div></div><span style="font-size:12px;font-weight:600;padding:4px 12px;border-radius:14px;white-space:nowrap;{{r.cs}}">{{r.c}}</span></div></sc-for>
+</div>
+<div style="font-size:12px;color:#5A564E;line-height:1.5">{{w.foot}}</div>
+</div>
+</div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":820}}'>
+class Component extends DCLogic {
+renderVals() {
+const on='background:rgba(255,255,255,.8);color:#1C1B18;box-shadow:0 1px 0 #fff inset,0 3px 10px rgba(60,40,20,.1)', off='color:#5A564E';
+const T=(sel)=>[['General','M4 8h9.8M17.6 8H20M4 16h2.4M10.2 16H20','M13.8 8a1.9 1.9 0 1 0 3.8 0 1.9 1.9 0 1 0-3.8 0z'],['Audio','M4 10v4M8 7v10M16 8v8M20 10.5v3','M12 4v16'],['Models','M8 6.5h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 16V8A1.5 1.5 0 0 1 8 6.5z','M10.5 10.5h3v3h-3z'],['Languages','M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z','M3.5 12h17'],['Meetings','M3.8 19c.5-3 2.8-4.8 5.2-4.8s4.7 1.8 5.2 4.8M9 11.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M15.5 5.6a2.6 2.6 0 0 1 0 5'],['Export','M5 13.5V18a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4.5','M12 15V4.5M8 8.4l4-3.9 4 3.9'],['Privacy','M12 3.5 5 6v5.5c0 4 3 7 7 9 4-2 7-5 7-9V6z','M9.5 12l2 2 3.5-4']].map(([n,p,a])=>({n,p,a,st:n===sel?on:off,ik:n===sel?'#1C1B18':'#5A564E'}));
+const L='1px solid rgba(28,27,24,.08)';
+const ok='background:#DDEFE4;color:#1E5E3A', warn='background:#FBF3E0;color:#7A4E05', act='background:#F3EEE5;color:#1C1B18', pri='background:#C44B16;color:#fff';
+return { wins:[
+ {x:40,tabs:T('General'),title:'General',sub:'How Earmark starts and where it keeps things.',rows:[
+  {t:'Open at login',d:'Keep running in the menu bar for meetings and dictation.',c:'Off',cs:act,bb:L},
+  {t:'Keep running when the window closes',d:'Always on while a job or session is active.',c:'On',cs:ok,bb:L},
+  {t:'Default language',d:'Linked to the model picker.',c:'English',cs:act,bb:L},
+  {t:'Appearance',d:'Follows the system. Ember is the fixed accent.',c:'System',cs:act,bb:L},
+  {t:'Recently Deleted retention',d:'Soft-deleted items can be restored until then.',c:'30 days',cs:act,bb:L},
+  {t:'Storage',d:'Transcripts and recordings on this Mac: 2.4 GB.',c:'Clear caches…',cs:act,bb:'none'}],
+  foot:'Settings groups use Sheet rows with a single hairline between them. Toggles and pickers are native controls tinted Ember.'},
+ {x:740,tabs:T('Privacy'),title:'Privacy & Permissions',sub:'Earmark runs on this Mac. It asks for access only when a feature needs it.',rows:[
+  {t:'Microphone',d:'Live captions, dictation, meeting capture.',c:'Allowed',cs:ok,bb:L},
+  {t:'System audio',d:'Captions and meetings from other apps.',c:'Allow…',cs:pri,bb:L},
+  {t:'Accessibility',d:'Insert dictated text into other apps.',c:'Open System Settings',cs:act,bb:L},
+  {t:'Screen recording',d:'Only used if you record meeting video.',c:'Not needed yet',cs:warn,bb:L},
+  {t:'Notifications',d:'Meeting detected, job finished.',c:'Allowed',cs:ok,bb:L},
+  {t:'Network',d:'Only model downloads you start. No analytics, ever.',c:'Last: Nov 21',cs:act,bb:'none'}],
+  foot:'Denied permissions never block the rest of the app. Each row links to its System Settings pane. Recording consent: you are responsible for telling participants.'}
+] };
+}
+}
+</script>
+</body>
+</html>

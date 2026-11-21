@@ -1,0 +1,244 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Editor.dc.html": {
+      "h": 900,
+      "title": "Editor + player (dark)",
+      "w": 1440,
+      "x": 0,
+      "y": 3320
+    },
+    "Export.dc.html": {
+      "h": 700,
+      "title": "Export sheet",
+      "w": 900,
+      "x": 4560,
+      "y": 4640
+    },
+    "Floating.dc.html": {
+      "h": 900,
+      "title": "Menu bar, overlay, HUD, prompt",
+      "w": 1440,
+      "x": 0,
+      "y": 4640
+    },
+    "Glass.dc.html": {
+      "h": 1280,
+      "title": "Liquid Glass + motion library",
+      "w": 1440,
+      "x": 3040,
+      "y": 300
+    },
+    "Handoff1.dc.html": {
+      "h": 1540,
+      "title": "Handoff 1 — tokens and mapping",
+      "w": 1440,
+      "x": 0,
+      "y": 7540
+    },
+    "Handoff2.dc.html": {
+      "h": 2680,
+      "title": "Handoff 2 — screens, assets, open items",
+      "w": 1440,
+      "x": 1520,
+      "y": 7540
+    },
+    "Home.dc.html": {
+      "h": 900,
+      "title": "Home",
+      "w": 1440,
+      "x": 0,
+      "y": 2000
+    },
+    "Icons.dc.html": {
+      "h": 1280,
+      "title": "Icon set",
+      "w": 1440,
+      "x": 1520,
+      "y": 300
+    },
+    "Library.dc.html": {
+      "h": 900,
+      "title": "Library",
+      "w": 1440,
+      "x": 3040,
+      "y": 2000
+    },
+    "Live.dc.html": {
+      "h": 900,
+      "title": "Live",
+      "w": 1440,
+      "x": 3040,
+      "y": 3320
+    },
+    "Main.dc.html": {
+      "h": 1340,
+      "title": "Brand identity",
+      "w": 1440,
+      "x": 0,
+      "y": 300
+    },
+    "Meetings.dc.html": {
+      "h": 900,
+      "title": "Meetings",
+      "w": 1440,
+      "x": 1520,
+      "y": 3320
+    },
+    "Motion.dc.html": {
+      "h": 840,
+      "title": "Motion spec",
+      "w": 1440,
+      "x": 4560,
+      "y": 300
+    },
+    "Onboarding.dc.html": {
+      "h": 900,
+      "title": "Onboarding",
+      "w": 1440,
+      "x": 3040,
+      "y": 4640
+    },
+    "Queue.dc.html": {
+      "h": 900,
+      "title": "Queue",
+      "w": 1440,
+      "x": 1520,
+      "y": 2000
+    },
+    "Settings.dc.html": {
+      "h": 900,
+      "title": "Settings — Models",
+      "w": 1440,
+      "x": 1520,
+      "y": 4640
+    },
+    "Sidebar.dc.html": {
+      "h": 640,
+      "title": "Sidebar component",
+      "w": 232,
+      "x": 6080,
+      "y": 300
+    },
+    "Flow.dc.html": {
+      "x": 0,
+      "y": 5940,
+      "w": 1440,
+      "h": 1170,
+      "title": "Onboarding — all five steps"
+    },
+    "States.dc.html": {
+      "x": 1520,
+      "y": 5940,
+      "w": 1440,
+      "h": 1100,
+      "title": "States — deleted, empty, error, loading"
+    },
+    "Components.dc.html": {
+      "x": 3040,
+      "y": 5940,
+      "w": 1440,
+      "h": 940,
+      "title": "Components — find, speakers, translation, presets"
+    },
+    "SettingsTabs.dc.html": {
+      "x": 4560,
+      "y": 5940,
+      "w": 1440,
+      "h": 820,
+      "title": "Settings — General and Privacy"
+    },
+    "Responsive.dc.html": {
+      "x": 6080,
+      "y": 5940,
+      "w": 1440,
+      "h": 800,
+      "title": "Responsive windows"
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-11-22T09:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "t1": {
+      "kind": "title1",
+      "maxW": 6312,
+      "text": "Earmark — brand, symbols, glass, motion",
+      "w": 240,
+      "x": 0,
+      "y": 0
+    },
+    "t2": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Core screens",
+      "w": 240,
+      "x": 0,
+      "y": 1700
+    },
+    "t3": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Editor, meetings, live",
+      "w": 240,
+      "x": 0,
+      "y": 3020
+    },
+    "t4": {
+      "kind": "title1",
+      "maxW": 5460,
+      "text": "Floating surfaces, settings, onboarding, export",
+      "w": 240,
+      "x": 0,
+      "y": 4340
+    },
+    "t5": {
+      "kind": "title1",
+      "maxW": 7520,
+      "text": "Flows, states, components, responsive",
+      "w": 240,
+      "x": 0,
+      "y": 5640
+    },
+    "t6": {
+      "kind": "title1",
+      "maxW": 2960,
+      "text": "Handoff to M8 — read before building",
+      "w": 240,
+      "x": 0,
+      "y": 7240
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Icons.dc.html",
+    "Glass.dc.html",
+    "Motion.dc.html",
+    "Sidebar.dc.html",
+    "Home.dc.html",
+    "Queue.dc.html",
+    "Library.dc.html",
+    "Editor.dc.html",
+    "Meetings.dc.html",
+    "Live.dc.html",
+    "Floating.dc.html",
+    "Settings.dc.html",
+    "Onboarding.dc.html",
+    "Export.dc.html",
+    "Flow.dc.html",
+    "States.dc.html",
+    "Components.dc.html",
+    "SettingsTabs.dc.html",
+    "Responsive.dc.html",
+    "Handoff1.dc.html",
+    "Handoff2.dc.html"
+  ],
+  "pages": [],
+  "title": "Earmark — UI/UX & Visual Identity (Final v1)"
+}

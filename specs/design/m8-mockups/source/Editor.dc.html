@@ -38,7 +38,7 @@ body{margin:0}
 <sc-for list="{{segs}}" as="s" hint-placeholder-count="5">
 <div style="display:grid;grid-template-columns:96px minmax(0,1fr);gap:18px;opacity:{{s.op}}">
 <div style="display:flex;flex-direction:column;gap:5px;padding-top:2px"><div style="display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:{{s.c}}"><span style="width:8px;height:8px;border-radius:50%;background:{{s.c}}"></span>{{s.sp}}</div><div style="font-size:11.5px;color:#9A9589;font-variant-numeric:tabular-nums">{{s.ts}}</div></div>
-<div style="font-family:Newsreader,'Noto Sans Sinhala',serif;font-size:19px;line-height:1.6;color:#E8E3D9">{{s.pre}}<span style="display:{{s.kd}}" class="kw">{{s.kw}}</span>{{s.post}}<span style="display:{{s.bd}};margin-left:10px;font-family:-apple-system,sans-serif;font-size:11px;font-weight:600;color:#B5B0A5;border:1px solid rgba(255,255,255,.2);border-radius:9px;padding:1px 8px;vertical-align:2px">{{s.badge}}</span></div>
+<div style="font-family:Newsreader,'Noto Sans Sinhala',serif;font-size:19px;line-height:1.6;color:#E8E3D9">{{s.pre}}<span style="display:{{s.kd}}" class="kw">{{s.kw}}</span>{{s.post}}<span style="display:{{s.bd}};margin-left:10px;white-space:nowrap;font-family:-apple-system,sans-serif;font-size:11px;font-weight:600;color:#B5B0A5;border:1px solid rgba(255,255,255,.2);border-radius:9px;padding:1px 8px;vertical-align:2px">{{s.badge}}</span></div>
 </div>
 </sc-for>
 <div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(transparent,#1B1A17 70%)"></div>
@@ -90,12 +90,15 @@ return {
  ],
  spk:[{i:'P',n:'Nimali Perera',c:'#F28A57',t:'31:20'},{i:'I',n:'Interviewer',c:'#4FB3AB',t:'16:52'}],
  segs:[
-  {sp:'Interviewer',c:'#4FB3AB',ts:'14:18',op:1,pre:'And when you look back at the early footage, what do you ',kw:'keep',post:'?',kd:'none',bd:'none',badge:''},
+  {sp:'Interviewer',c:'#4FB3AB',ts:'14:18',op:1,pre:'And when you look back at the early footage, what do you keep?',kw:'',post:'',kd:'none',bd:'none',badge:''},
   {sp:'Nimali Perera',c:'#F28A57',ts:'14:24',op:1,pre:'I always keep the first take. The second one is for the editor, but the ',kw:'first one',post:' is for me. It still has the room in it.',kd:'inline',bd:'none',badge:''},
   {sp:'Interviewer',c:'#4FB3AB',ts:'14:41',op:1,pre:'Even when the audio is rough?',kw:'',post:'',kd:'none',bd:'none',badge:''},
   {sp:'Nimali Perera',c:'#F28A57',ts:'14:46',op:1,pre:'Rough is honest. අපි ඒක හැමදාම කියනවා — ඇත්තටම හොඳම කොටස ඒක.',kw:'',post:'',kd:'none',bd:'inline',badge:'EN · සිං'},
   {sp:'Hidden',c:'#9A9589',ts:'15:02',op:.42,pre:'[Music]',kw:'',post:'',kd:'none',bd:'inline',badge:'Ignored'},
-  {sp:'Interviewer',c:'#4FB3AB',ts:'15:06',op:1,pre:'Let’s talk about how you earmark a moment worth coming back to.',kw:'',post:'',kd:'none',bd:'none',badge:''}
+  {sp:'Interviewer',c:'#4FB3AB',ts:'15:06',op:1,pre:'Let’s talk about how you earmark a moment worth coming back to.',kw:'',post:'',kd:'none',bd:'none',badge:''},
+  {sp:'Nimali Perera',c:'#F28A57',ts:'15:15',op:1,pre:'Usually it is a pause. Someone stops, and you can hear them deciding whether to say the true thing.',kw:'',post:'',kd:'none',bd:'none',badge:''},
+  {sp:'Interviewer',c:'#4FB3AB',ts:'15:34',op:1,pre:'And that is the part you mark?',kw:'',post:'',kd:'none',bd:'none',badge:''},
+  {sp:'Nimali Perera',c:'#F28A57',ts:'15:38',op:1,pre:'Always. A small fold in the corner, so I can find my way back to it.',kw:'',post:'',kd:'none',bd:'none',badge:''}
  ]
 };
 }

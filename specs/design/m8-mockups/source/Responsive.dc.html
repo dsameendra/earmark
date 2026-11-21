@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earmark responsive windows</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500&display=swap">
+<style>
+body{margin:0}
+.gl{background:rgba(255,252,247,.58);-webkit-backdrop-filter:blur(28px) saturate(1.7);backdrop-filter:blur(28px) saturate(1.7);box-shadow:0 0 0 1px rgba(255,255,255,.7) inset,0 6px 18px rgba(60,40,20,.12)}
+.bl{background:rgba(28,27,24,.1);border-radius:4px}
+</style>
+</helmet>
+<div style="width:1440px;height:800px;box-sizing:border-box;background:#F3EEE5;color:#1C1B18;font-family:-apple-system,'SF Pro Text',system-ui,sans-serif;padding:48px 64px;display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:40px">
+<div><div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6B675D;font-weight:600">Responsive windows</div>
+<div style="font-family:Newsreader,serif;font-size:44px;line-height:1.05;letter-spacing:-.025em;margin-top:8px">One layout, three window sizes</div></div>
+<div style="max-width:430px;font-size:13.5px;line-height:1.55;color:#5A564E">Schematic frames show where things go as the window changes. Minimum window is 960 × 600. Content never stretches past 1120 pt.</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1.15fr 1.55fr;gap:20px;flex:1;align-items:start">
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font-size:13px;font-weight:600">Narrow · 960 × 600 to 1100 pt</div>
+<div style="height:380px;border-radius:20px;position:relative;background:radial-gradient(300px 200px at 10% 0%,rgba(196,75,22,.15),transparent 60%),#EFE7D9;box-shadow:0 0 0 1px rgba(28,27,24,.12);padding:8px;display:flex;gap:8px">
+<div class="gl" style="width:132px;border-radius:16px;padding:10px;display:flex;flex-direction:column;gap:7px"><div class="bl" style="height:10px;width:60%"></div><div style="height:22px;border-radius:9px;background:rgba(255,255,255,.8)"></div><div class="bl" style="height:10px;width:75%"></div><div class="bl" style="height:10px;width:55%"></div></div>
+<div style="flex:1;border-radius:16px;background:#FCFAF6;padding:10px;display:flex;flex-direction:column;gap:7px"><div class="bl" style="height:10px;width:40%"></div><div class="bl" style="height:44px;width:100%"></div><div class="bl" style="height:44px;width:100%"></div><div class="bl" style="height:10px;width:70%"></div></div></div>
+<div style="font-size:12.5px;line-height:1.5;color:#5A564E">Sidebar narrows to its minimum width. The Editor inspector hides behind a toolbar toggle and opens as a solid popover. Home action cards go two across.</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font-size:13px;font-weight:600">Compact · below 800 pt</div>
+<div style="height:380px;border-radius:20px;position:relative;background:radial-gradient(300px 200px at 10% 0%,rgba(196,75,22,.15),transparent 60%),#EFE7D9;box-shadow:0 0 0 1px rgba(28,27,24,.12);padding:8px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:center;gap:8px"><div class="gl" style="width:34px;height:34px;border-radius:17px"></div><div class="bl" style="height:10px;width:30%"></div><div style="flex:1"></div><div class="gl" style="width:96px;height:34px;border-radius:17px"></div></div>
+<div style="flex:1;border-radius:16px;background:#FCFAF6;padding:12px;display:flex;flex-direction:column;gap:8px"><div class="bl" style="height:10px;width:50%"></div><div class="bl" style="height:50px;width:100%"></div><div class="bl" style="height:50px;width:100%"></div><div class="bl" style="height:50px;width:100%"></div></div></div>
+<div style="font-size:12.5px;line-height:1.5;color:#5A564E">Sidebar collapses; a toolbar button reveals it as an overlay. Library table drops the Language column, then Speakers. Action cards stack in one column.</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font-size:13px;font-weight:600">Wide · 1440 pt and above</div>
+<div style="height:380px;border-radius:20px;position:relative;background:radial-gradient(300px 200px at 10% 0%,rgba(196,75,22,.15),transparent 60%),#EFE7D9;box-shadow:0 0 0 1px rgba(28,27,24,.12);padding:8px;display:flex;gap:8px">
+<div class="gl" style="width:90px;border-radius:16px;padding:10px;display:flex;flex-direction:column;gap:7px"><div class="bl" style="height:10px;width:60%"></div><div style="height:20px;border-radius:9px;background:rgba(255,255,255,.8)"></div><div class="bl" style="height:10px;width:75%"></div></div>
+<div style="flex:1;border-radius:16px;background:#F7F3EB;display:flex;justify-content:center;padding:8px"><div style="width:62%;border-radius:12px;background:#FCFAF6;box-shadow:0 0 0 1px rgba(28,27,24,.08);padding:10px;display:flex;flex-direction:column;gap:7px"><div class="bl" style="height:10px;width:40%"></div><div class="bl" style="height:40px;width:100%"></div><div class="bl" style="height:40px;width:100%"></div></div></div>
+<div style="width:90px;border-radius:16px;background:#FCFAF6;padding:10px;display:flex;flex-direction:column;gap:7px"><div class="bl" style="height:10px;width:70%"></div><div class="bl" style="height:10px;width:50%"></div></div></div>
+<div style="font-size:12.5px;line-height:1.5;color:#5A564E">Content is centred with a 1120 pt maximum so transcript lines stay readable (about 70 characters). The Editor inspector stays docked. Full screen adds margin, never wider text.</div>
+</div>
+</div>
+<div style="border-radius:16px;background:#EDE5D6;padding:14px 18px;font-size:12.5px;line-height:1.55;color:#3A372F"><b>Dynamic Type and large text:</b> rows grow, nothing clips. Controls keep a 28 pt minimum height; capsule buttons wrap their labels below two lines. <b>Full screen:</b> the sidebar can float over content with the glass material; the player dock stays centred.</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":800}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

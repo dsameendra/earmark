@@ -1,6 +1,6 @@
 # 00 — Product Spec: Earmark
 
-Status: **DRAFT — awaiting user sign-off (Phase 1 gate)**
+Status: **FROZEN (signed off 2026-11-21)**
 Working name: Earmark · Bundle prefix (placeholder): `lk.dumindu.earmark`
 
 ## 1. Vision
@@ -74,5 +74,10 @@ macOS 26+ (min version pending sign-off; dev machine runs 27), Apple Silicon onl
 ## 9. Legal / consent
 One-time recording-consent notice; user is responsible for informing participants. Third-party model licenses surfaced in Model Manager (flag CC-BY-NC models).
 
-## 10. Open decisions for the user
-See the sign-off list in `01-architecture.md` §12.
+## 10. Sign-off amendments (2026-11-21)
+- Non-commercial app. English is the default language; language and model pickers are linked both ways (ADR-008).
+- Teams and meeting video recording are in v1. Meeting detection prompts ("ask first") by default; automatic transcribe / transcribe+record is a per-app Settings option.
+- Models are downloadable on demand: choosing an undownloaded model downloads it with visible progress; Settings manages/deletes/imports models.
+- Live speaker labels are in v1 (max 4 live speakers; offline pass reconciles).
+- Direct distribution with Sparkle auto-update; no Mac App Store.
+Decision record: `01-architecture.md` §12.

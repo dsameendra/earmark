@@ -1,0 +1,3 @@
+# ADR-008: Language-first selection, linked model picker
+Status: Accepted (2026-11-21)
+Decision: Default language English. The user picks languages (single / auto-detect / multilingual set); the `EngineRouter` chooses the engine+model ("Auto"). An Advanced model picker lists only models whose `ModelDescriptor.languages` cover the chosen languages. Conversely, choosing a model first narrows the language list to that model's supported languages. Both directions derive from one `LanguageCapability` table in AppCore (the contract). Selecting an undownloaded model calls `ModelManaging.ensureAvailable` and shows progress inline before the job proceeds; Settings > Models manages/deletes/imports.

@@ -105,14 +105,16 @@ No telemetry; network only for user-initiated downloads (allow-listed hosts, che
 ## 11. Licences & attribution (tracked in `/specs/decisions/ADR-006`)
 WhisperKit MIT · FluidAudio Apache-2.0 (models CC-BY-4.0 attribution) · Qwen3-ASR Sinhala CC BY-SA 4.0 (share-alike implications to confirm) · MADLAD Apache-2.0 · NLLB CC-BY-NC (non-commercial only) · Sortformer licence unresolved.
 
-## 12. Decisions needed from the user (sign-off list)
-1. **App name & bundle prefix** (default `Earmark` / `lk.dumindu.earmark`).
-2. **Minimum macOS**: 26 (default; use `#available` for 27-only APIs) or 27.
-3. **Apple Developer Team ID** for Developer ID signing/notarization.
-4. **Commercial or non-commercial?** Decides NLLB vs MADLAD and CC BY-SA acceptability.
-5. **Sinhala default**: Qwen3-ASR-Sinhala via MLX (second runtime, CC BY-SA) vs Whisper-small-Sinhala via WhisperKit (single runtime; code-switch quality unmeasured).
-6. **First-run model download** acceptable (vs bundling)?
-7. **Teams & video recording** in v1?
-8. **Auto-record**: start automatically or ask first by default?
-9. **Mac App Store** excluded (direct distribution) — confirm.
-10. Access to **M1 / 8 GB test machine**, **Teams**, and ~25 min of real Sinhala + mixed recordings (optional; public data used meanwhile).
+## 12. Decisions (signed off by the user, 2026-11-21)
+1. **Name / prefix:** Earmark, `lk.dumindu.earmark` (defaults, accepted).
+2. **Minimum macOS:** 26; 27-only APIs behind `#available`.
+3. **Signing:** no signing identity, Xcode account or provisioning profile exists on this Mac. Development uses ad-hoc / local signing. Developer ID + notarization (and Sparkle releases) need an Apple Developer Program membership: **pending, blocks only M7**. Note: with ad-hoc signing TCC grants follow the code hash, so rebuilds may re-prompt for Mic / System Audio / Accessibility; a free Personal Team (Xcode > Settings > Accounts) gives a stable Apple Development certificate and is recommended before M4.
+4. **Licensing posture:** non-commercial. NLLB-600M allowed (CC-BY-NC binds any future monetisation). See ADR-003/006.
+5. **Sinhala:** Qwen3-ASR-Sinhala (MLX) recommended default. **English is the default language.** Language and model selection is bidirectional (ADR-008).
+6. **Distribution:** direct, non-sandboxed, Sparkle 2 with auto-updates (ADR-005). No Mac App Store.
+7. **Models:** downloadable and manageable in Settings; selecting a not-yet-downloaded model triggers an in-place download with visible progress, then proceeds; users can delete/manage/import models.
+8. **Scope:** everything in the brief is in v1, including Teams and video recording. Meeting capture **asks first by default**; users can switch to automatic transcribe / transcribe+record in Settings (per app).
+9. **Test hardware:** only this M3 Pro 18 GB Mac; M1 / 8 GB behaviour stays extrapolated. Teams is not installed here: Teams detection is unverified until the free Teams client is installed (see `/specs/qa/manual.md`).
+10. **Test data:** public datasets only (see `/fixtures/MANIFEST.md`); no user recordings.
+
+**Status: FROZEN** (changes require an SCR in `/specs/changes/`).

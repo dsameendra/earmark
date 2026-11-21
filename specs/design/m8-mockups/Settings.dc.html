@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earmark settings models</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500&display=swap">
+<style>
+body{margin:0}
+.gl{background:rgba(255,252,247,.6);-webkit-backdrop-filter:blur(28px) saturate(1.7);backdrop-filter:blur(28px) saturate(1.7);box-shadow:0 0 0 1px rgba(255,255,255,.7) inset,0 8px 22px rgba(60,40,20,.1)}
+@keyframes sh{0%{background-position:-200px 0}100%{background-position:200px 0}}
+.dl{background:linear-gradient(90deg,#E8794A 0%,#C44B16 40%,#F29A6E 50%,#C44B16 60%,#C44B16 100%);background-size:200px 100%;animation:sh 2.4s linear infinite}
+@media (prefers-reduced-motion:reduce){.dl{animation:none}}
+</style>
+</helmet>
+<div style="width:1440px;height:900px;position:relative;overflow:hidden;font-family:-apple-system,'SF Pro Text',system-ui,sans-serif;color:#1C1B18;background:radial-gradient(700px 500px at 20% 30%,#F0B48A,transparent 70%),radial-gradient(800px 600px at 80% 20%,#7FB9B3,transparent 70%),radial-gradient(900px 600px at 60% 100%,#8E7BC8,transparent 70%),#D8C7AE">
+<div style="position:absolute;left:170px;top:90px;width:1100px;height:720px;border-radius:28px;background:#F3EEE5;box-shadow:0 0 0 1px rgba(28,27,24,.12),0 40px 90px rgba(30,20,10,.35);overflow:hidden;display:flex;flex-direction:column">
+<div style="height:76px;flex:none;display:flex;align-items:center;gap:14px;padding:0 22px">
+<div style="display:flex;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:#FF5F57"></span><span style="width:12px;height:12px;border-radius:50%;background:#FEBC2E"></span><span style="width:12px;height:12px;border-radius:50%;background:#28C840"></span></div>
+<div style="flex:1;display:flex;justify-content:center"><div class="gl" style="display:flex;gap:2px;padding:4px;border-radius:24px;font-size:12px;font-weight:500">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="7">
+<div style="width:78px;height:50px;border-radius:19px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;{{t.st}}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.p}}" stroke="{{t.ik}}" stroke-width="1.6"/><path d="{{t.a}}" stroke="#C44B16" stroke-width="2.1"/></svg>{{t.n}}</div>
+</sc-for>
+</div></div>
+<div style="width:56px"></div>
+</div>
+<div style="flex:1;padding:6px 34px 30px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+<div style="display:flex;justify-content:space-between;align-items:flex-end"><div><div style="font-family:Newsreader,serif;font-size:34px;letter-spacing:-.02em">Models</div><div style="font-size:13px;color:#5A564E;margin-top:3px">Everything runs on this Mac. Models download only when you ask.</div></div>
+<div style="display:flex;gap:10px"><div style="height:32px;border-radius:16px;padding:0 14px;display:flex;align-items:center;font-size:13px;font-weight:500;background:#fff;box-shadow:0 0 0 1px rgba(28,27,24,.12)">Import CoreML…</div></div></div>
+<div style="background:#FCFAF6;border-radius:20px;box-shadow:0 0 0 1px rgba(28,27,24,.08);padding:16px 20px;display:flex;align-items:center;gap:20px"><div style="flex:1"><div style="display:flex;justify-content:space-between;font-size:13px"><b>Disk used by models</b><span style="color:#5A564E">3.4 GB of 41 GB free</span></div><div style="height:8px;border-radius:4px;background:rgba(28,27,24,.1);margin-top:9px;display:flex;overflow:hidden"><span style="width:18%;background:#C44B16"></span><span style="width:9%;background:#E8794A"></span><span style="width:5%;background:#F0BC9F"></span></div></div></div>
+<div style="background:#FCFAF6;border-radius:20px;box-shadow:0 0 0 1px rgba(28,27,24,.08);display:flex;flex-direction:column;overflow:hidden">
+<sc-for list="{{models}}" as="m" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:16px;padding:16px 20px;border-bottom:{{m.bb}}">
+<div style="width:44px;height:44px;border-radius:13px;background:#F3EEE5;display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6.5h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 16V8A1.5 1.5 0 0 1 8 6.5zM9.5 3.5v3M14.5 3.5v3M9.5 17.5v3M14.5 17.5v3M3.5 9.5h3M3.5 14.5h3M17.5 9.5h3M17.5 14.5h3" stroke="#1C1B18" stroke-width="1.6"/><path d="M10.5 10.5h3v3h-3z" stroke="#C44B16" stroke-width="2.1"/></svg></div>
+<div style="flex:1;min-width:0"><div style="display:flex;gap:8px;align-items:center;font-size:14.5px;font-weight:600">{{m.n}}<span style="display:{{m.nd}};font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:9px;background:#F8EBCB;color:#7A4E05">Non-commercial licence</span></div><div style="font-size:12.5px;color:#5A564E;margin-top:3px">{{m.d}}</div>
+<div style="display:{{m.pd}};margin-top:9px"><div style="height:6px;border-radius:3px;background:rgba(28,27,24,.1)"><div class="dl" style="height:6px;border-radius:3px;width:{{m.p}}%"></div></div><div style="font-size:12px;color:#6B675D;margin-top:5px;font-variant-numeric:tabular-nums">{{m.pl}}</div></div></div>
+<div style="font-size:13px;color:#5A564E;width:70px;text-align:right;font-variant-numeric:tabular-nums">{{m.sz}}</div>
+<div style="width:112px;display:flex;justify-content:flex-end"><div style="height:32px;border-radius:16px;padding:0 16px;display:flex;align-items:center;font-size:13px;font-weight:600;{{m.bs}}">{{m.b}}</div></div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const on='background:rgba(255,255,255,.8);color:#1C1B18;box-shadow:0 1px 0 #fff inset,0 3px 10px rgba(60,40,20,.1)', off='color:#5A564E';
+const T=(n,p,a,s)=>({n,p,a,st:s?on:off,ik:s?'#1C1B18':'#5A564E'});
+const sec='background:#F3EEE5;color:#1C1B18', pri='background:#C44B16;color:#fff', del='background:#F3EEE5;color:#B3321F';
+return {
+ tabs:[
+  T('General','M4 8h9.8M17.6 8H20M4 16h2.4M10.2 16H20','M13.8 8a1.9 1.9 0 1 0 3.8 0 1.9 1.9 0 1 0-3.8 0z'),
+  T('Audio','M4 10v4M8 7v10M16 8v8M20 10.5v3','M12 4v16'),
+  T('Models','M8 6.5h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 16V8A1.5 1.5 0 0 1 8 6.5z','M10.5 10.5h3v3h-3z',true),
+  T('Languages','M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z','M3.5 12h17'),
+  T('Meetings','M3.8 19c.5-3 2.8-4.8 5.2-4.8s4.7 1.8 5.2 4.8M9 11.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M15.5 5.6a2.6 2.6 0 0 1 0 5'),
+  T('Export','M5 13.5V18a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4.5','M12 15V4.5M8 8.4l4-3.9 4 3.9'),
+  T('Privacy','M12 3.5 5 6v5.5c0 4 3 7 7 9 4-2 7-5 7-9V6z','M9.5 12l2 2 3.5-4')
+ ],
+ models:[
+  {n:'Whisper large-v3 turbo',nd:'none',d:'Best all-round accuracy · English, Sinhala + 97 languages',sz:'1.6 GB',b:'Installed',bs:sec,pd:'none',p:0,pl:'',bb:'1px solid rgba(28,27,24,.08)'},
+  {n:'Qwen3-ASR (Sinhala)',nd:'none',d:'Best for Sinhala and code-switching',sz:'2.1 GB',b:'Pause',bs:sec,pd:'block',p:42,pl:'Downloading · 880 MB of 2.1 GB · about 6 min left',bb:'1px solid rgba(28,27,24,.08)'},
+  {n:'Apple SpeechAnalyzer',nd:'none',d:'Built into macOS · fastest for live captions',sz:'System',b:'Built in',bs:'color:#6B675D',pd:'none',p:0,pl:'',bb:'1px solid rgba(28,27,24,.08)'},
+  {n:'NLLB-200 translation',nd:'block',d:'Translate between 200 languages · for personal use',sz:'1.3 GB',b:'Download',bs:pri,pd:'none',p:0,pl:'',bb:'none'}
+ ]
+};
+}
+}
+</script>
+</body>
+</html>

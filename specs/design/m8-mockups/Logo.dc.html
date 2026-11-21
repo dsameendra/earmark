@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earmark logo options</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#F3EEE5;color:#1C1B18;font-family:Inter,system-ui,sans-serif;padding:56px 80px;display:flex;flex-direction:column;gap:32px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:40px">
+<div><div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6B675D;font-weight:600">Step 1 of 6 — Pick a mark</div>
+<div style="font-family:Newsreader,serif;font-size:56px;line-height:1.05;letter-spacing:-.025em;margin-top:8px">Six directions for the Earmark icon</div></div>
+<div style="max-width:420px;font-size:14px;line-height:1.55;color:#5A564E">Each shows the logo mark on paper and as an app icon. Tell me a letter, or mix ("B's shape with F's colour"). Everything downstream (icons, glass, screens) inherits from this choice.</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;flex:1">
+<sc-for list="{{opts}}" as="o" hint-placeholder-count="6">
+<div style="background:#FCFAF6;border:1px solid rgba(28,27,24,.12);border-radius:22px;padding:22px;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;gap:24px;align-items:center;flex:1">
+<svg viewBox="0 0 64 64" width="132" height="132" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><sc-for list="{{o.light}}" as="s" hint-placeholder-count="3"><path d="{{s.d}}" fill="{{s.f}}" stroke="{{s.s}}" stroke-width="{{s.w}}"/></sc-for></svg>
+<div style="width:132px;height:132px;border-radius:30px;background:linear-gradient(155deg,#E8794A 0%,#C44B16 55%,#8F360E 100%);position:relative;box-shadow:0 14px 28px rgba(110,45,10,.3),0 1px 0 rgba(255,255,255,.5) inset;overflow:hidden;flex:none">
+<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,0) 46%)"></div>
+<svg viewBox="0 0 64 64" width="132" height="132" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;inset:0" aria-hidden="true"><g transform="translate(6 6) scale(.81)"><sc-for list="{{o.tile}}" as="s" hint-placeholder-count="3"><path d="{{s.d}}" fill="{{s.f}}" stroke="{{s.s}}" stroke-width="{{s.w}}"/></sc-for></g></svg>
+</div>
+</div>
+<div><div style="font-size:15px;font-weight:600">{{o.name}}</div><div style="font-size:13px;line-height:1.5;color:#5A564E;margin-top:4px">{{o.why}}</div></div>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const L = {m:'#1C1B18', a:'#C44B16', k:'#FCFAF6'};
+const T = {m:'rgba(255,252,246,.95)', a:'#8F360E', k:'#C44B16'};
+const mk = (shapes, P) => shapes.map(([d, r, st, w]) => ({ d, f: st ? 'none' : P[r], s: st ? P[r] : 'none', w: st ? w : 0 }));
+const defs = [
+['A · Dog-ear page','The current mark: a page with its corner folded, four voices as bars. Literal, calm, document-first.',[
+['M17 6h21l13 13v35a4 4 0 0 1-4 4H17a4 4 0 0 1-4-4V10a4 4 0 0 1 4-4z','m'],['M38 6v11a2 2 0 0 0 2 2h11z','a'],['M22 34v6M28 28v18M34 31v12M40 36v4','k',1,3.2]]],
+['B · Listening ear','An ear drawn as one continuous line with a single ember sound arc. Most literal to the name, friendliest.',[
+['M30 8c-9 0-16 7-16 16v6c0 5 3 7 6 10 2 2 3 4 3 7a6 6 0 0 0 11 3','m',1,5.5],['M30 20c-4 0-7 3-7 7','m',1,4],['M44 20a15 15 0 0 1 0 20','a',1,4.5]]],
+['C · Ribbon bookmark','A bookmark ribbon carrying the waveform. Reads as "saved place", works at 16 px, most iconic.',[
+['M20 6h24a2 2 0 0 1 2 2v50l-14-11-14 11V8a2 2 0 0 1 2-2z','m'],['M26 18v10M38 19v8','k',1,3.4],['M32 13v20','a',1,3.4]]],
+['D · Two voices','Overlapping speech bubbles, one ember, one ink. Highlights speakers and meetings; less "document".',[
+['M10 14a4 4 0 0 1 4-4h26a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H26l-8 7v-7h-4a4 4 0 0 1-4-4z','a'],['M24 27a4 4 0 0 1 4-4h22a4 4 0 0 1 4 4v14a4 4 0 0 1-4 4h-3v8l-9-8H28a4 4 0 0 1-4-4z','m'],['M31 31v6M37 28v12M43 32v4','k',1,3]]],
+['E · Lowercase e','A monogram: the crossbar of the "e" is a waveform. Typographic and editorial, most distinctive in the Dock.',[
+['M45 32a13 13 0 1 0-3.8 9.2','m',1,5.5],['M18 32h6l3-6 4 12 4-9 3 3h8','a',1,3.6]]],
+['F · Fold and resonance','Squared sheet with an ember fold and three quiet sound rings. Most abstract, best "glass layer" icon.',[
+['M16 6h24l18 18v28a6 6 0 0 1-6 6H16a6 6 0 0 1-6-6V12a6 6 0 0 1 6-6z','m'],['M40 6v12a6 6 0 0 0 6 6h12z','a'],['M20 42a8 8 0 0 1 8 8M20 34a16 16 0 0 1 16 16M20 26a24 24 0 0 1 24 24','k',1,3]]]
+];
+return { opts: defs.map(([name, why, sh]) => ({ name, why, light: mk(sh, L), tile: mk(sh, T) })) };
+}
+}
+</script>
+</body>
+</html>

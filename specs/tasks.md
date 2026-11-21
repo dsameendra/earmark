@@ -1,6 +1,6 @@
 # Task Plan (Phase 5) — DAG with owners, deps, Definition of Done
 
-Status: FROZEN at Phase 5 gate. Milestones follow the brief (M1–M7). All tasks code against frozen AppCore contracts (`/specs/02-contracts.md`) and use `AppCoreTesting` mocks until real implementations land.
+Status: FROZEN at Phase 5 gate. Milestones follow the brief (M1–M7), plus M8 UI/UX overhaul (appended, runs last). All tasks code against frozen AppCore contracts (`/specs/02-contracts.md`) and use `AppCoreTesting` mocks until real implementations land.
 
 **Definition of Done (every task):** compiles under Swift 6 strict concurrency with zero warnings; unit tests pass; AC IDs covered are listed in the PR; swiftlint + swift-format clean; public API has DocC comments; code reviewer approves (HIG reviewer too for UI); merged to `main` only via orchestrator review with full `swift test` + `xcodebuild` run.
 
@@ -52,8 +52,25 @@ Status: FROZEN at Phase 5 gate. Milestones follow the brief (M1–M7). All tasks
 | T29 | Sparkle 2 integration (EdDSA key generated at release, never committed), signing/notarization **(needs Apple Developer Program)**, docs | Orchestrator | T28 | PROD |
 | T30 | XCUITest flows + manual QA scripts (`/specs/qa/manual.md`) | Test eng | M2+ | all |
 
+## M8 UI/UX overhaul and visual identity (last milestone; starts only after M7 is complete)
+Source of truth: `/specs/design/m8-ui-overhaul.md` (locked decisions) and `/specs/design/m8-mockups/` (Claude Design canvas sources, one `.dc.html` per screen). Constraint on every task: Apple HIG for macOS 26, glass budget of three layers per screen, Reduce Transparency / Reduce Motion / Increase Contrast honoured, no behaviour or contract changes (UI layer only; anything else goes through an SCR).
+| ID | Task | Owner | Deps | Covers |
+|----|------|-------|------|--------|
+| T31 | `DesignSystem` v2: Ember/paper/ink/night tokens (+ status red, speaker palette), two solid surface tiers, glass policy (3-layer budget, Regular/Prominent/Clear + solid twins), New York + SF Pro type scale, motion tokens (settle/glide/exit) | UI eng 1 | T30 | NAV, PROD-AC-04 |
+| T32 | Brand assets: Icon Composer app icon (squircle, ear, arc, 28% curl, ear offset left 2.5%, light/dark), menu bar template glyph, accent colour asset, about/DMG art | Brand/UI eng | T31 | PROD |
+| T33 | Custom duotone symbol set (~40) on the SF Symbols template, 3 weights x 3 scales, Ember detail via palette rendering, accessibility labels, SF Symbol fallbacks | Brand/UI eng | T31 | NAV |
+| T34 | App shell: glass sidebar, floating toolbar groups (no full-width bar), window chrome, selection glide | UI eng 1 | T31, T33 | NAV |
+| T35 | Home (Workbench layout), Queue, Library restyle | UI eng 1 | T34 | NAV, FILE, LIB |
+| T36 | Editor + player restyle (light/dark), floating player dock, speakers/earmarks inspector, karaoke highlight | UI eng 2 | T34 | EDIT |
+| T37 | Meetings, Live view, floating surfaces (menu bar popover, live overlay, dictation HUD, meeting prompt) restyle | UI eng 2 | T34 | MTG, LIVE, DICT, MENU |
+| T38 | Settings (toolbar tabs) + Models, Onboarding, Export sheet restyle | UI eng 1 | T34 | SET, ONB, EXP |
+| T39 | Motion pass per `m8-mockups/Motion.dc.html`; Reduce Motion crossfade variants | UI eng 2 | T35-T38 | NAV |
+| T40 | Final HIG + accessibility audit (contrast, Increase Contrast, Reduce Transparency, VoiceOver, Dynamic Type), re-run T28 perf checks and T30 XCUITests, snapshot tests, glass-cost profiling | Test eng + HIG | T39 | NFR |
+
+Release note: T29 (Sparkle, signing, notarization) can be prepared earlier, but the first public release build is cut after T40.
+
 ## Critical path
-T01 → T06/T08 → T09 → T10 → T11/T12 → (T14/T15) → T17 → T18/T19 → T22 → T23 → T25/T26 → T28 → T29.
+T01 → T06/T08 → T09 → T10 → T11/T12 → (T14/T15) → T17 → T18/T19 → T22 → T23 → T25/T26 → T28 → T29 → (after M7) T31 → T34 → T35/T36/T37/T38 → T39 → T40.
 
 ## Risks tracked
 Permission-gated paths unverified (taps, hot-plug, AX); Teams unavailable on dev Mac; ad-hoc signing re-prompts (recommend Personal Team before T17); MLX second runtime pinning; NLLB/MADLAD Swift runtime open; live DER numbers optimistic (easy headset audio).

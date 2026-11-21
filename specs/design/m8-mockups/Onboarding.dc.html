@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earmark onboarding</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Noto+Sans+Sinhala:wght@400;600&display=swap">
+<style>
+body{margin:0}
+@keyframes sh{0%{background-position:-200px 0}100%{background-position:200px 0}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.dl{background:linear-gradient(90deg,#E8794A 0%,#C44B16 40%,#F29A6E 50%,#C44B16 60%,#C44B16 100%);background-size:200px 100%;animation:sh 2.4s linear infinite}
+.fl{animation:float 5s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.dl,.fl{animation:none}}
+</style>
+</helmet>
+<div style="width:1440px;height:900px;position:relative;overflow:hidden;font-family:-apple-system,'SF Pro Text',system-ui,sans-serif;color:#1C1B18;background:radial-gradient(700px 500px at 20% 30%,#F0B48A,transparent 70%),radial-gradient(800px 600px at 80% 20%,#7FB9B3,transparent 70%),radial-gradient(900px 600px at 60% 100%,#8E7BC8,transparent 70%),#D8C7AE">
+<div style="position:absolute;left:200px;top:110px;width:1040px;height:680px;border-radius:30px;background:#FCFAF6;box-shadow:0 0 0 1px rgba(28,27,24,.12),0 40px 90px rgba(30,20,10,.35);overflow:hidden;display:grid;grid-template-columns:400px minmax(0,1fr)">
+<div style="background:linear-gradient(155deg,#E8794A 0%,#C44B16 55%,#8F360E 100%);position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden">
+<div style="position:absolute;left:18px;top:18px;display:flex;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.4)"></span><span style="width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.4)"></span><span style="width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.4)"></span></div>
+<div style="position:absolute;width:520px;height:520px;border-radius:50%;border:1.5px solid rgba(255,255,255,.2);left:-60px;bottom:-240px"></div>
+<div style="position:absolute;width:360px;height:360px;border-radius:50%;border:1.5px solid rgba(255,255,255,.18);left:0;bottom:-170px"></div>
+<svg class="fl" viewBox="0 0 100 100" width="220" height="220" stroke-linecap="round" stroke-linejoin="round" aria-label="Earmark" role="img" style="filter:drop-shadow(0 18px 24px rgba(60,20,0,.45))"><defs><linearGradient id="og" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F28A57"/><stop offset=".55" stop-color="#C44B16"/><stop offset="1" stop-color="#8F360E"/></linearGradient><linearGradient id="of" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF4EA"/><stop offset="1" stop-color="#F0BC9F"/></linearGradient><clipPath id="oc"><path d="M22 0H78a22 22 0 0 1 22 22V78a22 22 0 0 1-22 22H22A22 22 0 0 1 0 78V22A22 22 0 0 1 22 0Z"/></clipPath></defs><path d="M22 0H78a22 22 0 0 1 22 22V78a22 22 0 0 1-22 22H22A22 22 0 0 1 0 78V22A22 22 0 0 1 22 0Z" fill="#FFF8F1" fill-opacity=".16" stroke="rgba(255,255,255,.55)" stroke-width="1"/><g transform="translate(12 16) scale(1.15)"><path d="M30 8c-9 0-16 7-16 16v6c0 5 3 7 6 10 2 2 3 4 3 7a6 6 0 0 0 11 3M30 20c-4 0-7 3-7 7" fill="none" stroke="#FFFCF6" stroke-width="4.8"/><path d="M44 20a15 15 0 0 1 0 20" fill="none" stroke="#FFD7BF" stroke-width="4.2"/></g><g clip-path="url(#oc)"><path d="M72 0H100V28Z" fill="rgba(70,20,0,.35)"/><path d="M72 0V24a4 4 0 0 0 4 4H100Z" fill="url(#of)"/></g></svg>
+<div style="position:absolute;left:36px;right:36px;bottom:34px;font-family:Newsreader,serif;font-style:italic;font-size:22px;line-height:1.35;color:#FFF4EA">Listen once.<br>Keep what matters.</div>
+</div>
+<div style="padding:44px 56px 36px;display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;gap:8px;align-items:center"><sc-for list="{{dots}}" as="d" hint-placeholder-count="5"><span style="height:6px;border-radius:3px;width:{{d.w}}px;background:{{d.c}}"></span></sc-for><span style="margin-left:10px;font-size:12px;color:#6B675D">Step 2 of 5</span></div>
+<div><div style="font-family:Newsreader,serif;font-size:40px;line-height:1.08;letter-spacing:-.025em">Which languages do you speak?</div><div style="font-size:14px;color:#5A564E;margin-top:8px;line-height:1.5">English is the default. Add more and Earmark picks the right model for each.</div></div>
+<div style="display:flex;gap:10px;flex-wrap:wrap">
+<sc-for list="{{langs}}" as="l" hint-placeholder-count="6"><div style="height:36px;border-radius:18px;padding:0 16px;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;font-family:-apple-system,'Noto Sans Sinhala',sans-serif;{{l.st}}">{{l.n}}</div></sc-for>
+</div>
+<div style="border-radius:20px;background:#F7F3EB;padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:13px;background:#fff;display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6.5h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 16V8A1.5 1.5 0 0 1 8 6.5zM9.5 3.5v3M14.5 3.5v3M9.5 17.5v3M14.5 17.5v3M3.5 9.5h3M3.5 14.5h3M17.5 9.5h3M17.5 14.5h3" stroke="#1C1B18" stroke-width="1.6"/><path d="M10.5 10.5h3v3h-3z" stroke="#C44B16" stroke-width="2.1"/></svg></div>
+<div style="flex:1"><div style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:#9E3A10;font-weight:600">Recommended for your Mac</div><div style="font-size:15px;font-weight:600;margin-top:2px">Whisper large-v3 turbo · 1.6 GB</div><div style="font-size:12.5px;color:#5A564E;margin-top:2px">Fast on Apple silicon. Handles English and Sinhala together.</div></div></div>
+<div><div style="height:6px;border-radius:3px;background:rgba(28,27,24,.1)"><div class="dl" style="height:6px;border-radius:3px;width:38%"></div></div><div style="font-size:12px;color:#6B675D;margin-top:6px">Downloading in the background · 610 MB of 1.6 GB</div></div>
+</div>
+<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#5A564E"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 5 6v5.5c0 4 3 7 7 9 4-2 7-5 7-9V6z" stroke="#1C1B18" stroke-width="1.6"/><path d="M9.5 12l2 2 3.5-4" stroke="#C44B16" stroke-width="2.1"/></svg>Nothing leaves your Mac. Model downloads are the only network use.</div>
+<div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center"><div style="font-size:13.5px;color:#5A564E;font-weight:500">Back</div><div style="height:40px;border-radius:20px;padding:0 26px;display:flex;align-items:center;font-size:14px;font-weight:600;background:#C44B16;color:#fff;box-shadow:0 6px 16px rgba(196,75,22,.3)">Continue</div></div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const on='background:#C44B16;color:#fff', off='background:#F3EEE5;color:#3A372F', disabled='background:#fff;box-shadow:0 0 0 1px rgba(28,27,24,.14);color:#3A372F';
+return {
+ dots:[{w:22,c:'#C44B16'},{w:22,c:'#C44B16'},{w:8,c:'rgba(28,27,24,.15)'},{w:8,c:'rgba(28,27,24,.15)'},{w:8,c:'rgba(28,27,24,.15)'}],
+ langs:[{n:'English',st:on},{n:'සිංහල · Sinhala',st:on},{n:'தமிழ் · Tamil',st:disabled},{n:'Hindi',st:disabled},{n:'Spanish',st:disabled},{n:'More…',st:off}]
+};
+}
+}
+</script>
+</body>
+</html>

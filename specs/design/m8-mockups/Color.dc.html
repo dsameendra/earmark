@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earmark brand colour options</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:1440px;height:1180px;box-sizing:border-box;background:#F3EEE5;color:#1C1B18;font-family:-apple-system,'SF Pro Text',Inter,system-ui,sans-serif;padding:48px 64px;display:flex;flex-direction:column;gap:26px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:40px">
+<div><div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6B675D;font-weight:600">Step 2 of 6 — Fixed brand accent</div>
+<div style="font-family:Newsreader,serif;font-size:48px;line-height:1.05;letter-spacing:-.025em;margin-top:8px">Five brand colours, tried on the real icon</div></div>
+<div style="max-width:430px;font-size:13.5px;line-height:1.55;color:#5A564E">Each colour is applied to the locked ear icon and to a mini macOS window: glass sidebar, selected row, prominent button, progress. Contrast figures are the accent as text/fill on white (WCAG AA needs 4.5:1).</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;flex:1">
+<sc-for list="{{pals}}" as="p" hint-placeholder-count="6">
+<div style="background:#FCFAF6;border:1px solid rgba(28,27,24,.12);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:16px;font-weight:600">{{p.name}}</div><div style="font-size:12px;color:#6B675D;font-variant-numeric:tabular-nums">{{p.hex}} · {{p.cr}}:1</div></div>
+<div style="display:flex;gap:16px;align-items:center">
+<svg viewBox="-4 -2 108 112" width="118" height="123" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><defs><linearGradient id="g{{p.id}}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{{p.c1}}"/><stop offset=".55" stop-color="{{p.c2}}"/><stop offset="1" stop-color="{{p.c3}}"/></linearGradient><linearGradient id="f{{p.id}}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{{p.f1}}"/><stop offset="1" stop-color="{{p.f2}}"/></linearGradient><clipPath id="c{{p.id}}"><path d="M22 0H78a22 22 0 0 1 22 22V78a22 22 0 0 1-22 22H22A22 22 0 0 1 0 78V22A22 22 0 0 1 22 0Z"/></clipPath></defs><path d="M22 0H78a22 22 0 0 1 22 22V78a22 22 0 0 1-22 22H22A22 22 0 0 1 0 78V22A22 22 0 0 1 22 0Z" fill="url(#g{{p.id}})" style="filter:drop-shadow(0 6px 8px rgba(40,20,0,.28))"/><g transform="translate(14.5 15) scale(1.15)"><path d="M30 8c-9 0-16 7-16 16v6c0 5 3 7 6 10 2 2 3 4 3 7a6 6 0 0 0 11 3M30 20c-4 0-7 3-7 7" fill="none" stroke="#FFFCF6" stroke-width="4.8"/><path d="M44 20a15 15 0 0 1 0 20" fill="none" stroke="{{p.arc}}" stroke-width="4.2"/></g><g clip-path="url(#c{{p.id}})"><path d="M72 0H100V28Z" fill="rgba(30,10,0,.36)"/><path d="M72 0V24a4 4 0 0 0 4 4H100Z" fill="url(#f{{p.id}})" style="filter:drop-shadow(-1.5px 2px 2px rgba(30,10,0,.35))"/><path d="M72 0L100 28" stroke="rgba(255,255,255,.7)" stroke-width=".9" fill="none"/></g></svg>
+<div style="flex:1;height:128px;border-radius:12px;overflow:hidden;position:relative;background:{{p.bgw}};box-shadow:0 0 0 1px rgba(28,27,24,.12),0 8px 18px rgba(40,25,10,.12)">
+<div style="position:absolute;left:8px;top:8px;bottom:8px;width:84px;border-radius:12px;background:rgba(255,252,247,.62);box-shadow:0 0 0 1px rgba(255,255,255,.7) inset;padding:8px 6px;display:flex;flex-direction:column;gap:3px;font-size:10px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)">
+<div style="display:flex;gap:4px;padding:0 2px 6px"><span style="width:6px;height:6px;border-radius:50%;background:#FF5F57"></span><span style="width:6px;height:6px;border-radius:50%;background:#FEBC2E"></span><span style="width:6px;height:6px;border-radius:50%;background:#28C840"></span></div>
+<div style="padding:4px 6px;border-radius:7px;background:{{p.tint}};color:{{p.ui}};font-weight:600">Home</div>
+<div style="padding:4px 6px;color:#5A564E">Queue</div>
+<div style="padding:4px 6px;color:#5A564E">Library</div>
+</div>
+<div style="position:absolute;left:100px;right:10px;top:16px;display:flex;flex-direction:column;gap:7px">
+<div style="font-size:11px;font-weight:600">Interview.m4a</div>
+<div style="height:5px;border-radius:3px;background:rgba(28,27,24,.1)"><div style="width:62%;height:5px;border-radius:3px;background:{{p.ui}}"></div></div>
+<div style="display:flex;gap:5px"><span style="font-size:9.5px;padding:2px 7px;border-radius:9px;background:{{p.tint}};color:{{p.ui}};font-weight:600">Speaker 1</span><span style="font-size:9.5px;padding:2px 7px;border-radius:9px;background:rgba(28,27,24,.07);color:#5A564E">English</span></div>
+<div style="align-self:flex-start;font-size:10px;font-weight:600;color:#fff;background:{{p.ui}};border-radius:8px;padding:5px 11px;margin-top:4px">Transcribe</div>
+</div>
+</div>
+</div>
+<div style="display:flex;gap:6px"><span style="flex:2;height:22px;border-radius:7px;background:{{p.c2}}"></span><span style="flex:1;height:22px;border-radius:7px;background:{{p.ui}}"></span><span style="flex:1;height:22px;border-radius:7px;background:{{p.tint}}"></span><span style="flex:1;height:22px;border-radius:7px;background:{{p.night}}"></span></div>
+<div style="font-size:12.5px;line-height:1.5;color:#3A372F"><b>Why it fits.</b> {{p.why}}</div>
+<div style="font-size:12.5px;line-height:1.5;color:#5A564E"><b style="color:#3A372F">Watch out.</b> {{p.risk}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+renderVals() {
+return { pals: [
+{id:'a',name:'Ember',hex:'#C44B16',cr:'4.8',c1:'#E8794A',c2:'#C44B16',c3:'#8F360E',f1:'#FFF4EA',f2:'#F0BC9F',arc:'#FFD7BF',ui:'#C44B16',tint:'#F7E4D8',night:'#F28A57',bgw:'radial-gradient(120px 90px at 90% 100%,rgba(196,75,22,.2),transparent),#F3EEE5',
+ why:'Warm like a bookmark ribbon and a pencil mark. Nothing else on a Mac looks like it: the system uses blue, and most AI tools use violet. Pairs well with paper neutrals.',risk:'Close to the system red/orange for destructive and recording cues, so recording indicators need a distinct red.'},
+{id:'b',name:'Tide',hex:'#1B6F6A',c1:'#3FB1A8',cr:'6.0',c2:'#1B6F6A',c3:'#0F4440',f1:'#EAFBF8',f2:'#A5DDD7',arc:'#BDEFE9',ui:'#1B6F6A',tint:'#DCEFEC',night:'#5BC4BA',bgw:'radial-gradient(120px 90px at 90% 100%,rgba(27,111,106,.22),transparent),#F1EEE6',
+ why:'Reads private, calm and trustworthy, which suits a fully on-device app. Strong contrast on glass, and a deep teal sits well beside speaker colours.',risk:'Near SF teal and many health or finance apps. Less distinctive in the Dock.'},
+{id:'c',name:'Indigo',hex:'#4B49C8',c1:'#7B79EA',cr:'6.8',c2:'#4B49C8',c3:'#2F2D92',f1:'#F0F0FF',f2:'#B9B8F2',arc:'#D5D4FF',ui:'#4B49C8',tint:'#E4E3FA',night:'#9A98F5',bgw:'radial-gradient(120px 90px at 90% 100%,rgba(75,73,200,.2),transparent),#F1EEF0',
+ why:'Feels native to Liquid Glass: saturated blues and violets refract beautifully. Most readable on glass and highest contrast.',risk:'The most crowded space. Many AI and transcription tools use violet, so it risks looking generic.'},
+{id:'d',name:'Saffron',hex:'#A8650A',c1:'#F0B23E',cr:'4.7',c2:'#D08A12',c3:'#8C5A06',f1:'#FFF8E6',f2:'#F3D58A',arc:'#FFE9B5',ui:'#A8650A',tint:'#F8EBCB',night:'#F0B23E',bgw:'radial-gradient(120px 90px at 90% 100%,rgba(208,138,18,.24),transparent),#F4EFE3',
+ why:'Spice-warm and unique, with a nod to Sinhala and South Asian heritage. The yellow glows in icon form and stays distinctive against every system app.',risk:'Bright yellow fails contrast as UI text, so the UI uses the darker #A8650A and the icon uses the brighter gold.'},
+{id:'e',name:'Moss',hex:'#3E7B4C',c1:'#6DB07C',cr:'5.1',c2:'#3E7B4C',c3:'#254D30',f1:'#EFFAF1',f2:'#B2D9BA',arc:'#CDEBD3',ui:'#3E7B4C',tint:'#E0EEE3',night:'#7FC38F',bgw:'radial-gradient(120px 90px at 90% 100%,rgba(62,123,76,.2),transparent),#F1EFE6',
+ why:'Quiet and editorial, like green ink on paper. Distinctive among transcription tools, and calming for long editing sessions.',risk:'Green means "success" in system UI, so status colours need a separate, clearly different green.'},
+{id:'f',name:'My pick: Ember',hex:'#C44B16',cr:'4.8',c1:'#E8794A',c2:'#C44B16',c3:'#8F360E',f1:'#FFF4EA',f2:'#F0BC9F',arc:'#FFD7BF',ui:'#C44B16',tint:'#F7E4D8',night:'#F28A57',bgw:'radial-gradient(120px 90px at 90% 100%,rgba(196,75,22,.2),transparent),#F3EEE5',
+ why:'Fold + ear + ember = a saved place, warm and human. It is the only option that is both distinctive on a Mac and honest to the dog-ear idea. Runner-up: Saffron if you want a heritage story.',risk:'Keep status red, recording red and Ember visibly different. Tide is the safest alternative if you want a conventional feel.'}
+] };
+}
+}
+</script>
+</body>
+</html>

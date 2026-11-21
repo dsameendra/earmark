@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earmark queue</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500&display=swap">
+<style>
+body{margin:0}
+.gl{background:rgba(255,252,247,.58);-webkit-backdrop-filter:blur(28px) saturate(1.7);backdrop-filter:blur(28px) saturate(1.7);box-shadow:0 0 0 1px rgba(255,255,255,.7) inset,0 10px 28px rgba(60,40,20,.12)}
+@keyframes sh{0%{background-position:-200px 0}100%{background-position:200px 0}}
+.run{background:linear-gradient(90deg,#E8794A 0%,#C44B16 40%,#F29A6E 50%,#C44B16 60%,#C44B16 100%);background-size:200px 100%;animation:sh 2.4s linear infinite}
+@media (prefers-reduced-motion:reduce){.run{animation:none}}
+</style>
+</helmet>
+<div style="width:1440px;height:900px;position:relative;overflow:hidden;font-family:-apple-system,'SF Pro Text',system-ui,sans-serif;color:#1C1B18;background:radial-gradient(900px 600px at 10% 5%,rgba(196,75,22,.14),transparent 60%),radial-gradient(800px 600px at 95% 95%,rgba(27,122,116,.1),transparent 60%),#F3EEE5">
+<div style="position:absolute;left:12px;top:12px;bottom:12px;width:232px"><dc-import name="Sidebar" active="Queue" hint-size="232px,876px"></dc-import></div>
+<div style="position:absolute;left:256px;right:12px;top:12px;bottom:12px;display:flex;flex-direction:column;gap:12px">
+<div style="height:44px;display:flex;align-items:center;gap:12px;padding:0 6px 0 4px;flex:none">
+<div style="font-size:17px;font-weight:600;flex:1">Queue<span style="font-weight:400;font-size:13px;color:#6B675D;margin-left:12px">3 running · 4 waiting · 1 failed</span></div>
+<div class="gl" style="display:flex;gap:2px;padding:4px;border-radius:22px;font-size:13px;font-weight:500">
+<div style="height:32px;border-radius:16px;padding:0 14px;display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.7)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 5.5h2v13h-2zM13.5 5.5h2v13h-2z" stroke="#1C1B18" stroke-width="1.6"/></svg>Pause all</div>
+<div style="height:32px;border-radius:16px;padding:0 14px;display:flex;align-items:center;gap:7px;color:#5A564E">2 at a time</div>
+<div style="height:32px;border-radius:16px;padding:0 14px;display:flex;align-items:center;gap:7px;color:#5A564E">Plugged in</div>
+</div>
+</div>
+<div style="flex:1;background:#FCFAF6;border-radius:26px;box-shadow:0 0 0 1px rgba(28,27,24,.08),0 12px 30px rgba(60,40,20,.08);padding:28px 36px;display:flex;flex-direction:column;gap:6px;overflow:hidden">
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+<div style="display:flex;justify-content:space-between;align-items:baseline;padding:14px 8px 8px"><div style="font-family:Newsreader,serif;font-size:24px;letter-spacing:-.02em">{{g.n}}</div><div style="font-size:12.5px;color:#6B675D">{{g.s}}</div></div>
+<sc-for list="{{g.jobs}}" as="j" hint-placeholder-count="2">
+<div style="display:flex;align-items:center;gap:16px;padding:12px 14px;border-radius:16px;background:{{j.bg}}">
+<div style="width:40px;height:40px;border-radius:12px;background:#F3EEE5;display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v4M8 7v10M16 8v8M20 10.5v3" stroke="#1C1B18" stroke-width="1.6"/><path d="M12 4v16" stroke="{{j.ac}}" stroke-width="2.1"/></svg></div>
+<div style="width:300px;flex:none"><div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{j.t}}</div><div style="font-size:12.5px;color:#6B675D;margin-top:2px">{{j.m}}</div></div>
+<div style="flex:1">
+<div style="display:{{j.pd}}"><div style="height:6px;border-radius:3px;background:rgba(28,27,24,.1)"><div class="{{j.cls}}" style="height:6px;border-radius:3px;background:#C44B16;width:{{j.p}}%"></div></div><div style="display:flex;justify-content:space-between;font-size:12px;color:#6B675D;margin-top:6px;font-variant-numeric:tabular-nums"><span>{{j.l}}</span><span>{{j.eta}}</span></div></div>
+<div style="display:{{j.ed}};font-size:13px;color:#B3321F;line-height:1.4">{{j.err}}</div>
+</div>
+<div style="display:flex;gap:8px;flex:none">
+<div style="height:32px;border-radius:16px;padding:0 14px;display:flex;align-items:center;font-size:13px;font-weight:600;{{j.btn}}">{{j.ba}}</div>
+<div style="width:32px;height:32px;border-radius:16px;background:#F3EEE5;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke-linecap="round" aria-label="More" role="img"><path d="M5 12h.01M12 12h.01M19 12h.01" stroke="#5A564E" stroke-width="2.4"/></svg></div>
+</div>
+</div>
+</sc-for>
+</sc-for>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const pause='background:#F3EEE5;color:#1C1B18', retry='background:#C44B16;color:#fff';
+const run=(t,m,p,l,eta)=>({t,m,p,l,eta,bg:'#F7F3EB',ac:'#C44B16',pd:'block',ed:'none',err:'',cls:'run',btn:pause,ba:'Pause'});
+return { groups:[
+ {n:'Working on',s:'11× real time · running at full speed',jobs:[
+  run('Interview — Perera, part 2.m4a','Whisper large-v3 turbo · English · 2 speakers',72,'Transcribing 34:41 of 48:12','About 1 min left'),
+  run('Budget call.mp4','Whisper large-v3 turbo · English',31,'Transcribing 12:05 of 38:48','About 3 min left'),
+  run('Field notes — Galle trip.m4a','Qwen3-ASR · English + Sinhala',9,'Detecting languages','About 6 min left')
+ ]},
+ {n:'Waiting',s:'4 files · starts when a slot opens',jobs:[
+  {t:'Weekly product sync.mov',m:'Auto · English',p:0,l:'Waiting',eta:'Next in line',bg:'transparent',ac:'#6B675D',pd:'block',ed:'none',err:'',cls:'',btn:pause,ba:'Move up'},
+  {t:'සිංහල පාඩම 05.m4a',m:'Qwen3-ASR · Sinhala',p:0,l:'Waiting',eta:'',bg:'transparent',ac:'#6B675D',pd:'block',ed:'none',err:'',cls:'',btn:pause,ba:'Move up'}
+ ]},
+ {n:'Needs attention',s:'1 failed',jobs:[
+  {t:'Voice memo 118.m4a',m:'Whisper large-v3 turbo · English',p:0,l:'',eta:'',bg:'#FBEDEA',ac:'#B3321F',pd:'none',ed:'block',err:'The model stopped unexpectedly. Your file is safe. Retry, or choose a different model.',cls:'',btn:retry,ba:'Retry'}
+ ]}
+] };
+}
+}
+</script>
+</body>
+</html>

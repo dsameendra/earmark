@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earmark symbol style options</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500&display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:1440px;height:820px;box-sizing:border-box;background:#F3EEE5;color:#1C1B18;font-family:-apple-system,'SF Pro Text',system-ui,sans-serif;padding:44px 64px;display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:40px">
+<div><div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6B675D;font-weight:600">Step 3 of 6 — In-app symbols · icon locked (ear B, left 2.5%)</div>
+<div style="font-family:Newsreader,serif;font-size:44px;line-height:1.05;letter-spacing:-.025em;margin-top:8px">How should Earmark's sidebar and toolbar symbols look?</div></div>
+<div style="max-width:420px;font-size:13.5px;line-height:1.55;color:#5A564E">Apple's HIG says to use SF Symbols wherever one fits and to make custom symbols on the SF Symbols template (weights, scales, rendering modes). Glyphs below are close approximations; the real build uses actual SF Symbols.</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;flex:1">
+<sc-for list="{{styles}}" as="s" hint-placeholder-count="3">
+<div style="background:#FCFAF6;border:1px solid rgba(28,27,24,.12);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:14px">
+<div style="font-size:16px;font-weight:600">{{s.name}}</div>
+<div style="border-radius:16px;padding:16px;background:radial-gradient(260px 200px at 100% 100%,rgba(196,75,22,.18),transparent),#EFE7D9;display:flex;flex-direction:column;gap:12px">
+<div style="background:rgba(255,252,247,.62);box-shadow:0 0 0 1px rgba(255,255,255,.75) inset,0 8px 20px rgba(60,40,20,.1);border-radius:16px;padding:8px;display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{s.rows}}" as="r" hint-placeholder-count="6">
+<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:10px;font-size:13px;{{r.row}}">
+<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.p}}" stroke="{{r.ik}}" stroke-width="{{r.sw}}"/><path d="{{r.a}}" stroke="{{r.ia}}" stroke-width="{{r.aw}}"/></svg>{{r.n}}</div>
+</sc-for>
+</div>
+<div style="display:flex;gap:6px;justify-content:center;background:rgba(255,252,247,.62);box-shadow:0 0 0 1px rgba(255,255,255,.75) inset;border-radius:999px;padding:6px 10px">
+<sc-for list="{{s.tools}}" as="r" hint-placeholder-count="4">
+<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-label="{{r.n}}" role="img" style="margin:4px 8px"><path d="{{r.p}}" stroke="{{r.ik}}" stroke-width="{{r.sw}}"/><path d="{{r.a}}" stroke="{{r.ia}}" stroke-width="{{r.aw}}"/></svg>
+</sc-for>
+</div>
+</div>
+<div style="font-size:12.5px;line-height:1.5;color:#3A372F"><b>HIG fit.</b> {{s.hig}}</div>
+<div style="font-size:12.5px;line-height:1.5;color:#3A372F"><b>Brand.</b> {{s.brand}}</div>
+<div style="font-size:12.5px;line-height:1.5;color:#5A564E"><b style="color:#3A372F">Cost.</b> {{s.cost}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":820}}'>
+class Component extends DCLogic {
+renderVals() {
+const G = {
+ home:['Home','M4 11.2 12 4.5l8 6.7V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z','M10 20v-4.5h4V20'],
+ queue:['Queue','M5 7h9M5 12h14M5 17h7','M19 7h.01'],
+ meet:['Meetings','M3.8 19c.5-3 2.8-4.8 5.2-4.8s4.7 1.8 5.2 4.8M9 11.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M15.5 5.6a2.6 2.6 0 0 1 0 5M17.6 14.6c1.6.6 2.7 2 3 4.2'],
+ live:['Live','M4 6h16a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-7l-4 3.5V16H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z','M7 10h4M7 13h8'],
+ lib:['Library','M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z','M14 3v4h4'],
+ del:['Recently Deleted','M4.5 7h15M9.5 7V4.8h5V7M6.5 7l.8 12a1 1 0 0 0 1 .9h7.4a1 1 0 0 0 1-.9l.8-12','M12 16v-5M9.8 13l2.2-2.2 2.2 2.2'],
+ ear:['Live','M12 3.5c-3.3 0-6 2.6-6 6v2.3c0 1.9 1.1 2.6 2.2 3.8.7.8 1.1 1.5 1.1 2.6a2.3 2.3 0 0 0 4.1 1.1','M16.5 8.3a5.6 5.6 0 0 1 0 7.4'],
+ rec:['Record','M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z','M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4z'],
+ tr:['Translate','M4 6h9M8.5 4v2M6 6c.4 3.4 2.6 6 5.5 7.5M11.5 6c-.6 3.2-2.8 5.8-6 7.4','M12.8 20l3.6-8.2 3.6 8.2M14 17.4h4.8'],
+ ex:['Export','M5 13.5V18a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4.5','M12 15V4.5M8 8.4l4-3.9 4 3.9'],
+ bk:['Earmark','M7 3.5h10a1 1 0 0 1 1 1V20l-6-3.8L6 20V4.5a1 1 0 0 1 1-1z','M14 3.5v3.5h4']
+};
+const INK='#1C1B18', MUT='#5A564E', EMB='#C44B16';
+const SEL='font-weight:600;color:#1C1B18;background:rgba(255,252,246,.9);box-shadow:0 1px 0 #fff inset,0 3px 10px rgba(60,40,20,.1)';
+const NS='color:#3A372F';
+// style A: stock SF Symbols look: monochrome, accent merges into ink; selected row picks up Ember
+const rowA=(k,sel,sw)=>{const [n,p,a]=G[k];return {n,p,a,row:sel?SEL.replace('color:#1C1B18','color:#C44B16'):NS,ik:sel?EMB:MUT,ia:sel?EMB:MUT,sw:1.6,aw:1.6};};
+// style B: stock + custom brand symbols (ear, dog-eared page, earmark) carry Ember
+const rowB=(k,sel,custom)=>{const [n,p,a]=G[k];return {n,p,a,row:sel?SEL:NS,ik:sel?INK:MUT,ia:custom?EMB:(sel?INK:MUT),sw:1.6,aw:custom?2.1:1.6};};
+// style C: all custom duotone
+const rowC=(k,sel)=>{const [n,p,a]=G[k];return {n,p,a,row:sel?SEL:NS,ik:sel?INK:MUT,ia:EMB,sw:1.6,aw:2.1};};
+const order=['home','queue','meet','live','lib','del'];
+const mk=(f)=>order.map((k,i)=>f(k,i===0));
+const tk=(f)=>['rec','tr','ex','bk'].map(k=>{const r=f(k,false);return r;});
+return { styles:[
+ {name:'A · Stock SF Symbols, Ember-tinted',
+  rows: [rowA('home',true),rowA('queue'),rowA('meet'),rowA('live'),rowA('lib'),rowA('del')],
+  tools: tk(rowA),
+  hig:'Most native. Free Dynamic Type scaling, weight matching, VoiceOver and localisation. Anything Apple ships tomorrow just works.',
+  brand:'Lowest. Distinctive only through Ember on the selected row and in the icon.',
+  cost:'Lowest. Zero custom drawing, no maintenance.'},
+ {name:'B · Stock + 8 custom brand symbols',
+  rows: [rowB('home',true),rowB('queue'),rowB('meet'),rowB('ear',false,true),rowB('lib',false,true),rowB('del')],
+  tools: ['rec','tr','ex','bk'].map(k=>rowB(k,false,k==='bk')),
+  hig:'Apple’s recommended pattern: stock symbols for standard things, custom symbols only for ideas SF Symbols cannot express (the ear, the dog-eared page, earmark). Built on the SF Symbols template with hierarchical rendering.',
+  brand:'High where it counts. The ear and the fold show up in the sidebar, the menu bar, the Live overlay and the onboarding. Ember marks the custom ones only.',
+  cost:'Moderate. Eight custom symbols, each in 3 weights and 3 scales.'},
+ {name:'C · Fully custom duotone set',
+  rows: [rowC('home',true),rowC('queue'),rowC('meet'),rowC('live'),rowC('lib'),rowC('del')],
+  tools: ['rec','tr','ex','bk'].map(k=>rowC(k,false)),
+  hig:'Allowed, but the least native. Every symbol would have to match the SF Symbols template across weights, or text and icons look mismatched in toolbars and menus.',
+  brand:'Highest and most ownable. Every icon carries an Ember detail.',
+  cost:'Highest. Around 40 symbols to draw and keep matched as macOS evolves.'}
+] };
+}
+}
+</script>
+</body>
+</html>

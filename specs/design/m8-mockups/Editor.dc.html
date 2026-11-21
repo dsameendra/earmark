@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earmark transcript editor and player</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500&family=Noto+Sans+Sinhala:wght@400;600&display=swap">
+<style>
+body{margin:0}
+.gl{background:rgba(48,44,38,.55);-webkit-backdrop-filter:blur(30px) saturate(1.7);backdrop-filter:blur(30px) saturate(1.7);box-shadow:0 0 0 1px rgba(255,255,255,.12) inset,0 14px 36px rgba(0,0,0,.45)}
+@keyframes kar{0%{background-size:0% 100%}100%{background-size:100% 100%}}
+.kw{background:linear-gradient(rgba(242,138,87,.3),rgba(242,138,87,.3)) no-repeat;background-size:0% 100%;animation:kar 2.4s linear infinite;border-radius:4px;padding:0 2px;color:#FFD7BF}
+@media (prefers-reduced-motion:reduce){.kw{animation:none;background-size:100% 100%}}
+</style>
+</helmet>
+<div style="width:1440px;height:900px;position:relative;overflow:hidden;font-family:-apple-system,'SF Pro Text',system-ui,sans-serif;color:#F3EFE7;background:radial-gradient(900px 600px at 10% 5%,rgba(242,138,87,.14),transparent 60%),radial-gradient(800px 600px at 95% 95%,rgba(79,179,171,.1),transparent 60%),#12110F">
+<div style="position:absolute;left:12px;top:12px;bottom:12px;width:232px"><dc-import name="Sidebar" dark="{{true}}" active="Library" hint-size="232px,876px"></dc-import></div>
+
+<div style="position:absolute;left:256px;right:12px;top:12px;bottom:12px;display:flex;flex-direction:column;gap:12px">
+<div style="height:44px;display:flex;align-items:center;gap:10px;padding:0 4px 0 2px;flex:none">
+<div class="gl" style="width:40px;height:40px;border-radius:20px;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-label="Back" role="img"><path d="M14.5 5.5 8 12l6.5 6.5" stroke="#F3EFE7" stroke-width="2"/></svg></div>
+<div style="font-size:15px;font-weight:600;flex:1">Interview — Perera, part 1<span style="font-weight:400;color:#9A9589;margin-left:10px;font-size:13px">48:12 · English</span></div>
+<div style="display:flex;align-items:center;gap:8px;height:32px;width:220px;border-radius:16px;background:rgba(255,255,255,.08);padding:0 12px;font-size:13px;color:#B5B0A5"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M10.5 4.5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM15 15l5 5" stroke="#B5B0A5" stroke-width="1.6"/><path d="M8 10.5h5" stroke="#F28A57" stroke-width="2.1"/></svg><span style="flex:1">Find</span><span style="font-size:11px;border:1px solid rgba(255,255,255,.2);border-radius:5px;padding:0 5px">⌘F</span></div>
+<div class="gl" style="display:flex;gap:2px;padding:4px;border-radius:22px">
+<sc-for list="{{tools}}" as="t" hint-placeholder-count="2">
+<div style="height:32px;border-radius:16px;padding:0 13px;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;{{t.st}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.p}}" stroke="{{t.ik}}" stroke-width="1.6"/><path d="{{t.a}}" stroke="{{t.ia}}" stroke-width="2.1"/></svg>{{t.n}}</div>
+</sc-for>
+</div>
+<div style="height:40px;border-radius:20px;padding:0 18px;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;background:#F28A57;color:#1B0E06"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13.5V18a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4.5M12 15V4.5M8 8.4l4-3.9 4 3.9" stroke="#1B0E06" stroke-width="1.9"/></svg>Export</div>
+</div>
+
+<div style="flex:1;display:flex;gap:12px;min-height:0">
+<div style="flex:1;background:#1B1A17;border-radius:26px;box-shadow:0 0 0 1px rgba(255,255,255,.06),0 16px 40px rgba(0,0,0,.4);padding:30px 44px 120px;display:flex;flex-direction:column;gap:22px;overflow:hidden;position:relative">
+<sc-for list="{{segs}}" as="s" hint-placeholder-count="5">
+<div style="display:grid;grid-template-columns:96px minmax(0,1fr);gap:18px;opacity:{{s.op}}">
+<div style="display:flex;flex-direction:column;gap:5px;padding-top:2px"><div style="display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:{{s.c}}"><span style="width:8px;height:8px;border-radius:50%;background:{{s.c}}"></span>{{s.sp}}</div><div style="font-size:11.5px;color:#9A9589;font-variant-numeric:tabular-nums">{{s.ts}}</div></div>
+<div style="font-family:Newsreader,'Noto Sans Sinhala',serif;font-size:19px;line-height:1.6;color:#E8E3D9">{{s.pre}}<span style="display:{{s.kd}}" class="kw">{{s.kw}}</span>{{s.post}}<span style="display:{{s.bd}};margin-left:10px;font-family:-apple-system,sans-serif;font-size:11px;font-weight:600;color:#B5B0A5;border:1px solid rgba(255,255,255,.2);border-radius:9px;padding:1px 8px;vertical-align:2px">{{s.badge}}</span></div>
+</div>
+</sc-for>
+<div style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(transparent,#1B1A17 70%)"></div>
+</div>
+<div style="width:268px;flex:none;display:flex;flex-direction:column;gap:12px">
+<div style="background:#1B1A17;box-shadow:0 0 0 1px rgba(255,255,255,.06);border-radius:24px;padding:18px;display:flex;flex-direction:column;gap:10px">
+<div style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:#9A9589;font-weight:600">Speakers</div>
+<sc-for list="{{spk}}" as="p" hint-placeholder-count="2">
+<div style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="width:26px;height:26px;border-radius:50%;background:{{p.c}};color:#1B0E06;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">{{p.i}}</span><span style="flex:1">{{p.n}}</span><span style="font-size:12px;color:#9A9589;font-variant-numeric:tabular-nums">{{p.t}}</span></div>
+</sc-for>
+</div>
+<div style="background:#1B1A17;box-shadow:0 0 0 1px rgba(255,255,255,.06);border-radius:24px;padding:18px;display:flex;flex-direction:column;gap:9px;font-size:13px;color:#B5B0A5">
+<div style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:#9A9589;font-weight:600">Earmarks</div>
+<div style="display:flex;gap:9px;align-items:center;color:#F3EFE7"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h10a1 1 0 0 1 1 1V20l-6-3.8L6 20V4.5a1 1 0 0 1 1-1z" stroke="#F3EFE7" stroke-width="1.6"/><path d="M14 3.5v3.5h4" stroke="#F28A57" stroke-width="2.1"/></svg>12:40 · the first take</div>
+<div style="display:flex;gap:9px;align-items:center;color:#F3EFE7"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h10a1 1 0 0 1 1 1V20l-6-3.8L6 20V4.5a1 1 0 0 1 1-1z" stroke="#F3EFE7" stroke-width="1.6"/><path d="M14 3.5v3.5h4" stroke="#F28A57" stroke-width="2.1"/></svg>31:08 · on editing</div>
+</div>
+<div style="background:#1B1A17;box-shadow:0 0 0 1px rgba(255,255,255,.06);border-radius:24px;padding:18px;display:flex;flex-direction:column;gap:8px;font-size:13px;color:#B5B0A5;line-height:1.5">
+<div style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:#9A9589;font-weight:600">Hidden</div>1 segment ignored by “[Music]”. Nothing is deleted; show it any time.</div>
+</div>
+</div>
+</div>
+
+<div class="gl" style="position:absolute;left:300px;right:300px;bottom:30px;height:84px;border-radius:42px;display:flex;align-items:center;gap:18px;padding:0 24px 0 16px;background:rgba(40,37,32,.62)">
+<div style="width:52px;height:52px;border-radius:26px;background:#F28A57;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 6px 16px rgba(242,138,87,.35)"><svg viewBox="0 0 24 24" width="22" height="22" aria-label="Play" role="img"><path d="M8.5 6v12l10-6z" fill="#1B0E06"/></svg></div>
+<div style="font-size:12.5px;font-variant-numeric:tabular-nums;color:#F3EFE7;width:64px">14:32</div>
+<div style="flex:1;display:flex;align-items:center;gap:2px;height:44px;position:relative">
+<sc-for list="{{bars}}" as="b" hint-placeholder-count="60">
+<span style="flex:1;border-radius:2px;height:{{b.h}}px;background:{{b.c}}"></span>
+</sc-for>
+<span style="position:absolute;left:30%;top:-8px;bottom:-8px;width:2px;background:#F28A57;border-radius:1px"></span>
+<span style="position:absolute;left:26%;top:-14px;width:10px;height:10px;border-radius:3px 3px 3px 0;background:#F28A57"></span>
+<span style="position:absolute;left:64%;top:-14px;width:10px;height:10px;border-radius:3px 3px 3px 0;background:#F28A57"></span>
+</div>
+<div style="font-size:12.5px;font-variant-numeric:tabular-nums;color:#9A9589;width:64px;text-align:right">48:12</div>
+<div style="font-size:12.5px;font-weight:600;border-radius:12px;background:rgba(255,255,255,.1);padding:5px 10px">1.0×</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const bars = Array.from({length:84},(_,i)=>{const h=8+Math.round(Math.abs(Math.sin(i*0.7)*Math.cos(i*0.23))*30+((i*37)%7)); return {h, c: i<25 ? '#F28A57' : 'rgba(243,239,231,.28)'};});
+const act='background:rgba(255,255,255,.1);color:#F3EFE7', off='color:#B5B0A5';
+return {
+ bars,
+ tools:[
+  {n:'Speakers',st:act,p:'M12 12a3.6 3.6 0 1 0 0-7.2 3.6 3.6 0 0 0 0 7.2zM5 20c.6-3.4 3.4-5.4 7-5.4s6.4 2 7 5.4',a:'M18.5 4.5l1 1 2-2',ik:'#F3EFE7',ia:'#F28A57'},
+  {n:'Translate',st:off,p:'M4 6h9M8.5 4v2M6 6c.4 3.4 2.6 6 5.5 7.5M11.5 6c-.6 3.2-2.8 5.8-6 7.4',a:'M12.8 20l3.6-8.2 3.6 8.2M14 17.4h4.8',ik:'#B5B0A5',ia:'#F28A57'}
+ ],
+ spk:[{i:'P',n:'Nimali Perera',c:'#F28A57',t:'31:20'},{i:'I',n:'Interviewer',c:'#4FB3AB',t:'16:52'}],
+ segs:[
+  {sp:'Interviewer',c:'#4FB3AB',ts:'14:18',op:1,pre:'And when you look back at the early footage, what do you ',kw:'keep',post:'?',kd:'none',bd:'none',badge:''},
+  {sp:'Nimali Perera',c:'#F28A57',ts:'14:24',op:1,pre:'I always keep the first take. The second one is for the editor, but the ',kw:'first one',post:' is for me. It still has the room in it.',kd:'inline',bd:'none',badge:''},
+  {sp:'Interviewer',c:'#4FB3AB',ts:'14:41',op:1,pre:'Even when the audio is rough?',kw:'',post:'',kd:'none',bd:'none',badge:''},
+  {sp:'Nimali Perera',c:'#F28A57',ts:'14:46',op:1,pre:'Rough is honest. අපි ඒක හැමදාම කියනවා — ඇත්තටම හොඳම කොටස ඒක.',kw:'',post:'',kd:'none',bd:'inline',badge:'EN · සිං'},
+  {sp:'Hidden',c:'#9A9589',ts:'15:02',op:.42,pre:'[Music]',kw:'',post:'',kd:'none',bd:'inline',badge:'Ignored'},
+  {sp:'Interviewer',c:'#4FB3AB',ts:'15:06',op:1,pre:'Let’s talk about how you earmark a moment worth coming back to.',kw:'',post:'',kd:'none',bd:'none',badge:''}
+ ]
+};
+}
+}
+</script>
+</body>
+</html>

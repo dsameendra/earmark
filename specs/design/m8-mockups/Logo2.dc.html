@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earmark ear mark refinements</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:1440px;height:700px;box-sizing:border-box;background:#F3EEE5;color:#1C1B18;font-family:Inter,system-ui,sans-serif;padding:48px 64px;display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:40px">
+<div><div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6B675D;font-weight:600">Step 1b of 6 — Refine the ear</div>
+<div style="font-family:Newsreader,serif;font-size:48px;line-height:1.05;letter-spacing:-.025em;margin-top:8px">One shape that is both an ear and a waveform</div></div>
+<div style="max-width:380px;font-size:13.5px;line-height:1.55;color:#5A564E">Four ways to fuse them. Each is shown large, as an app icon, and at 28 px and 16 px, which is where most marks fail.</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;flex:1">
+<sc-for list="{{opts}}" as="o" hint-placeholder-count="4">
+<div style="background:#FCFAF6;border:1px solid rgba(28,27,24,.12);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:center;padding-top:6px"><svg viewBox="0 0 64 64" width="190" height="190" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><sc-for list="{{o.light}}" as="s" hint-placeholder-count="3"><path d="{{s.d}}" fill="{{s.f}}" stroke="{{s.s}}" stroke-width="{{s.w}}"/></sc-for></svg></div>
+<div style="display:flex;gap:14px;align-items:center;justify-content:center">
+<div style="width:96px;height:96px;border-radius:22px;background:linear-gradient(155deg,#E8794A 0%,#C44B16 55%,#8F360E 100%);position:relative;box-shadow:0 12px 24px rgba(110,45,10,.3),0 1px 0 rgba(255,255,255,.5) inset;overflow:hidden;flex:none"><div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,0) 46%)"></div><svg viewBox="0 0 64 64" width="96" height="96" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;inset:0" aria-hidden="true"><g transform="translate(7 7) scale(.78)"><sc-for list="{{o.tile}}" as="s" hint-placeholder-count="3"><path d="{{s.d}}" fill="{{s.f}}" stroke="{{s.s}}" stroke-width="{{s.w}}"/></sc-for></g></svg></div>
+<div style="width:96px;height:96px;border-radius:22px;background:linear-gradient(155deg,#2A2824,#12110F);position:relative;box-shadow:0 12px 24px rgba(0,0,0,.35),0 1px 0 rgba(255,255,255,.18) inset;overflow:hidden;flex:none"><svg viewBox="0 0 64 64" width="96" height="96" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;inset:0" aria-hidden="true"><g transform="translate(7 7) scale(.78)"><sc-for list="{{o.night}}" as="s" hint-placeholder-count="3"><path d="{{s.d}}" fill="{{s.f}}" stroke="{{s.s}}" stroke-width="{{s.w}}"/></sc-for></g></svg></div>
+<div style="display:flex;flex-direction:column;gap:12px;align-items:center"><svg viewBox="0 0 64 64" width="28" height="28" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><sc-for list="{{o.light}}" as="s" hint-placeholder-count="3"><path d="{{s.d}}" fill="{{s.f}}" stroke="{{s.s}}" stroke-width="{{s.w}}"/></sc-for></svg><svg viewBox="0 0 64 64" width="16" height="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><sc-for list="{{o.light}}" as="s" hint-placeholder-count="3"><path d="{{s.d}}" fill="{{s.f}}" stroke="{{s.s}}" stroke-width="{{s.w}}"/></sc-for></svg></div>
+</div>
+<div><div style="font-size:15px;font-weight:600">{{o.name}}</div><div style="font-size:12.5px;line-height:1.5;color:#5A564E;margin-top:4px">{{o.why}}</div></div>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":700}}'>
+class Component extends DCLogic {
+renderVals() {
+const L = {m:'#1C1B18', a:'#C44B16', k:'#FCFAF6'};
+const T = {m:'rgba(255,252,246,.96)', a:'#8F360E', k:'#C44B16'};
+const N = {m:'rgba(243,239,231,.95)', a:'#F28A57', k:'#1C1B18'};
+const mk = (shapes, P) => shapes.map(([d, r, st, w]) => ({ d, f: st ? 'none' : P[r], s: st ? P[r] : 'none', w: st ? w : 0 }));
+const ear = 'M32 7c-11 0-19 8-19 19 0 7 3 11 6 15 2 3 3 5 3 9 0 5 4 8 8 8 5 0 8-3 8-8 0-4 2-6 5-9 3-3 5-6 5-12 0-12-8-22-16-22z';
+const defs = [
+['1 · Ear, waveform inside','A clean ear outline. The inner ear is a three-bar waveform with the ember bar at the centre. Most recognisable as an ear.',[
+[ear,'m',1,4.6],['M24 27v8M31 20v22M38 27v8','a',1,4]]],
+['2 · Solid ear, cut-out waves','A solid ink ear with the waveform knocked out of it. Heaviest and boldest. The strongest Dock presence.',[
+[ear,'m'],['M25 27v8M38 27v8','k',1,4],['M31.5 20v22','a',1,4]]],
+['3 · Sound becomes ear','One continuous line: a flat signal spikes into a waveform, then curls into the helix of an ear. Most distinctive; the line is the brand.',[
+['M3 40h5l3-7 4 14 4-20 3 13','a',1,3.6],['M25 40c1-9 7-18 15-18s14 6 14 14c0 8-5 10-8 14-2 3-2 8-7 8-4 0-6-3-6-6M42 36c0-3-2-5-5-5s-5 2-5 5','m',1,4.4]]],
+['4 · Ear made of bars','A row of rounded bars whose heights trace an ear silhouette. Pure waveform that resolves into an ear. Cleanest at 16 px.',[
+['M14 25v16M21 14v36M28 8v50M35 8v46M42 14v32M49 25v12','m',1,5],['M35 22v18','a',1,5]]]
+];
+return { opts: defs.map(([name, why, sh]) => ({ name, why, light: mk(sh, L), tile: mk(sh, T), night: mk(sh, N) })) };
+}
+}
+</script>
+</body>
+</html>

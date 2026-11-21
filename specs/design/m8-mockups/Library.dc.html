@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earmark library</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500&family=Noto+Sans+Sinhala:wght@400;600&display=swap">
+<style>
+body{margin:0}
+.gl{background:rgba(255,252,247,.58);-webkit-backdrop-filter:blur(28px) saturate(1.7);backdrop-filter:blur(28px) saturate(1.7);box-shadow:0 0 0 1px rgba(255,255,255,.7) inset,0 10px 28px rgba(60,40,20,.12)}
+</style>
+</helmet>
+<div style="width:1440px;height:900px;position:relative;overflow:hidden;font-family:-apple-system,'SF Pro Text',system-ui,sans-serif;color:#1C1B18;background:radial-gradient(900px 600px at 10% 5%,rgba(196,75,22,.14),transparent 60%),radial-gradient(800px 600px at 95% 95%,rgba(27,122,116,.1),transparent 60%),#F3EEE5">
+<div style="position:absolute;left:12px;top:12px;bottom:12px;width:232px"><dc-import name="Sidebar" active="Library" hint-size="232px,876px"></dc-import></div>
+<div style="position:absolute;left:256px;right:12px;top:12px;bottom:12px;display:flex;flex-direction:column;gap:12px">
+<div style="height:44px;display:flex;align-items:center;gap:12px;padding:0 6px 0 4px;flex:none">
+<div style="font-size:17px;font-weight:600;flex:1">Library<span style="font-weight:400;font-size:13px;color:#6B675D;margin-left:12px">248 transcripts</span></div>
+<div style="display:flex;align-items:center;gap:8px;height:34px;width:300px;border-radius:17px;background:rgba(28,27,24,.06);padding:0 12px;font-size:13px;color:#6B675D"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M10.5 4.5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM15 15l5 5" stroke="#6B675D" stroke-width="1.6"/><path d="M8 10.5h5" stroke="#C44B16" stroke-width="2.1"/></svg><span style="flex:1">Search every word</span><span style="font-size:11px;border:1px solid rgba(28,27,24,.15);border-radius:5px;padding:0 5px">⌘K</span></div>
+<div class="gl" style="display:flex;gap:2px;padding:4px;border-radius:22px;font-size:13px;font-weight:500">
+<div style="height:32px;border-radius:16px;padding:0 14px;display:flex;align-items:center;background:rgba(255,255,255,.7)">List</div>
+<div style="height:32px;border-radius:16px;padding:0 14px;display:flex;align-items:center;color:#5A564E">Grid</div>
+</div>
+</div>
+<div style="flex:1;background:#FCFAF6;border-radius:26px;box-shadow:0 0 0 1px rgba(28,27,24,.08),0 12px 30px rgba(60,40,20,.08);padding:22px 28px;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="6">
+<div style="height:30px;border-radius:15px;padding:0 14px;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;{{c.st}}">{{c.n}}</div>
+</sc-for>
+</div>
+<div style="display:grid;grid-template-columns:minmax(0,2.6fr) 120px 90px 110px 130px;gap:16px;padding:8px 14px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:#6B675D;font-weight:600;border-bottom:1px solid rgba(28,27,24,.1)"><span>Title</span><span>Date</span><span>Length</span><span>Language</span><span>Speakers</span></div>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="9">
+<div style="display:grid;grid-template-columns:minmax(0,2.6fr) 120px 90px 110px 130px;gap:16px;align-items:center;padding:9px 14px;border-radius:14px;font-size:13.5px;background:{{r.bg}}">
+<div style="display:flex;align-items:center;gap:12px;min-width:0"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" stroke="#1C1B18" stroke-width="1.6"/><path d="M14 3v4h4" stroke="#C44B16" stroke-width="2.1"/></svg><div style="min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{r.t}}</div><div style="font-size:12px;color:#6B675D;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">{{r.s}}</div></div></div>
+<span style="color:#5A564E">{{r.d}}</span><span style="color:#5A564E;font-variant-numeric:tabular-nums">{{r.l}}</span>
+<span><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:9px;background:#F3EEE5;color:#5A564E;font-family:-apple-system,'Noto Sans Sinhala',sans-serif">{{r.g}}</span></span>
+<div style="display:flex;align-items:center"><span style="display:{{r.s1}};width:20px;height:20px;border-radius:50%;background:#C44B16;border:2px solid #FCFAF6"></span><span style="display:{{r.s2}};width:20px;height:20px;border-radius:50%;background:#1B7A74;border:2px solid #FCFAF6;margin-left:-7px"></span><span style="display:{{r.s3}};width:20px;height:20px;border-radius:50%;background:#5558D6;border:2px solid #FCFAF6;margin-left:-7px"></span><span style="margin-left:8px;font-size:12px;color:#6B675D">{{r.n}}</span></div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const on='background:#F7E4D8;color:#9E3A10;font-weight:600', off='background:#F3EEE5;color:#5A564E';
+const r=(t,s,d,l,g,n,bg)=>({t,s,d,l,g,n,bg:bg||'transparent',s1:n>=1?'block':'none',s2:n>=2?'block':'none',s3:n>=3?'block':'none'});
+return {
+ chips:[{n:'All',st:on},{n:'Interviews',st:off},{n:'Meetings',st:off},{n:'Sinhala lessons',st:off},{n:'Speaker: Nimali',st:off},{n:'Earmarked',st:off}],
+ rows:[
+  r('Interview — Perera, part 1','“I always keep the first take. The second one is for the editor…”','Today','48:12','EN',2,'#F7E4D8'),
+  r('Weekly product sync','“Let’s ship the queue changes Thursday and park the export presets…”','Yesterday','1:02:40','EN',4),
+  r('සිංහල පාඩම 04','“අද පාඩමේදී අපි ක්‍රියා පද ගැන කතා කරමු.”','Fri','26:05','සිං',1),
+  r('Field notes — Galle trip','“The fort walls at sunset. අපි පැයක් විතර එතන හිටියා.”','Thu','12:30','EN·සිං',1),
+  r('Design review, Teams','“Spacing feels right on the sheet, but the toolbar is too loud.”','Wed','38:48','EN',3),
+  r('Budget call','“If the quarter holds we can move the hiring plan up by a month.”','Tue','38:48','EN',2),
+  r('Voice memo 117','“Reminder: renew the domain and book the studio for Saturday.”','Mon','2:14','EN',1),
+  r('Interview — Silva','“What I wanted people to hear was the pause before the answer.”','Nov 14','54:09','EN',2),
+  r('Lecture: tonal languages','“Pitch carries meaning, and in some languages it carries all of it.”','Nov 12','1:12:30','EN',1)
+ ]
+};
+}
+}
+</script>
+</body>
+</html>

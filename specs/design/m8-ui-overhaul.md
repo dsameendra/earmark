@@ -6,6 +6,9 @@ Canvas: https://claude.ai/artifact/FzAtjj7ZdYAkp1WHPeFSVF (final v1, version id 
 ## Governing rule
 Earmark is a macOS 26 app: Apple HIG applies to every in-app surface. Brand and marketing pieces may use brand fonts and custom artwork.
 
+## Approved real-app refinements
+The owner's 2026-11-22 review supersedes the global workspace width cap and Settings toolbar tabs: workspace surfaces fill the detail column, while Settings uses grouped vertical navigation. Onboarding has no titlebar strip or Window-menu entry; its brand panel fills the window edge. Sinhala is presented alongside other languages. Search, Find and Replace have distinct symbols. See [SCR-007](../changes/SCR-007-cohesive-ui-refinement.md) and the [refinement QA record](../qa/ui-refinement-2026-11-22.md). The remaining visual tokens and final-v1 boards stay authoritative.
+
 ## Locked decisions
 | Area | Decision |
 |---|---|

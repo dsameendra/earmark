@@ -8,6 +8,8 @@ Status: FROZEN at Phase 5 gate. Milestones follow the brief (M1–M7), plus M8 U
 
 ## Execution record (Codex handover, 2026-11-22)
 
+The subsequent real-app refinement pass is tracked in [SCR-007](changes/SCR-007-cohesive-ui-refinement.md) and [its QA record](qa/ui-refinement-2026-11-22.md). It supersedes the older toolbar-tab Settings layout and global workspace cap, adds queue removal and shared playback shortcuts, corrects icon geometry, and expands visual checks to compact/expanded windows, menu-bar controls and accessibility fallbacks. The historical implementation and test counts below describe the earlier handover build; use the refinement record for the current UI.
+
 The owner approved completion of M8 followed by M7, recovery of interrupted T34, correction of the identified feature gaps, and a bundled CTranslate2/SentencePiece runtime for ADR-009. The local final-v1 boards remain authoritative; the private canvas could not be independently fetched during handover.
 
 - Preserved pre-handover `main` as `backup/pre-codex-handover`; an external snapshot contains the Git bundle, complete T34 edits, untracked files and the duplicate remote-ref file. The original Claude worktree is retained.

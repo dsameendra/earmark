@@ -1,0 +1,302 @@
+[
+  {
+    "image": "recently-deleted-dark-expanded.png",
+    "test": "EarmarkUITests/testExpandedDarkWorkspace()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350532.921
+  },
+  {
+    "image": "library-dark-expanded.png",
+    "test": "EarmarkUITests/testExpandedDarkWorkspace()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350530.812
+  },
+  {
+    "image": "live-dark-expanded.png",
+    "test": "EarmarkUITests/testExpandedDarkWorkspace()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350527.807
+  },
+  {
+    "image": "home-dark-expanded.png",
+    "test": "EarmarkUITests/testExpandedDarkWorkspace()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350525.248
+  },
+  {
+    "image": "settings-privacyPermissions.png",
+    "test": "EarmarkUITests/testSettingsSectionsRemainAvailable()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350574.44
+  },
+  {
+    "image": "settings-keyboardShortcuts.png",
+    "test": "EarmarkUITests/testSettingsSectionsRemainAvailable()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350572.328
+  },
+  {
+    "image": "settings-storage.png",
+    "test": "EarmarkUITests/testSettingsSectionsRemainAvailable()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350570.043
+  },
+  {
+    "image": "settings-exportDefaults.png",
+    "test": "EarmarkUITests/testSettingsSectionsRemainAvailable()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350567.948
+  },
+  {
+    "image": "settings-translation.png",
+    "test": "EarmarkUITests/testSettingsSectionsRemainAvailable()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350565.833
+  },
+  {
+    "image": "settings-replacements.png",
+    "test": "EarmarkUITests/testSettingsSectionsRemainAvailable()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350563.706
+  },
+  {
+    "image": "settings-ignoredSegments.png",
+    "test": "EarmarkUITests/testSettingsSectionsRemainAvailable()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350561.224
+  },
+  {
+    "image": "settings-transcriptAppearance.png",
+    "test": "EarmarkUITests/testSettingsSectionsRemainAvailable()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350558.11
+  },
+  {
+    "image": "settings-dictation.png",
+    "test": "EarmarkUITests/testSettingsSectionsRemainAvailable()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350556.008
+  },
+  {
+    "image": "settings-liveCaptions.png",
+    "test": "EarmarkUITests/testSettingsSectionsRemainAvailable()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350553.842
+  },
+  {
+    "image": "settings-meetings.png",
+    "test": "EarmarkUITests/testSettingsSectionsRemainAvailable()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350551.532
+  },
+  {
+    "image": "settings-audio.png",
+    "test": "EarmarkUITests/testSettingsSectionsRemainAvailable()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350549.299
+  },
+  {
+    "image": "settings-languages.png",
+    "test": "EarmarkUITests/testSettingsSectionsRemainAvailable()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350547.161
+  },
+  {
+    "image": "settings-models.png",
+    "test": "EarmarkUITests/testSettingsSectionsRemainAvailable()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350545.043
+  },
+  {
+    "image": "settings-general.png",
+    "test": "EarmarkUITests/testSettingsSectionsRemainAvailable()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350542.95
+  },
+  {
+    "image": "menu-bar-light.png",
+    "test": "EarmarkUITests/testWelcomeOnlyInHelpAndSettingsAndMenuBarControls()",
+    "resultBundle": "earmark-polish-ui-10.xcresult",
+    "timestamp": 1795350589.29
+  },
+  {
+    "image": "export-dark.png",
+    "test": "EarmarkUITests/testDarkScreensAndEditorExport()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350695.996
+  },
+  {
+    "image": "editor-dark-1440x900.png",
+    "test": "EarmarkUITests/testDarkScreensAndEditorExport()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350685.787
+  },
+  {
+    "image": "recentlyDeleted-dark-1440x900.png",
+    "test": "EarmarkUITests/testDarkScreensAndEditorExport()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350680.383
+  },
+  {
+    "image": "library-dark-1440x900.png",
+    "test": "EarmarkUITests/testDarkScreensAndEditorExport()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350676.583
+  },
+  {
+    "image": "live-dark-1440x900.png",
+    "test": "EarmarkUITests/testDarkScreensAndEditorExport()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350672.58
+  },
+  {
+    "image": "meetings-dark-1440x900.png",
+    "test": "EarmarkUITests/testDarkScreensAndEditorExport()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350668.87
+  },
+  {
+    "image": "queue-dark-1440x900.png",
+    "test": "EarmarkUITests/testDarkScreensAndEditorExport()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350665.268
+  },
+  {
+    "image": "home-dark-1440x900.png",
+    "test": "EarmarkUITests/testDarkScreensAndEditorExport()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350661.479
+  },
+  {
+    "image": "recently-deleted-light-expanded.png",
+    "test": "EarmarkUITests/testExpandedLightWorkspace()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350716.104
+  },
+  {
+    "image": "library-light-expanded.png",
+    "test": "EarmarkUITests/testExpandedLightWorkspace()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350714.005
+  },
+  {
+    "image": "live-light-expanded.png",
+    "test": "EarmarkUITests/testExpandedLightWorkspace()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350711.085
+  },
+  {
+    "image": "home-light-expanded.png",
+    "test": "EarmarkUITests/testExpandedLightWorkspace()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350708.82
+  },
+  {
+    "image": "export-light.png",
+    "test": "EarmarkUITests/testLightScreensAndEditorExport()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350760.403
+  },
+  {
+    "image": "editor-light-1440x900.png",
+    "test": "EarmarkUITests/testLightScreensAndEditorExport()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350749.58
+  },
+  {
+    "image": "recentlyDeleted-light-1440x900.png",
+    "test": "EarmarkUITests/testLightScreensAndEditorExport()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350743.844
+  },
+  {
+    "image": "library-light-1440x900.png",
+    "test": "EarmarkUITests/testLightScreensAndEditorExport()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350739.905
+  },
+  {
+    "image": "live-light-1440x900.png",
+    "test": "EarmarkUITests/testLightScreensAndEditorExport()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350735.98
+  },
+  {
+    "image": "meetings-light-1440x900.png",
+    "test": "EarmarkUITests/testLightScreensAndEditorExport()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350732.493
+  },
+  {
+    "image": "queue-light-1440x900.png",
+    "test": "EarmarkUITests/testLightScreensAndEditorExport()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350728.906
+  },
+  {
+    "image": "home-light-1440x900.png",
+    "test": "EarmarkUITests/testLightScreensAndEditorExport()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350724.145
+  },
+  {
+    "image": "onboarding-step-5.png",
+    "test": "EarmarkUITests/testNarrowInspectorAndAllOnboardingSteps()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350794.976
+  },
+  {
+    "image": "onboarding-step-4.png",
+    "test": "EarmarkUITests/testNarrowInspectorAndAllOnboardingSteps()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350793.474
+  },
+  {
+    "image": "onboarding-step-3.png",
+    "test": "EarmarkUITests/testNarrowInspectorAndAllOnboardingSteps()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350791.961
+  },
+  {
+    "image": "onboarding-step-2.png",
+    "test": "EarmarkUITests/testNarrowInspectorAndAllOnboardingSteps()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350790.366
+  },
+  {
+    "image": "onboarding-step-1.png",
+    "test": "EarmarkUITests/testNarrowInspectorAndAllOnboardingSteps()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350788.779
+  },
+  {
+    "image": "editor-narrow-inspector.png",
+    "test": "EarmarkUITests/testNarrowInspectorAndAllOnboardingSteps()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350782.786
+  },
+  {
+    "image": "queue-all-states-dark.png",
+    "test": "EarmarkUITests/testQueueStatesAndClearing()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350819.179
+  },
+  {
+    "image": "editor-accessibility-reduced.png",
+    "test": "EarmarkUITests/testReducedMotionAndTransparency()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350838.283
+  },
+  {
+    "image": "live-accessibility-reduced.png",
+    "test": "EarmarkUITests/testReducedMotionAndTransparency()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350834.593
+  },
+  {
+    "image": "home-accessibility-reduced.png",
+    "test": "EarmarkUITests/testReducedMotionAndTransparency()",
+    "resultBundle": "earmark-polish-ui-11.xcresult",
+    "timestamp": 1795350832.593
+  }
+]

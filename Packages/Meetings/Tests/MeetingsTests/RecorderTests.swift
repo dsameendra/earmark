@@ -286,6 +286,30 @@ struct RecorderTests {
         #expect(await log.entries == ["video.start"])
     }
 
+    @Test("audio arriving while video is still starting is not lost")
+    func audioDuringVideoStartup() async throws {
+        let dir = tempDirectory()
+        let video = GatedVideo()
+        let rec = recorder(video: video)
+        var mic: AsyncStream<AudioChunk>.Continuation!
+        // Like the real sources: bounded, newest wins, so nothing survives unless a consumer is already reading.
+        let micStream = AsyncStream<AudioChunk>(bufferingPolicy: .bufferingNewest(1)) { mic = $0 }
+        let starting = Task {
+            try await rec.start(config: RecordingConfig(directory: dir, includeVideo: true), mic: micStream, remote: stream([]))
+        }
+        for i in 0..<3 {
+            mic.yield(tone(seconds: 1, start: Double(i)))
+            try await Task.sleep(for: .milliseconds(80))
+        }
+        await video.release()
+        try await starting.value
+        mic.finish()
+        let recording = try await rec.stop()
+        #expect(abs(recording.duration - 3) < 0.01)
+        #expect(try frames(dir.appendingPathComponent("mic.caf")) == 48_000)
+        #expect(recording.tracks.contains { $0.role == .video })
+    }
+
     @Test("video is recorded only when requested, started before audio and stopped on stop")
     func videoRecorded() async throws {
         let dir = tempDirectory()

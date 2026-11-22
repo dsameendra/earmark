@@ -98,34 +98,43 @@ public actor MeetingRecorder: BookmarkingRecorder {
             throw RecorderError.cannotWriteTrack(error.localizedDescription)
         }
         directory = dir
-        var tracks = [
-            RecordingTrack(role: .mic, relativePath: Self.micFile), RecordingTrack(role: .remote, relativePath: Self.remoteFile),
-        ]
-        var includesVideo = false
-        if recording.includeVideo, let video {
-            do {
-                try await video.start(app: session.app, to: dir.appendingPathComponent(Self.videoFile))
-                videoRunning = true
-                includesVideo = true
-                tracks.append(RecordingTrack(role: .video, relativePath: Self.videoFile))
-            } catch {
-                // Video (Screen Recording permission, no window) must never stop audio recording.
-                log.error("video start failed: \(String(describing: error), privacy: .public)")
-                broadcaster.send(.videoFailed(reason: String(describing: error)))
-            }
-        }
         let manifest = RecordingManifest(
-            version: 1, meetingID: session.meetingID, app: session.app, startedAt: session.startedAt, state: .recording, tracks: tracks,
-            includesVideo: includesVideo, wantsMix: recording.mixTrack, keepSeparateTracks: recording.separateTracks, duration: 0,
+            version: 1, meetingID: session.meetingID, app: session.app, startedAt: session.startedAt, state: .recording,
+            tracks: [
+                RecordingTrack(role: .mic, relativePath: Self.micFile), RecordingTrack(role: .remote, relativePath: Self.remoteFile),
+            ], includesVideo: false, wantsMix: recording.mixTrack, keepSeparateTracks: recording.separateTracks, duration: 0,
             bookmarks: [], haltedReason: nil, relativeDirectory: session.relativeDirectory)
         self.manifest = manifest
         try manifest.write(to: dir)
         state = .recording
+        // Audio consumers first: the sources' streams are bounded (`bufferingNewest`), so anything that arrives while
+        // video starts (ScreenCaptureKit lookup, first-use permission prompt) would otherwise be dropped.
         consumers = [
             Task { [weak self] in for await chunk in mic { await self?.ingest(.mic, chunk) } },
             Task { [weak self] in for await chunk in remote { await self?.ingest(.remote, chunk) } },
         ]
         broadcaster.send(.started(directory: dir))
+        if recording.includeVideo, let video { await startVideo(video, in: dir) }
+    }
+
+    private func startVideo(_ video: any MeetingVideoRecording, in dir: URL) async {
+        do {
+            try await video.start(app: session.app, to: dir.appendingPathComponent(Self.videoFile))
+        } catch {
+            // Video (Screen Recording permission, no window) must never stop audio recording.
+            log.error("video start failed: \(String(describing: error), privacy: .public)")
+            broadcaster.send(.videoFailed(reason: String(describing: error)))
+            return
+        }
+        guard state == .recording || state == .halted, var manifest else {
+            try? await video.stop()  // stopped while the video was starting
+            return
+        }
+        videoRunning = true
+        manifest.includesVideo = true
+        manifest.tracks.append(RecordingTrack(role: .video, relativePath: Self.videoFile))
+        self.manifest = manifest
+        try? manifest.write(to: dir)
     }
 
     public func stop() async throws -> Recording {

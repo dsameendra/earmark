@@ -33,6 +33,8 @@ public enum MeetingSessionEvent: Sendable, Equatable {
     case remoteAudioSilent
     case recordingFailed(reason: String)
     case recorder(RecorderEvent)
+    /// A bookmark was added at `time` seconds on the recording / live transcript timeline (MTG-AC-14).
+    case bookmarkAdded(time: TimeInterval, note: String)
     case sessionEnded(meetingID: MeetingID, finalizationJob: JobID?)
     case failed(reason: String)
 }
@@ -49,6 +51,10 @@ public actor MeetingSessionController {
         var mic: (any AudioSource)?
         var remote: (any AudioSource)?
         var helpers: [Task<Void, Never>]
+        /// When capture actually began; bookmark times and the recording timeline are measured from here, not from the
+        /// detector's (earlier) meeting start.
+        var timelineStart: Date
+        var bookmarks: [RecordingManifest.Bookmark] = []
     }
 
     public typealias RecorderFactory = @Sendable (RecordingSession) -> any BookmarkingRecorder
@@ -62,6 +68,7 @@ public actor MeetingSessionController {
     private let meetings: any MeetingRepository
     private let jobs: (any JobQueue)?
     private let live: (any LiveSessionControlling)?
+    private let transcripts: (any TranscriptRepository)?
     private let clock: any MeetingClock
     private let calendar: Calendar
     private let broadcaster = Broadcaster<MeetingSessionEvent>()
@@ -75,6 +82,7 @@ public actor MeetingSessionController {
         sources: any MeetingAudioSourceProviding, makeRecorder: @escaping RecorderFactory,
         recordingsRoot: @escaping @Sendable () async -> URL,
         meetings: any MeetingRepository, jobs: (any JobQueue)? = nil, live: (any LiveSessionControlling)? = nil,
+        transcripts: (any TranscriptRepository)? = nil,
         clock: any MeetingClock = SystemMeetingClock(), calendar: Calendar = .current
     ) {
         self.detector = detector
@@ -86,6 +94,7 @@ public actor MeetingSessionController {
         self.meetings = meetings
         self.jobs = jobs
         self.live = live
+        self.transcripts = transcripts
         self.clock = clock
         self.calendar = calendar
     }
@@ -143,7 +152,7 @@ public actor MeetingSessionController {
         try? await meetings.save(meeting)
         var info = MeetingSessionInfo(
             meetingID: meeting.id, app: app, startedAt: started, transcribing: transcribe, recording: false, recordsVideo: false)
-        var state = Active(info: info, meeting: meeting, helpers: [])
+        var state = Active(info: info, meeting: meeting, helpers: [], timelineStart: clock.now())
 
         if record {
             if await consent.needsNotice() { broadcaster.send(.consentNoticeRequired) }
@@ -167,6 +176,7 @@ public actor MeetingSessionController {
             try? await meetings.save(meeting)
             return
         }
+        state.timelineStart = clock.now()
         active = state
         broadcaster.send(.sessionStarted(info))
         if info.recording { broadcaster.send(.recordingIndicator(true)) }
@@ -238,6 +248,12 @@ public actor MeetingSessionController {
             }
         }
         let liveID = await live?.stop()
+        if recording == nil, let liveID, let transcripts {
+            // No recorder manifest carries the bookmarks, so attach them to the live transcript.
+            for bookmark in state.bookmarks {
+                try? await transcripts.save(TranscriptBookmark(transcriptID: liveID, time: bookmark.time, note: bookmark.note))
+            }
+        }
         for helper in state.helpers { helper.cancel() }
         state.meeting.endedAt = clock.now()
         state.meeting.recording = recording
@@ -256,11 +272,15 @@ public actor MeetingSessionController {
         return jobID
     }
 
-    /// Bookmark at the current meeting time (MTG-AC-14), persisted in the crash-safe manifest.
+    /// Bookmark at the current capture time (MTG-AC-14). Recorded sessions keep it in the crash-safe manifest (and the
+    /// finalizer saves it on the final transcript); transcribe-only sessions attach it to the live transcript at stop
+    /// when a `TranscriptRepository` was provided.
     public func addBookmark(note: String = "") async {
         guard let state = active else { return }
-        let time = max(0, clock.now().timeIntervalSince(state.info.startedAt))
+        let time = max(0, clock.now().timeIntervalSince(state.timelineStart))
+        active?.bookmarks.append(RecordingManifest.Bookmark(time: time, note: note))
         await state.recorder?.addBookmark(at: time, note: note)
+        broadcaster.send(.bookmarkAdded(time: time, note: note))
     }
 
     /// Menu bar "Toggle auto-record" for the detected app (MTG-AC-17).

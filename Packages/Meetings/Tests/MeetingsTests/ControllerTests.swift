@@ -106,6 +106,8 @@ private struct Rig {
     let jobs = FakeJobs()
     let clock = ManualClock()
     let live: FakeLive
+    let recorder: FakeRecorder
+    let transcripts = InMemoryTranscripts()
     let controller: MeetingSessionController
     let sessionEvents: Collector<MeetingSessionEvent>
 
@@ -113,11 +115,13 @@ private struct Rig {
         let log = CallLog()
         self.live = FakeLive(log: log)
         let recorder = FakeRecorder(log: log, failStart: recorderFails)
+        self.recorder = recorder
         let policies = MeetingPolicyStore(store: settings)
         controller = MeetingSessionController(
             detector: detector, policies: policies, consent: MeetingConsentStore(store: settings),
             sources: FakeSources(remoteFailure: remoteFailure, log: log), makeRecorder: { _ in recorder },
-            recordingsRoot: { URL(fileURLWithPath: "/tmp/earmark-test-root") }, meetings: meetings, jobs: jobs, live: live, clock: clock)
+            recordingsRoot: { URL(fileURLWithPath: "/tmp/earmark-test-root") }, meetings: meetings, jobs: jobs, live: live,
+            transcripts: transcripts, clock: clock)
         sessionEvents = Collector(controller.events())
         self.logRef = log
     }
@@ -294,6 +298,45 @@ struct ControllerTests {
         await rig.controller.handle(.started(.teams, at: rig.clock.now()))
         #expect(await rig.controller.currentSession?.app == .zoom)
         #expect(await rig.logRef.entries.filter { $0.hasPrefix("live.start") }.count == 1)
+    }
+
+    // MTG-AC-14
+    @Test("bookmarks are timed from when capture began, not from the detector's earlier meeting start")
+    func bookmarkTiming() async {
+        let rig = Rig()
+        await rig.setBehavior(.autoTranscribeAndRecord)
+        let detectedAt = rig.clock.now()
+        rig.clock.advance(by: 3)  // debounce elapsed before the event is handled
+        await rig.controller.handle(.started(.zoom, at: detectedAt))
+        rig.clock.advance(by: 90)
+        await rig.controller.addBookmark(note: "decision")
+        let marks = rig.recorder.state.withLock { $0.bookmarks }
+        #expect(marks.count == 1)
+        #expect(marks.first?.0 == 90)
+        #expect(marks.first?.1 == "decision")
+        #expect(await rig.sessionEvents.settled().contains(.bookmarkAdded(time: 90, note: "decision")))
+        #expect(await rig.controller.currentSession?.startedAt == detectedAt)
+    }
+
+    @Test("bookmarks in a transcribe-only meeting are saved on the live transcript")
+    func bookmarkTranscribeOnly() async {
+        let rig = Rig()
+        await rig.setBehavior(.autoTranscribe)
+        await rig.zoomStarted()
+        rig.clock.advance(by: 30)
+        await rig.controller.addBookmark(note: "action item")
+        _ = await rig.controller.stopSession()
+        let saved = await rig.transcripts.bookmarkStore
+        #expect(saved.map(\.note) == ["action item"])
+        #expect(saved.first?.time == 30)
+        #expect(saved.first?.transcriptID == rig.live.transcriptID)
+    }
+
+    @Test("bookmark without a session is ignored")
+    func bookmarkIdle() async {
+        let rig = Rig()
+        await rig.controller.addBookmark(note: "nothing")
+        #expect(await rig.sessionEvents.settled().isEmpty)
     }
 
     @Test("detector events drive the controller end to end")

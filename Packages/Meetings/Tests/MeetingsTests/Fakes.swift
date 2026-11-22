@@ -305,3 +305,19 @@ final class FakeVideo: MeetingVideoRecording {
 func segment(_ start: Double, _ end: Double, _ text: String) -> Segment {
     Segment(start: start, end: end, text: text, languageCode: .english)
 }
+
+/// Video recorder whose `start` suspends until released, like the first ScreenCaptureKit lookup and permission prompt.
+actor GatedVideo: MeetingVideoRecording {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var released = false
+    func start(app: MeetingApp, to url: URL) async throws {
+        if !released { await withCheckedContinuation { continuation = $0 } }
+        FileManager.default.createFile(atPath: url.path, contents: Data([1]))
+    }
+    func stop() async throws {}
+    func release() {
+        released = true
+        continuation?.resume()
+        continuation = nil
+    }
+}

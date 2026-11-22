@@ -8,9 +8,13 @@ import Foundation
 enum RerunMerge {
     static func isLocked(_ segment: Segment) -> Bool { segment.isUserEdited || segment.ignoreFlagIsManual }
 
-    /// `true` when `segment` falls inside one of `ranges` (any overlap), or `ranges` is empty (whole transcript).
+    /// `true` when the midpoint of `segment` falls inside one of `ranges`, or `ranges` is empty (whole transcript). Old and
+    /// new segments are partitioned by the same midpoint rule, so a long old segment that merely grazes a range is kept (its
+    /// replacement would be dropped) instead of being deleted and leaving a hole.
     static func inScope(_ segment: Segment, ranges: [TimeRange]) -> Bool {
-        ranges.isEmpty || ranges.contains { $0.overlap(with: segment.range) > 0 || ($0.start <= segment.start && segment.start < $0.end) }
+        guard !ranges.isEmpty else { return true }
+        let midpoint = (segment.start + segment.end) / 2
+        return ranges.contains { $0.start <= midpoint && midpoint < $0.end }
     }
 
     /// Replaces the unlocked, in-scope part of `existing` with `fresh`. New segments inherit the speaker of the old segment
@@ -20,13 +24,19 @@ enum RerunMerge {
         let replaced = existing.filter { !(isLocked($0) || !inScope($0, ranges: ranges)) }
         var result = kept
         for var candidate in fresh {
-            let midpoint = (candidate.start + candidate.end) / 2
-            let probe = TimeRange(start: midpoint, end: midpoint)
-            guard ranges.isEmpty || ranges.contains(where: { $0.start <= probe.start && probe.start < $0.end }) else { continue }
+            guard inScope(candidate, ranges: ranges) else { continue }
             let covered = kept.filter { isLocked($0) }.reduce(0.0) { $0 + $1.range.overlap(with: candidate.range) }
             if candidate.range.duration > 0, covered / candidate.range.duration > 0.5 { continue }
             if candidate.speakerID == nil {
                 candidate.speakerID = dominantSpeaker(of: candidate.range, in: replaced + existing)
+            }
+            // Identical text keeps its translations (they are still correct) instead of silently losing them.
+            if candidate.translations.isEmpty,
+                let twin = replaced.first(where: {
+                    !$0.translations.isEmpty && $0.text == candidate.text && $0.range.overlap(with: candidate.range) > 0
+                })
+            {
+                candidate.translations = twin.translations
             }
             result.append(candidate)
         }

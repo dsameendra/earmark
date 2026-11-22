@@ -29,6 +29,7 @@ extension PersistentJobQueue {
                 id, .start,
                 {
                     $0.failureReason = nil
+                    $0.warning = nil
                     $0.etaSeconds = nil
                 })
         else { return }
@@ -120,7 +121,7 @@ extension PersistentJobQueue {
             $0.state = .completed
             $0.progress = 1
             $0.etaSeconds = nil
-            $0.warning = warning
+            $0.warning = [$0.warning, warning].compactMap { $0 }.joined(separator: " ").nilIfEmpty
         }
         detected[id] = nil
         let exported = await autoExport(id, document: TranscriptDocument(transcript: header, segments: segments))
@@ -200,7 +201,9 @@ extension PersistentJobQueue {
                 asset.bookmark = nil
             } catch {
                 log.error("Copy into library failed: \(String(describing: error), privacy: .public)")
-                setNote(job.id, "Could not copy into the library; the original file is referenced instead.")
+                let message = "Could not copy the file into the library; the original is referenced instead."
+                setNote(job.id, message)
+                await mutate(job.id) { $0.warning = message }
             }
         }
         try await services.media.save(asset)
@@ -247,15 +250,22 @@ extension PersistentJobQueue {
     /// Downloads `model` if needed. The job stays `.running` and reports the download as progress plus a status note.
     func ensureModel(_ model: ModelID, for id: JobID) async throws {
         let name = await services.models.catalog().first { $0.id == model }?.displayName ?? model.rawValue
-        for try await event in services.models.ensureAvailable(model) {
-            try Task.checkCancellation()
-            switch event {
-            case .progress(let fraction, _, _):
-                setNote(id, "Downloading \(name) (\(Int((fraction * 100).rounded()))%)")
-                await mutate(id, persist: false) { $0.progress = min(1, max(0, fraction)) }
-            case .verifying: setNote(id, "Verifying \(name)")
-            case .completed: break
+        do {
+            for try await event in services.models.ensureAvailable(model) {
+                try Task.checkCancellation()
+                switch event {
+                case .progress(let fraction, _, _):
+                    setNote(id, "Downloading \(name) (\(Int((fraction * 100).rounded()))%)")
+                    await mutate(id, persist: false) { $0.progress = min(1, max(0, fraction)) }
+                case .verifying: setNote(id, "Verifying \(name)")
+                case .completed: break
+                }
             }
+        } catch let error as AppError where error == .cancelled && !Task.isCancelled && running[id]?.intent == nil {
+            // The model manager reports a declined licence/hardware confirmation as `.cancelled`. Nobody paused or cancelled this
+            // job, so it must not look like (or be swallowed as) a user cancel.
+            throw AppError.modelDownloadFailed(
+                model, reason: "\(name) was not confirmed for download. Retry and confirm to continue.")
         }
         try Task.checkCancellation()
         setNote(id, nil)
@@ -499,4 +509,8 @@ extension PersistentJobQueue {
         case .other(let message): return message
         }
     }
+}
+
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
 }

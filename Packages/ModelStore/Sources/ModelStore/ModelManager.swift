@@ -208,7 +208,10 @@ public actor ModelManager: ModelManaging {
         if descriptor.sizeBytes >= 1_000_000_000 { result.issues.append(.largeDownload(bytes: descriptor.sizeBytes)) }
         if let free = freeDiskBytes(root) {
             result.freeDiskBytes = free
-            let needed = descriptor.sizeBytes + descriptor.sizeBytes / 5
+            // A resumed or retried download already holds part of the payload on disk; only the rest needs room.
+            let alreadyOnDisk = min(descriptor.sizeBytes, directorySize(partialDirectory(for: model)))
+            let remaining = descriptor.sizeBytes - alreadyOnDisk
+            let needed = remaining + remaining / 5
             if free < needed { result.issues.append(.insufficientDisk(needed: needed, available: free)) }
         }
         return result

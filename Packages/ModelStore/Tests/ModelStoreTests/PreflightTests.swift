@@ -94,6 +94,17 @@ struct PreflightTests {
         #expect(await manager.state(of: small) == .notInstalled)
     }
 
+    @Test("a resumed download only needs room for what is still missing")
+    func resumeCountsPartialBytes() async throws {
+        let (harness, _, _) = twoFileHarness()
+        let manager = harness.manager(freeDisk: { _ in 100_000_000 })
+        let payload = harness.root.appendingPathComponent(".partial/whisperkit__small/payload", isDirectory: true)
+        try FileManager.default.createDirectory(at: payload, withIntermediateDirectories: true)
+        try Data(count: 190_000_000).write(to: payload.appendingPathComponent("a.bin"))
+        let result = await manager.preflight(small)
+        #expect(!result.isBlocking, "216 MB model with 190 MB already on disk fits in 100 MB free")
+    }
+
     @Test("Apple assets, installed models and unknown models have nothing to confirm")
     func nothingToConfirm() async throws {
         let (harness, _, _) = twoFileHarness()

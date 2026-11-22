@@ -124,6 +124,27 @@ struct RerunTests {
         #expect(segments.count == 4 && segments.allSatisfy { $0.speakerID == nil })
     }
 
+    @Test("a declined model confirmation for the diarization model is reported, not swallowed as a silent cancel")
+    func declinedDiarizationModelWarns() async throws {
+        let h = try Harness(diarizer: FakeDiarizer())
+        await h.models.setFailure(.cancelled, for: "fluidaudio/diarization-community-1")
+        let id = try await h.queue.enqueue(
+            Job(kind: .transcribeFile, input: try h.makeFile(), settings: JobSettings(diarize: true)))
+        #expect(await h.waitFor(id, .completed))
+        let job = try #require(await h.job(id))
+        #expect(job.warning?.contains("could not be identified") == true)
+    }
+
+    @Test("a declined confirmation of the transcription model fails the job with a clear reason, not 'Cancelled.'")
+    func declinedAsrModelFails() async throws {
+        let h = try Harness(installed: [])
+        await h.models.setFailure(.cancelled, for: Harness.largeModel)
+        let id = try await h.queue.enqueue(Job(kind: .transcribeFile, input: try h.makeFile(), settings: JobSettings(modelID: Harness.largeModel)))
+        #expect(await h.waitFor(id, .failed))
+        let job = try #require(await h.job(id))
+        #expect(job.failureReason?.contains("confirm") == true)
+    }
+
     @Test("merge rules: locked segments survive and new text inherits the speaker")
     func mergeRules() {
         let speaker = SpeakerID()
@@ -135,6 +156,22 @@ struct RerunTests {
         let merged = RerunMerge.merge(existing: old, fresh: fresh, ranges: [])
         #expect(merged.map(\.text) == ["A", "edited"])
         #expect(merged[0].speakerID == speaker)
+    }
+
+    @Test("a long segment that only grazes the range is kept, not deleted with its replacement dropped")
+    func grazingSegmentKept() {
+        let old = [Segment(start: 0, end: 11, text: "long"), Segment(start: 20, end: 30, text: "z")]
+        let fresh = [Segment(start: 0, end: 11, text: "fresh long"), Segment(start: 11, end: 19, text: "fresh tail")]
+        let merged = RerunMerge.merge(existing: old, fresh: fresh, ranges: [TimeRange(start: 10, end: 20)])
+        #expect(merged.map(\.text) == ["long", "fresh tail", "z"])
+    }
+
+    @Test("a redone segment with identical text keeps its translations")
+    func translationsSurvive() {
+        let translation = SegmentTranslation(language: "si", text: "x", engine: "t")
+        let old = [Segment(start: 0, end: 5, text: "hello", translations: [translation])]
+        let merged = RerunMerge.merge(existing: old, fresh: [Segment(start: 0, end: 5, text: "hello")], ranges: [])
+        #expect(merged.first?.translations == [translation])
     }
 
     @Test("rerun options and job warning decode from older journals")

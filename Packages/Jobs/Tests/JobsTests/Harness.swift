@@ -121,6 +121,7 @@ final class SpyModelManager: ModelManaging, Sendable {
     private let ensuredIDs = OSAllocatedUnfairLock<[ModelID]>(initialState: [])
     init(_ inner: MockModelManager) { self.inner = inner }
     var ensured: [ModelID] { ensuredIDs.withLock { $0 } }
+    func setFailure(_ error: AppError?, for model: ModelID) async { await inner.setFailure(error, for: model) }
 
     func catalog() async -> [ModelDescriptor] { await inner.catalog() }
     func state(of model: ModelID) async -> ModelState { await inner.state(of: model) }

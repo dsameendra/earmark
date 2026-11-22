@@ -109,12 +109,7 @@ struct LibraryCard: View {
         }
         .frame(maxWidth: .infinity, minHeight: 110, alignment: .topLeading)
         .padding(DSSpacing.md)
-        .glassBackground(radius: DSRadius.large, tint: isSelected ? DSColor.accent : nil)
-        .overlay {
-            if isSelected {
-                RoundedRectangle(cornerRadius: DSRadius.large, style: .continuous).strokeBorder(DSColor.accent, lineWidth: 2)
-            }
-        }
+        .dsSolidSurface(.sheet, radius: DSRadius.large, selected: isSelected)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(item.title), \(sourceName(item.source)), \(durationText(item.duration))")

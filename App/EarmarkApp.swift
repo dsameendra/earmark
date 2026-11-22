@@ -1,4 +1,5 @@
 import AppKit
+import DesignSystem
 import FeatureMenuBar
 import FeatureSettings
 import FeatureShell
@@ -19,6 +20,7 @@ struct EarmarkApp: App {
             ShellView(model: environment.shell)
                 .onboardingLauncher(settings: environment.services.settings)
                 .background { if let packs = environment.translationPacks { TranslationPackHost(installer: packs) } }
+                .tint(DSColor.accent)
         }
         .defaultSize(width: 1000, height: 640)
         .commands {
@@ -28,6 +30,7 @@ struct EarmarkApp: App {
 
         Window("Welcome to Earmark", id: OnboardingWindow.id) {
             OnboardingWindowRoot(services: environment.services, router: environment.engineRouter)
+                .tint(DSColor.accent)
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
@@ -35,10 +38,12 @@ struct EarmarkApp: App {
         Settings {
             SettingsRootView(dependencies: environment.settingsDependencies)
                 .onboardingLauncher(settings: environment.services.settings)
+                .tint(DSColor.accent)
         }
 
         MenuBarExtra {
             MenuBarHost(environment: environment)
+                .tint(DSColor.accent)
         } label: {
             MenuBarGlyphView(model: environment.menuBar)
         }

@@ -24,12 +24,17 @@ public struct RGB: Sendable, Hashable {
         return (hi + 0.05) / (lo + 0.05)
     }
 
+    /// Creates a colour from a `0xRRGGBB` hex value.
+    public init(hex: UInt32) {
+        self.init(Double((hex >> 16) & 0xFF) / 255, Double((hex >> 8) & 0xFF) / 255, Double(hex & 0xFF) / 255)
+    }
+
     public static let white = RGB(1, 1, 1)
     /// Approximation of the dark-mode text background.
     public static let darkSurface = RGB(0.118, 0.118, 0.118)
 }
 
-/// Color-blind-considerate speaker palette (Okabe-Ito derived) tuned for >= 3:1 against light and dark surfaces.
+/// Color-blind-considerate speaker palette (M8 board palette plus the original blue and crimson) tuned for >= 3:1 against light and dark surfaces.
 ///
 /// Speaker identity is never conveyed by color alone: ``SpeakerChip`` also shows the name.
 public enum SpeakerPalette {
@@ -39,15 +44,19 @@ public enum SpeakerPalette {
         public let dark: RGB
     }
 
+    /// Slots 0-5 follow the M8 board palette (Handoff 1: ember, teal, indigo, amber, magenta, slate; dark variants
+    /// matched in lightness; the two dark values for magenta and slate were chosen at T31). Slots 6-7 keep the original
+    /// tested blue and crimson so eight speakers stay distinguishable. Every light entry is >= 3:1 on white, Sheet,
+    /// Inset and Paper; every dark entry is >= 3:1 on the dark surfaces (see `DSContrastTests`).
     public static let entries: [Entry] = [
+        Entry(light: RGB(hex: 0xC44B16), dark: RGB(hex: 0xF28A57)),  // ember
+        Entry(light: RGB(hex: 0x1B7A74), dark: RGB(hex: 0x4FB3AB)),  // teal
+        Entry(light: RGB(hex: 0x5558D6), dark: RGB(hex: 0x8E8CF0)),  // indigo
+        Entry(light: RGB(hex: 0xA67A0B), dark: RGB(hex: 0xE0B04A)),  // amber
+        Entry(light: RGB(hex: 0x9A3E7A), dark: RGB(hex: 0xE58AC0)),  // magenta
+        Entry(light: RGB(hex: 0x5B6B7A), dark: RGB(hex: 0x9DB0C2)),  // slate
         Entry(light: RGB(0.00, 0.37, 0.70), dark: RGB(0.40, 0.67, 1.00)),  // blue
-        Entry(light: RGB(0.70, 0.30, 0.00), dark: RGB(1.00, 0.62, 0.30)),  // vermillion
-        Entry(light: RGB(0.00, 0.45, 0.30), dark: RGB(0.25, 0.80, 0.60)),  // bluish green
-        Entry(light: RGB(0.62, 0.20, 0.55), dark: RGB(0.90, 0.55, 0.85)),  // reddish purple
-        Entry(light: RGB(0.55, 0.45, 0.00), dark: RGB(0.95, 0.85, 0.30)),  // olive
-        Entry(light: RGB(0.00, 0.50, 0.55), dark: RGB(0.35, 0.85, 0.90)),  // teal
         Entry(light: RGB(0.72, 0.15, 0.25), dark: RGB(1.00, 0.50, 0.55)),  // crimson
-        Entry(light: RGB(0.35, 0.35, 0.40), dark: RGB(0.70, 0.70, 0.75)),  // slate
     ]
 
     /// Entry for a zero-based speaker slot; wraps for slots beyond the palette size.

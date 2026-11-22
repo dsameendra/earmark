@@ -1,55 +1,78 @@
+<div align="center">
+
+<img src="Brand/preview/icon-Default-128.png" width="112" height="112" alt="Earmark app icon">
+
 # Earmark
 
-A local macOS transcription app for files, meetings, live captions and dictation, with transcript editing and translation. Requires **macOS 26 or later on Apple silicon** and an Xcode toolchain supporting Swift 6.2.
+### Listen once. Keep what matters.
 
-The implementation includes the M8 Ember/paper/ink design, native Sinhala translation and release preparation tooling. Visual acceptance, real permission-gated capture, accessibility and hardware performance checks remain open; this is not a completed public release. See the [execution record](specs/tasks.md#execution-record-codex-handover-2026-11-22), [manual QA](specs/qa/manual.md) and [release gates](specs/qa/release.md).
+Local transcription, live captions and an editor for the moments worth keeping.
 
-## Build and run
+**macOS 26+ · Apple silicon · On-device processing**
 
-Install Xcode command-line tools and XcodeGen. Generate the project outside cloud-synced Documents so Xcode file coordination does not stall:
+[Features](#features) · [Screenshots](#screenshots) · [Getting started](#getting-started) · [Build](#building-from-source)
 
-```sh
-scripts/project.sh
-```
+</div>
 
-The script prints the generated project path, normally `~/Library/Caches/EarmarkBuild/Earmark.xcodeproj`. It links the repository sources and copies the reviewed `Config/Package.resolved`. Open that project, select the **Earmark** scheme and **Debug**, then Run. A normal Debug launch uses real local services; microphone, system-audio and Accessibility permissions are requested by the relevant features. Use a signing identity when testing TCC persistence across rebuilds.
+Earmark turns audio and video into searchable, editable transcripts on your Mac. Transcribe a recording, follow a live conversation, capture a meeting or dictate into another app, then refine and export the result.
 
-For a command-line build with an explicit output location:
+**Development preview:** local review builds are available through the packaging workflow; public signing, notarization and remaining device acceptance checks are tracked in the [release checklist](specs/qa/release.md).
+
+## Features
+
+- **Files and batches.** Drop audio, video or folders into a persistent queue. Pause, resume, reorder, retry or clear jobs while keeping saved transcripts.
+- **Meeting capture.** Detect Zoom and Teams calls with an ask-first default, separate microphone and system-audio tracks, optional video and recording recovery.
+- **Live captions and dictation.** Caption microphone audio, system audio or both in a floating overlay. Use a global shortcut to dictate into the focused app, with quick controls in the menu bar.
+- **An editor tied to playback.** Click words to seek, edit text, rename and reassign speakers, add earmarks, and find or replace text. Space toggles playback; arrow keys skip five seconds in docked and detached players.
+- **Multiple languages.** Choose a language, auto-detect or use a multilingual selection for code-switching. Re-transcribe individual segments and view original, translated or bilingual text.
+- **A useful library.** Search titles and transcript text, organize with folders and tags, restore recently deleted items and relink missing media. Ignore rules and replacements preserve the source.
+- **Flexible export.** Save documents, structured data and subtitles, including TXT, Markdown, DOCX, PDF, JSON, CSV, SRT and VTT, with reusable export presets.
+- **Private by design.** Audio and transcripts stay on your Mac. No accounts, cloud transcription or analytics. Models download when you choose; automatic update checks require opt-in.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%" align="center"><img src="specs/design/m8-shots/polish/home-dark-1440x900.png" width="480" alt="Earmark Home in dark mode with quick actions and recent transcripts"><br><b>Your workbench</b><br><sub>Files, meetings, captions and recent work in one place.</sub></td>
+    <td width="50%" align="center"><img src="specs/design/m8-shots/polish/editor-dark-1440x900.png" width="480" alt="Transcript editor with speaker labels, earmarks and audio playback"><br><b>Listen and edit</b><br><sub>Transcript, speakers and playback stay together.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><img src="specs/design/m8-shots/polish/live-light-1440x900.png" width="480" alt="Live captions screen in light mode with audio-source and language controls"><br><b>Follow live audio</b><br><sub>Choose a source, language and floating caption overlay.</sub></td>
+    <td width="50%" align="center"><img src="specs/design/m8-shots/polish/settings-general.png" width="480" alt="Settings with grouped vertical navigation and the General pane"><br><b>Make it yours</b><br><sub>Models, languages, audio, shortcuts and appearance.</sub></td>
+  </tr>
+</table>
+
+Screenshots use demo content. See the [full gallery and validation record](specs/qa/ui-refinement-2026-11-22.md) for coverage and remaining checks.
+
+## Getting started
+
+1. Open the Earmark DMG, drag **Earmark** into **Applications**, then launch it.
+2. Follow the welcome flow and choose a speech model in **Settings → Models**. Model weights are downloaded separately from the app.
+3. Allow microphone or system-audio access when using capture. Dictation also needs Accessibility access; **Settings → Privacy & Permissions** explains each permission.
+4. Drop a recording onto Home, or start Live captions or meeting capture. Reopen the welcome from **Settings → General** or **Help**.
+
+Language support depends on the selected engine and installed language packs. Translation runs locally using Apple's translation packs or the bundled native runtime; no user-installed Python is required.
+
+## Building from source
+
+Install Xcode with macOS 26 SDK support, its command-line tools and [XcodeGen](https://github.com/yonaskolb/XcodeGen), then:
 
 ```sh
 project="$(scripts/project.sh)"
-xcodebuild -project "$project" -scheme Earmark -configuration Debug \
-  -destination 'platform=macOS' -derivedDataPath "$HOME/Library/Caches/EarmarkBuild/Development" \
-  -skipPackageUpdates CODE_SIGNING_ALLOWED=NO build
-open "$HOME/Library/Caches/EarmarkBuild/Development/Build/Products/Debug/Earmark.app"
+open "$project"
 ```
 
-This unsigned development build establishes compilation; it does not validate distribution signatures or stable permission identity. Use Xcode signing or the local packaging flow when those matter.
-
-## Checks
+Choose the **Earmark** scheme and **Debug**, then Run. The project is generated in the local build cache to avoid cloud-synced Documents file-coordination stalls. Normal launches use real services; use a consistent signing identity when testing permission persistence.
 
 ```sh
-scripts/check.sh unit   # dependency direction and 18 serial package suites
-scripts/check.sh build  # dependency direction and Debug app build
-scripts/check.sh ui     # deterministic mock-service XCUITests, DebugUI configuration
+scripts/check.sh unit   # serial package suites and dependency boundaries
+scripts/check.sh build  # Debug app build
+scripts/check.sh ui     # isolated UI flows with mock services
+scripts/release.sh local  # local review DMG and verification reports
 ```
 
-Reports go to `~/Library/Caches/EarmarkBuild/reports` unless `EARMARK_REPORT_ROOT` is set. UI tests use mock services and a separate QA bundle identity; they do not prove real recording, transcription quality or permission behaviour. Light/dark screenshots are attached to the Xcode test results for review against [the final local design boards](specs/design/m8-mockups/index.html). All 18 package suites passed during completion validation; real-model parity and native cancellation/restart were also run explicitly. All four final mock UI tests passed. See [completion validation](specs/qa/completion-2026-11-22.md), [window screenshots](specs/design/m8-shots/completion/README.md) and the manual gates.
+See [packaging and release](specs/qa/release.md), [manual acceptance](specs/qa/manual.md) and the [project specifications](specs/00-product.md) for details.
 
-## Models and translation
+## License
 
-Download models explicitly in Settings → Models; model weights are not bundled. Sinhala ASR uses Qwen3-ASR. Sinhala translation uses the bundled native **CTranslate2 4.6.0 / SentencePiece 0.2.1** worker and separately downloaded NLLB weights. No user-installed Python is required. NLLB weights retain their **CC-BY-NC-4.0** restriction; the native runtime does not change their licence.
-
-See [ADR-009](specs/decisions/ADR-009-nllb-runtime.md) for runtime selection and [NativeRuntime](NativeRuntime/README.md) for rebuild and real-model parity checks. Python is only an explicit Debug development/reference override; Release always uses the bundled native helper.
-
-## Release preparation
-
-```sh
-scripts/release.sh local
-```
-
-This prepares an ad-hoc local review DMG and validation manifests. It does not publish a release or establish Developer ID/notarization acceptance. Public distribution additionally requires the real signing identity, notarization profile, HTTPS update feed and Sparkle public key, plus completed QA. Follow [the release procedure](specs/qa/release.md).
-
-The update client is dormant without valid feed/key configuration. Automatic update checks default off and require user opt-in. Local audio stays on the Mac; explicitly chosen model/language-pack downloads and configured update checks use the network.
-
-Project specifications, acceptance criteria and the preserved milestone plan live in [specs](specs/00-product.md).
+Earmark's source is [MIT licensed](LICENSE). Downloaded models and bundled dependencies have their own licences, shown in Model Manager and the app's notices. In particular, NLLB model weights are **CC-BY-NC-4.0**; the app's licence does not override that restriction. Native translation build details are in [NativeRuntime](NativeRuntime/README.md).

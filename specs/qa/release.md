@@ -15,7 +15,9 @@ The scripts prepare a macOS 26+ Apple-silicon app. A **local** package is ad-hoc
 scripts/release.sh local
 ```
 
-This creates a new directory under `dist/`, builds Release in the local build cache, copies only `Earmark.app` into staging, signs nested code inside out with an ad-hoc identity, validates the bundle, and creates a compressed DMG with an `/Applications` link. Local packages have no configured update feed or public update key, even if those variables exist in the invoking shell.
+This creates a new directory under `dist/`, builds Release in the local build cache, copies only `Earmark.app` into staging, signs nested code inside out with an ad-hoc identity, validates the bundle, and creates a compressed DMG with an `/Applications` link. The installer uses Earmark's paper/ink/Ember artwork, Retina background, native volume icon and a 660 × 420 Finder window with two 128 pt icons and a clear drag direction. Local artwork is labelled as a preview. Local packages have no configured update feed or public update key, even if those variables exist in the invoking shell.
+
+Like Downer's installer workflow, layout is authored through `dmgbuild`, without scripting Finder. `scripts/make-dmg.sh` installs the pinned packaging-only tools from `scripts/dmg/requirements.txt` into the external build cache on first use. These Python tools are never bundled in the app or image. The artwork source is `scripts/dmg/make-background.swift`; Finder settings are in `scripts/dmg/settings.py`. See the [dmgbuild settings reference](https://dmgbuild.readthedocs.io/en/stable/settings.html).
 
 The verifier checks:
 
@@ -25,8 +27,9 @@ The verifier checks:
 - App-contained symlinks, system/bundle-relative dynamic dependencies and runtime search paths.
 - Deep, strict code-signature validation.
 - DMG integrity and a read-only mounted root allowlist; file bytes, permission modes and symlink targets must match the staged app exactly.
+- Branded metadata is limited to `.DS_Store`, `.background.tiff` and `.VolumeIcon.icns`. Background/icon hashes must match the authored assets, and parsed Finder metadata must match the reviewed window size, icon positions, label sizes, hidden chrome and confined background alias.
 
-The output directory contains `app-manifest.json`, `dmg-verification.json`, `build-provenance.json`, the DMG, its portable `.sha256` sidecar and the build log. `EARMARK_RELEASE_ROOT` can select a **new, unused** output directory. `EARMARK_RELEASE_DERIVED_DATA` can select a reusable build cache. The scripts refuse to reuse an output directory.
+The output directory contains `app-manifest.json`, `dmg-verification.json`, `build-provenance.json`, `installer-artwork/`, the DMG, its portable `.sha256` sidecar and the build log. `EARMARK_RELEASE_ROOT` can select a **new, unused** output directory. `EARMARK_RELEASE_DERIVED_DATA` can select a reusable build cache; `EARMARK_SOURCE_PACKAGES_DIR` can reuse an existing Xcode package checkout cache. The scripts refuse to reuse an output directory. `EARMARK_DMG_PYTHON` optionally selects a Python environment already containing the exact pinned packaging versions.
 
 A local package is not notarized or approved for public distribution. Successful packaging also does not establish transcription quality, permission behaviour, visual acceptance or M1/8 GB performance.
 

@@ -53,6 +53,10 @@ else
 fi
 release_root="$(cd "$release_root" && pwd)"
 derived_data="${EARMARK_RELEASE_DERIVED_DATA:-$(dirname "$project")/ReleaseDerivedData}"
+package_args=(-disableAutomaticPackageResolution -skipPackageUpdates)
+if [ -n "${EARMARK_SOURCE_PACKAGES_DIR:-}" ]; then
+    package_args+=(-clonedSourcePackagesDirPath "$EARMARK_SOURCE_PACKAGES_DIR")
+fi
 mkdir "$release_root/stage"
 python3 - "$repo_root" "$release_root/build-provenance.json" "$mode" <<'PY'
 from pathlib import Path
@@ -64,7 +68,7 @@ destination.write_text(json.dumps(dict(commit=head,mode=sys.argv[3],createdAt=da
 PY
 # Compile without signing; the explicit inside-out pass below gives all nested code one consistent identity.
 if ! xcodebuild -project "$project" -scheme Earmark -configuration Release -destination 'platform=macOS' \
-    -derivedDataPath "$derived_data" -disableAutomaticPackageResolution -skipPackageUpdates CODE_SIGNING_ALLOWED=NO \
+    -derivedDataPath "$derived_data" "${package_args[@]}" CODE_SIGNING_ALLOWED=NO \
     "EARMARK_UPDATE_FEED_URL=$feed" "EARMARK_SPARKLE_PUBLIC_KEY=$public_key" \
     build > "$release_root/build.log" 2>&1; then
     tail -60 "$release_root/build.log" >&2
@@ -106,17 +110,19 @@ version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/C
 build_number="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$app/Contents/Info.plist")"
 dmg_name="Earmark-$version-$build_number-$mode.dmg"
 dmg="$release_root/$dmg_name"
-ln -s /Applications "$release_root/stage/Applications"
-hdiutil create -volname Earmark -srcfolder "$release_root/stage" -format UDZO "$dmg"
+bash "$repo_root/scripts/make-dmg.sh" "$app" "$dmg" "$release_root/installer-artwork" "$mode"
+dmg_python="${EARMARK_DMG_PYTHON:-${EARMARK_BUILD_ROOT:-$HOME/Library/Caches/EarmarkBuild}/dmg-venv/bin/python}"
 if [ "$mode" = distribution ]; then
     /usr/bin/codesign --sign "$identity" --timestamp "$dmg"
     notarize "$dmg" "$release_root/dmg-notarization.json"
     xcrun stapler staple "$dmg"
 fi
 if [ "$mode" = distribution ]; then
-    python3 "$repo_root/scripts/verify-dmg.py" "$dmg" --source-app "$app" --require-developer-id --report "$release_root/dmg-verification.json"
+    "$dmg_python" "$repo_root/scripts/verify-dmg.py" "$dmg" --source-app "$app" --layout-assets "$release_root/installer-artwork" \
+        --require-developer-id --report "$release_root/dmg-verification.json"
 else
-    python3 "$repo_root/scripts/verify-dmg.py" "$dmg" --source-app "$app" --report "$release_root/dmg-verification.json"
+    "$dmg_python" "$repo_root/scripts/verify-dmg.py" "$dmg" --source-app "$app" --layout-assets "$release_root/installer-artwork" \
+        --report "$release_root/dmg-verification.json"
 fi
 (cd "$release_root" && shasum -a 256 "$dmg_name" > "$dmg_name.sha256")
 printf 'Prepared %s\n' "$dmg"

@@ -4,7 +4,7 @@
 #   scripts/make-appcast.sh appcast RELEASE_DIR  sign the *-selfsigned.dmg in RELEASE_DIR and write RELEASE_DIR/appcast.xml
 #
 # The private EdDSA key lives only in the login Keychain (Sparkle's generate_keys). It is never written to the repo.
-# Back it up once with:  "$SPARKLE_BIN/generate_keys" -x ~/earmark-sparkle-private-key   (store offline, never commit)
+# Back it up once with:  "$SPARKLE_BIN/generate_keys" --account earmark -x ~/earmark-sparkle-private-key   (store offline, never commit)
 #
 # Sparkle tools come from the pinned Sparkle version (project.yml exactVersion). Set EARMARK_SPARKLE_BIN to a directory
 # containing generate_keys, sign_update and generate_appcast, or let this script search the build cache's package
@@ -22,6 +22,7 @@
 # The DMG enclosure URL is EARMARK_DOWNLOAD_URL_PREFIX + the DMG name; default
 #   https://github.com/dsameendra/earmark/releases/download/v<version>/
 set -euo pipefail
+account="${EARMARK_SPARKLE_ACCOUNT:-earmark}"  # dedicated key account, separate from other apps (e.g. Downer)
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 build_root="${EARMARK_BUILD_ROOT:-$HOME/Library/Caches/EarmarkBuild}"
 sparkle_version="$(sed -n 's/^ *exactVersion: *//p' "$repo_root/project.yml" | head -1)"
@@ -51,8 +52,8 @@ keys)
     [ "$#" -eq 1 ] || usage
     bin="$(find_sparkle_bin)"
     # Creates the key only when this Keychain has none; otherwise it reports the existing public key. Idempotent.
-    "$bin/generate_keys" >&2
-    public_key="$("$bin/generate_keys" -p)"
+    "$bin/generate_keys" --account "$account" >&2
+    public_key="$("$bin/generate_keys" --account "$account" -p)"
     printf 'Public key (safe to publish and embed): %s\n' "$public_key"
     printf "export EARMARK_SPARKLE_PUBLIC_KEY='%s'\n" "$public_key"
     ;;
@@ -74,9 +75,9 @@ appcast)
     cp "$dmg" "$stage/"
     if [ -n "${EARMARK_PREVIOUS_APPCAST:-}" ]; then cp "$EARMARK_PREVIOUS_APPCAST" "$stage/appcast.xml"; fi
     # generate_appcast reads the version from the DMG's app and signs with the Keychain EdDSA key.
-    "$bin/generate_appcast" --download-url-prefix "$prefix" "$stage"
+    "$bin/generate_appcast" --account "$account" --download-url-prefix "$prefix" "$stage"
     cp "$stage/appcast.xml" "$release_dir/appcast.xml"
-    "$bin/sign_update" "$dmg" > "$release_dir/dmg-eddsa-signature.txt"
+    "$bin/sign_update" --account "$account" "$dmg" > "$release_dir/dmg-eddsa-signature.txt"
     python3 "$repo_root/scripts/verify-appcast.py" "$release_dir/appcast.xml" --dmg "$dmg" --manifest "$release_dir/app-manifest.json" --url-prefix "$prefix"
     printf 'Wrote %s\nNothing was published. Upload the DMG, .sha256 and appcast.xml to the GitHub release after approval.\n' "$release_dir/appcast.xml"
     ;;

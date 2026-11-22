@@ -97,4 +97,6 @@ public enum SettingsKey {
     public static let libraryFolders = "library.folders"
     /// `Int`; maximum parallel jobs (FILE-AC-07).
     public static let queueMaxConcurrency = "queue.maxConcurrency"
+    /// `ReconciliationReport` for one transcript (live to offline speaker relabel, shown once).
+    public static func speakerReconciliation(_ transcriptID: String) -> String { "speakers.reconciliation.\(transcriptID)" }
 }

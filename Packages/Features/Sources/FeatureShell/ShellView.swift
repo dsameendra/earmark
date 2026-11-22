@@ -83,7 +83,7 @@ public struct ShellView: View {
         switch model.selection {
         case .home: HomeView(model: model.home, actions: model.homeActions)
         case .queue: QueueView(model: model.queue, onOpenTranscript: { model.openTranscript($0) })
-        case .meetings: MeetingsView(model: model.meetings)
+        case .meetings: MeetingsView(model: model.meetings, onOpenTranscript: { model.openTranscript($0) })
         case .live: LiveView(model: model.live)
         case .library: LibraryView(model: model.library, onOpenTranscript: { model.openTranscript($0) })
         case .recentlyDeleted: LibraryView(model: model.recentlyDeleted, onOpenTranscript: { model.openTranscript($0) })

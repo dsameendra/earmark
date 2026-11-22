@@ -20,14 +20,28 @@ public struct AppServices: Sendable {
     public var liveExtras: (any LiveSessionExtras)?
     /// Menu bar dictation toggle; `nil` where dictation is unavailable.
     public var dictation: DictationMenuControl?
+    /// Meeting capture (record / transcribe a detected meeting); `nil` until the Meetings runtime (T23) is wired.
+    public var meetingCapture: (any MeetingCapturing)?
+    /// Notification prompts for detected meetings; `nil` where unavailable (the inline banner is the fallback).
+    public var meetingPrompts: (any MeetingPromptPresenting)?
+    /// Voice profile storage; `nil` hides the voice profile controls.
+    public var voiceProfiles: (any VoiceProfileRepository)?
+    /// Embedding extraction for "Save voice profile"; `nil` disables saving from the Editor.
+    public var speakerEmbeddings: (any SpeakerEmbeddingProvider)?
 
     public init(
         jobQueue: any JobQueue, transcripts: any TranscriptRepository, meetings: any MeetingRepository, models: any ModelManaging,
         live: any LiveSessionControlling, meetingDetector: any MeetingDetector, hardware: any HardwareTierProviding,
         permissions: any PermissionsServicing, audioDevices: any AudioDeviceProviding, settings: any SettingsStore,
         media: (any MediaRepository)? = nil, presets: (any PresetRepository)? = nil,
-        liveExtras: (any LiveSessionExtras)? = nil, dictation: DictationMenuControl? = nil
+        liveExtras: (any LiveSessionExtras)? = nil, dictation: DictationMenuControl? = nil,
+        meetingCapture: (any MeetingCapturing)? = nil, meetingPrompts: (any MeetingPromptPresenting)? = nil,
+        voiceProfiles: (any VoiceProfileRepository)? = nil, speakerEmbeddings: (any SpeakerEmbeddingProvider)? = nil
     ) {
+        self.meetingCapture = meetingCapture
+        self.meetingPrompts = meetingPrompts
+        self.voiceProfiles = voiceProfiles
+        self.speakerEmbeddings = speakerEmbeddings
         self.jobQueue = jobQueue
         self.transcripts = transcripts
         self.meetings = meetings

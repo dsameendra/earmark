@@ -44,6 +44,7 @@ private struct EditorContent: View {
         VStack(spacing: 0) {
             header
             if find.isVisible { FindBarView(model: model, find: find, fieldFocused: $findFocused) }
+            if let report = model.reconciliation { ReconciliationBanner(report: report) { model.acknowledgeReconciliation() } }
             content
             TransportBar(model: model)
         }
@@ -61,6 +62,7 @@ private struct EditorContent: View {
         .onChange(of: showOptions) { if !showOptions { listFocused = true } }
         .onChange(of: showExport) { if !showExport { listFocused = true } }
         .onDisappear {
+            model.acknowledgeReconciliation()
             playerWindow?.close()
             Task { await model.flush() }
         }

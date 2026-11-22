@@ -50,6 +50,7 @@ final class AppEnvironment {
         menuBar = MenuBarModel(services: services)
         activation = ActivationPolicyController(settings: services.settings)
         menuBar.start()
+        shell.startBackgroundWork()
         activation.start()
         live?.extras.start()
         if let dictation {
@@ -125,18 +126,22 @@ final class AppEnvironment {
             engines: engines, router: router)
         let dictationControl = DictationMenuControl.make(controller: dictation.controller, settings: settings)
 
+        // Meeting detection prompts (notification actions). T23 supplies `meetingCapture` and the real detector here.
+        let meetingPrompter = SystemMeetingPrompter()
+        meetingPrompter.install()
         let services = AppServices(
             jobQueue: makeJobQueue(
                 database: database, models: models, hardware: hardware, settings: settings, whisper: whisper, apple: apple),
             transcripts: database.transcripts, meetings: database.meetings, models: models, live: live.session,
             meetingDetector: PlaceholderMeetingDetector(), hardware: hardware, permissions: permissions,
             audioDevices: audioDevices, settings: settings, media: database.media, presets: database.presets,
-            liveExtras: live.extras, dictation: dictationControl)
+            liveExtras: live.extras, dictation: dictationControl, meetingPrompts: meetingPrompter,
+            voiceProfiles: database.voiceProfiles)
         let settingsDependencies = SettingsDependencies(
             store: settings, models: models, hardware: hardware, audioDevices: audioDevices, permissions: permissions,
             rules: database.rules, presets: database.presets, transcripts: database.transcripts,
             hotkeyDiagnostics: dictation.hotkeys, retryHotkeys: { [controller = dictation.controller] in await controller.retryHotkeyRegistration() },
-            overlayPlacement: live.overlay)
+            overlayPlacement: live.overlay, voiceProfiles: database.voiceProfiles)
         return Composition(services: services, settingsDependencies: settingsDependencies, live: live, dictation: dictation)
     }
 

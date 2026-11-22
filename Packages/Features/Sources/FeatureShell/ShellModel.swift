@@ -39,7 +39,11 @@ public final class ShellModel {
         library = LibraryModel(services: services, mode: .library)
         recentlyDeleted = LibraryModel(services: services, mode: .recentlyDeleted)
         quickOpen = QuickOpenModel(transcripts: services.transcripts)
+        meetings.navigate = { [weak self] in self?.select(.meetings) }
     }
+
+    /// Starts app-lifetime followers (meeting detection, prompts and auto-capture). Call once at launch; idempotent.
+    public func startBackgroundWork() { meetings.start() }
 
     /// Restores the last-used section (Home on first launch).
     public func restore() async { selection = await persistence.load() }

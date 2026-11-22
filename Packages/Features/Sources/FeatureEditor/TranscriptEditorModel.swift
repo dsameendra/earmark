@@ -63,6 +63,14 @@ public final class TranscriptEditorModel {
     public internal(set) var bookmarks: [TranscriptBookmark] = []
     public internal(set) var highlights: [TextHighlight] = []
     public private(set) var persistenceError: String?
+    /// Unseen live-to-offline speaker relabel (DIA-AC-06); `nil` once acknowledged or when nothing changed.
+    public internal(set) var reconciliation: ReconciliationReport?
+    /// The resolved media file (used to extract a voice embedding).
+    public internal(set) var mediaURL: URL?
+    public internal(set) var voiceProfileError: String?
+    /// Voice profile storage and embedding extraction; `nil` hides the voice profile controls.
+    @ObservationIgnored public var voiceProfiles: (any VoiceProfileRepository)?
+    @ObservationIgnored public var embeddings: (any SpeakerEmbeddingProvider)?
 
     public var selection: Set<SegmentID> = []
     public private(set) var editingSegmentID: SegmentID?
@@ -123,6 +131,8 @@ public final class TranscriptEditorModel {
         self.init(
             transcriptID: transcriptID, repository: services.transcripts, settings: services.settings, media: services.media,
             presets: services.presets)
+        voiceProfiles = services.voiceProfiles
+        embeddings = services.speakerEmbeddings
     }
 
     /// Default player factory: `AVPlayer` for any playable file.
@@ -162,6 +172,7 @@ public final class TranscriptEditorModel {
             bookmarks = try await repository.bookmarks(for: transcriptID).filter { $0.deletedAt == nil }.sorted { $0.time < $1.time }
             highlights = await settings.value(for: EditorSettingsKey.highlights(transcriptID), as: [TextHighlight].self) ?? []
             await loadOptions()
+            await loadReconciliation()
             loadState = .loaded
             await loadMedia(for: transcript)
         } catch {
@@ -186,6 +197,7 @@ public final class TranscriptEditorModel {
         {
             resolved = MediaLocator.url(for: asset)
         }
+        mediaURL = resolved
         guard let url = resolved, let made = await engineFactory(url) else {
             playback.markMissing()
             return

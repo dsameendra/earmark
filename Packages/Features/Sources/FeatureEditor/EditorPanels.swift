@@ -18,10 +18,15 @@ struct SpeakersPanel: View {
             ForEach(model.speakers) { speaker in
                 SpeakerRow(model: model, speaker: speaker)
             }
+            if let message = model.voiceProfileError {
+                Text(message).font(DSTypography.caption).foregroundStyle(DSColor.danger).accessibilityIdentifier("editor.speakers.voiceError")
+            }
             Divider()
             HStack {
                 TextField("New speaker", text: $newName).textFieldStyle(.roundedBorder).onSubmit(add)
+                    .accessibilityIdentifier("editor.speakers.newName")
                 Button("Add", action: add).disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .accessibilityIdentifier("editor.speakers.add")
             }
         }
         .padding(DSSpacing.lg)
@@ -44,13 +49,17 @@ struct SpeakerRow: View {
             HStack {
                 Circle().fill(EditorColors.color(model.color(for: speaker.id))).frame(width: 10, height: 10)
                 TextField("Name", text: $name).textFieldStyle(.roundedBorder).onSubmit { model.renameSpeaker(speaker.id, to: name) }
+                    .accessibilityIdentifier("editor.speaker.\(speaker.id).name")
                 Text("\(model.segmentCount(for: speaker.id))").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                 Menu("Merge") {
                     ForEach(model.speakers.filter { $0.id != speaker.id }) { other in
                         Button("Into \(other.name)") { model.mergeSpeaker(speaker.id, into: other.id) }
+                            .accessibilityIdentifier("editor.speaker.\(speaker.id).mergeInto.\(other.id)")
                     }
                 }
                 .menuStyle(.borderlessButton).fixedSize().disabled(model.speakers.count < 2)
+                .accessibilityIdentifier("editor.speaker.\(speaker.id).merge")
+                if model.voiceProfiles != nil { voiceProfileControl }
             }
             HStack(spacing: DSSpacing.xs) {
                 ForEach(SpeakerColors.paletteHexes, id: \.self) { hex in
@@ -61,12 +70,27 @@ struct SpeakerRow: View {
                             .overlay { if speaker.colorHex.uppercased() == hex { Circle().stroke(Color.primary, lineWidth: 2) } }
                     }
                     .buttonStyle(.plain).accessibilityLabel("Colour \(hex)")
+                    .accessibilityIdentifier("editor.speaker.\(speaker.id).color.\(hex)")
                 }
             }
             .padding(.leading, 18)
         }
         .onAppear { name = speaker.name }
         .onChange(of: speaker.name) { name = speaker.name }
+    }
+
+    /// Save or delete the speaker's local voice profile (embedding and name only, DIA-AC-13).
+    @ViewBuilder private var voiceProfileControl: some View {
+        if speaker.voiceProfileID != nil {
+            Button("Forget Voice") { Task { await model.removeVoiceProfile(for: speaker.id) } }
+                .buttonStyle(.borderless).help("Delete this speaker's stored voice profile")
+                .accessibilityIdentifier("editor.speaker.\(speaker.id).forgetVoice")
+        } else {
+            Button("Save Voice") { Task { await model.saveVoiceProfile(for: speaker.id) } }
+                .buttonStyle(.borderless).disabled(!model.canSaveVoiceProfiles)
+                .help("Remember this voice on this Mac to label the speaker automatically next time")
+                .accessibilityIdentifier("editor.speaker.\(speaker.id).saveVoice")
+        }
     }
 }
 

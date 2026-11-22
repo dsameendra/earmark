@@ -9,6 +9,7 @@ private actor RecordingLive: LiveSessionControlling {
     private(set) var configs: [LiveSessionConfig] = []
     private let stateBus = Broadcaster<LiveSessionState>()
     private let linesBus = Broadcaster<[CaptionLine]>()
+    nonisolated let stateSubscriptions = SubscriptionCount()
     var transcriptID: TranscriptID?
 
     func start(_ config: LiveSessionConfig) async throws {
@@ -20,7 +21,10 @@ private actor RecordingLive: LiveSessionControlling {
         return transcriptID
     }
     func setTranscriptID(_ id: TranscriptID?) { transcriptID = id }
-    nonisolated func state() -> AsyncStream<LiveSessionState> { stateBus.stream(initial: .idle) }
+    nonisolated func state() -> AsyncStream<LiveSessionState> {
+        stateSubscriptions.hit()
+        return stateBus.stream(initial: .idle)
+    }
     nonisolated func lines() -> AsyncStream<[CaptionLine]> { linesBus.stream(initial: []) }
 }
 
@@ -30,13 +34,21 @@ private final class FakeExtras: LiveSessionExtras, @unchecked Sendable {
     private var _committed: [CaptionPreset] = []
     let levelBus = Broadcaster<Float>()
     let noticeBus = Broadcaster<LiveNotice>()
+    let levelSubscriptions = SubscriptionCount()
+    let noticeSubscriptions = SubscriptionCount()
     var paused: [Bool] { lock.withLock { _paused } }
     var committed: [CaptionPreset] { lock.withLock { _committed } }
     var overlay = true
 
     func setPaused(_ paused: Bool) async { lock.withLock { _paused.append(paused) } }
-    func levels() -> AsyncStream<Float> { levelBus.stream() }
-    func notices() -> AsyncStream<LiveNotice> { noticeBus.stream() }
+    func levels() -> AsyncStream<Float> {
+        levelSubscriptions.hit()
+        return levelBus.stream()
+    }
+    func notices() -> AsyncStream<LiveNotice> {
+        noticeSubscriptions.hit()
+        return noticeBus.stream()
+    }
     func setOverlayEnabled(_ enabled: Bool) async { overlay = enabled }
     func isOverlayEnabled() async -> Bool { overlay }
     func presets() async -> [CaptionPreset] { [CaptionPreset(name: "Subtle")] }
@@ -65,7 +77,7 @@ private final class FakeExtras: LiveSessionExtras, @unchecked Sendable {
         model.deviceUID = "uid-1"
         model.saveAsTranscript = true
         let states = Task { await model.watchState() }
-        try await Task.sleep(for: .milliseconds(50))
+        #expect(await eventually { live.stateSubscriptions.value > 0 })
         await model.start()
         let config = try #require(await live.configs.first)
         #expect(config.source == .micAndSystem(deviceUID: "uid-1", lanes: true))
@@ -82,37 +94,37 @@ private final class FakeExtras: LiveSessionExtras, @unchecked Sendable {
     }
 
     @Test func pauseForwardsToExtrasAndNoticesFollow() async throws {
-        let (model, _, extras, _) = make()
+        let (model, live, extras, _) = make()
         let extrasValue = try #require(extras)
         let states = Task { await model.watchState() }
         let notices = Task { await model.watchNotices() }
-        try await Task.sleep(for: .milliseconds(50))
+        #expect(await eventually { live.stateSubscriptions.value > 0 && extrasValue.noticeSubscriptions.value > 0 })
         await model.start()
-        try await Task.sleep(for: .milliseconds(50))
+        #expect(await eventually { model.isRunning })
         await model.togglePause()
         #expect(model.isPaused)
         #expect(extrasValue.paused == [true])
         extrasValue.noticeBus.send(LiveNotice(kind: .resumed, message: "Resumed"))
-        try await Task.sleep(for: .milliseconds(50))
+        #expect(await eventually { !model.isPaused })
         #expect(!model.isPaused)
         states.cancel()
         notices.cancel()
     }
 
     @Test func levelsAreOnlyShownWhileRunning() async throws {
-        let (model, _, extras, _) = make()
+        let (model, live, extras, _) = make()
         let extrasValue = try #require(extras)
         let states = Task { await model.watchState() }
         let levels = Task { await model.watchLevels() }
-        try await Task.sleep(for: .milliseconds(50))
+        #expect(await eventually { live.stateSubscriptions.value > 0 && extrasValue.levelSubscriptions.value > 0 })
         extrasValue.levelBus.send(0.8)
-        try await Task.sleep(for: .milliseconds(50))
-        #expect(model.level == 0)
+        // Negative check: a level while idle must never show. A bounded window cannot fail spuriously under load (a late
+        // delivery still sees `isRunning == false` because the session has not been started yet).
+        #expect(await eventually(timeout: .milliseconds(200)) { model.level != 0 } == false)
         await model.start()
-        try await Task.sleep(for: .milliseconds(50))
+        #expect(await eventually { model.isRunning })
         extrasValue.levelBus.send(0.8)
-        try await Task.sleep(for: .milliseconds(50))
-        #expect(model.level > 0.5)
+        #expect(await eventually { model.level > 0.5 })
         states.cancel()
         levels.cancel()
     }
@@ -122,7 +134,12 @@ private final class FakeExtras: LiveSessionExtras, @unchecked Sendable {
         model.saveAsTranscript = true
         model.language = .sinhala
         model.source = .system
-        try await Task.sleep(for: .milliseconds(100))
+        #expect(
+            await eventually {
+                let saved = await store.value(for: SettingsKey.liveSaveAsTranscript, as: Bool.self)
+                let language = await store.value(for: SettingsKey.languageMode, as: LanguageMode.self)
+                return saved == true && language == .single(.sinhala)
+            })
         #expect(await store.value(for: SettingsKey.liveSaveAsTranscript, as: Bool.self) == true)
         #expect(await store.value(for: SettingsKey.languageMode, as: LanguageMode.self) == .single(.sinhala))
         var services = AppServices.preview()
@@ -140,7 +157,7 @@ private final class FakeExtras: LiveSessionExtras, @unchecked Sendable {
         edited.visibleLines = 3
         model.updatePreset(edited)
         #expect(model.preset.visibleLines == 3)
-        try await Task.sleep(for: .milliseconds(500))
+        #expect(await eventually { extrasValue.committed.last?.visibleLines == 3 })  // after the debounce
         #expect(extrasValue.committed.last?.visibleLines == 3)
     }
 
@@ -171,16 +188,21 @@ private final class FakeExtras: LiveSessionExtras, @unchecked Sendable {
     @Test func dictationToggleArmsStatusAndCallsApp() async throws {
         let bus = Broadcaster<Bool>()
         let calls = CallCounter()
+        let subscriptions = SubscriptionCount()
         var services = AppServices.preview()
-        services.dictation = DictationMenuControl(isListening: { bus.stream(initial: false) }, toggle: { await calls.increment() })
+        services.dictation = DictationMenuControl(
+            isListening: {
+                subscriptions.hit()
+                return bus.stream(initial: false)
+            }, toggle: { await calls.increment() })
         let model = MenuBarModel(services: services)
         #expect(model.isDictationAvailable)
         model.start()
-        try await Task.sleep(for: .milliseconds(100))
+        #expect(await eventually { subscriptions.value > 0 })
         await model.toggleDictation()
         #expect(await calls.value == 1)
         bus.send(true)
-        try await Task.sleep(for: .milliseconds(100))
+        #expect(await eventually { model.isDictating })
         #expect(model.isDictating)
         #expect(model.status == .dictationArmed)
         model.stop()

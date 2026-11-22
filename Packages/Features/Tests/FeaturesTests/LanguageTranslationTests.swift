@@ -157,7 +157,7 @@ private final class FakeTranslation: TranslationPreparing, @unchecked Sendable {
         model.translationService = FakeTranslation()
         model.jobQueue = InstantlyFailingQueue()
         await model.translate(to: "de")
-        for _ in 0..<100 where model.translationStatus == nil { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(await eventually { model.translationStatus != nil })
         #expect(model.translationStatus == "engine exploded")
         #expect(!model.isTranslating)
     }

@@ -12,6 +12,8 @@ final class FakeCapture: MeetingCapturing {
     private let lock = OSAllocatedUnfairLock<[(MeetingApp, MeetingCaptureMode)]>(initialState: [])
     private let stateBus = Broadcaster<MeetingCaptureState>()
     private let lineBus = Broadcaster<[CaptionLine]>()
+    let stateSubscriptions = SubscriptionCount()
+    let lineSubscriptions = SubscriptionCount()
     let failure: AppError?
     let transcriptID: TranscriptID? = TranscriptID()
     init(failure: AppError? = nil) { self.failure = failure }
@@ -26,8 +28,14 @@ final class FakeCapture: MeetingCapturing {
         stateBus.send(.idle)
         return transcriptID
     }
-    func state() -> AsyncStream<MeetingCaptureState> { stateBus.stream(initial: .idle) }
-    func lines() -> AsyncStream<[CaptionLine]> { lineBus.stream(initial: []) }
+    func state() -> AsyncStream<MeetingCaptureState> {
+        stateSubscriptions.hit()
+        return stateBus.stream(initial: .idle)
+    }
+    func lines() -> AsyncStream<[CaptionLine]> {
+        lineSubscriptions.hit()
+        return lineBus.stream(initial: [])
+    }
     func emit(_ lines: [CaptionLine]) { lineBus.send(lines) }
     func emit(_ state: MeetingCaptureState) { stateBus.send(state) }
 }
@@ -40,6 +48,7 @@ final class FakePrompter: MeetingPromptPresenting {
     }
     private let log = OSAllocatedUnfairLock(initialState: Log())
     private let bus = Broadcaster<MeetingPromptResponse>()
+    let responseSubscriptions = SubscriptionCount()
     var presented: [MeetingPrompt] { log.withLock { $0.presented } }
     var withdrawn: [MeetingApp] { log.withLock { $0.withdrawn } }
     var reminders: [MeetingApp] { log.withLock { $0.reminders } }
@@ -47,13 +56,20 @@ final class FakePrompter: MeetingPromptPresenting {
     func present(_ prompt: MeetingPrompt) async { log.withLock { $0.presented.append(prompt) } }
     func withdraw(app: MeetingApp) async { log.withLock { $0.withdrawn.append(app) } }
     func remindConsent(app: MeetingApp) async { log.withLock { $0.reminders.append(app) } }
-    func responses() -> AsyncStream<MeetingPromptResponse> { bus.stream() }
+    func responses() -> AsyncStream<MeetingPromptResponse> {
+        responseSubscriptions.hit()
+        return bus.stream()
+    }
     func respond(_ response: MeetingPromptResponse) { bus.send(response) }
 }
 
 final class BroadcastDetector: MeetingDetector {
     let bus = Broadcaster<MeetingEvent>()
-    func events() -> AsyncStream<MeetingEvent> { bus.stream() }
+    let subscriptions = SubscriptionCount()
+    func events() -> AsyncStream<MeetingEvent> {
+        subscriptions.hit()
+        return bus.stream()
+    }
 }
 
 @MainActor
@@ -73,13 +89,17 @@ private func make(
 private func started(_ app: MeetingApp = .zoom) -> MeetingEvent { .started(app, at: Date(timeIntervalSince1970: 1_700_000_000)) }
 private func ended(_ app: MeetingApp = .zoom) -> MeetingEvent { .ended(app, at: Date(timeIntervalSince1970: 1_700_003_600)) }
 
+/// Barrier: the follow loops of `model.start()` have subscribed to every fake source (the buses do not replay, so
+/// anything emitted earlier would be lost). Replaces a fixed sleep that was not enough under load.
 @MainActor
-private func waitUntil(_ condition: @MainActor () -> Bool) async -> Bool {
-    for _ in 0..<200 {
-        if condition() { return true }
-        try? await Task.sleep(for: .milliseconds(10))
+private func following(
+    capture: FakeCapture?, prompter: FakePrompter?, detector: BroadcastDetector? = nil
+) async -> Bool {
+    await eventually {
+        (capture.map { $0.stateSubscriptions.value > 0 && $0.lineSubscriptions.value > 0 } ?? true)
+            && (prompter.map { $0.responseSubscriptions.value > 0 } ?? true)
+            && (detector.map { $0.subscriptions.value > 0 } ?? true)
     }
-    return condition()
 }
 
 // MARK: - Prompt policy (pure)
@@ -258,14 +278,14 @@ private func waitUntil(_ condition: @MainActor () -> Bool) async -> Bool {
         let (model, capture, prompter, _) = make(store: store)
         model.start()
         defer { model.stopFollowing() }
-        try? await Task.sleep(for: .milliseconds(100))
+        #expect(await following(capture: capture, prompter: prompter))
         await model.handle(started(.zoom))
         #expect(capture?.starts.count == 1 && capture?.starts.first?.1 == .transcribeAndRecord)
         #expect(prompter?.reminders == [.zoom])
         #expect(prompter?.presented.isEmpty == true)  // started without prompting
         #expect(model.consentReminder == .zoom)
         // Next automatic meeting: no second reminder.
-        #expect(await waitUntil { model.isRecording })
+        #expect(await eventually { model.isRecording })
         await model.stopCapture()
         await model.handle(ended(.zoom))
         await model.handle(started(.zoom))
@@ -412,13 +432,13 @@ private func waitUntil(_ condition: @MainActor () -> Bool) async -> Bool {
         let (model, capture, _, _) = make(detector: detector)
         model.start()
         defer { model.stopFollowing() }
-        try? await Task.sleep(for: .milliseconds(100))
+        #expect(await following(capture: capture, prompter: nil, detector: detector))
         detector.bus.send(started(.zoom))
-        #expect(await waitUntil { model.detections[.zoom] != nil })
+        #expect(await eventually { model.detections[.zoom] != nil })
         await model.startCapture(.zoom, mode: .transcribeOnly)
-        #expect(await waitUntil { model.currentMeeting?.phase != .detected && model.captureState.isActive })
+        #expect(await eventually { model.currentMeeting?.phase != .detected && model.captureState.isActive })
         capture?.emit([CaptionLine(text: "hello", speakerLabel: "You", isVolatile: false)])
-        #expect(await waitUntil { model.lines.count == 1 })
+        #expect(await eventually { model.lines.count == 1 })
         #expect(model.bannerDetections.isEmpty)
     }
 
@@ -427,20 +447,20 @@ private func waitUntil(_ condition: @MainActor () -> Bool) async -> Bool {
         let (model, capture, prompter, _) = make(detector: detector)
         model.start()
         defer { model.stopFollowing() }
-        try? await Task.sleep(for: .milliseconds(100))
+        #expect(await following(capture: capture, prompter: prompter, detector: detector))
         detector.bus.send(started(.zoom))
-        #expect(await waitUntil { prompter?.presented.count == 1 })
+        #expect(await eventually { prompter?.presented.count == 1 })
         prompter?.respond(MeetingPromptResponse(app: .zoom, action: .transcribeOnly))
-        #expect(await waitUntil { capture?.starts.count == 1 })
+        #expect(await eventually { capture?.starts.count == 1 })
     }
 
     @Test func stopCaptureReturnsTheTranscriptAndClears() async {
         let (model, capture, _, _) = make()
         model.start()
         defer { model.stopFollowing() }
-        try? await Task.sleep(for: .milliseconds(100))
+        #expect(await following(capture: capture, prompter: nil))
         await model.startCapture(.zoom, mode: .transcribeOnly)
-        #expect(await waitUntil { if case .capturing = model.captureState { true } else { false } })
+        #expect(await eventually { if case .capturing = model.captureState { true } else { false } })
         await model.stopCapture()
         #expect(model.finishedTranscriptID == capture?.transcriptID)
         #expect(model.captureState == .idle)

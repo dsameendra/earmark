@@ -307,7 +307,7 @@ struct OnboardingLanguageTests {
         await model.load()
         let languages = model.languages
         await languages.startDownload()
-        for _ in 0..<200 where languages.progress(for: enWhisper)?.phase != .downloading { try? await Task.sleep(for: .milliseconds(5)) }
+        #expect(await eventually { languages.progress(for: enWhisper)?.phase == .downloading })
         #expect(languages.isDownloading)
         await languages.pause()
         #expect(languages.isPaused)

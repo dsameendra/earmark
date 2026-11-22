@@ -5,6 +5,10 @@ import SwiftUI
 
 struct GeneralSettingsView: View {
     let model: GeneralSettingsModel
+    var checkForUpdates: (@MainActor @Sendable () -> Void)?
+    var automaticUpdateChecks: (@MainActor @Sendable () -> Bool)?
+    var setAutomaticUpdateChecks: (@MainActor @Sendable (Bool) -> Void)?
+    @State private var checksAutomatically = false
 
     var body: some View {
         Form {
@@ -44,6 +48,22 @@ struct GeneralSettingsView: View {
                     .accessibilityIdentifier("settings.general.showWelcome")
                     .accessibilityHint("Reopens the first-run introduction")
             }
+            Section("Updates") {
+                Button("Check for Updates…") { checkForUpdates?() }
+                    .disabled(checkForUpdates == nil).accessibilityIdentifier("settings.general.checkForUpdates")
+                if setAutomaticUpdateChecks != nil {
+                    Toggle(
+                        "Check for updates automatically",
+                        isOn: Binding(
+                            get: { checksAutomatically },
+                            set: {
+                                checksAutomatically = $0
+                                setAutomaticUpdateChecks?($0)
+                            }))
+                } else {
+                    Text("Updates are not available for this build.").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                }
+            }
             Section("Notifications") {
                 Toggle("Allow notifications", isOn: model.notificationsEnabled.binding)
                 Toggle("Notify when a file finishes transcribing", isOn: model.notifyJobCompleted.binding)
@@ -52,17 +72,36 @@ struct GeneralSettingsView: View {
         }
         .formStyle(.grouped)
         .task { await model.load() }
+        .onAppear { checksAutomatically = automaticUpdateChecks?() ?? false }
     }
 }
 
 struct AudioSettingsView: View {
     let model: AudioSettingsModel
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         Form {
             Section("Input device") {
                 devicePicker("Microphone", pref: model.globalDevice, allowGlobal: false)
-                LevelMeterPlaceholder()
+                    .disabled(model.isTestingMicrophone)
+                HStack {
+                    ProgressView(value: Double(model.inputLevel)).frame(maxWidth: 220)
+                        .accessibilityLabel("Input level").accessibilityValue("\(Int(model.inputLevel * 100)) percent")
+                    Button(model.isTestingMicrophone ? "Stop test" : "Test microphone") {
+                        Task {
+                            if model.isTestingMicrophone { await model.stopMicrophoneTest() } else { await model.startMicrophoneTest() }
+                        }
+                    }
+                    .disabled(!model.canTestMicrophone)
+                    .accessibilityIdentifier("settings.audio.testMicrophone")
+                }
+                Text("Test microphone listens locally until you stop or leave this pane. It asks for microphone access when needed.")
+                    .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                if let message = model.meterError {
+                    Text(message).font(DSTypography.caption).foregroundStyle(DSColor.danger)
+                    if let url = model.microphoneSettingsURL { Button("Open Microphone Settings") { openURL(url) } }
+                }
                 Toggle("Voice processing (echo cancellation, noise suppression)", isOn: model.voiceProcessing.binding)
             }
             Section {
@@ -78,6 +117,7 @@ struct AudioSettingsView: View {
             await model.load()
             await model.observe()
         }
+        .onDisappear { Task { await model.stopMicrophoneTest() } }
     }
 
     private func devicePicker(_ title: LocalizedStringKey, pref: Pref<String>, allowGlobal: Bool) -> some View {
@@ -85,17 +125,6 @@ struct AudioSettingsView: View {
             Text(allowGlobal ? "Use global setting" : "System default\(model.systemDefaultName.map { " (\($0))" } ?? "")").tag("")
             ForEach(model.inputs) { Text($0.name).tag($0.id) }
             if model.isMissing(pref.value) { Text("Disconnected device").tag(pref.value) }
-        }
-    }
-}
-
-/// Placeholder meter; live levels arrive with the capture integration.
-struct LevelMeterPlaceholder: View {
-    var level: Double = 0
-
-    var body: some View {
-        LabeledContent("Level") {
-            ProgressView(value: level).frame(width: 180).accessibilityLabel("Input level").accessibilityValue("\(Int(level * 100)) percent")
         }
     }
 }
@@ -483,7 +512,8 @@ struct PrivacySettingsView: View {
                 Text("Earmark asks for access only when a feature needs it.")
             } footer: {
                 Text(
-                    "Denied permissions never block the rest of the app. Earmark makes no network requests except model downloads you start."
+                    "Denied permissions never block the rest of the app. "
+                        + "Network access is limited to model downloads and updates you choose."
                 )
             }
         }

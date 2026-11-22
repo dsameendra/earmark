@@ -1,0 +1,22 @@
+{
+  "ctranslate2": {
+    "version": "4.6.0",
+    "revision": "617405f4b050e994e829d527da6caa0e0030afe7",
+    "url": "https://github.com/OpenNMT/CTranslate2"
+  },
+  "sentencepiece": {
+    "version": "0.2.1",
+    "revision": "31646a467d2051eb904e0b45de3a73e91fe1c1e3",
+    "url": "https://github.com/google/sentencepiece"
+  },
+  "platform": "macOS 26+",
+  "architecture": "arm64",
+  "backends": [
+    "Accelerate",
+    "Ruy"
+  ],
+  "openMP": false,
+  "python": false,
+  "archiveSHA256": "035051f9fb6b18f12c325764125506abac93c8ffff8d75417f54b6fa3b1fbe65",
+  "bridgeSHA256": "b123d5480e2b2ae72a7cf52b4f77c60fd8003c18588b61ea6a8559e8d67046b9"
+}

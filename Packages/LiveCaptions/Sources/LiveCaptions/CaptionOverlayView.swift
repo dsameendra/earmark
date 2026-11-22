@@ -171,7 +171,7 @@ struct CaptionBackground: View {
         } else {
             switch preset.background {
             case .liquidGlass:
-                Color.clear.glassBackground(radius: preset.cornerRadius).opacity(preset.backgroundOpacity)
+                Color.clear.dsGlass(.prominent, radius: preset.cornerRadius).opacity(preset.backgroundOpacity)
             case .solid:
                 shape.fill(DSColor.solidChrome.opacity(preset.backgroundOpacity))
             case .none:

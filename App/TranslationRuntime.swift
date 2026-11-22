@@ -7,7 +7,7 @@ import Observation
 import SwiftUI
 @preconcurrency import Translation
 
-/// Translation wiring: the router (Apple first, NLLB for Sinhala when its dev runtime is enabled), readiness for the UI,
+/// Translation wiring: the router (Apple first, bundled native NLLB for Sinhala), readiness for the UI,
 /// the `.translate` job handler and Apple language-pack installation.
 struct TranslationRuntime: Sendable {
     let router: any TranslationRouter
@@ -19,9 +19,13 @@ struct TranslationRuntime: Sendable {
     @MainActor
     static func make(models: any ModelManaging, nllbPython: String?) -> TranslationRuntime {
         let apple = AppleTranslationEngine()
-        // ADR-009: the NLLB runtime is a Python worker, a development-only path. Without the flag the router has no NLLB engine
-        // and Sinhala pairs report "Sinhala translation unavailable in this build".
-        let nllb = NLLBDevRuntime.runtime(settingValue: nllbPython).map { NLLBEngine(models: models, runtime: $0) }
+        // The native helper is bundled and signed with the app; Python remains an explicit development override.
+        #if DEBUG
+            let runtime = NLLBDevRuntime.runtime(settingValue: nllbPython) ?? BundledNLLBRuntime.runtime()
+        #else
+            let runtime = BundledNLLBRuntime.runtime()
+        #endif
+        let nllb = runtime.map { NLLBEngine(models: models, runtime: $0) }
         let router = DefaultTranslationRouter(apple: apple, nllb: nllb)
         let packs = ApplePackInstaller()
         let service = AppTranslationService(models: models, nllb: nllb, packs: packs)
@@ -72,7 +76,8 @@ final class AppTranslationService: TranslationPreparing, Sendable {
         guard let nllb else { return .unavailable(reason: Self.sinhalaUnavailable) }
         let other = s == .sinhala ? t : s
         if await !nllb.supports(LanguagePair(source: s, target: t)) {
-            guard other != .english, await nllb.supports(LanguagePair(source: s == .sinhala ? s : .english, target: s == .sinhala ? .english : t))
+            guard other != .english,
+                await nllb.supports(LanguagePair(source: s == .sinhala ? s : .english, target: s == .sinhala ? .english : t))
             else { return .unavailable(reason: "Sinhala to or from \(other.rawValue) is not supported.") }
             let leg = s == .sinhala ? LanguagePair(source: .english, target: t) : LanguagePair(source: s, target: .english)
             switch await backend.status(from: leg.source, to: leg.target) {

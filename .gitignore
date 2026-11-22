@@ -89,3 +89,10 @@ spikes/**/.venv/
 .claude/
 # Local signing
 Config/Local.xcconfig
+
+# Local validation and release products
+/dist/
+/build/
+*.xcodeproj
+.DS_Store
+__pycache__/

@@ -24,17 +24,21 @@ public struct LiveView: View {
     public init(model: LiveModel) { self.model = model }
 
     public var body: some View {
-        HStack(spacing: 0) {
+        HStack(alignment: .top, spacing: DSSpacing.md) {
             VStack(spacing: 0) {
-                controls
                 if let notice = model.notice, notice.kind != .resumed { noticeBanner(notice) }
                 Divider()
                 captions
             }
-            Divider()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(DSColor.contentBackground, in: RoundedRectangle(cornerRadius: DSRadius.panel))
             sidePanel
-                .frame(width: 280)
+                .frame(width: 250)
+                .background(DSColor.contentBackground, in: RoundedRectangle(cornerRadius: DSRadius.panel))
         }
+        .padding(DSSpacing.md)
+        .background(DSColor.paper)
+        .toolbar { ToolbarItemGroup { controls } }
         .navigationTitle("Live")
         .task { await model.loadPreferences() }
         .task { await model.watchState() }
@@ -53,9 +57,8 @@ public struct LiveView: View {
             }
             .pickerStyle(.segmented)
             .disabled(model.isRunning)
-            .frame(maxWidth: 380)
+            .frame(width: 360)
             .accessibilityIdentifier("live.source")
-            Spacer()
             if model.isRunning {
                 if model.isPaused {
                     StatusPill("Paused", systemImage: LiveSymbol.pause, tone: .warning)
@@ -73,14 +76,13 @@ public struct LiveView: View {
                     .accessibilityIdentifier("live.stop")
             } else {
                 Button("Start", systemImage: LiveSymbol.start) { Task { await model.start() } }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(EmberButtonStyle())
                     .keyboardShortcut(.return, modifiers: [.command])
                     .disabled(model.startDisabledReason != nil)
                     .help(model.startDisabledReason ?? "Start live captions")
                     .accessibilityIdentifier("live.start")
             }
         }
-        .padding(DSSpacing.lg)
     }
 
     private func noticeBanner(_ notice: LiveNotice) -> some View {
@@ -211,7 +213,8 @@ struct CaptionLineView: View {
         VStack(alignment: .leading, spacing: DSSpacing.xxs) {
             if let label = line.speakerLabel { SpeakerChip(name: label, slot: line.speakerSlot ?? 0) }
             Text(line.text)
-                .font(DSTypography.body)
+                .font(DSTypography.transcript)
+                .lineSpacing(DSTypography.transcriptLineSpacing)
                 .italic(line.isVolatile)
                 .foregroundStyle(line.isVolatile ? DSColor.secondaryText : DSColor.primaryText)
             if let translation = line.translation { Text(translation).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText) }

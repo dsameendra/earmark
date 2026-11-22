@@ -12,6 +12,9 @@ public final class EditorExportModel {
     public private(set) var isWorking = false
     public private(set) var errorMessage: String?
     public private(set) var statusMessage: String?
+    public private(set) var previewText = ""
+    public private(set) var previewIsPlainText = false
+    @ObservationIgnored private var previewGeneration = 0
 
     @ObservationIgnored private let editor: TranscriptEditorModel
     @ObservationIgnored private let exporter: any Exporter
@@ -31,6 +34,34 @@ public final class EditorExportModel {
     public static let formats: [ExportFormat] = ExportFormat.allCases
 
     public var isSubtitleFormat: Bool { [.srt, .vtt, .ass, .sbv, .ttml, .lrc].contains(options.format) }
+
+    /// Translation tracks available in the loaded document, without touching its original text.
+    public var translationLanguages: [LanguageCode] {
+        Array(Set(editor.segments.flatMap { $0.translations.map(\.language) })).sorted()
+    }
+
+    /// Bounded, real export preview. Binary formats use a labelled text preview of the same first six segments.
+    public func refreshPreview() async {
+        previewGeneration += 1
+        let generation = previewGeneration
+        guard var document else {
+            previewText = "Load a transcript to preview its export."
+            return
+        }
+        document.segments = Array(document.segments.prefix(6))
+        var previewOptions = options
+        let isBinary = [.docx, .pdf].contains(options.format)
+        if isBinary { previewOptions.format = .txt }
+        do {
+            let artifact = try await exporter.export(document, options: previewOptions)
+            guard !Task.isCancelled, generation == previewGeneration else { return }
+            previewText = String(data: artifact.data, encoding: .utf8).map { String($0.prefix(6000)) } ?? "Preview unavailable."
+            previewIsPlainText = isBinary
+        } catch {
+            guard !Task.isCancelled, generation == previewGeneration else { return }
+            previewText = "Preview unavailable: \(error.localizedDescription)"
+        }
+    }
 
     public static func title(for format: ExportFormat) -> String {
         switch format {

@@ -1,0 +1,37 @@
+#!/bin/bash
+# Unit suites are serial so engine/performance tests do not compete for the GPU or unified memory.
+set -euo pipefail
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+mode="${1:-all}"
+case "$mode" in all|unit|build|ui) ;; *) echo 'Usage: scripts/check.sh all|unit|build|ui' >&2; exit 64 ;; esac
+report_root="${EARMARK_REPORT_ROOT:-$HOME/Library/Caches/EarmarkBuild/reports}"
+mkdir -p "$report_root"
+python3 "$repo_root/scripts/check-dependencies.py"
+if [ "$mode" = all ] || [ "$mode" = unit ]; then
+    for package in AppCore Persistence DesignSystem ModelStore AudioCapture Processing Export Permissions Meetings Translation Transcription Diarization LiveCaptions Dictation Jobs QwenASR Features NLLBNative; do
+        printf 'Testing %s\n' "$package"
+        if ! swift test --package-path "$repo_root/Packages/$package" > "$report_root/$package.log" 2>&1; then
+            tail -80 "$report_root/$package.log"
+            exit 1
+        fi
+        rg 'Test run with|tests? passed|Test Suite.*passed' "$report_root/$package.log" | tail -2 || true
+    done
+fi
+if [ "$mode" = all ] || [ "$mode" = build ] || [ "$mode" = ui ]; then
+    project="$($repo_root/scripts/project.sh)"
+    action=build
+    scheme=Earmark
+    configuration=Debug
+    signing=(CODE_SIGNING_ALLOWED=NO)
+    if [ "$mode" = ui ]; then
+        action=test
+        scheme=Earmark-QA
+        configuration=DebugUI
+        signing=(CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual)
+    fi
+    xcodebuild -project "$project" -scheme "$scheme" -configuration "$configuration" -destination 'platform=macOS' \
+        -disableAutomaticPackageResolution -skipPackageUpdates "${signing[@]}" "$action" > "$report_root/xcode-$action.log" 2>&1 || {
+        tail -80 "$report_root/xcode-$action.log"; exit 1;
+    }
+    tail -4 "$report_root/xcode-$action.log"
+fi

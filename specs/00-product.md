@@ -7,7 +7,7 @@ Working name: Earmark · Bundle prefix (placeholder): `lk.dumindu.earmark`
 A privacy-first native macOS app that turns speech into accurate, editable, exportable transcripts, **entirely on-device**. English is the default; Sinhala is first-class; multiple languages may appear in one transcript.
 
 ## 2. Principles (non-negotiable)
-- **P1 Local only.** No cloud ASR/translation, telemetry or analytics. The only network use is user-initiated model downloads (Hugging Face / Apple asset catalogs).
+- **P1 Local only.** No cloud ASR/translation, telemetry or analytics. Network use is limited to user-initiated model downloads (Hugging Face / Apple asset catalogs), update checks/downloads, and automatic update checks after explicit opt-in (SCR-006, ADR-005).
 - **P2 Native.** Swift 6 strict concurrency, SwiftUI first; AppKit only for non-activating panels, global hotkeys, Core Audio.
 - **P3 HIG + Liquid Glass.** Glass for chrome (sidebar, toolbars, overlay, HUD, menu bar popover); solid backgrounds for transcript content. Reduce Transparency / Reduce Motion / Increase Contrast honored.
 - **P4 Resilient.** Engine failures become job failures with retry, never crashes. Crash-safe journaling; no user data loss.
@@ -53,7 +53,7 @@ Mac App Store (non-sandboxed by necessity); cloud sync; iOS/iPadOS; Google Meet/
 | `ONB` | Onboarding | Welcome → languages → recommended model → just-in-time permissions → menu bar tour |
 
 ## 6. Headline acceptance criteria (EARS, product level)
-- **PROD-AC-01** WHEN the app runs THE SYSTEM SHALL make no network request except user-initiated model downloads.
+- **PROD-AC-01** WHEN the app runs THE SYSTEM SHALL make no network request except model downloads and update checks/downloads initiated by the user, or automatic update checks after explicit opt-in. Audio, transcripts and voice embeddings SHALL stay on device.
 - **PROD-AC-02** WHEN a file transcription engine fails THE SYSTEM SHALL mark the job failed with a retry action and SHALL NOT terminate the app.
 - **PROD-AC-03** WHEN the app is force-quit during a job THE SYSTEM SHALL resume from the last checkpointed chunk on next launch.
 - **PROD-AC-04** WHEN Reduce Transparency is enabled THE SYSTEM SHALL render glass surfaces as solid.

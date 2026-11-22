@@ -33,7 +33,7 @@ Status: DRAFT (Phase 4). Owners: Transcription, Models packages. Sources: ADR-00
 | ENG-AC-11 | WHEN `tier8` is detected THE SYSTEM SHALL keep at most one heavy model resident and serialize engine loading. | unit / integration |
 | ENG-AC-12 | WHEN the app idles in the menu bar with no model loaded THE SYSTEM SHALL use < 150 MB RAM and < 1 % CPU. | perf |
 | ENG-AC-13 | WHEN "prewarm on launch" is enabled THE SYSTEM SHALL load the selected live model in the background without blocking UI. | integration |
-| ENG-AC-14 | WHEN the app makes network requests THE SYSTEM SHALL contact only allow-listed model hosts and only after a user-initiated download. | unit / manual |
+| ENG-AC-14 | WHEN the app downloads model assets THE SYSTEM SHALL contact only allow-listed model hosts and only after a user-initiated download. Update traffic is governed by PROD-AC-01 / SCR-006. | unit / manual |
 | ENG-AC-15 | WHEN a file is transcribed with WhisperKit turbo on M1 Pro-class hardware THE SYSTEM SHOULD reach ≥ 10× real-time (measured 13–17× on M3 Pro). | perf |
 | ENG-AC-16 | WHEN a live session starts THE SYSTEM SHALL emit the first partial in < 600 ms (Apple) or < 1.5 s (WhisperKit). | perf / manual |
 | ENG-AC-17 | WHEN a job is cancelled THE SYSTEM SHALL stop the engine task within 1 s and release its buffers. | integration |

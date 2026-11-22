@@ -100,7 +100,7 @@ SwiftUI `NavigationSplitView`, Liquid Glass chrome, solid content areas; `Featur
 Swift Testing unit suites (exporters golden, routing table, queue state machine, ignore filter, alignment); integration with `/fixtures` (English, 2-speaker, 4-speaker, music/silence, video; Sinhala from public sets, no redistributed licence-less audio); WER/CER/DER baselines recorded; XCUITest flows; manual QA scripts for permission-gated features.
 
 ## 10. Security & privacy
-No telemetry; network only for user-initiated downloads (allow-listed hosts, checksum verification); hardened runtime; models never executed as code (no `trust_remote_code`; Python only used in dev tooling); transcripts and voice embeddings stored locally, deletable.
+No telemetry; network only for user-initiated model downloads (allow-listed hosts, checksum verification), update checks/downloads, and automatic update checks after explicit opt-in (SCR-006); hardened runtime; models never executed as code (no `trust_remote_code`; Python only used in dev tooling); transcripts and voice embeddings stored locally, deletable.
 
 ## 11. Licences & attribution (tracked in `/specs/decisions/ADR-006`)
 WhisperKit MIT · FluidAudio Apache-2.0 (models CC-BY-4.0 attribution) · Qwen3-ASR Sinhala CC BY-SA 4.0 (share-alike implications to confirm) · MADLAD Apache-2.0 · NLLB CC-BY-NC (non-commercial only) · Sortformer licence unresolved.

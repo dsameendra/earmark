@@ -72,7 +72,9 @@ struct EditorTypography: Equatable {
     }
 
     /// Sinhala-safe font: the family (or system) with an explicit Sinhala cascade.
-    var font: Font { SinhalaFont.font(size: size, family: family) }
+    var font: Font {
+        family == nil || family == "New York" ? SinhalaFont.serifFont(size: size) : SinhalaFont.font(size: size, family: family)
+    }
 }
 
 enum EditorColors {

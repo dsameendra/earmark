@@ -1,0 +1,84 @@
+{
+  "ctranslate2": "4.6.0",
+  "sentencepiece": "0.2.1",
+  "modelSHA256": "ed1beaf75134de7505315a5223162f56acff397eff6b50638a500d3936fe707b",
+  "tokenizerSHA256": "14bb8dfb35c0ffdea7bc01e56cea38b9e3d5efcdcb9c251d6b40538e1aab555a",
+  "tokens": [
+    {
+      "text": "Hello, world!",
+      "pieces": [
+        "▁Hello",
+        ",",
+        "▁world",
+        "!"
+      ]
+    },
+    {
+      "text": "ශ්‍රී ලංකාව ගැන අපි කතා කරනවා.",
+      "pieces": [
+        "▁ශ්",
+        "▁රී",
+        "▁ලංක",
+        "ාව",
+        "▁ගැන",
+        "▁අපි",
+        "▁කතා",
+        "▁කරනවා",
+        "."
+      ]
+    },
+    {
+      "text": "  Good\tmorning\n everyone.  ",
+      "pieces": [
+        "▁Good",
+        "▁morning",
+        "▁everyone",
+        "."
+      ]
+    },
+    {
+      "text": "සිංහල + English 2026",
+      "pieces": [
+        "▁සිං",
+        "හල",
+        "▁+",
+        "▁English",
+        "▁20",
+        "26"
+      ]
+    },
+    {
+      "text": "café café",
+      "pieces": [
+        "▁café",
+        "▁café"
+      ]
+    }
+  ],
+  "translations": [
+    {
+      "source": "eng_Latn",
+      "target": "sin_Sinh",
+      "text": "Good morning everyone.",
+      "translation": "සුබ උදෑසනක් හැමෝටම."
+    },
+    {
+      "source": "eng_Latn",
+      "target": "sin_Sinh",
+      "text": "The meeting starts in five minutes.",
+      "translation": "රැස්වීම විනාඩි පහකින් ඇරඹෙනවා."
+    },
+    {
+      "source": "sin_Sinh",
+      "target": "eng_Latn",
+      "text": "සුබ උදෑසනක් හැමෝටම.",
+      "translation": "Good morning to you all."
+    },
+    {
+      "source": "sin_Sinh",
+      "target": "eng_Latn",
+      "text": "අපි හෙට හමුවෙමු.",
+      "translation": "I'll see you tomorrow."
+    }
+  ]
+}

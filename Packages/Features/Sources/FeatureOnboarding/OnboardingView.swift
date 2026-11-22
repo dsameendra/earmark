@@ -1,4 +1,5 @@
 import AppCore
+import AppKit
 import DesignSystem
 import FeatureSettings
 import SwiftUI
@@ -32,18 +33,20 @@ public struct OnboardingView: View {
     // MARK: Brand panel
 
     private var brandPanel: some View {
-        VStack(alignment: .leading, spacing: DSSpacing.lg) {
-            DSIcon(model.step.symbol, orStock: model.step.systemImage)
-                .font(.system(size: 44, weight: .regular))
-            Text("Earmark").font(DSTypography.title)
-            Text("Listen once. Keep what matters.").font(DSTypography.body).opacity(0.85)
+        VStack(alignment: .leading, spacing: DSSpacing.xl) {
+            Text("earmark").font(DSTypography.title2)
             Spacer()
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable().scaledToFit().frame(width: 160, height: 160)
+                .accessibilityHidden(true)
+            Spacer()
+            Text("Listen once.\nKeep what matters.").font(DSTypography.transcript).italic()
         }
-        .foregroundStyle(.background)
+        .foregroundStyle(DSColor.contentBackground)
         .padding(DSSpacing.xl)
-        .frame(width: 240, alignment: .leading)
-        .frame(maxHeight: .infinity, alignment: .topLeading)
-        .background(DSColor.accent)
+        .frame(width: 220, alignment: .leading)
+        .frame(maxHeight: .infinity)
+        .background(LinearGradient(colors: [DSColor.accent, DSColor.accentText], startPoint: .topLeading, endPoint: .bottomTrailing))
         .accessibilityElement(children: .ignore)
     }
 
@@ -52,6 +55,13 @@ public struct OnboardingView: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: DSSpacing.lg) {
             VStack(alignment: .leading, spacing: DSSpacing.xs) {
+                HStack(spacing: DSSpacing.xs) {
+                    ForEach(0..<5) { index in
+                        Capsule().fill(index == model.step.rawValue ? DSColor.accent : DSColor.hairline)
+                            .frame(width: index == model.step.rawValue ? 28 : 10, height: 3)
+                    }
+                }
+                .accessibilityHidden(true)
                 Text(model.step.progressText).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                     .accessibilityIdentifier("onboarding.progress")
                 Text(model.step.title).font(DSTypography.title).accessibilityAddTraits(.isHeader)
@@ -67,7 +77,7 @@ public struct OnboardingView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .id(model.step)
         .transition(.opacity)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.12), value: model.step)
+        .dsAnimation(.settle, value: model.step)
     }
 
     @ViewBuilder private var stepBody: some View {
@@ -140,7 +150,7 @@ public struct OnboardingView: View {
             Spacer()
             Button(model.primaryTitle) { Task { await model.next() } }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(EmberButtonStyle())
                 .accessibilityIdentifier(model.step.isLast ? "onboarding.finish" : "onboarding.continue")
         }
         .padding(DSSpacing.lg)
@@ -155,7 +165,8 @@ private struct HighlightList: View {
         VStack(alignment: .leading, spacing: DSSpacing.lg) {
             ForEach(items) { item in
                 HStack(alignment: .top, spacing: DSSpacing.md) {
-                    DSIcon(item.symbol, orStock: item.systemImage).dsSymbolStyle(.monochrome).frame(width: 24).foregroundStyle(DSColor.accent)
+                    DSIcon(item.symbol, orStock: item.systemImage).dsSymbolStyle(.monochrome).frame(width: 24).foregroundStyle(
+                        DSColor.accent)
                     VStack(alignment: .leading, spacing: DSSpacing.xxs) {
                         Text(item.title).font(DSTypography.headline)
                         Text(item.detail).font(DSTypography.body).foregroundStyle(DSColor.secondaryText)
@@ -186,7 +197,7 @@ private struct LanguageStep: View {
                 }
             }
             recommendation
-            Text("Nothing leaves your Mac. Model downloads are the only network use.")
+            Text("Your audio stays on this Mac. Downloads start only when you choose.")
                 .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
         }
     }
@@ -209,8 +220,10 @@ private struct LanguageStep: View {
         VStack(alignment: .leading, spacing: DSSpacing.md) {
             Text("Recommended for your Mac").font(DSTypography.headline)
             if model.recommendations.isEmpty {
-                Text(model.isLoading ? "Checking models…" : "No model is listed for these languages yet. You can add one later in Settings.")
-                    .font(DSTypography.body).foregroundStyle(DSColor.secondaryText)
+                Text(
+                    model.isLoading ? "Checking models…" : "No model is listed for these languages yet. You can add one later in Settings."
+                )
+                .font(DSTypography.body).foregroundStyle(DSColor.secondaryText)
             }
             ForEach(model.recommendations) { item in
                 RecommendationRow(model: model, item: item)

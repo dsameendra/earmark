@@ -95,7 +95,8 @@ struct ModelRowView: View {
             Button("Resume", symbol: .play, action: onResume).labelStyle(.iconOnly).accessibilityLabel("Resume download")
             Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download")
         case .installed:
-            Button("Delete", systemImage: "trash", role: .destructive, action: onDelete).labelStyle(.iconOnly) // stock-chrome: destructive action
+            Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)  // stock-chrome: destructive action
+                .labelStyle(.iconOnly)
                 .accessibilityLabel("Delete \(row.descriptor.displayName)")
         case .failed:
             Button("Retry", symbol: .retry, action: onDownload)
@@ -166,7 +167,7 @@ struct ModelsSettingsView: View {
                     Text("Disk usage: \(ModelFormat.bytes(model.totalDiskUsage))").font(DSTypography.caption)
                 }
             } footer: {
-                Text("Models are downloaded only when you choose to. Earmark makes no other network requests.")
+                Text("Models are downloaded only when you choose to. Your audio stays on this Mac.")
             }
             if kinds == nil {
                 Section("Custom model") {
@@ -325,7 +326,8 @@ struct LanguagesSettingsView: View {
             case .needsDownload(let descriptor):
                 HStack {
                     Text(
-                        "Needs \(descriptor.displayName): \(ModelFormat.bytes(descriptor.sizeBytes)), licence \(descriptor.license.spdx). Not downloaded yet."
+                        "Needs \(descriptor.displayName): \(ModelFormat.bytes(descriptor.sizeBytes)), "
+                            + "licence \(descriptor.license.spdx). Not downloaded yet."
                     )
                     .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                     Spacer()

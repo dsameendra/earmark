@@ -20,21 +20,19 @@ import Testing
     }
 
     static let textTokens: [(String, DSColorToken)] = [
-        ("ink", DSPalette.ink), ("ink2", DSPalette.ink2), ("ink3", DSPalette.ink3),
+        ("ink", DSPalette.ink), ("ink2", DSPalette.ink2), ("tertiaryText", DSPalette.tertiaryText),
     ]
     /// Small-text colours: 4.5:1 on every surface, no exceptions except the two below.
     static let statusTokens: [(String, DSColorToken)] = [
-        ("accentText", DSPalette.accentText), ("recordingText", DSPalette.recordingText), ("success", DSPalette.success),
-        ("warning", DSPalette.warning), ("danger", DSPalette.danger),
+        ("accentText", DSPalette.accentText), ("recordingText", DSPalette.recordingText), ("successText", DSPalette.successText),
+        ("warningText", DSPalette.warningText), ("danger", DSPalette.danger),
     ]
     /// Fill and large-text colours (locked brand hexes): 3:1 non-text on every surface, 4.5:1 on sheet.
     static let fillTokens: [(String, DSColorToken)] = [("ember", DSPalette.ember), ("recording", DSPalette.recording)]
 
     /// Light pairs below 4.5:1 for small text. Ember and recording moved to `accentText` / `recordingText`
     /// (T34), so only success and warning on the Ember tint remain; T40 to confirm.
-    static let knownSub45: [String: Double] = [
-        "success/emberTint": 3.0, "warning/emberTint": 3.0,
-    ]
+    static let knownSub45: [String: Double] = [:]
 
     @Test(arguments: [false, true]) func fillTokensMeetNonTextContrast(dark: Bool) {
         for (name, token) in Self.fillTokens {
@@ -55,9 +53,7 @@ import Testing
         for (name, token) in Self.textTokens {
             for s in Surface.allCases {
                 let ratio = RGB.contrast(token.value(dark: dark).rgb, Self.surface(s, dark: dark))
-                // Known exception: dark ink3 on the (translucent) emberTint reaches 4.45:1 (locked hexes); T40 to confirm.
-                let floor = (name == "ink3" && s == .emberTint && dark) ? 4.4 : 4.5
-                #expect(ratio >= floor, "\(name) on \(s) dark=\(dark): \(ratio)")
+                #expect(ratio >= 4.5, "\(name) on \(s) dark=\(dark): \(ratio)")
             }
         }
     }
@@ -235,7 +231,8 @@ import Testing
     @MainActor @Test func everyLayerRendersAsOpaqueTwin() throws {
         let policy = AccessibilityPolicy(reduceTransparency: true)
         for layer in DSGlassLayer.allCases {
-            let view = Color.clear.frame(width: 80, height: 80).dsGlass(layer, radius: 12).environment(\.accessibilityPolicyOverride, policy)
+            let view = Color.clear.frame(width: 80, height: 80).dsGlass(layer, radius: 12).environment(
+                \.accessibilityPolicyOverride, policy)
             let r = ImageRenderer(content: view.frame(width: 80, height: 80))
             r.scale = 2
             let img = try #require(r.cgImage)
@@ -257,7 +254,9 @@ import Testing
     }
 
     @MainActor @Test func sheetAndInsetCardsRender() {
-        let views: [AnyView] = [AnyView(SheetCard { Text("a") }), AnyView(InsetCard { Text("b") }), AnyView(SheetCard(selected: true) { Text("c") })]
+        let views: [AnyView] = [
+            AnyView(SheetCard { Text("a") }), AnyView(InsetCard { Text("b") }), AnyView(SheetCard(selected: true) { Text("c") }),
+        ]
         for v in views {
             let r = ImageRenderer(content: v.frame(width: 120, height: 80))
             #expect(r.cgImage != nil)
@@ -288,7 +287,6 @@ import Testing
     }
 }
 
-@available(*, deprecated)
 @MainActor private func renderDeprecatedShims() -> Bool {
     let views: [AnyView] = [AnyView(GlassCard { Text("a") }), AnyView(GlassPanel { Text("b") })]
     return views.allSatisfy { ImageRenderer(content: $0.frame(width: 120, height: 80)).cgImage != nil }

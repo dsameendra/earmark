@@ -132,7 +132,7 @@ private struct WaveformBackdrop: View {
             }
             for time in marks {
                 let x = time / duration * size.width
-                context.fill(Path(CGRect(x: x - 1, y: 0, width: 2, height: size.height)), with: .color(.orange))
+                context.fill(Path(CGRect(x: x - 1, y: 0, width: 2, height: size.height)), with: .color(DSColor.accent))
             }
         }
     }
@@ -147,93 +147,69 @@ private struct PlayheadOverlay: View {
         let time = playback.currentTime
         Canvas { context, size in
             let x = time / duration * size.width
-            context.fill(Path(CGRect(x: x - 1, y: 0, width: 2, height: size.height)), with: .color(.accentColor))
+            context.fill(Path(CGRect(x: x - 1, y: 0, width: 2, height: size.height)), with: .color(DSColor.accent))
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
 }
 
-/// Play/pause, skips, time, speed, waveform toggle, detach (EDIT-AC-05, 17, 19).
+// glass-layer: floater (the one floating player dock; transcript and inspector are solid)
+/// Floating player dock; shortcuts, rate, waveform and detachment share the existing playback model.
 struct TransportBar: View {
     let model: TranscriptEditorModel
 
     var body: some View {
         let playback = model.playback
-        HStack(spacing: DSSpacing.sm) {
-            Button {
-                playback.skip(by: -PlaybackShortcut.longSkip)
-            } label: {
-                Image(systemName: "gobackward.15")
+        VStack(spacing: DSSpacing.sm) {
+            if model.showWaveform && playback.canPlay && !playback.isVideo {
+                WaveformScrubber(model: model).frame(height: 30)
             }
-            .help("Back 15 seconds")
-            Button {
-                playback.skip(by: -PlaybackShortcut.shortSkip)
-            } label: {
-                Image(systemName: "gobackward.5")
-            }
-            .help("Back 5 seconds (J or ←)")
-            Button {
-                playback.togglePlay()
-            } label: {
-                Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
-            }
-            .help("Play/Pause (Space or K)")
-            Button {
-                playback.skip(by: PlaybackShortcut.shortSkip)
-            } label: {
-                Image(systemName: "goforward.5")
-            }
-            .help("Forward 5 seconds (L or →)")
-            Button {
-                playback.skip(by: PlaybackShortcut.longSkip)
-            } label: {
-                Image(systemName: "goforward.15")
-            }
-            .help("Forward 15 seconds")
-            Text("\(TimeFormat.clock(playback.currentTime)) / \(TimeFormat.clock(playback.duration))")
-                .font(DSTypography.timestamp).foregroundStyle(DSColor.secondaryText)
-            if playback.canPlay, !playback.isVideo || playback.isDetached == false {
-                Slider(
-                    value: Binding(get: { playback.currentTime }, set: { playback.seek(to: $0) }),
-                    in: 0...max(playback.duration, 1)
-                )
-                .controlSize(.small)
-                .accessibilityLabel("Seek")
-            } else {
-                Spacer()
-            }
-            Menu {
-                ForEach(PlaybackSpeed.steps, id: \.self) { speed in
-                    Button {
-                        model.setPlaybackSpeed(speed)
-                    } label: {
-                        if speed == playback.speed { Label(speedLabel(speed), systemImage: "checkmark") } else { Text(speedLabel(speed)) }
-                    }
+            HStack(spacing: DSSpacing.md) {
+                Button {
+                    playback.togglePlay()
+                } label: {
+                    Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
+                        .font(DSTypography.headline)
+                        .frame(width: 40, height: 40)
+                        .foregroundStyle(DSColor.primaryText)
+                        .background(DSColor.accentTint, in: Circle())
                 }
-            } label: {
-                Text(speedLabel(playback.speed)).monospacedDigit()
+                .buttonStyle(.plain).disabled(!playback.canPlay)
+                .accessibilityLabel(playback.isPlaying ? "Pause" : "Play").help("Play/Pause (Space or K)")
+                .accessibilityIdentifier("editor.player.play")
+                Text(TimeFormat.clock(playback.currentTime)).font(DSTypography.timestamp).monospacedDigit()
+                Slider(value: Binding(get: { playback.currentTime }, set: { playback.seek(to: $0) }), in: 0...max(playback.duration, 1))
+                    .accessibilityLabel("Seek").disabled(!playback.canPlay)
+                    .accessibilityIdentifier("editor.player.seek")
+                Text(TimeFormat.clock(playback.duration)).font(DSTypography.timestamp).foregroundStyle(DSColor.secondaryText)
+                Menu {
+                    ForEach(PlaybackSpeed.steps, id: \.self) { speed in
+                        Button(speedLabel(speed)) { model.setPlaybackSpeed(speed) }
+                    }
+                } label: {
+                    Text(speedLabel(playback.speed)).monospacedDigit()
+                }
+                .menuStyle(.borderlessButton).fixedSize().help("Playback speed")
+                .accessibilityIdentifier("editor.player.speed")
+                Menu("Player options", systemImage: "ellipsis") {
+                    Button("Back 15 seconds") { playback.skip(by: -PlaybackShortcut.longSkip) }
+                    Button("Back 5 seconds") { playback.skip(by: -PlaybackShortcut.shortSkip) }
+                    Button("Forward 5 seconds") { playback.skip(by: PlaybackShortcut.shortSkip) }
+                    Button("Forward 15 seconds") { playback.skip(by: PlaybackShortcut.longSkip) }
+                    Divider()
+                    Toggle("Show waveform", isOn: Binding(get: { model.showWaveform }, set: { model.setShowWaveform($0) }))
+                    Button(playback.isDetached ? "Dock player" : "Detach player") { playback.isDetached.toggle() }
+                }
+                .menuStyle(.borderlessButton).fixedSize()
+                .accessibilityIdentifier("editor.player.options")
             }
-            .menuStyle(.borderlessButton).fixedSize()
-            .help("Playback speed")
-            Toggle(isOn: Binding(get: { model.showWaveform }, set: { model.setShowWaveform($0) })) {
-                DSIcon(.waveform)
-            }
-            .toggleStyle(.button).help("Show waveform")
-            Button {
-                playback.isDetached.toggle()
-            } label: {
-                Image(systemName: playback.isDetached ? "rectangle.on.rectangle.slash" : "rectangle.on.rectangle")
-            }
-            .help(playback.isDetached ? "Dock player" : "Detach player")
         }
         .buttonStyle(.borderless)
-        .padding(.horizontal, DSSpacing.md)
-        .padding(.vertical, DSSpacing.xs)
-        .background(DSColor.solidChrome)
-        .overlay(alignment: .top) { Divider() }
-        .opacity(playback.canPlay ? 1 : 0.6)
-        .allowsHitTesting(playback.canPlay)
+        .padding(DSSpacing.md)
+        .frame(maxWidth: 840)
+        .dsGlass(.clear, radius: DSRadius.panel)
+        .accessibilityLabel("Player")
     }
 
     private func speedLabel(_ speed: Double) -> String {

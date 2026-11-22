@@ -38,13 +38,13 @@ private struct OnboardingLauncher: ViewModifier {
     func body(content: Content) -> some View {
         content.task {
             // UI tests and previews run with mock services and must not be interrupted by the welcome window.
-            guard !AppEnvironment.usesMocks else { return }
-            if !Launch.checked {
+            if !AppEnvironment.usesMocks && !Launch.checked {
                 Launch.checked = true
                 if await OnboardingModel.shouldPresent(store: settings) { present() }
             }
             for await _ in settings.changes(for: SettingsKey.onboardingCompleted) {
-                if await OnboardingModel.shouldPresent(store: settings) { present() }
+                guard await OnboardingModel.shouldPresent(store: settings) else { continue }
+                present()
             }
         }
     }

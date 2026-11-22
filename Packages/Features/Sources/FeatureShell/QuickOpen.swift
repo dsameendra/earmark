@@ -104,6 +104,8 @@ struct QuickOpenView: View {
                                     in: .rect(cornerRadius: DSRadius.small))
                             }
                             .buttonStyle(.plain)
+                            .accessibilityIdentifier("quickOpen.result.\(result.id)")
+                            .accessibilityLabel(result.title)
                             .accessibilityAddTraits(index == model.highlighted ? .isSelected : [])
                         }
                     }

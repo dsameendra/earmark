@@ -70,13 +70,24 @@ public final class HomeModel {
     /// Loads initial state, then follows job events until the task is cancelled.
     public func run() async {
         let events = services.jobQueue.events()  // subscribe before loading so no update is lost
-        for job in await services.jobQueue.jobs() { jobsByID[job.id] = job }
+        let modelChanges = services.models.stateChanges()
+        let preferredChanges = services.settings.changes(for: SettingsKey.preferredModel)
+        let languageChanges = services.settings.changes(for: SettingsKey.languageMode)
+        let watchers = [
+            Task { [weak self] in for await _ in modelChanges { await self?.reloadModelStatus() } },
+            Task { [weak self] in for await _ in preferredChanges { await self?.reloadModelStatus() } },
+            Task { [weak self] in for await _ in languageChanges { await self?.reloadModelStatus() } },
+        ]
+        defer { for watcher in watchers { watcher.cancel() } }
+        jobsByID = Dictionary(uniqueKeysWithValues: await services.jobQueue.jobs().map { ($0.id, $0) })
         summary = ActiveJobsSummary(jobs: Array(jobsByID.values))
         await reloadRecent()
         await reloadModelStatus()
         for await event in events {
             switch event {
-            case .updated(let job): jobsByID[job.id] = job
+            case .updated(let job):
+                jobsByID[job.id] = job
+                if job.state == .completed { await reloadRecent() }
             case .removed(let id): jobsByID[id] = nil
             }
             summary = ActiveJobsSummary(jobs: Array(jobsByID.values))
@@ -107,7 +118,7 @@ public final class HomeModel {
     public func reloadModelStatus() async {
         let catalog = await services.models.catalog()
         let installed = await services.models.installedModels()
-        guard let model = Self.defaultModel(in: catalog) else {
+        guard let model = await PreferredModel.resolve(in: catalog, settings: services.settings) else {
             modelStatus = nil
             return
         }
@@ -135,7 +146,7 @@ public final class HomeModel {
     public func ensureDefaultModel() async -> Bool {
         let catalog = await services.models.catalog()
         let installed = await services.models.installedModels()
-        guard let model = Self.defaultModel(in: catalog) else { return true }
+        guard let model = await PreferredModel.resolve(in: catalog, settings: services.settings) else { return true }
         if installed.contains(model.id) { return true }
         download = ModelDownloadStatus(modelName: model.displayName, fraction: 0)
         defer { download = nil }

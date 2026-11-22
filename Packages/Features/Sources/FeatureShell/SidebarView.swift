@@ -33,11 +33,15 @@ struct SidebarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpacing.xs) {
-            brand
-            if model.isRecordingActive { recordingRow }
-            ForEach(AppSection.allCases) { section in row(section) }
-            if !model.sidebar.folders.isEmpty { folders }
-            Spacer(minLength: DSSpacing.md)
+            ScrollView {
+                VStack(alignment: .leading, spacing: DSSpacing.xs) {
+                    brand
+                    if model.isRecordingActive { recordingRow }
+                    ForEach(AppSection.allCases) { section in row(section) }
+                    if !model.sidebar.folders.isEmpty { folders }
+                }
+            }
+            .scrollIndicators(.hidden)
             if let chip = model.sidebar.modelChip { ModelChipView(chip: chip) }
             settingsRow
         }
@@ -75,6 +79,7 @@ struct SidebarView: View {
         } label: {
             HStack(spacing: 11) {
                 DSIcon(section.symbol, style: look.symbolStyle).font(.system(size: 17)).frame(width: 22)
+                    .foregroundStyle(look.isSelected ? DSColor.primaryText : DSColor.secondaryText)
                 Text(section.title).fontWeight(look.isBold ? .semibold : .regular)
                 Spacer(minLength: DSSpacing.xs)
                 if section == .queue, let badge = model.sidebar.queueBadge { Badge(text: badge) }

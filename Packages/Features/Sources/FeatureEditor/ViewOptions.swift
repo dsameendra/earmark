@@ -25,8 +25,8 @@ public struct ViewOptions: Codable, Sendable, Hashable {
     public var layout: TranscriptLayoutMode = .segments
     /// Font family name; nil is the system font (with the Sinhala cascade).
     public var fontFamily: String?
-    public var fontSize: Double = 15
-    public var lineSpacing: Double = 4
+    public var fontSize: Double = 19
+    public var lineSpacing: Double = 7.4
     public var showTimestamps = true
     public var showSpeakers = true
     public var showLanguageBadges = true

@@ -17,6 +17,11 @@ public struct QueueView: View {
 
     public var body: some View {
         content
+            .padding(DSSpacing.xl)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .dsSolidSurface(.sheet, radius: DSRadius.panel)
+            .padding(DSSpacing.md)
+            .background(DSColor.paper)
             .navigationTitle("Queue")
             .toolbar { toolbarContent }
             .dropDestination(for: URL.self) { urls, _ in
@@ -75,6 +80,9 @@ public struct QueueView: View {
                         }
                     }
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .listRowSeparator(.hidden)
                 .accessibilityLabel("Transcription queue")
             }
         }
@@ -118,6 +126,14 @@ private struct QueueRow: View {
             StatusPill(state: job.state)
             actionButtons
         }
+        .padding(DSSpacing.md)
+        .background(
+            job.state == .failed ? DSColor.danger.opacity(0.08) : DSColor.insetBackground,
+            in: RoundedRectangle(cornerRadius: DSRadius.medium)
+        )
+        .listRowSeparator(.hidden)
+        .listRowBackground(DSColor.contentBackground)
+        .accessibilityIdentifier("queue.job.\(job.id)")
         .accessibilityElement(children: .contain)
         .accessibilityLabel(job.input?.lastPathComponent ?? "Job")
         .accessibilityValue(accessibilityValue)

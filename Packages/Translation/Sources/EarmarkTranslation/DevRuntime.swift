@@ -3,14 +3,10 @@ import Foundation
 
 /// Locates the development-only NLLB runtime (ADR-009).
 ///
-/// `NLLBEngine` needs CTranslate2 and SentencePiece, which today run through a Python worker (`CTranslate2WorkerRuntime`).
-/// That is acceptable for development and non-sandboxed local builds, not for a shippable app: the app must not depend on a
-/// user's Python. The worker is therefore **off unless explicitly enabled** with the environment variable
-/// `EARMARK_DEV_NLLB_PYTHON=/path/to/python3` (an interpreter with `ctranslate2` and `sentencepiece`). `settingValue` and
-/// `settingsKey` are reserved for a future developer setting; the app does not read it yet.
-///
-/// Without it the router has no NLLB engine and Sinhala translation reports ``TranslationFailure/noEngine(_:)``
-/// ("Sinhala translation unavailable in this build").
+/// Optional Python reference backend for development and parity checks. The shipping app uses
+/// ``BundledNLLBRuntime`` and does not require a user's Python installation. Debug builds may
+/// explicitly override that backend with `EARMARK_DEV_NLLB_PYTHON=/path/to/python3` or the
+/// `dev.nllbPython` setting; the interpreter must provide CTranslate2 and SentencePiece.
 public enum NLLBDevRuntime {
     public static let environmentKey = "EARMARK_DEV_NLLB_PYTHON"
     public static let settingsKey = "dev.nllbPython"
@@ -26,7 +22,7 @@ public enum NLLBDevRuntime {
         return nil
     }
 
-    /// A runtime for the enabled interpreter, or `nil` (leave NLLB out of the router).
+    /// A runtime for the enabled interpreter, or `nil` (use the bundled runtime).
     public static func runtime(
         environment: [String: String] = ProcessInfo.processInfo.environment, settingValue: String? = nil
     ) -> (any NLLBRuntime)? {

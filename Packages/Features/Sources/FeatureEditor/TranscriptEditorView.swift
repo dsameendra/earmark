@@ -21,14 +21,19 @@ public struct TranscriptEditorView: View {
     }
 }
 
+private enum EditorTool: String, Identifiable {
+    case inspector, speakers, bookmarks, options, translation
+    var id: String { rawValue }
+}
+
 private struct EditorContent: View {
+    @Environment(\.shellLayout) private var layout
+    @Environment(\.inspectorPresented) private var inspectorPresented
+    @Environment(\.inspectorToggle) private var inspectorToggle
     @State private var model: TranscriptEditorModel
     @State private var find: FindReplaceModel
     @State private var export: EditorExportModel
-    @State private var showSpeakers = false
-    @State private var showBookmarks = false
-    @State private var showOptions = false
-    @State private var showTranslate = false
+    @State private var activeTool: EditorTool?
     @State private var showExport = false
     @State private var playerWindow: PlayerWindowController?
     @FocusState private var findFocused: Bool
@@ -42,8 +47,42 @@ private struct EditorContent: View {
     }
 
     var body: some View {
+        editorSurface
+            .task { await model.load() }
+            .onChange(of: model.revision) { find.refresh() }
+            .onChange(of: model.selection) { if find.scope == .selection { find.refresh() } }
+            .onChange(of: model.showIgnored) { find.refresh() }
+            .onChange(of: model.playback.isDetached) { updateDetachedWindow() }
+            .onChange(of: find.isVisible) { if !find.isVisible { listFocused = true } }
+            .onChange(of: model.listFocusToken) { listFocused = true }
+            .onChange(of: model.editingSegmentID) { if model.editingSegmentID == nil { listFocused = true } }
+            .onChange(of: activeTool) {
+                if activeTool == nil {
+                    inspectorToggle.wrappedValue = false
+                    listFocused = true
+                }
+            }
+            .onChange(of: layout.inspectorCollapsed) {
+                if !layout.inspectorCollapsed && activeTool == .inspector { activeTool = nil }
+            }
+            .onChange(of: inspectorPresented, initial: true) {
+                guard layout.inspectorCollapsed else { return }
+                if inspectorPresented { activeTool = .inspector } else if activeTool == .inspector { activeTool = nil }
+            }
+            .onChange(of: showExport) { if !showExport { listFocused = true } }
+            .onDisappear {
+                model.acknowledgeReconciliation()
+                playerWindow?.close()
+                Task { await model.flush() }
+            }
+            .sheet(isPresented: $showExport) { ExportSheet(export: export) { showExport = false } }
+            .popover(item: $activeTool) { tool in
+                toolContent(tool).presentationBackground(DSColor.contentBackground)
+            }
+    }
+
+    private var editorSurface: some View {
         VStack(spacing: 0) {
-            header
             if find.isVisible { FindBarView(model: model, find: find, fieldFocused: $findFocused) }
             if let message = model.languageError {
                 HStack {
@@ -54,130 +93,88 @@ private struct EditorContent: View {
                 .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.xs).background(DSColor.solidChrome)
             }
             if let report = model.reconciliation { ReconciliationBanner(report: report) { model.acknowledgeReconciliation() } }
-            content
-            TransportBar(model: model)
+            HStack(alignment: .top, spacing: DSSpacing.md) {
+                content
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: DSRadius.panel))
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        TransportBar(model: model).padding(DSSpacing.md)
+                    }
+                if !layout.inspectorCollapsed {
+                    inspector.frame(width: 260)
+                }
+            }
+            .frame(maxWidth: DSLayout.contentMaxWidth)
+            .frame(maxWidth: .infinity)
+            .padding(DSSpacing.md)
         }
-        .background(DSColor.contentBackground)
-        .task { await model.load() }
-        .onChange(of: model.revision) { find.refresh() }
-        .onChange(of: model.selection) { if find.scope == .selection { find.refresh() } }
-        .onChange(of: model.showIgnored) { find.refresh() }
-        .onChange(of: model.playback.isDetached) { updateDetachedWindow() }
-        .onChange(of: find.isVisible) { if !find.isVisible { listFocused = true } }
-        .onChange(of: model.listFocusToken) { listFocused = true }
-        .onChange(of: model.editingSegmentID) { if model.editingSegmentID == nil { listFocused = true } }
-        .onChange(of: showSpeakers) { if !showSpeakers { listFocused = true } }
-        .onChange(of: showBookmarks) { if !showBookmarks { listFocused = true } }
-        .onChange(of: showOptions) { if !showOptions { listFocused = true } }
-        .onChange(of: showTranslate) { if !showTranslate { listFocused = true } }
-        .onChange(of: showExport) { if !showExport { listFocused = true } }
-        .onDisappear {
-            model.acknowledgeReconciliation()
-            playerWindow?.close()
-            Task { await model.flush() }
-        }
-        .sheet(isPresented: $showExport) { ExportSheet(export: export) { showExport = false } }
+        .background(DSColor.paper)
+        .navigationTitle(model.transcript?.title ?? "Transcript")
+        .toolbar { editorToolbar }
     }
 
     // MARK: Header
 
-    private var header: some View {
-        HStack(spacing: DSSpacing.sm) {
-            Text(model.transcript?.title ?? "Transcript").font(DSTypography.headline).lineLimit(1)
-            Spacer()
-            Toggle(
-                isOn: Binding(get: { model.showIgnored }, set: { model.setShowIgnored($0) })
-            ) {
-                Text(model.hiddenIgnoredCount > 0 && !model.showIgnored ? "Show ignored (\(model.hiddenIgnoredCount))" : "Show ignored")
-            }
-            .toggleStyle(.checkbox)
-            Button {
-                model.undo()
-            } label: {
-                Image(systemName: "arrow.uturn.backward")
-            }
-            .disabled(!model.canUndo || model.editingSegmentID != nil)
-            .keyboardShortcut("z", modifiers: .command)
-            .help(model.canUndo ? "Undo \(model.undoActionName)" : "Undo")
-            Button {
-                model.redo()
-            } label: {
-                Image(systemName: "arrow.uturn.forward")
-            }
-            .disabled(!model.canRedo || model.editingSegmentID != nil)
-            .keyboardShortcut("z", modifiers: [.command, .shift])
-            .help(model.canRedo ? "Redo \(model.redoActionName)" : "Redo")
-            Button {
+    @ToolbarContentBuilder private var editorToolbar: some ToolbarContent {
+        ToolbarItemGroup {
+            Button("Find", symbol: .find) {
                 find.open()
                 findFocused = true
-            } label: {
-                DSIcon(.find)
             }
-            .keyboardShortcut("f", modifiers: .command).help("Find (⌘F)")
-            Button {
-                find.open(replace: true)
-                findFocused = true
-            } label: {
-                Image(systemName: "arrow.triangle.swap")
+            .keyboardShortcut("f", modifiers: .command)
+            .accessibilityIdentifier("editor.find")
+            Button("Speakers", symbol: .speaker) { presentTool(.speakers) }
+                .accessibilityIdentifier("editor.speakers")
+            Button("Translate", symbol: .translate) { presentTool(.translation) }
+                .accessibilityIdentifier("editor.translation")
+            Menu("More", systemImage: "ellipsis") {
+                Toggle(
+                    "Show ignored (\(model.hiddenIgnoredCount))",
+                    isOn: Binding(get: { model.showIgnored }, set: { model.setShowIgnored($0) }))
+                Button("Find and Replace") {
+                    find.open(replace: true)
+                    findFocused = true
+                }
+                .keyboardShortcut("f", modifiers: [.command, .option])
+                Button("Next Match") { find.next() }.keyboardShortcut("g", modifiers: .command)
+                Button("Previous Match") { find.previous() }.keyboardShortcut("g", modifiers: [.command, .shift])
+                Divider()
+                Button("Undo \(model.undoActionName)") { model.undo() }
+                    .disabled(!model.canUndo || model.editingSegmentID != nil).keyboardShortcut("z", modifiers: .command)
+                Button("Redo \(model.redoActionName)") { model.redo() }
+                    .disabled(!model.canRedo || model.editingSegmentID != nil).keyboardShortcut("z", modifiers: [.command, .shift])
+                Divider()
+                Button("Bookmarks and highlights", symbol: .earmark) { presentTool(.bookmarks) }
+                Button("View options", systemImage: "textformat.size") { presentTool(.options) }
             }
-            .keyboardShortcut("f", modifiers: [.command, .option]).help("Find and Replace (⌥⌘F)")
-            Button {
-                find.next()
-            } label: {
-                EmptyView()
-            }
-            .keyboardShortcut("g", modifiers: .command).frame(width: 0, height: 0).opacity(0).accessibilityHidden(true)
-            Button {
-                find.previous()
-            } label: {
-                EmptyView()
-            }
-            .keyboardShortcut("g", modifiers: [.command, .shift]).frame(width: 0, height: 0).opacity(0).accessibilityHidden(true)
-            Button {
-                showSpeakers.toggle()
-            } label: {
-                DSIcon(.speaker)
-            }
-            .help("Speakers").popover(isPresented: $showSpeakers) { SpeakersPanel(model: model) }
-            Button {
-                showBookmarks.toggle()
-            } label: {
-                DSIcon(.earmark)
-            }
-            .help("Bookmarks and highlights").popover(isPresented: $showBookmarks) { BookmarksPanel(model: model) }
-            if model.uncertainLanguageCount > 0 {
-                Label("\(model.uncertainLanguageCount)", systemImage: "questionmark.circle")
-                    .font(DSTypography.caption).foregroundStyle(DSColor.warning)
-                    .help("\(model.uncertainLanguageCount) segments have an uncertain language. Right-click a segment to change it or re-transcribe.")
-                    .accessibilityLabel("\(model.uncertainLanguageCount) segments with uncertain language")
-                    .accessibilityIdentifier("editor.uncertainLanguages")
-            }
-            Button {
-                showTranslate.toggle()
-            } label: {
-                DSIcon(.translate)
-                    .foregroundStyle(model.translationChoice.mode == .original ? Color.primary : DSColor.accent)
-            }
-            .help("Translation view and Translate…").accessibilityIdentifier("editor.translation")
-            .popover(isPresented: $showTranslate) { TranslatePanel(model: model) }
-            Button {
-                showOptions.toggle()
-            } label: {
-                Image(systemName: "textformat.size")
-            }
-            .help("View options").popover(isPresented: $showOptions) { ViewOptionsPanel(model: model) }
-            Button {
-                showExport = true
-            } label: {
-                DSIcon(.export)
-            }
-            .help("Export")
+            .accessibilityIdentifier("editor.more")
         }
-        .buttonStyle(.borderless)
-        .padding(.horizontal, DSSpacing.md)
-        .padding(.vertical, DSSpacing.sm)
-        .background(DSColor.solidChrome)
-        .overlay(alignment: .bottom) { Divider() }
+        ToolbarSpacer(.fixed)
+        ToolbarItem(placement: .primaryAction) {
+            Button("Export", symbol: .export) { showExport = true }
+                .labelStyle(.titleAndIcon).buttonStyle(EmberButtonStyle())
+                .accessibilityIdentifier("editor.export")
+        }
+        .sharedBackgroundVisibility(.hidden)
+    }
+
+    private var inspector: some View {
+        EditorInspector(model: model, onSpeakers: { presentTool(.speakers) }, onBookmarks: { presentTool(.bookmarks) })
+    }
+
+    private func presentTool(_ tool: EditorTool) {
+        activeTool = tool
+        inspectorToggle.wrappedValue = false
+    }
+
+    @ViewBuilder private func toolContent(_ tool: EditorTool) -> some View {
+        switch tool {
+        case .inspector: inspector.frame(width: 300).padding(DSSpacing.md)
+        case .speakers: SpeakersPanel(model: model)
+        case .bookmarks: BookmarksPanel(model: model)
+        case .options: ViewOptionsPanel(model: model)
+        case .translation: TranslatePanel(model: model)
+        }
     }
 
     // MARK: Content
@@ -190,12 +187,18 @@ private struct EditorContent: View {
         case .failed(let message):
             ErrorState(message: message) { Task { await model.load() } }
         case .loaded:
-            VSplitView {
-                if !model.playback.isDetached {
-                    PlayerPanelView(model: model, onRelink: relink)
-                        .frame(minHeight: 90, idealHeight: model.playback.isVideo ? 240 : 110)
+            if !model.playback.isDetached && model.playback.isVideo {
+                VSplitView {
+                    PlayerPanelView(model: model, onRelink: relink).frame(minHeight: 90, idealHeight: 240)
+                    transcriptArea.frame(minHeight: 160)
                 }
-                transcriptArea.frame(minHeight: 160)
+            } else {
+                VStack(spacing: 0) {
+                    if !model.playback.isDetached && !model.playback.canPlay {
+                        PlayerPanelView(model: model, onRelink: relink).frame(height: 110)
+                    }
+                    transcriptArea.frame(minHeight: 160)
+                }
             }
         }
     }

@@ -38,6 +38,14 @@ public struct SettingsDependencies: Sendable {
     public var models: any ModelManaging
     public var hardware: any HardwareTierProviding
     public var audioDevices: any AudioDeviceProviding
+    /// Creates a microphone source only after the user chooses Test Microphone. Capture requests its permission at start.
+    public var microphonePreview: (@Sendable (String?) -> any AudioSource)?
+    /// Optional typed capture errors, supplied by the app without adding an AudioCapture dependency to Features.
+    public var microphonePreviewErrors: (@Sendable (any AudioSource) -> AsyncStream<AppError>)?
+    /// Explicit update actions, absent in development builds without a signed update feed.
+    public var checkForUpdates: (@MainActor @Sendable () -> Void)?
+    public var automaticUpdateChecks: (@MainActor @Sendable () -> Bool)?
+    public var setAutomaticUpdateChecks: (@MainActor @Sendable (Bool) -> Void)?
     public var permissions: any PermissionsServicing
     public var rules: any RuleRepository
     public var presets: any PresetRepository
@@ -65,12 +73,14 @@ public struct SettingsDependencies: Sendable {
         launchAtLogin: any LaunchAtLoginControlling = SMAppServiceLaunchAtLogin(),
         displays: (any DisplayProviding)? = nil, overlayPlacement: (any OverlayPlacementControlling)? = nil,
         voiceProfiles: (any VoiceProfileRepository)? = nil,
+        microphonePreview: (@Sendable (String?) -> any AudioSource)? = nil,
         clearCaches: @escaping @Sendable () async -> Int64 = { SettingsDependencies.clearDefaultCaches() }
     ) {
         self.store = store
         self.models = models
         self.hardware = hardware
         self.audioDevices = audioDevices
+        self.microphonePreview = microphonePreview
         self.permissions = permissions
         self.rules = rules
         self.presets = presets

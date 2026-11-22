@@ -189,7 +189,7 @@ public struct DSIcon: View {
             case .hierarchical:
                 Image(name, bundle: .module).symbolRenderingMode(.hierarchical)
             case .monochrome:
-                Image(name, bundle: .module).symbolRenderingMode(.monochrome)
+                Image(name, bundle: .module).symbolRenderingMode(.palette).foregroundStyle(.primary, .primary)
             }
         }
     }
@@ -199,16 +199,28 @@ public struct DSIcon: View {
 
 extension Label where Title == Text, Icon == DSIcon {
     nonisolated public init(_ title: LocalizedStringKey, symbol: DSSymbol) {
-        self.init { Text(title) } icon: { DSIcon(symbol) }
+        self.init {
+            Text(title)
+        } icon: {
+            DSIcon(symbol)
+        }
     }
 
     nonisolated public init<S: StringProtocol>(_ title: S, symbol: DSSymbol) {
-        self.init { Text(title) } icon: { DSIcon(symbol) }
+        self.init {
+            Text(title)
+        } icon: {
+            DSIcon(symbol)
+        }
     }
 
     /// For models that cover only some entries with `DSSymbol` (`symbol` nil falls back to the stock name).
     nonisolated public init<S: StringProtocol>(_ title: S, symbol: DSSymbol?, orStock stockName: String) {
-        self.init { Text(title) } icon: { DSIcon(symbol, orStock: stockName) }
+        self.init {
+            Text(title)
+        } icon: {
+            DSIcon(symbol, orStock: stockName)
+        }
     }
 }
 
@@ -216,13 +228,13 @@ extension Button where Label == SwiftUI.Label<Text, DSIcon> {
     nonisolated public init(_ title: LocalizedStringKey, symbol: DSSymbol, role: ButtonRole? = nil, action: @escaping () -> Void) {
         // Same call-site contract as the SDK initialisers (non-Sendable closures from main-actor views are accepted).
         nonisolated(unsafe) let run = action
-        self.init(role: role, action: { run() }) { SwiftUI.Label(title, symbol: symbol) }
+        self.init(role: role, action: { run() }, label: { SwiftUI.Label(title, symbol: symbol) })
     }
 
     nonisolated public init<S: StringProtocol>(_ title: S, symbol: DSSymbol, role: ButtonRole? = nil, action: @escaping () -> Void) {
         // Same call-site contract as the SDK initialisers (non-Sendable closures from main-actor views are accepted).
         nonisolated(unsafe) let run = action
-        self.init(role: role, action: { run() }) { SwiftUI.Label(title, symbol: symbol) }
+        self.init(role: role, action: { run() }, label: { SwiftUI.Label(title, symbol: symbol) })
     }
 }
 

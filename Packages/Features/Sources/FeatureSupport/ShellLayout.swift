@@ -66,7 +66,16 @@ private struct InspectorPresentedKey: EnvironmentKey {
     static let defaultValue = true
 }
 
+private struct InspectorToggleKey: EnvironmentKey {
+    static let defaultValue: Binding<Bool> = .constant(false)
+}
+
 extension EnvironmentValues {
+    /// The narrow-window inspector toggle, shared with the popover so dismissing it updates the toolbar.
+    public var inspectorToggle: Binding<Bool> {
+        get { self[InspectorToggleKey.self] }
+        set { self[InspectorToggleKey.self] = newValue }
+    }
     /// The shell's current responsive layout (set by `ShellView` from the window width).
     public var shellLayout: ShellLayout {
         get { self[ShellLayoutKey.self] }

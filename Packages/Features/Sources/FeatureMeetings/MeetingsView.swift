@@ -29,7 +29,11 @@ public struct MeetingsView: View {
             inline
             content
         }
-        .background(DSColor.contentBackground)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(DSSpacing.lg)
+        .dsSolidSurface(.sheet, radius: DSRadius.panel)
+        .padding(DSSpacing.md)
+        .background(DSColor.paper)
         .navigationTitle("Meetings")
         .toolbar { policyToolbar }
         .task { await model.load() }
@@ -40,7 +44,8 @@ public struct MeetingsView: View {
     @ViewBuilder private var inline: some View {
         let banners = model.bannerDetections
         let current = model.currentMeeting
-        let hasInline = !banners.isEmpty || current != nil || model.pendingRecording != nil || model.consentReminder != nil || model.actionError != nil
+        let hasInline =
+            !banners.isEmpty || current != nil || model.pendingRecording != nil || model.consentReminder != nil || model.actionError != nil
         if hasInline {
             VStack(spacing: DSSpacing.md) {
                 ForEach(banners) { DetectionBanner(model: model, detection: $0) }
@@ -79,6 +84,8 @@ public struct MeetingsView: View {
             List(model.rows) { row in
                 MeetingRow(row: row) { if let id = row.meeting.transcriptID { onOpenTranscript(id) } }
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
             .accessibilityIdentifier("meetings.list")
         }
     }
@@ -102,6 +109,7 @@ public struct MeetingsView: View {
                 } label: {
                     Label("\(app.badgeTitle) · \(model.policy(for: app).behavior.title)", symbol: MeetingsSymbol.policy)
                 }
+                .labelStyle(.titleAndIcon)
                 .accessibilityIdentifier("meetings.policy.\(app.rawValue)")
                 .help("What Earmark does when a \(app.title) meeting starts")
             }
@@ -325,6 +333,9 @@ struct MeetingRow: View {
                     .accessibilityIdentifier("meetings.row.\(row.id).open")
             }
         }
+        .padding(.vertical, DSSpacing.md)
+        .listRowSeparator(.hidden)
+        .listRowBackground(DSColor.contentBackground)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("meetings.row.\(row.id)")
     }

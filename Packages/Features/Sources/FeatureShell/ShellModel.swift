@@ -142,6 +142,9 @@ public final class ShellModel {
     public var homeActions: HomeActions {
         HomeActions(
             transcribeFile: { [weak self] in self?.presentImporter() }, startLive: { [weak self] in self?.select(.live) },
-            openQueue: { [weak self] in self?.select(.queue) }, openTranscript: { [weak self] in self?.openTranscript($0) })
+            openQueue: { [weak self] in self?.select(.queue) }, openTranscript: { [weak self] in self?.openTranscript($0) },
+            openLibrary: { [weak self] in self?.select(.library) },
+            captureMeeting: { [weak self] in self?.select(.meetings) },
+            toggleDictation: services.dictation.map { control in { Task { await control.toggle() } } })
     }
 }

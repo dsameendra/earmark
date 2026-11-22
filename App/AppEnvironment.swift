@@ -1,8 +1,8 @@
 import AppCore
 import AppKit
 import AudioCapture
-import Dictation
 import Diarization
+import Dictation
 import EarmarkTranslation
 import FeatureMenuBar
 import FeatureSettings
@@ -32,6 +32,8 @@ import Transcription
 /// services with sample data and the `AppCoreTesting` model manager.
 @MainActor
 final class AppEnvironment {
+    let startupFailure: String?
+    let updates = AppUpdateController()
     let services: AppServices
     /// Full wiring for the Settings scene (rules and presets persist through the database).
     let settingsDependencies: SettingsDependencies
@@ -50,8 +52,18 @@ final class AppEnvironment {
     init() {
         let composition = Self.makeServices()
         let services = composition.services
+        startupFailure = composition.startupFailure
         self.services = services
-        settingsDependencies = composition.settingsDependencies
+        var dependencies = composition.settingsDependencies
+        dependencies.microphonePreviewErrors = { source in
+            (source as? any ErrorReportingAudioSource)?.errors ?? AsyncStream { $0.finish() }
+        }
+        if updates.isConfigured {
+            dependencies.checkForUpdates = { [updates] in updates.checkForUpdates() }
+            dependencies.automaticUpdateChecks = { [updates] in updates.automaticallyChecks }
+            dependencies.setAutomaticUpdateChecks = { [updates] in updates.setAutomaticallyChecks($0) }
+        }
+        settingsDependencies = dependencies
         live = composition.live
         dictation = composition.dictation
         meetings = composition.meetings
@@ -60,6 +72,7 @@ final class AppEnvironment {
         shell = ShellModel(services: services)
         menuBar = MenuBarModel(services: services)
         activation = ActivationPolicyController(settings: services.settings)
+        guard startupFailure == nil else { return }
         menuBar.start()
         shell.startBackgroundWork()
         activation.start()
@@ -104,6 +117,7 @@ final class AppEnvironment {
 
     /// Everything `init` needs from the composition.
     private struct Composition {
+        var startupFailure: String?
         var services: AppServices
         var settingsDependencies: SettingsDependencies
         var live: LiveRuntime?
@@ -125,6 +139,8 @@ final class AppEnvironment {
         let hotkeys: GlobalHotkeyService
     }
 
+    // Keep the composition root's service ownership and wiring in one place.
+    // swiftlint:disable:next function_body_length
     private static func makeServices() -> Composition {
         #if DEBUG
             if usesMocks {
@@ -132,7 +148,16 @@ final class AppEnvironment {
                 return Composition(services: mocks, settingsDependencies: .standalone(store: mocks.settings))
             }
         #endif
-        let database = openDatabase()
+        let database: AppDatabase
+        do { database = try openDatabase() } catch {
+            AppLog.logger("AppEnvironment").error("Library could not be opened: \(String(describing: error), privacy: .public)")
+            let recoveryServices = AppServices.preview()
+            return Composition(
+                startupFailure:
+                    "Earmark could not open its library. Your existing database has been left in place. "
+                    + "No temporary library has been substituted.\n\n\(error.localizedDescription)",
+                services: recoveryServices, settingsDependencies: .standalone(store: recoveryServices.settings))
+        }
         let hardware = SystemHardwareTierProvider()
         // Apple's speech assets are system-managed; without this provider the Models screen reported them as "not available".
         let apple = AppleSpeechEngine()
@@ -205,8 +230,10 @@ final class AppEnvironment {
         let settingsDependencies = SettingsDependencies(
             store: settings, models: models, hardware: hardware, audioDevices: audioDevices, permissions: permissions,
             rules: database.rules, presets: database.presets, transcripts: database.transcripts,
-            hotkeyDiagnostics: dictation.hotkeys, retryHotkeys: { [controller = dictation.controller] in await controller.retryHotkeyRegistration() },
-            overlayPlacement: live.overlay, voiceProfiles: database.voiceProfiles)
+            hotkeyDiagnostics: dictation.hotkeys,
+            retryHotkeys: { [controller = dictation.controller] in await controller.retryHotkeyRegistration() },
+            overlayPlacement: live.overlay, voiceProfiles: database.voiceProfiles,
+            microphonePreview: { uid in MicrophoneSource(deviceUID: uid, permissions: permissions, deviceProvider: audioDevices) })
         return Composition(
             services: services, settingsDependencies: settingsDependencies, live: live, dictation: dictation, meetings: meetings,
             translationPacks: translation.packs, engineRouter: router)
@@ -318,17 +345,11 @@ final class AppEnvironment {
                 notifier: SystemJobNotifier(), handlers: handlers, engineResolver: resolver))
     }
 
-    private static func openDatabase() -> AppDatabase {
-        let log = AppLog.logger("AppEnvironment")
+    private static func openDatabase() throws -> AppDatabase {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        let url = (support ?? FileManager.default.temporaryDirectory).appendingPathComponent("Earmark/earmark.sqlite")
-        do {
-            return try AppDatabase.open(at: url)
-        } catch {
-            log.error("Falling back to in-memory database: \(String(describing: error), privacy: .public)")
-            // An in-memory database cannot fail to open in practice; if it does there is nothing sensible left to run.
-            do { return try AppDatabase.inMemory() } catch { fatalError("Cannot open any database: \(error)") }
-        }
+        guard let support else { throw AppError.persistence(reason: "Application Support is unavailable.") }
+        let url = support.appendingPathComponent("Earmark/earmark.sqlite")
+        return try AppDatabase.open(at: url)
     }
 
     #if DEBUG
@@ -341,6 +362,24 @@ final class AppEnvironment {
                 id: "mock/asr", displayName: "Mock ASR", kind: .asr, runtime: .coreML, languages: [.english], sizeBytes: 100,
                 license: LicenseInfo(spdx: "MIT"))
             var services = AppServices.preview(transcripts: sample)
+            let speakers = [Speaker(name: "Interviewer", colorHex: "1B7A74"), Speaker(name: "Nimali Perera", colorHex: "C44B16")]
+            let lines = [
+                "And when you look back at the early footage, what do you keep?",
+                "I always keep the first take. The second one is for the editor, but the first one is for me.",
+                "Even when the audio is rough?",
+                "Rough is honest. ශ්‍රී ලංකාව ගැන අපි කතා කරනවා.",
+                "Let's talk about how you earmark a moment worth coming back to.",
+                "Usually it is a pause. Someone stops, and you can hear them deciding whether to say the true thing.",
+            ]
+            var transcript = sample[0]
+            transcript.speakers = speakers
+            transcript.languages = [.english, .sinhala]
+            let segments = lines.enumerated().map { index, text in
+                Segment(
+                    start: Double(index * 12), end: Double(index * 12 + 10), text: text, speakerID: speakers[index % 2].id,
+                    languageCode: index == 3 ? .sinhala : .english)
+            }
+            services.transcripts = InMemoryTranscripts(items: [transcript, sample[1]], segments: [transcript.id: segments])
             services.models = MockModelManager(descriptors: [model])
             return services
         }

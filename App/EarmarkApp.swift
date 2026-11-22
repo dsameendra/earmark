@@ -7,6 +7,7 @@ import SwiftUI
 
 /// Keeps the app alive as a menu bar item after the main window closes (NAV-AC-16, MENU-AC-01).
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) { UITestConfiguration.applyAppearance() }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 }
 
@@ -17,34 +18,59 @@ struct EarmarkApp: App {
 
     var body: some Scene {
         Window("Earmark", id: MainWindow.id) {
-            ShellView(model: environment.shell)
-                .onboardingLauncher(settings: environment.services.settings)
-                .background { if let packs = environment.translationPacks { TranslationPackHost(installer: packs) } }
-                .tint(DSColor.accent)
+            if let message = environment.startupFailure {
+                LibraryRecoveryView(message: message) { environment = AppEnvironment() }
+            } else {
+                ShellView(model: environment.shell)
+                    .background(UITestWindowPlacement())
+                    .onboardingLauncher(settings: environment.services.settings)
+                    .background { if let packs = environment.translationPacks { TranslationPackHost(installer: packs) } }
+                    .tint(DSColor.accent)
+            }
         }
-        .defaultSize(width: 1280, height: 800)
+        .defaultSize(width: UITestConfiguration.width, height: UITestConfiguration.height)
+        .defaultLaunchBehavior(.presented)
+        .restorationBehavior(AppEnvironment.usesMocks ? .disabled : .automatic)
         .windowResizability(.contentMinSize)
         .commands {
             ShellCommands(model: environment.shell)
             OnboardingCommands(settings: environment.services.settings)
+            UpdateCommands(updates: environment.updates)
+            AboutCommands()
         }
 
         Window("Welcome to Earmark", id: OnboardingWindow.id) {
-            OnboardingWindowRoot(services: environment.services, router: environment.engineRouter)
-                .tint(DSColor.accent)
+            if let message = environment.startupFailure {
+                LibraryRecoveryView(message: message) { environment = AppEnvironment() }
+            } else {
+                OnboardingWindowRoot(services: environment.services, router: environment.engineRouter)
+                    .background(UITestWindowPlacement()).tint(DSColor.accent)
+            }
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
 
+        Window("About Earmark", id: "about") { AboutView() }
+            .windowResizability(.contentSize)
+            .defaultPosition(.center)
+
         Settings {
-            SettingsRootView(dependencies: environment.settingsDependencies)
-                .onboardingLauncher(settings: environment.services.settings)
-                .tint(DSColor.accent)
+            if let message = environment.startupFailure {
+                LibraryRecoveryView(message: message) { environment = AppEnvironment() }
+            } else {
+                SettingsRootView(dependencies: environment.settingsDependencies)
+                    .background(UITestWindowPlacement())
+                    .onboardingLauncher(settings: environment.services.settings)
+                    .tint(DSColor.accent)
+            }
         }
 
         MenuBarExtra {
-            MenuBarHost(environment: environment)
-                .tint(DSColor.accent)
+            if environment.startupFailure != nil {
+                LibraryUnavailableMenu()
+            } else {
+                MenuBarHost(environment: environment).tint(DSColor.accent)
+            }
         } label: {
             MenuBarGlyphView(model: environment.menuBar)
         }
@@ -139,4 +165,42 @@ private enum MenuBarGlyph {
         image.isTemplate = false
         return image
     }()
+}
+
+/// A persistent-library failure is visible and blocks editing until the real library can be reopened.
+private struct LibraryRecoveryView: View {
+    let message: String
+    let retry: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.lg) {
+            Text("Your library needs attention").font(DSTypography.title1)
+            Text(message).foregroundStyle(DSColor.secondaryText).textSelection(.enabled)
+            HStack {
+                Button("Show library folder") {
+                    if let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+                        NSWorkspace.shared.open(root.appendingPathComponent("Earmark", isDirectory: true))
+                    }
+                }
+                Button("Try again", action: retry).buttonStyle(EmberButtonStyle())
+            }
+        }
+        .padding(DSSpacing.xxl).frame(minWidth: 660, minHeight: 360)
+        .background(DSColor.contentBackground)
+        .accessibilityIdentifier("startup.libraryRecovery")
+    }
+}
+
+private struct LibraryUnavailableMenu: View {
+    @Environment(\.openWindow) private var openWindow
+    var body: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.md) {
+            Text("Library unavailable").font(DSTypography.headline)
+            Button("Open recovery") {
+                openWindow(id: MainWindow.id)
+                NSApplication.shared.activate()
+            }
+            Button("Quit Earmark") { NSApplication.shared.terminate(nil) }
+        }.padding(DSSpacing.lg)
+    }
 }

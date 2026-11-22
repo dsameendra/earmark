@@ -7,6 +7,9 @@ import SwiftUI
 /// All Settings models, built from the dependency bundle. Models load lazily when their section appears (SET open < 200 ms).
 @MainActor
 public final class SettingsEnvironment {
+    public let checkForUpdates: (@MainActor @Sendable () -> Void)?
+    public let automaticUpdateChecks: (@MainActor @Sendable () -> Bool)?
+    public let setAutomaticUpdateChecks: (@MainActor @Sendable (Bool) -> Void)?
     public let general: GeneralSettingsModel
     public let modelManager: ModelManagerModel
     public let languages: LanguageSelectionModel
@@ -26,10 +29,15 @@ public final class SettingsEnvironment {
     public let voiceProfiles: VoiceProfilesModel
 
     public init(_ deps: SettingsDependencies) {
+        checkForUpdates = deps.checkForUpdates
+        automaticUpdateChecks = deps.automaticUpdateChecks
+        setAutomaticUpdateChecks = deps.setAutomaticUpdateChecks
         general = GeneralSettingsModel(store: deps.store, loginItem: deps.launchAtLogin)
         modelManager = ModelManagerModel(manager: deps.models, hardware: deps.hardware, store: deps.store)
         languages = LanguageSelectionModel(manager: modelManager, store: deps.store)
-        audio = AudioSettingsModel(provider: deps.audioDevices, store: deps.store)
+        audio = AudioSettingsModel(
+            provider: deps.audioDevices, store: deps.store, microphonePreview: deps.microphonePreview,
+            microphoneSettingsURL: deps.permissions.settingsURL(for: .microphone), sourceErrors: deps.microphonePreviewErrors)
         meetings = MeetingsSettingsModel(store: deps.store)
         captions = CaptionPresetsModel(repository: deps.presets, store: deps.store)
         let captionModel = captions
@@ -62,26 +70,59 @@ public struct SettingsRootView: View {
     /// Store-only wiring: model, rule and permission sections use placeholders until the app supplies real services.
     public init(store: any SettingsStore) { environment = SettingsEnvironment(.standalone(store: store)) }
 
-    private var sidebarSelection: Binding<SettingsSection?> {
-        Binding(get: { selection }, set: { selection = $0 ?? selection })
-    }
+    private let primarySections: [SettingsSection] = [
+        .general, .audio, .models, .languages, .meetings, .exportDefaults, .privacyPermissions,
+    ]
 
     public var body: some View {
-        NavigationSplitView {
-            List(SettingsSection.allCases, selection: sidebarSelection) { section in
-                Label(section.title, symbol: section.symbol, orStock: section.systemImage).tag(section)
-            }
-            .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 260)
-            .accessibilityLabel("Settings sections")
-        } detail: {
-            detail.navigationTitle(selection.title)
+        VStack(alignment: .leading, spacing: DSSpacing.md) {
+            Text(selection.title).font(DSTypography.title1).accessibilityAddTraits(.isHeader)
+            Text("Everything runs on this Mac. Your preferences are saved as you change them.")
+                .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+            detail
+                .scrollContentBackground(.hidden)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(minWidth: 760, minHeight: 480)
+        .padding(DSSpacing.xl)
+        .background(DSColor.contentBackground)
+        .navigationTitle("Earmark Settings")
+        .toolbar {
+            ToolbarItemGroup {
+                ForEach(primarySections) { section in
+                    Button {
+                        selection = section
+                    } label: {
+                        Label(
+                            section == .privacyPermissions ? "Privacy" : section.title, symbol: section.symbol, orStock: section.systemImage
+                        )
+                    }
+                    .tint(selection == section ? DSColor.accent : DSColor.secondaryText)
+                    .accessibilityLabel(section.title)
+                    .accessibilityAddTraits(selection == section ? .isSelected : [])
+                    .accessibilityIdentifier("settings.section.\(section.rawValue)")
+                }
+                Menu("More settings", systemImage: "ellipsis") {
+                    ForEach(SettingsSection.allCases.filter { !primarySections.contains($0) }) { section in
+                        Button {
+                            selection = section
+                        } label: {
+                            Label(section.title, symbol: section.symbol, orStock: section.systemImage)
+                        }
+                        .accessibilityIdentifier("settings.section.\(section.rawValue)")
+                    }
+                }
+            }
+        }
+        .dsIconContext(.toolbar)
+        .frame(minWidth: 760, minHeight: 520)
     }
 
     @ViewBuilder private var detail: some View {
         switch selection {
-        case .general: GeneralSettingsView(model: environment.general)
+        case .general:
+            GeneralSettingsView(
+                model: environment.general, checkForUpdates: environment.checkForUpdates,
+                automaticUpdateChecks: environment.automaticUpdateChecks, setAutomaticUpdateChecks: environment.setAutomaticUpdateChecks)
         case .models: ModelsSettingsView(model: environment.modelManager)
         case .languages: LanguagesSettingsView(model: environment.languages)
         case .audio: AudioSettingsView(model: environment.audio)

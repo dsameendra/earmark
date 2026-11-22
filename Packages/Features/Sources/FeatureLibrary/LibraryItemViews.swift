@@ -1,5 +1,6 @@
 import AppCore
 import DesignSystem
+import FeatureSupport
 import SwiftUI
 
 private func durationText(_ seconds: TimeInterval) -> String {
@@ -50,6 +51,7 @@ private func sourceName(_ source: TranscriptSource) -> String {
 
 /// List row.
 struct LibraryRow: View {
+    @Environment(\.shellLayout) private var layout
     let item: Transcript
     let model: LibraryModel
 
@@ -65,12 +67,39 @@ struct LibraryRow: View {
                         .foregroundStyle(DSColor.secondaryText)
                         .lineLimit(2)
                 } else {
-                    Text(item.createdAt, style: .date).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    Text(sourceName(item.source)).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                 }
+                HStack(spacing: DSSpacing.xs) {
+                    if model.mediaStates[item.id] == .missing {
+                        Label("Media missing", systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(DSColor.warning)
+                    }
+                    ForEach(item.tags.prefix(2), id: \.self) { Text($0).foregroundStyle(DSColor.secondaryText) }
+                }
+                .font(DSTypography.caption)
             }
             Spacer(minLength: DSSpacing.sm)
-            ItemBadges(item: item, model: model)
+            Text(item.createdAt, format: .dateTime.month(.abbreviated).day())
+                .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText).frame(width: 70, alignment: .leading)
             Text(durationText(item.duration)).font(DSTypography.timestamp).foregroundStyle(DSColor.secondaryText)
+                .frame(width: 64, alignment: .trailing)
+            if !layout.droppedLibraryColumns.contains("Language") {
+                Text(item.languages.sorted().map { $0.rawValue.uppercased() }.joined(separator: " · "))
+                    .font(DSTypography.badge).foregroundStyle(DSColor.secondaryText).lineLimit(1).frame(width: 80)
+            }
+            if !layout.droppedLibraryColumns.contains("Speakers") {
+                HStack(spacing: 3) {
+                    ForEach(Array(item.speakers.prefix(3).enumerated()), id: \.element.id) { index, _ in
+                        Circle().fill(SpeakerPalette.color(forSlot: index)).frame(width: 8, height: 8)
+                    }
+                    Text("\(item.speakers.count)").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                }.frame(width: 80, alignment: .leading)
+                    .accessibilityLabel("\(item.speakers.count) speakers")
+            }
+            if let days = model.daysRemaining(for: item) {
+                Text("\(days) days left").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                Button("Restore") { Task { await model.restore([item.id]) } }.buttonStyle(.borderless)
+            }
         }
         .padding(.vertical, DSSpacing.xxs)
         .accessibilityElement(children: .combine)
@@ -109,9 +138,26 @@ struct LibraryCard: View {
         }
         .frame(maxWidth: .infinity, minHeight: 110, alignment: .topLeading)
         .padding(DSSpacing.md)
-        .dsSolidSurface(.sheet, radius: DSRadius.large, selected: isSelected)
+        .dsSolidSurface(.inset, radius: DSRadius.card, selected: isSelected)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(item.title), \(sourceName(item.source)), \(durationText(item.duration))")
+    }
+}
+
+/// Column labels follow the same responsive rules as each row.
+struct LibraryColumnsHeader: View {
+    @Environment(\.shellLayout) private var layout
+    var body: some View {
+        HStack(spacing: DSSpacing.md) {
+            SectionCaption("Title").frame(maxWidth: .infinity, alignment: .leading)
+            SectionCaption("Date").frame(width: 70, alignment: .leading)
+            SectionCaption("Length").frame(width: 64, alignment: .trailing)
+            if !layout.droppedLibraryColumns.contains("Language") { SectionCaption("Language").frame(width: 80) }
+            if !layout.droppedLibraryColumns.contains("Speakers") { SectionCaption("Speakers").frame(width: 80, alignment: .leading) }
+        }
+        .padding(.horizontal, DSSpacing.lg).padding(.vertical, DSSpacing.sm)
+        .overlay(alignment: .bottom) { Divider() }
+        .accessibilityHidden(true)
     }
 }

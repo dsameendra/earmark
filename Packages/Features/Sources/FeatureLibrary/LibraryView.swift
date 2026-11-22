@@ -29,8 +29,21 @@ public struct LibraryView: View {
     public var body: some View {
         VStack(spacing: 0) {
             if model.mode == .library { LibraryFilterBar(model: model) { isCreatingFolder = true } }
+            if model.mode == .recentlyDeleted {
+                Text(
+                    model.retentionDays == 0
+                        ? "Deleted items stay here until you remove them permanently."
+                        : "Deleted items stay here for \(model.retentionDays) days. You can restore them at any time."
+                )
+                .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                .frame(maxWidth: .infinity, alignment: .leading).padding(DSSpacing.lg)
+            }
+            if model.layout == .list && !model.items.isEmpty { LibraryColumnsHeader() }
             content
         }
+        .dsSolidSurface(.sheet, radius: DSRadius.panel)
+        .padding(DSSpacing.md)
+        .background(DSColor.paper)
         .navigationTitle(title)
         .searchable(text: $model.searchText, prompt: "Search titles and transcript text")
         .toolbar { toolbarContent }
@@ -103,6 +116,10 @@ public struct LibraryView: View {
         List(model.items, selection: $model.selection) { item in
             LibraryRow(item: item, model: model)
                 .tag(item.id)
+                .padding(.vertical, DSSpacing.xs)
+                .listRowSeparator(.hidden)
+                .listRowBackground(model.selection.contains(item.id) ? DSColor.accentTint : DSColor.contentBackground)
+                .accessibilityIdentifier("library.item.\(item.id)")
                 .contextMenu { menu(for: item) }
                 .task { await model.checkMedia(for: item) }
         }
@@ -110,6 +127,8 @@ public struct LibraryView: View {
         } primaryAction: { ids in
             if model.mode == .library, let id = ids.first { onOpenTranscript(id) }
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
         .accessibilityLabel(Text(title))
     }
 
@@ -179,7 +198,9 @@ public struct LibraryView: View {
                 }
             }
             Divider()
-            Button("Delete", systemImage: "trash", role: .destructive) { Task { await model.delete(ids) } } // stock-chrome: destructive action
+            Button("Delete", systemImage: "trash", role: .destructive) {  // stock-chrome: destructive action
+                Task { await model.delete(ids) }
+            }
         } else {
             Button("Restore", systemImage: "arrow.uturn.backward") { Task { await model.restore(ids) } }
             Button("Delete Permanently…", systemImage: "trash.slash", role: .destructive) {
@@ -206,7 +227,7 @@ public struct LibraryView: View {
                     Text("Recently modified").tag(LibrarySort.modifiedDesc)
                 }
                 .accessibilityLabel("Sort by")
-                Button("Delete", systemImage: "trash") { Task { await model.deleteSelected() } } // stock-chrome: destructive action
+                Button("Delete", systemImage: "trash") { Task { await model.deleteSelected() } }  // stock-chrome: destructive action
                     .disabled(model.selection.isEmpty)
             } else {
                 Menu("Keep deleted items", systemImage: "clock.arrow.circlepath") {

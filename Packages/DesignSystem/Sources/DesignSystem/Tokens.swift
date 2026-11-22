@@ -148,6 +148,8 @@ public enum DSPalette {
     public static let ink2 = DSColorToken(light: 0x5A564E, dark: 0xB5B0A5)
     /// Tertiary text and labels (AA on sheet).
     public static let ink3 = DSColorToken(light: 0x6B675D, dark: 0x9A9589)
+    /// Small tertiary labels keep AA contrast on tinted selections as well as plain sheets.
+    public static let tertiaryText = DSColorToken(light: 0x6B675D, dark: 0xA29D92)
     /// Hairline, 1 px. Alpha colour: composite over the surface it sits on.
     public static let line = DSColorToken(
         light: DSRGBA(hex: 0x1C1B18, alpha: 0.12), dark: DSRGBA(hex: 0xF3EFE7, alpha: 0.14))
@@ -166,8 +168,11 @@ public enum DSPalette {
     /// Recording red for small text next to the dot (4.68 to 6.07 on the light surfaces). The dot and fills keep `recording`.
     public static let recordingText = DSColorToken(light: 0xB52A22, dark: 0xFF6B5E)
     public static let success = DSColorToken(light: 0x2F7A4F, dark: 0x6CC48F)
+    /// Success text on plain and tinted surfaces; the locked success colour remains available for fills.
+    public static let successText = DSColorToken(light: 0x25663F, dark: 0x6CC48F)
     /// Not specified by the boards; amber chosen at T31 to reach 4.5:1 on paper, sheet and inset in both appearances.
     public static let warning = DSColorToken(light: 0x8F5300, dark: 0xE8A93C)
+    public static let warningText = DSColorToken(light: 0x7C4400, dark: 0xE8A93C)
     public static let danger = DSColorToken(light: 0xB3321F, dark: 0xFF8A7A)
     /// Sidebar selection pill (Sidebar board): translucent Sheet on the glass sidebar. Ink on it reads as on sheet.
     public static let selectionPill = DSColorToken(
@@ -194,7 +199,7 @@ public enum DSColor {
     // MARK: Text
     public static let primaryText = DSPalette.ink.color
     public static let secondaryText = DSPalette.ink2.color
-    public static let tertiaryText = DSPalette.ink3.color
+    public static let tertiaryText = DSPalette.tertiaryText.color
     // MARK: Accent and status
     /// Ember, the fixed brand accent. Apply with `.tint(DSColor.accent)` at the root.
     public static let accent = DSPalette.ember.color
@@ -208,8 +213,8 @@ public enum DSColor {
     public static let recording = DSPalette.recording.color
     /// Recording red for small text (labels beside the recording dot).
     public static let recordingText = DSPalette.recordingText.color
-    public static let success = DSPalette.success.color
-    public static let warning = DSPalette.warning.color
+    public static let success = DSPalette.successText.color
+    public static let warning = DSPalette.warningText.color
     public static let danger = DSPalette.danger.color
     /// Selected sidebar row pill.
     public static let selectionPill = DSPalette.selectionPill.color

@@ -142,7 +142,7 @@ import Testing
         let uses = glassCalls.reduce(0) { $0 + shell.components(separatedBy: $1).count - 1 }
         // Budget: sidebar (system material, no call) + toolbar (the primary capsule) + one floater owned by the screen.
         #expect(uses <= DSGlass.maxLayersPerScreen - 1, "shell glass uses: \(uses)")
-        #expect(shell.contains("// glass-layer: toolbar"))
+        #expect(shell.contains("ToolbarItemGroup"))
         #expect(DSGlass.maxLayersPerScreen == 3 && DSGlass.allowedLayerMarkers == ["sidebar", "toolbar", "floater"])
     }
 
@@ -158,7 +158,7 @@ import Testing
         #expect(AccessibilityPolicy(increaseContrast: true).usesSolidSurface)
         #expect(!AccessibilityPolicy().usesSolidSurface)
         let shell = source("FeatureShell/ShellView.swift")
-        #expect(shell.contains("borderedProminent"), "primary button has a solid twin")
+        #expect(shell.contains("EmberButtonStyle"), "primary action is always solid")
     }
 
     @Test func reduceMotionReplacesSelectionGlideWithCrossfade() {  // NAV-AC-10

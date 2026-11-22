@@ -26,7 +26,7 @@ General · Models · Languages · Audio · Meetings · Live Captions · Dictatio
 - SET-AC-16 (UI) Keyboard Shortcuts: THE SYSTEM SHALL let users record, change and clear global and in-app shortcuts and SHALL warn on conflicts.
 - SET-AC-17 (UI) Privacy & Permissions: THE SYSTEM SHALL show status for Microphone, System Audio Recording, Screen Recording, Accessibility and Notifications with a deep link to System Settings for each.
 - SET-AC-18 (unit) THE SYSTEM SHALL validate imported JSON rule files and reject malformed input without changing existing rules.
-- SET-AC-19 (integration) THE SYSTEM SHALL make no network request except user-initiated model downloads (PROD-AC-01).
+- SET-AC-19 (integration) THE SYSTEM SHALL make no network request except user-initiated model downloads, update checks/downloads, and automatic update checks after explicit opt-in (PROD-AC-01, SCR-006).
 
 ## Edge cases
 Download failure with Retry; checksum mismatch deletes partial and reports; low disk space warning before download; model in use cannot be deleted without confirmation; non-commercial licence notice shown before download.

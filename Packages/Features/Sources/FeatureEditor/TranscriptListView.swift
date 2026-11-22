@@ -16,6 +16,8 @@ enum TimeFormat {
 struct TranscriptListView: View {
     let model: TranscriptEditorModel
     let find: FindReplaceModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityPolicyOverride) private var policyOverride
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -62,8 +64,8 @@ struct TranscriptListView: View {
 
     private func scroll(_ proxy: ScrollViewProxy, to segmentID: SegmentID, animated: Bool) {
         let target = model.options.layout == .paragraphs ? (model.paragraphIDBySegment[segmentID] ?? segmentID) : segmentID
-        if animated {
-            withAnimation(.smooth(duration: 0.25)) { proxy.scrollTo(target, anchor: .center) }
+        if animated && !(policyOverride?.suppressesMotion ?? reduceMotion) {
+            withAnimation(DSMotion.glide.animation()) { proxy.scrollTo(target, anchor: .center) }
         } else {
             proxy.scrollTo(target, anchor: .center)
         }
@@ -140,11 +142,11 @@ struct SegmentGutter: View {
 @MainActor
 func updateSelection(model: TranscriptEditorModel, id: SegmentID) {
     let flags = NSEvent.modifierFlags
+    let anchorIndex = model.selection.first.flatMap { anchor in model.visibleSegments.firstIndex { $0.id == anchor } }
+    let targetIndex = model.visibleSegments.firstIndex { $0.id == id }
     if flags.contains(.command) {
         if model.selection.contains(id) { model.selection.remove(id) } else { model.selection.insert(id) }
-    } else if flags.contains(.shift), let last = model.selection.first,
-        let a = model.visibleSegments.firstIndex(where: { $0.id == last }), let b = model.visibleSegments.firstIndex(where: { $0.id == id })
-    {
+    } else if flags.contains(.shift), let a = anchorIndex, let b = targetIndex {
         model.selection = Set(model.visibleSegments[min(a, b)...max(a, b)].map(\.id))
     } else {
         model.selection = [id]

@@ -80,19 +80,36 @@ public final class SidebarModel {
     /// Loads folders and the model chip, then follows job events and model state changes until cancelled.
     public func run() async {
         let events = services.jobQueue.events()  // subscribe before loading so no update is lost
+        let stateChanges = services.models.stateChanges()
+        let preferredChanges = services.settings.changes(for: SettingsKey.preferredModel)
+        let languageChanges = services.settings.changes(for: SettingsKey.languageMode)
+        let folderChanges = services.settings.changes(for: SettingsKey.libraryFolders)
         var jobs: [JobID: Job] = [:]
         for job in await services.jobQueue.jobs() { jobs[job.id] = job }
         activeJobs = Self.activeCount(jobs)
         await reloadFolders()
         await reloadModel()
-        let stateChanges = services.models.stateChanges()
         let watcher = Task { [weak self] in
             for await (id, _) in stateChanges {
                 guard !Task.isCancelled else { return }
                 await self?.reloadModel(changed: id)
             }
         }
-        defer { watcher.cancel() }
+        let preferredWatcher = Task { [weak self] in
+            for await _ in preferredChanges { await self?.reloadModel() }
+        }
+        let languageWatcher = Task { [weak self] in
+            for await _ in languageChanges { await self?.reloadModel() }
+        }
+        let folderWatcher = Task { [weak self] in
+            for await _ in folderChanges { await self?.reloadFolders() }
+        }
+        defer {
+            watcher.cancel()
+            preferredWatcher.cancel()
+            languageWatcher.cancel()
+            folderWatcher.cancel()
+        }
         for await event in events {
             switch event {
             case .updated(let job): jobs[job.id] = job
@@ -109,7 +126,7 @@ public final class SidebarModel {
 
     func reloadModel(changed: ModelID? = nil) async {
         let catalog = await services.models.catalog()
-        guard let model = HomeModel.defaultModel(in: catalog) else {
+        guard let model = await PreferredModel.resolve(in: catalog, settings: services.settings) else {
             modelChip = nil
             return
         }

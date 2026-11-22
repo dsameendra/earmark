@@ -105,12 +105,11 @@ public actor NLLBEngine: TranslationEngine, PairSupportChecking {
 
 // MARK: - Runtime: CTranslate2 worker
 
-/// Runs CTranslate2 + SentencePiece in a persistent Python worker (JSON lines over stdio).
+/// Runs CTranslate2 + SentencePiece in a persistent native or development Python worker (JSON lines over stdio).
 ///
-/// Why: CTranslate2 and SentencePiece are C++ libraries with no Swift package, and there is no MLX or Core ML conversion of NLLB
-/// (specs/research/translation.md section 6). This runtime is the verified path for development, measurement and non-sandboxed
-/// builds: it needs `ctranslate2` and `sentencepiece` installed in the interpreter. A sandboxed, self-contained build must replace
-/// it with an in-process runtime (libctranslate2 behind a C shim plus a Swift SentencePiece tokenizer) behind the same protocol.
+/// The shipping backend launches the bundled Swift/C++ helper, which owns CTranslate2 and SentencePiece.
+/// A Python reference backend is retained for explicit Debug development overrides and parity checks.
+/// Both use the same serial JSON-lines protocol; cancellation terminates the helper to release inference promptly.
 public actor CTranslate2WorkerRuntime: NLLBRuntime {
     public static let workerScript = #"""
         import sys, json
@@ -135,7 +134,9 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
             sys.stdout.flush()
         """#
 
-    private let python: URL
+    private let executable: URL
+    private let isNative: Bool
+    private var modelFolder: URL?
     private let threads: Int
     private var process: Process?
     private var stdin: FileHandle?
@@ -145,15 +146,38 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
     private var waiters: [CheckedContinuation<Void, Never>] = []
 
     public init(pythonExecutable: URL, threads: Int = 0) {
-        self.python = pythonExecutable
+        self.executable = pythonExecutable
+        self.isNative = false
+        self.threads = threads
+    }
+
+    /// Uses the same framed transport with the app's bundled Swift/C++ executable.
+    public init(nativeExecutable: URL, threads: Int = 4) {
+        self.executable = nativeExecutable
+        self.isNative = true
         self.threads = threads
     }
 
     public func load(modelFolder: URL) async throws {
-        if process?.isRunning == true { return }
+        await acquire()
+        defer { release() }
+        try Task.checkCancellation()
+        if self.modelFolder != modelFolder { stopWorker() }
+        self.modelFolder = modelFolder
+        do { try await startWorker() } catch {
+            stopWorker()
+            throw error
+        }
+    }
+
+    private func startWorker() async throws {
+        if process?.isRunning == true, lines != nil { return }
+        guard let modelFolder else {
+            throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "The translation model has not been loaded.")
+        }
         let p = Process()
-        p.executableURL = python
-        p.arguments = ["-I", "-c", Self.workerScript, modelFolder.path, String(threads)]
+        p.executableURL = executable
+        p.arguments = isNative ? [modelFolder.path, String(threads)] : ["-I", "-c", Self.workerScript, modelFolder.path, String(threads)]
         let inPipe = Pipe()
         let outPipe = Pipe()
         p.standardInput = inPipe
@@ -174,10 +198,14 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
         process = p
         stdin = inPipe.fileHandleForWriting
         let reader = LineReader(stream)
-        guard let first = await reader.next(), first.contains("ready") else {
-            p.terminate()
-            process = nil
-            throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "CTranslate2 worker failed to start (is ctranslate2 installed?).")
+        let first = await read(from: reader, process: p, timeout: .seconds(30))
+        try Task.checkCancellation()
+        guard let first,
+            let value = try JSONSerialization.jsonObject(with: Data(first.utf8)) as? [String: Any],
+            value["ready"] as? Bool == true
+        else {
+            stopWorker()
+            throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "The translation worker could not load its model.")
         }
         lines = reader
     }
@@ -196,7 +224,16 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
     public func translate(_ texts: [String], source: String, target: String) async throws -> [String] {
         await acquire()
         defer { release() }
-        guard process?.isRunning == true, let stdin, let reader = lines else {
+        do { return try await translateLocked(texts, source: source, target: target) } catch {
+            stopWorker()
+            throw error
+        }
+    }
+
+    private func translateLocked(_ texts: [String], source: String, target: String) async throws -> [String] {
+        try Task.checkCancellation()
+        try await startWorker()
+        guard let process, process.isRunning, let stdin, let reader = lines else {
             throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "CTranslate2 worker is not running.")
         }
         nextID += 1
@@ -205,18 +242,39 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
         var data = try JSONSerialization.data(withJSONObject: payload)
         data.append(0x0A)
         try stdin.write(contentsOf: data)
-        let reply = await reader.next()
+        let reply = await read(from: reader, process: process, timeout: .seconds(120))
+        try Task.checkCancellation()
         guard let reply, let obj = try JSONSerialization.jsonObject(with: Data(reply.utf8)) as? [String: Any] else {
             throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "CTranslate2 worker closed unexpectedly.")
         }
         if let error = obj["error"] as? String { throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: error) }
-        guard let out = obj["out"] as? [String], out.count == texts.count else {
+        guard obj["id"] as? Int == id, let out = obj["out"] as? [String], out.count == texts.count else {
             throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "Malformed worker reply.")
         }
         return out
     }
 
+    private func read(from reader: LineReader, process: Process, timeout: Duration) async -> String? {
+        let watchdog = Task {
+            do { try await Task.sleep(for: timeout) } catch { return }
+            if process.isRunning { process.terminate() }
+        }
+        defer { watchdog.cancel() }
+        return await withTaskCancellationHandler {
+            await reader.next()
+        } onCancel: {
+            if process.isRunning { process.terminate() }
+        }
+    }
+
     public func unload() async {
+        await acquire()
+        defer { release() }
+        stopWorker()
+        modelFolder = nil
+    }
+
+    private func stopWorker() {
         if let process, process.isRunning {
             try? stdin?.close()
             process.terminate()
@@ -236,7 +294,7 @@ private final class LineBuffer: @unchecked Sendable {
         pending.append(data)
         var out: [String] = []
         while let nl = pending.firstIndex(of: 0x0A) {
-            out.append(String(decoding: pending[pending.startIndex..<nl], as: UTF8.self))
+            out.append(String(bytes: pending[pending.startIndex..<nl], encoding: .utf8) ?? "")
             pending.removeSubrange(pending.startIndex...nl)
         }
         return out

@@ -5,7 +5,12 @@ options:
     macOS: "26.0"
 configFiles:
   Debug: Config/Shared.xcconfig
+  DebugUI: Config/Shared.xcconfig
   Release: Config/Shared.xcconfig
+configs:
+  Debug: debug
+  DebugUI: debug
+  Release: release
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -13,6 +18,10 @@ settings:
     SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
     CODE_SIGN_STYLE: Automatic
     ENABLE_HARDENED_RUNTIME: YES
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    EARMARK_UPDATE_FEED_URL: ""
+    EARMARK_SPARKLE_PUBLIC_KEY: ""
 packages:
   AppCore: { path: Packages/AppCore }
   Persistence: { path: Packages/Persistence }
@@ -31,13 +40,51 @@ packages:
   Meetings: { path: Packages/Meetings }
   Translation: { path: Packages/Translation }
   QwenASR: { path: Packages/QwenASR }
+  NLLBNative: { path: Packages/NLLBNative }
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.10.1
 targets:
+  EarmarkUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources: [UITests]
+    settings:
+      configs:
+        DebugUI:
+          ENABLE_HARDENED_RUNTIME: NO
+      base:
+        TEST_TARGET_NAME: Earmark
+        PRODUCT_BUNDLE_IDENTIFIER: lk.dumindu.earmark.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        ARCHS: arm64
+    dependencies:
+      - target: Earmark
+  EarmarkNLLBWorker:
+    type: tool
+    platform: macOS
+    sources: [Packages/NLLBNative/Sources/EarmarkNLLBWorker]
+    settings:
+      base:
+        ARCHS: arm64
+        PRODUCT_BUNDLE_IDENTIFIER: lk.dumindu.earmark.nllb-worker
+        GENERATE_INFOPLIST_FILE: YES
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
+    dependencies:
+      - package: NLLBNative
+        product: NLLBNative
   Earmark:
     type: application
     platform: macOS
     sources: [App]
     settings:
+      configs:
+        DebugUI:
+          PRODUCT_BUNDLE_IDENTIFIER: lk.dumindu.earmark.uihost
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+          ENABLE_HARDENED_RUNTIME: NO
       base:
+        ARCHS: arm64
         ASSETCATALOG_COMPILER_APPICON_NAME: Earmark
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
     entitlements:
@@ -49,10 +96,19 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: Earmark
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSMinimumSystemVersion: "26.0"
+        SUFeedURL: $(EARMARK_UPDATE_FEED_URL)
+        SUPublicEDKey: $(EARMARK_SPARKLE_PUBLIC_KEY)
+        SUEnableAutomaticChecks: false
+        SUAutomaticallyUpdate: false
         NSMicrophoneUsageDescription: Earmark transcribes your microphone audio on this Mac. Nothing leaves your device.
         NSAudioCaptureUsageDescription: Earmark captures meeting and system audio on this Mac for live captions and transcripts. Nothing leaves your device.
     dependencies:
+      - target: EarmarkNLLBWorker
+        embed: false
+      - package: Sparkle
       - package: AppCore
       - package: Persistence
       - package: DesignSystem
@@ -94,3 +150,37 @@ targets:
         product: FeatureOnboarding
       - package: Processing
       - package: Export
+    postBuildScripts:
+      - name: Embed native translation worker
+        basedOnDependencyAnalysis: false
+        script: |
+          set -eu
+          destination="$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers"
+          mkdir -p "$destination"
+          /usr/bin/ditto "$BUILT_PRODUCTS_DIR/EarmarkNLLBWorker" "$destination/EarmarkNLLBWorker"
+          if [ "$CODE_SIGNING_ALLOWED" != "NO" ] && [ -n "${EXPANDED_CODE_SIGN_IDENTITY:-}" ]; then
+            if [ "$EXPANDED_CODE_SIGN_IDENTITY" = "-" ]; then
+              /usr/bin/codesign --force --sign - --options runtime --timestamp=none "$destination/EarmarkNLLBWorker"
+            else
+              /usr/bin/codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --options runtime --timestamp "$destination/EarmarkNLLBWorker"
+            fi
+          fi
+schemes:
+  Earmark:
+    build:
+      targets:
+        Earmark: all
+        EarmarkUITests: [test]
+    test:
+      targets: [EarmarkUITests]
+      gatherCoverageData: false
+      config: DebugUI
+  Earmark-QA:
+    build:
+      targets:
+        Earmark: all
+        EarmarkUITests: [test]
+    test:
+      targets: [EarmarkUITests]
+      gatherCoverageData: false
+      config: DebugUI

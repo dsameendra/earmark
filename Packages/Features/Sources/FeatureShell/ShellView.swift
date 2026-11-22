@@ -34,9 +34,14 @@ public struct ShellView: View {
             .toolbar { shellToolbar }
         }
         .frame(minWidth: DSLayout.minWindowSize.width, minHeight: DSLayout.minWindowSize.height)
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { model.updateWindowWidth($0) }
+        .onGeometryChange(for: CGFloat.self) {
+            $0.size.width
+        } action: {
+            model.updateWindowWidth($0)
+        }
         .environment(\.shellLayout, model.layout)
         .environment(\.inspectorPresented, model.isInspectorPresented)
+        .environment(\.inspectorToggle, $model.isInspectorToggledOn)
         .dropDestination(for: URL.self) { urls, _ in model.handleDrop(urls) }
         .fileImporter(
             isPresented: $model.isImporterPresented, allowedContentTypes: [.audiovisualContent, .folder], allowsMultipleSelection: true
@@ -76,8 +81,8 @@ public struct ShellView: View {
             }
         }
         ToolbarItemGroup {
-            Button { model.presentQuickOpen() } label: { SearchField() }
-                .buttonStyle(.plain)
+            Button("Search transcripts", symbol: .find) { model.presentQuickOpen() }
+                .labelStyle(.titleAndIcon)
                 .help("Quick Open (⌘K)")
                 .accessibilityLabel("Quick Open")
                 .accessibilityHint("Search transcripts by title and text")
@@ -157,25 +162,14 @@ private struct SearchField: View {
     }
 }
 
-/// The one primary action of a view: a solid Ember capsule (`glassProminent` tinted Ember; `borderedProminent` when
-/// Reduce Transparency or Increase Contrast asks for solid surfaces).
-// glass-layer: toolbar
+/// The one primary action of a view: a solid Ember capsule in every appearance.
 private struct PrimaryToolbarButton: View {
     let title: LocalizedStringKey
     let systemImage: String
     let action: () -> Void
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.accessibilityPolicyOverride) private var policyOverride
-
-    private var solid: Bool {
-        (policyOverride ?? AccessibilityPolicy(reduceTransparency: reduceTransparency, increaseContrast: contrast == .increased))
-            .usesSolidSurface
-    }
-
     var body: some View {
-        let button = Button(action: action) { Label(title, systemImage: systemImage) }
-            .tint(DSColor.accent).dsMinControlHeight()
-        if solid { button.buttonStyle(.borderedProminent).buttonBorderShape(.capsule) } else { button.buttonStyle(.glassProminent) }
+        Button(action: action) { Label(title, systemImage: systemImage) }
+            .labelStyle(.titleAndIcon)
+            .buttonStyle(EmberButtonStyle())
     }
 }

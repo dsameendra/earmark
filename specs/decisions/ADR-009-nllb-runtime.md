@@ -1,21 +1,31 @@
-# ADR-009: NLLB runtime for Sinhala translation (DRAFT)
-Status: Draft (2026-11-22). Needs a decision before any release build; not blocking development.
+# ADR-009: Bundled native NLLB runtime for Sinhala translation
+
+Status: Accepted and implemented (2026-11-22), under the owner-approved completion integration in [SCR-005](../changes/SCR-005-completion-integration.md). Distribution and hardware QA remain release gates.
 
 ## Context
-ADR-003 makes NLLB-200 distilled 600M (CC-BY-NC-4.0, user-downloaded) the Sinhala translation engine. The model is an int8 CTranslate2 conversion; running it needs CTranslate2 (C++) and SentencePiece (C++). Neither has a Swift package, and there is no MLX or Core ML conversion of NLLB (`specs/research/translation.md` section 6).
 
-`EarmarkTranslation.NLLBEngine` therefore runs through the `NLLBRuntime` protocol, and the only implementation today is `CTranslate2WorkerRuntime`: a persistent Python worker (JSON lines over stdio) that needs a user-installed interpreter with `ctranslate2` and `sentencepiece`. It is verified on this Mac and is acceptable for development and measurement. It is **not shippable**: an app must not depend on the user's Python, and a sandboxed build cannot launch it.
+ADR-003 selects NLLB-200 distilled 600M as the non-commercial Sinhala translation engine. Its user-downloaded weights are an int8 CTranslate2 conversion and retain CC-BY-NC-4.0. Inference requires CTranslate2 and SentencePiece. The original development runtime was a persistent Python worker over JSON lines; requiring the user's interpreter and packages is unsuitable for a self-contained app.
 
-## Current behaviour (this build)
-- The worker is **off by default**. It is enabled only by the environment variable `EARMARK_DEV_NLLB_PYTHON=/path/to/python3` (see `NLLBDevRuntime`; there is no settings switch yet).
-- Without the flag the router has no NLLB engine. Any pair involving Sinhala fails with `TranslationFailure.noEngine`, shown as "Sinhala translation unavailable in this build". The Translate popover lists Sinhala as unavailable with that reason; Apple-translatable pairs are unaffected.
-- With the flag, the NLLB model is still a normal user download through `ModelManaging.ensureAvailable` (size and licence shown first), and the translate job, live translation and dictation use it through the router.
+## Decision and implementation
 
-## Gap to a shippable runtime
-1. **libctranslate2 C shim**: build CTranslate2 (CPU, Accelerate/Ruy backend; no CUDA) as a static library behind a small C API (`load(folder)`, `translate(tokens, source, target, beam)`, `unload`), packaged as an `.xcframework` and a Swift target. Estimate: a few days; the risk is the build of CTranslate2's dependencies for arm64 macOS and the binary size (about 10 MB of code).
-2. **Swift SentencePiece**: the NLLB tokenizer is a SentencePiece model plus FLORES language tags. Either wrap the C++ library in the same shim or port the unigram encode/decode (small, but the normalisation rules must match exactly). Tokenizer mismatches produce quietly wrong output, so golden tests against the Python reference are required.
-3. **Licence**: CC-BY-NC-4.0 weights; a commercial build cannot ship or recommend NLLB (see ADR-003, ADR-006). The shippable runtime is only needed for the non-commercial distribution.
-4. **Alternatives** if the shim is rejected: MADLAD-3B (Apache-2.0) via a runtime with Swift support, or TranslateGemma on MLX after a Sinhala quality spot-check (ADR-003 open items).
+Bundle an **arm64 macOS 26+** native worker, `EarmarkNLLBWorker`, under `Earmark.app/Contents/Helpers/`. Its Swift executable links the C bridge, **CTranslate2 4.6.0** and **SentencePiece 0.2.1** from the static `EarmarkNLLBCore.xcframework`. The CPU backend uses Accelerate/Ruy, without OpenMP or Python. The app target embeds the worker; release tooling signs nested code before the containing app.
 
-## Decision needed
-Choose between building the shim (1 and 2) or switching Sinhala translation to an MLX-based model. Until then the Python worker stays behind the dev flag and the UI reports the unavailable state clearly.
+`BundledNLLBRuntime` locates the executable and supplies the existing `NLLBRuntime` transport. The worker accepts serial JSON-lines requests, tokenizes with the real SentencePiece library, loads one model and retains it for subsequent requests. Cancellation terminates the helper to interrupt inference and release its memory; a later request starts a new worker. The app's translation router remains Apple-first where supported, with native NLLB for Sinhala and eligible fallback pairs.
+
+The runtime code is bundled; **model weights are not**. Existing model-download, licence, progress and readiness flows still apply. If the helper is missing or not executable, the runtime is unavailable and Sinhala readiness reports that state rather than silently depending on Python.
+
+Debug builds may explicitly select the reference Python runtime with `EARMARK_DEV_NLLB_PYTHON=/absolute/path/to/python3` or the existing development setting. The interpreter must have compatible `ctranslate2` and `sentencepiece` packages. Release ignores that override and selects only the bundled native worker.
+
+## Provenance and verification
+
+Pinned upstream revisions, architecture/backend choices, archive SHA-256 and C-bridge SHA-256 are recorded in `Packages/NLLBNative/Vendor/provenance.json`. Runtime notices are copied into app resources. `scripts/build-nllb-native.sh` rebuilds the archive from the pinned revisions; a deliberate rebuild requires reviewing/updating provenance. Byte-for-byte reproducibility across Xcode versions has not been established.
+
+The native tests contain exact token-piece and translation reference cases for Sinhala/English, normalization and code mixing. Worker integration tests cover translation, cancellation and restart. These real-model tests run only when their model/helper environment variables are supplied; skipped tests do not prove parity. See [NativeRuntime/README.md](../../NativeRuntime/README.md) for commands and fixture provenance. A final full serial regression recheck was still running at this documentation update; its results must be recorded separately.
+
+## Consequences and remaining gates
+
+- The packaged app has no user-installed interpreter requirement; a missing helper is an explicit packaging/readiness failure.
+- Helper process isolation supports prompt cancellation, at the cost of reloading the model after cancellation and a separate executable to sign.
+- The current binary supports Apple silicon only, macOS 26+. Intel support requires a separate build and validation decision.
+- CC-BY-NC-4.0 weights remain restricted to non-commercial use. Bundling inference code does not authorize commercial use or remove model attribution obligations (ADR-003, ADR-006).
+- Actual packaged-app translation, memory/latency on target hardware, Developer ID signatures, notarization and Gatekeeper acceptance remain release checks. A passing source/package test is not a signed-distribution result.

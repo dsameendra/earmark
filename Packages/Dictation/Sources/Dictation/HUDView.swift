@@ -35,7 +35,7 @@ public struct DictationHUDView: View {
         }
         .padding(.horizontal, DSSpacing.lg)
         .frame(width: Self.size.width, height: Self.size.height)
-        .glassBackground(radius: DSRadius.pill)
+        .dsGlass(.prominent, radius: DSRadius.pill)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text(model.accessibilitySummary))
         .accessibilityIdentifier("dictation.hud")

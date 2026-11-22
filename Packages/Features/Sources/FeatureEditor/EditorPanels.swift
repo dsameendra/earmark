@@ -19,7 +19,8 @@ struct SpeakersPanel: View {
                 SpeakerRow(model: model, speaker: speaker)
             }
             if let message = model.voiceProfileError {
-                Text(message).font(DSTypography.caption).foregroundStyle(DSColor.danger).accessibilityIdentifier("editor.speakers.voiceError")
+                Text(message).font(DSTypography.caption).foregroundStyle(DSColor.danger).accessibilityIdentifier(
+                    "editor.speakers.voiceError")
             }
             Divider()
             HStack {
@@ -152,7 +153,9 @@ struct NoteRow: View {
             }
             .buttonStyle(.borderless)
             TextField("Note", text: $text).textFieldStyle(.plain).onSubmit { onNote(text) }
-            Button(role: .destructive, action: onDelete) { Image(systemName: "trash") }.buttonStyle(.borderless) // stock-chrome: destructive action
+            Button(role: .destructive, action: onDelete) {
+                Image(systemName: "trash")  // stock-chrome: destructive action
+            }.buttonStyle(.borderless)
                 .accessibilityLabel("Delete")
         }
         .onAppear { text = note }
@@ -211,44 +214,49 @@ struct ExportSheet: View {
     @State private var shareURL: URL?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DSSpacing.md) {
-            Text("Export").font(DSTypography.title)
-            Form {
-                Picker("Format", selection: $export.options.format) {
-                    ForEach(EditorExportModel.formats, id: \.self) { Text(EditorExportModel.title(for: $0)).tag($0) }
-                }
-                Picker("Timestamps", selection: timestampBinding) {
-                    Text("None").tag(0)
-                    Text("Per segment").tag(1)
-                    Text("Per paragraph").tag(2)
-                    Text("Every 30 seconds").tag(3)
-                }
-                Toggle("Include speaker names", isOn: $export.options.includeSpeakers)
-                Toggle("Merge consecutive same-speaker segments", isOn: $export.options.mergeSameSpeaker)
-                Toggle("Group into paragraphs", isOn: $export.options.paragraphGrouping)
-                Toggle("Include ignored segments", isOn: $export.options.includeIgnored)
-            }
-            .formStyle(.grouped)
-            if !export.presets.isEmpty {
-                Menu("Presets") {
-                    ForEach(export.presets) { preset in
-                        Button(preset.name) { export.apply(preset) }
-                    }
-                    Divider()
-                    ForEach(export.presets) { preset in
-                        Button("Delete “\(preset.name)”", role: .destructive) { Task { await export.deletePreset(preset) } }
-                    }
-                }
-            }
-            HStack {
-                TextField("Save as preset", text: $presetName).textFieldStyle(.roundedBorder)
-                Button("Save") {
-                    Task {
-                        await export.savePreset(named: presetName)
-                        presetName = ""
+        VStack(alignment: .leading, spacing: DSSpacing.lg) {
+            Text("Export").font(DSTypography.title1).accessibilityAddTraits(.isHeader)
+            HStack(alignment: .top, spacing: DSSpacing.xl) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: DSSpacing.lg) {
+                        formatGroup(
+                            "Documents", formats: EditorExportModel.formats.filter { ![.srt, .vtt, .ass, .sbv, .ttml, .lrc].contains($0) })
+                        formatGroup("Subtitles", formats: [.srt, .vtt, .ass, .sbv, .ttml, .lrc])
+                        exportOptions
+                        if !export.presets.isEmpty {
+                            Menu("Presets") {
+                                ForEach(export.presets) { preset in Button(preset.name) { export.apply(preset) } }
+                                Divider()
+                                ForEach(export.presets) { preset in
+                                    Button("Delete “\(preset.name)”", role: .destructive) { Task { await export.deletePreset(preset) } }
+                                }
+                            }
+                        }
+                        HStack {
+                            TextField("Save as preset", text: $presetName).textFieldStyle(.roundedBorder)
+                            Button("Save") {
+                                Task {
+                                    await export.savePreset(named: presetName)
+                                    presetName = ""
+                                }
+                            }
+                            .disabled(presetName.trimmingCharacters(in: .whitespaces).isEmpty)
+                        }
                     }
                 }
-                .disabled(presetName.trimmingCharacters(in: .whitespaces).isEmpty)
+                .frame(maxWidth: .infinity)
+                VStack(alignment: .leading, spacing: DSSpacing.md) {
+                    SectionCaption(export.previewIsPlainText ? "Text preview" : "Preview")
+                    ScrollView {
+                        Text(export.previewText).font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    Text("First six segments").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                }
+                .padding(DSSpacing.lg)
+                .frame(width: 280, height: 410)
+                .dsSolidSurface(.inset, radius: DSRadius.card)
+                .accessibilityIdentifier("export.preview")
             }
             if let message = export.errorMessage {
                 Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(DSColor.danger).font(DSTypography.caption)
@@ -256,26 +264,82 @@ struct ExportSheet: View {
                 Text(status).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
             }
             HStack {
-                Button("Copy as Text") { Task { await export.copy(markdown: false) } }
-                Button("Copy as Markdown") { Task { await export.copy(markdown: true) } }
-                if let shareURL {
-                    ShareLink(item: shareURL) { Label("Share", systemImage: "square.and.arrow.up") } // stock-chrome: system share glyph
-                } else {
-                    Button {
-                        Task { shareURL = await export.prepareShareFile() }
-                    } label: {
-                        Label("Prepare to Share", systemImage: "square.and.arrow.up") // stock-chrome: system share glyph
+                Menu("Copy and share", systemImage: "square.and.arrow.up") {  // stock-chrome: native system share action
+                    Button("Copy as Text") { Task { await export.copy(markdown: false) } }
+                    Button("Copy as Markdown") { Task { await export.copy(markdown: true) } }
+                    if let shareURL {
+                        ShareLink(item: shareURL) { Text("Share export") }
+                    } else {
+                        Button("Prepare to share") { Task { shareURL = await export.prepareShareFile() } }
                     }
                 }
                 Spacer()
-                Button("Close", role: .cancel, action: onClose).keyboardShortcut(.cancelAction)
-                Button("Export…") { save() }.keyboardShortcut(.defaultAction).disabled(export.isWorking)
+                Button("Cancel", role: .cancel, action: onClose).keyboardShortcut(.cancelAction)
+                Button("Export \(export.options.format.rawValue.uppercased())…") { save() }
+                    .buttonStyle(EmberButtonStyle()).keyboardShortcut(.defaultAction).disabled(export.isWorking)
+                    .accessibilityIdentifier("export.save")
             }
         }
-        .padding(DSSpacing.lg)
-        .frame(width: 520)
+        .padding(DSSpacing.xl)
+        .frame(width: 840)
+        .background(DSColor.contentBackground)
         .task { await export.loadPresets() }
+        .task(id: export.options) { await export.refreshPreview() }
         .onChange(of: export.options) { shareURL = nil }
+    }
+
+    private func formatGroup(_ title: LocalizedStringKey, formats: [ExportFormat]) -> some View {
+        VStack(alignment: .leading, spacing: DSSpacing.sm) {
+            SectionCaption(title)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: DSSpacing.sm) {
+                ForEach(formats, id: \.self) { format in
+                    Button {
+                        export.options.format = format
+                    } label: {
+                        Text(format == .markdown ? "MD" : format.rawValue.uppercased())
+                            .font(DSTypography.badge).frame(maxWidth: .infinity, minHeight: DSLayout.minControlHeight)
+                            .foregroundStyle(export.options.format == format ? DSColor.accentText : DSColor.secondaryText)
+                            .background(export.options.format == format ? DSColor.accentTint : DSColor.insetBackground, in: Capsule())
+                    }
+                    .buttonStyle(.plain).help(EditorExportModel.title(for: format))
+                    .accessibilityLabel(EditorExportModel.title(for: format))
+                    .accessibilityAddTraits(export.options.format == format ? .isSelected : [])
+                    .accessibilityIdentifier("export.format.\(format.rawValue)")
+                }
+            }
+        }
+    }
+
+    private var exportOptions: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.md) {
+            Toggle("Speaker labels", isOn: $export.options.includeSpeakers)
+            Divider()
+            Picker("Timestamps", selection: timestampBinding) {
+                Text("None").tag(0)
+                Text("Per segment").tag(1)
+                Text("Per paragraph").tag(2)
+                Text("Every 30 seconds").tag(3)
+            }
+            Divider()
+            Toggle("Include ignored segments", isOn: $export.options.includeIgnored)
+            Toggle("Merge consecutive same-speaker segments", isOn: $export.options.mergeSameSpeaker)
+            Toggle("Group into paragraphs", isOn: $export.options.paragraphGrouping)
+            if !export.translationLanguages.isEmpty {
+                Divider()
+                Picker("Version", selection: $export.options.translation) {
+                    Text("Original").tag(TranslationExportMode.none)
+                    Text("Translated").tag(TranslationExportMode.replace)
+                    Text("Bilingual").tag(TranslationExportMode.bilingual)
+                }
+                if export.options.translation != .none {
+                    Picker("Translation language", selection: $export.options.translationLanguage) {
+                        Text("Choose a language").tag(LanguageCode?.none)
+                        ForEach(export.translationLanguages, id: \.self) { Text($0.rawValue.uppercased()).tag(LanguageCode?.some($0)) }
+                    }
+                }
+            }
+        }
+        .padding(DSSpacing.lg).dsSolidSurface(.inset, radius: DSRadius.card)
     }
 
     private var timestampBinding: Binding<Int> {

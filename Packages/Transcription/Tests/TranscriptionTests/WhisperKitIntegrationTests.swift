@@ -123,7 +123,7 @@ struct WhisperKitIntegrationTests {
 
     // KNOWN ISSUE (2026-11-22): this test hangs on the 27.2 dev machine in isolation and in full runs (blocked in WhisperKit
     // detectLanguage, 0% CPU); it passed once before. Disabled until T25 rewrites language ID with a restricted logits filter.
-    @Test("language detection restricted to candidates", .disabled("hangs in WhisperKit detectLanguage; see T25"))
+    @Test("language detection restricted to candidates", .enabled(if: LocalAssets.available), .timeLimit(.minutes(2)))
     func detection() async throws {
         let wav = try #require(LocalAssets.fixtureWAV)
         let engine = try makeEngine()

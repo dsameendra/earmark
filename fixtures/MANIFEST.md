@@ -38,9 +38,20 @@ Rebuild instructions are in README.md. "Derived" = made by us from the primary s
 | AMI ES2004a.Mix-Headset.wav | reused from .model-cache/datasets/ami/audio (diarization spike, not re-downloaded) | 34 MB | sha256 3e2560b19bee6952c7c7ce041b0f1ea8a7ea9468044c4eea79d2a2c67e24ab0f |
 | AMI reference RTTM ES2004a | reused from .model-cache/datasets/ami/ref/ES2004a.rttm (provenance per the diarization spike; presumed BUT AMI-diarization-setup; not independently verified) | 260 lines | UEM 0-1049.35 s |
 
+## Sinhala evaluation sets (T25; access date 2026-11-22; NOT under fixtures/, gitignored `.model-cache/`)
+
+FLEURS has no Sinhala (verified, see specs/research/sinhala-asr.md) and Common Voice Sinhala is a handful of clips, so no new
+download was made: the T25 measurements reuse the sets the Sinhala spike built under `.model-cache/sinhala-eval/` (resolved by
+walking up from the test file, so it works from worktrees). Rebuild with `spikes/sinhala/prep_slr30_eval.py` and `prep_speak_eval.py`.
+
+| ID | Path | Content | Licence | Use |
+|---|---|---|---|---|
+| S1 | .model-cache/sinhala-eval/slr30_wav/ + manifest.jsonl | 40 clean read utterances, 12 speakers, ~3 min, OpenSLR 30 (texts also in SLR52 excluded) | CC BY-SA 4.0 | WER/CER/RTF of `QwenSinhalaEngine`; `{en, si}` language-ID accuracy of `WhisperLanguageIdentifier` |
+| S2 | .model-cache/sinhala-eval/speak/ + manifest.jsonl | 60 conversational / code-mixed clips (30 mixed, 30 Sinhala-only) from SPEAK-ASR/youtube-sinhala-asr, 5 channels held out of the Qwen training | none (unlicensed; internal evaluation only) | accuracy aggregates only; never commit or publish clips, transcripts or hypotheses |
+
 ## Missing / not covered
 
-- Sinhala and mixed Sinhala-English fixtures: deliberately skipped (another agent / spikes/sinhala).
+- Sinhala and mixed Sinhala-English fixtures: see the "Sinhala evaluation sets" section (small, partly unlicensed; no licensed Sinhala+English set exists).
 - Real (non-synthetic) 2-speaker conversation with natural turn-taking, overlap and per-speaker channels: NOT obtained. AMI meetings are 4-speaker; F2 is synthetic (clean, no overlap, unrelated sentences). Candidates: pick a 2-active-speaker stretch of an AMI meeting (rttm-driven), Fisher/CallHome (LDC, not free), or record our own consented call.
 - Labelled accented English: Common Voice was not attempted (believed to require a login/agreement; not verified); VoxPopuli (CC0) en_accented is 2 x ~2.5 GB parquet and en test ~0.9 GB, over the size budget. F6a (LibriSpeech dev-other) is only a proxy: harder speakers, no accent metadata.
 - Real noisy speech (cafe/street/phone line): only synthetic SNR mixes (F6b) plus rain/pink noise. MUSAN (CC BY 4.0, ~11 GB) was not downloaded; Freesound needs an API key.

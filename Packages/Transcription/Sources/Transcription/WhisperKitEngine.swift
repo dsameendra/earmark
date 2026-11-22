@@ -44,8 +44,8 @@ public actor WhisperKitEngine: TranscriptionEngine {
     private let tokenizerFolder: URL?
     private let catalog: [ModelDescriptor]
     private let defaultModel: ModelID
-    private let gate = AsyncGate()
-    private var handle: WhisperHandle?
+    var gate = AsyncGate()
+    var handle: WhisperHandle?
     private var loading: (model: ModelID, task: Task<WhisperHandle, any Error>)?
 
     /// Seconds of new audio that trigger a re-decode while streaming.
@@ -106,7 +106,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
 
     // MARK: - Loading
 
-    private func loadedHandle(for model: ModelID) async throws -> WhisperHandle {
+    func loadedHandle(for model: ModelID) async throws -> WhisperHandle {
         if let handle, handle.model == model { return handle }
         if let loading, loading.model == model { return try await loading.task.value }
         loading?.task.cancel()
@@ -138,31 +138,6 @@ public actor WhisperKitEngine: TranscriptionEngine {
             return loaded
         } catch {
             if loading?.model == model { loading = nil }
-            throw AppError.mapping(error, engine: id)
-        }
-    }
-
-    // MARK: - Language detection
-
-    /// Detects the language of `samples` (first ~30 s), restricted to `candidates` when non-empty.
-    ///
-    /// WhisperKit reports only the winning language token's probability, and its language filter cannot be narrowed from
-    /// outside the module. When the winner lies outside `candidates` the result is empty so callers can fall back to the
-    /// previous language instead of mislabelling the segment.
-    func detectLanguage(samples: [Float], candidates: Set<LanguageCode>, model: ModelID) async throws -> [LanguageScore] {
-        let handle = try await loadedHandle(for: model)
-        do {
-            let detected = try await gate.run { () -> (String, [String: Float]) in
-                let result = try await handle.kit.detectLangauge(audioArray: samples)
-                return (result.language, result.langProbs)
-            }
-            let language = LanguageCode(detected.0)
-            guard candidates.isEmpty || candidates.contains(language) || candidates.contains(language.primary) else { return [] }
-            let raw = detected.1[detected.0] ?? 0
-            // WhisperKit reports a log-probability (<= 0); tolerate an already-linear value.
-            let probability = raw <= 0 ? Double(exp(raw)) : Double(raw)
-            return [LanguageScore(language: language, probability: min(1, max(0, probability)))]
-        } catch {
             throw AppError.mapping(error, engine: id)
         }
     }

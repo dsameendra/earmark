@@ -45,12 +45,16 @@ public enum BuiltInCatalog {
             notes: "Light model for 8 GB Macs."),
         ModelDescriptor(
             id: "mlx/qwen3-asr-0.6b-sinhala-8bit", displayName: "Qwen3-ASR 0.6B Sinhala (8-bit, MLX)", kind: .asr, runtime: .mlx,
-            engine: "qwen3-asr", languages: ["si"], sizeBytes: 780 * mb,
+            engine: "qwen3-asr", languages: ["si"], sizeBytes: 1_015_560_793,
             license: LicenseInfo(
                 spdx: "CC-BY-SA-4.0",
                 attribution: "Qwen3-ASR-0.6B-Sinhala-8bit by Nerdstorm, CC BY-SA 4.0. Weights are user-downloaded and unmodified."),
-            minTier: .tier16, sourceURL: hf("Nerdstorm/Qwen3-ASR-0.6B-Sinhala-8bit"), isExperimental: true,
-            notes: "Default Sinhala model. About 2.3 GB peak memory; size approx."),
+            minTier: .tier16, sourceURL: hf("Nerdstorm/Qwen3-ASR-0.6B-Sinhala-8bit/tree/047217cb611ad5f51cb2284e4a3617a5eaa9b688"),
+            isExperimental: true,
+            notes:
+                "Default Sinhala model (experimental; CER about 6% read, 21% conversation, 27% code-mixed). Pinned to revision "
+                + "047217cb; size is the exact 13-file total from the HF tree API and per-file SHA-256 values come from its LFS "
+                + "oids at download time. About 2.3 GB peak memory. Runs in the MLX engine (QwenASR package)."),
         ModelDescriptor(
             id: "coreml/whisper-small-sinhala", displayName: "Whisper small Sinhala (fallback)", kind: .asr, runtime: .coreML,
             engine: "whisperkit", languages: ["si"], sizeBytes: 490 * mb,

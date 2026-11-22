@@ -86,6 +86,10 @@ public struct FileTranscriptionPipeline: Sendable {
         public var mergeGapSeconds: TimeInterval = 0.6
         /// Silence padding added around each multilingual range.
         public var rangePaddingSeconds: TimeInterval = 0.15
+        /// Candidate languages for `.autoDetect`. `nil` uses the languages of the engine assigned to the unknown language
+        /// (Whisper's, which excludes Sinhala); set it to the union of all routable languages so auto-detect can also pick
+        /// Sinhala and route it to the Sinhala engine (LANG-AC-04, LANG-AC-09).
+        public var autoDetectCandidates: Set<LanguageCode>?
         public init() {}
     }
 
@@ -291,7 +295,12 @@ public struct FileTranscriptionPipeline: Sendable {
             var resolvedLanguage: LanguageCode?
             if let identifier {
                 let binding = try await engines(nil)
-                let candidates = await binding.engine.supportedLanguages(model: binding.model ?? options.modelID)
+                let candidates: Set<LanguageCode>
+                if let configured = configuration.autoDetectCandidates {
+                    candidates = configured
+                } else {
+                    candidates = await binding.engine.supportedLanguages(model: binding.model ?? options.modelID)
+                }
                 let head = AudioChunk(
                     samples: Array(chunk.samples.prefix(Int(30 * Self.rate))), startSeconds: chunk.startSeconds, source: .file)
                 let scores = try await identifier.identify(chunk: head, candidates: candidates)

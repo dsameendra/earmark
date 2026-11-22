@@ -1,6 +1,6 @@
 # Task Plan (Phase 5) — DAG with owners, deps, Definition of Done
 
-Status: FROZEN at Phase 5 gate. Milestones follow the brief (M1–M7), plus M8 UI/UX overhaul (appended, runs last). All tasks code against frozen AppCore contracts (`/specs/02-contracts.md`) and use `AppCoreTesting` mocks until real implementations land.
+Status: FROZEN at Phase 5 gate. Milestones follow the brief (M1–M7), plus M8 UI/UX overhaul (runs BEFORE M7; reordered 2026-11-22 by user decision: brand and final UI ship in the first release). All tasks code against frozen AppCore contracts (`/specs/02-contracts.md`) and use `AppCoreTesting` mocks until real implementations land.
 
 **Definition of Done (every task):** compiles under Swift 6 strict concurrency with zero warnings; unit tests pass; AC IDs covered are listed in the PR; swiftlint + swift-format clean; public API has DocC comments; code reviewer approves (HIG reviewer too for UI); merged to `main` only via orchestrator review with full `swift test` + `xcodebuild` run.
 
@@ -72,19 +72,19 @@ The final UI/UX and brand design exists (`/specs/design/m8-mockups/`, index `REA
 | T25 | Multilingual per-segment LID routing; Qwen3-ASR Sinhala MLX engine (mlx-audio-swift pinned); re-transcribe segment | ASR eng | T09 | LANG |
 | T26 | `Translation`: Apple Translation + NLLB (non-commercial) engines, router, parallel track UI hooks | Translation eng | T06 | TRN |
 
-## M7 Polish & release
-| T27 | Onboarding | UI eng 2 | T13, T20 | ONB |
-| T28 | Perf pass vs targets (serial benchmarks), accessibility audit, HIG review | Test eng + HIG | all | NFR |
-| T29 | Sparkle 2 integration (EdDSA key generated at release, never committed), signing/notarization **(needs Apple Developer Program)**, docs | Orchestrator | T28 | PROD |
-| T30 | XCUITest flows + manual QA scripts (`/specs/qa/manual.md`) | Test eng | M2+ | all |
 
-## M8 UI/UX overhaul and visual identity (last milestone; starts only after M7 is complete)
+## Onboarding build (moved out of M7, precedes M8)
+| ID | Task | Owner | Deps | Covers |
+|---|---|---|---|---|
+| T27 | Onboarding | UI eng 2 | T13, T20 | ONB |
+
+## M8 UI/UX overhaul and visual identity (runs after M6 and the onboarding build T27, before M7)
 **KICKOFF GATE (mandatory, before T31): ask the user for the Claude Design canvas link.** The final design lives in a Claude Design canvas: https://claude.ai/artifact/FzAtjj7ZdYAkp1WHPeFSVF (final v1, published version id `1795296776-319f`; private to the user, so access must be re-confirmed in the session that starts M8). Steps: (1) ask the user for the link and confirm it matches; (2) read it with the Artifact tool (`action: "read"`); (3) compare with the repo copy `/specs/design/m8-mockups/`; if they differ, ask which is authoritative; (4) read `/specs/design/m8-handoff.md` and `/specs/design/m8-ui-overhaul.md` in full; (5) open `/specs/design/m8-mockups/index.html`. Do not start building from memory or from the archive boards.
 **Source of truth:** `/specs/design/m8-handoff.md` (how to build it, existing-code map, acceptance criteria), `/specs/design/m8-ui-overhaul.md` (locked decisions), `/specs/design/m8-mockups/` (local copy: `static/` HTML snapshots, `png/` previews, `source/` Claude Design sources, `archive/` rejected options never to be reintroduced; `README.md` has the full board index). Constraint on every task: Apple HIG for macOS 26, glass budget of three layers per screen, Reduce Transparency / Reduce Motion / Increase Contrast honoured, UI layer only (behaviour or contract changes go through an SCR). Each task's Definition of Done is the global DoD plus its acceptance criteria in `m8-handoff.md` section 7, plus side-by-side screenshots against the matching mockup in both appearances.
 **Reuse, do not rework:** component names (`StatusPill`, `LanguageBadge`, `ProgressRow`, `EmptyState`, `ErrorState`, `Skeleton`, `SpeakerChip`, `RecordingIndicator`) and token names (`DSColor.*`, `DSSpacing`, `DSRadius`, `DSTypography`) stay; their values and internals change. 227 call sites already use tokens; no view should need more than a style edit. Models, services and tests are untouched.
 | ID | Task | Mockups (`m8-mockups/static/`) | Existing code to restyle or extend | Owner | Deps | Covers |
 |----|------|-------------------------------|------------------------------------|-------|------|--------|
-| T31 | Kickoff gate, then spike (glass APIs, SF Symbols weight matching, Icon Composer) written to `/specs/design/m8-spike.md`; `DesignSystem` v2: Ember/paper/ink/night tokens (+ recording/success/danger), Sheet/Inset solid tiers, glass policy (3-layer budget, Clear/Regular/Prominent + solid twins), New York + SF Pro type scale, motion tokens (settle/glide/exit/reduce); migrate `GlassCard`/`GlassPanel`; retune `SpeakerPalette` only where its contrast tests still pass | Handoff1, Glass, Main | `Packages/DesignSystem/Sources/DesignSystem/{Tokens,GlassPolicy,Components,SpeakerPalette,SinhalaFont}.swift`; `HomeView.swift` (2 GlassCard uses) | UI eng 1 | T30 | NAV, PROD-AC-04 |
+| T31 | Kickoff gate, then spike (glass APIs, SF Symbols weight matching, Icon Composer) written to `/specs/design/m8-spike.md`; `DesignSystem` v2: Ember/paper/ink/night tokens (+ recording/success/danger), Sheet/Inset solid tiers, glass policy (3-layer budget, Clear/Regular/Prominent + solid twins), New York + SF Pro type scale, motion tokens (settle/glide/exit/reduce); migrate `GlassCard`/`GlassPanel`; retune `SpeakerPalette` only where its contrast tests still pass | Handoff1, Glass, Main | `Packages/DesignSystem/Sources/DesignSystem/{Tokens,GlassPolicy,Components,SpeakerPalette,SinhalaFont}.swift`; `HomeView.swift` (2 GlassCard uses) | UI eng 1 | T26, T27 | NAV, PROD-AC-04 |
 | T32 | Brand assets: Icon Composer app icon (squircle, ear, arc, 28% curl, ear offset left 2.5%, default/dark/tinted/clear), menu bar template glyph (idle, recording), AccentColor asset, About/DMG art | Main, Handoff2 | New: no asset catalog exists; add to `project.yml`; `App/EarmarkApp.swift` (menu bar item label) | Brand/UI eng | T31 | PROD |
 | T33 | `DSSymbol` seam plus custom duotone symbol set (24 in the mockups plus the ear glyph) on the SF Symbols template, Ultralight-Black, 3 scales, palette/hierarchical rendering, accessibility labels, stock fallbacks; codemod of the covered glyphs (about 143 `systemImage`/`systemName` uses today, only the 24 covered glyphs change); weight-match review gate | Icons | `FeatureShell/AppSection.swift` and the `systemImage:` call sites in Library, Settings, Queue, MenuBar, Home, Editor | Brand/UI eng | T31 | NAV |
 | T34 | App shell: glass sidebar (system material, custom rows), floating toolbar groups (no full-width bar), window chrome, selection glide, min window size and responsive behaviours | Sidebar, Responsive, Glass | `FeatureShell/{ShellView,AppSection,QuickOpen}.swift`; `FeatureSupport/Placeholders.swift` | UI eng 1 | T31, T33 | NAV |
@@ -93,12 +93,17 @@ The final UI/UX and brand design exists (`/specs/design/m8-mockups/`, index `REA
 | T37 | Meetings, Live view, floating surfaces (menu bar popover, live overlay, dictation HUD, meeting prompt) restyle | Meetings, Live, Floating, Components (presets) | `FeatureMeetings/MeetingsView.swift`, `FeatureLive/LiveView.swift`, `FeatureMenuBar/MenuBarContentView.swift`; overlay and HUD panels from T18/T19 | UI eng 2 | T34 | MTG, LIVE, DICT, MENU |
 | T38 | Settings (toolbar tabs) with Models, General, Privacy and the other tabs; Onboarding (all 5 steps); Export sheet restyle | Settings, SettingsTabs, Onboarding, Flow, Export | `FeatureSettings/{SettingsRootView,SettingsSection,ModelsViews,PreferenceViews,RulesViews,ShortcutsView}.swift`; export UI in `FeatureEditor` (`EditorExportModel`); onboarding from T27 | UI eng 1 | T34 | SET, ONB, EXP |
 | T39 | Motion pass per the motion spec; Reduce Motion crossfade variants | Motion, Glass | All feature views; `DSMotion` from T31 | UI eng 2 | T35-T38 | NAV |
-| T40 | Final HIG + accessibility audit (contrast AA both appearances, Increase Contrast, Reduce Transparency, VoiceOver, Dynamic Type), re-run T28 perf checks and T30 XCUITests, snapshot tests, glass-cost profiling | all | `FeaturesTests/EditorRenderTests.swift` and new snapshot tests | Test eng + HIG | T39 | NFR |
+| T40 | Final HIG + accessibility audit (contrast AA both appearances, Increase Contrast, Reduce Transparency, VoiceOver, Dynamic Type), snapshot tests, glass-cost profiling | all | `FeaturesTests/EditorRenderTests.swift` and new snapshot tests | Test eng + HIG | T39 | NFR |
 
-Release note: T29 (Sparkle, signing, notarization) can be prepared earlier, but the first public release build is cut after T40 and needs the T32 assets.
+Release note: M7 (T28 perf and a11y baseline, T29 Sparkle/signing/notarization, T30 XCUITest and manual QA) now runs after T40 and uses the T32 assets; there is no placeholder-icon release. The `m8-mockups` note that T28 records a baseline for T40 to diff against is superseded: T40 captures before/after itself, T28 then audits the final UI.
+
+## M7 Polish & release (runs AFTER M8: T28 baseline and audit, T29 release, T30 QA all run against the final UI)
+| T28 | Perf pass vs targets (serial benchmarks), accessibility audit, HIG review | Test eng + HIG | all | NFR |
+| T29 | Sparkle 2 integration (EdDSA key generated at release, never committed), signing/notarization **(needs Apple Developer Program)**, docs | Orchestrator | T28 | PROD |
+| T30 | XCUITest flows + manual QA scripts (`/specs/qa/manual.md`) | Test eng | M2+ | all |
 
 ## Critical path
-T01 → T06/T08 → T09 → T10 → T11/T12 → (T14/T15) → T17 → T18/T19 → T22 → T23 → T25/T26 → T28 → T29 → (after M7) T31 → T34 → T35/T36/T37/T38 → T39 → T40.
+T01 → T06/T08 → T09 → T10 → T11/T12 → (T14/T15) → T17 → T18/T19 → T22 → T23 → T25/T26 → T27 → T31 → T34 → T35/T36/T37/T38 → T39 → T40 → (M7) T28 → T29 → T30.
 
 ## Risks tracked
 Permission-gated paths unverified (taps, hot-plug, AX); Teams unavailable on dev Mac; ad-hoc signing re-prompts (recommend Personal Team before T17); MLX second runtime pinning; NLLB/MADLAD Swift runtime open; live DER numbers optimistic (easy headset audio).

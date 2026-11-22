@@ -214,7 +214,8 @@ struct Harness {
 
     init(
         installed: Set<ModelID> = [Harness.largeModel], decoder: FakeDecoder = FakeDecoder(), diarizer: (any Diarizer)? = nil,
-        memoryHold: Duration = .milliseconds(100), database: AppDatabase? = nil
+        memoryHold: Duration = .milliseconds(100), database: AppDatabase? = nil,
+        handlers: [JobKind: JobHandler] = [:], engineResolver: FileEngineResolver? = nil
     ) throws {
         let db = try database ?? AppDatabase.inMemory()
         self.database = db
@@ -239,7 +240,8 @@ struct Harness {
             services: JobQueueServices(
                 jobs: db.jobs, transcripts: db.transcripts, media: db.media, rules: db.rules, settings: settings, models: models,
                 hardware: hardware, engines: ["whisperkit": engine], pipeline: pipeline, decoder: decoder, diarizer: diarizer,
-                autoExport: { AutoExportWriter(folder: exportFolder, presets: presets) }, notifier: notifier),
+                autoExport: { AutoExportWriter(folder: exportFolder, presets: presets) }, notifier: notifier, handlers: handlers,
+                engineResolver: engineResolver),
             configuration: configuration)
     }
 

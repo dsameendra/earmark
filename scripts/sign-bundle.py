@@ -72,6 +72,8 @@ def main() -> None:
     parser.add_argument("app", type=Path)
     parser.add_argument("--identity", required=True)
     parser.add_argument("--entitlements", type=Path, required=True)
+    parser.add_argument("--self-signed", action="store_true",
+                        help="sign with a named self-signed certificate (no notarization): stable certificate-anchored requirement, no hardened runtime")
     parser.add_argument("--dry-run", action="store_true", help="print signing order without invoking codesign")
     args = parser.parse_args()
     try:
@@ -80,14 +82,20 @@ def main() -> None:
         entitlements = plistlib.loads(entitlement_file.read_bytes())
         if not isinstance(entitlements, dict) or entitlements.get("com.apple.security.get-task-allow"):
             raise ValueError("release entitlements must be a dictionary without debugger access")
-        if args.identity != "-" and not args.identity.startswith("Developer ID Application:"):
-            raise ValueError("use '-' for a local build or a Developer ID Application identity for distribution")
+        developer_id = args.identity.startswith("Developer ID Application:")
+        if args.self_signed:
+            if args.identity == "-" or developer_id:
+                raise ValueError("--self-signed needs a named self-signed certificate, not '-' or Developer ID")
+        elif args.identity != "-" and not developer_id:
+            raise ValueError("use '-' for a local build, a Developer ID Application identity for distribution, or --self-signed")
         plan = signing_plan(app)
         if args.dry_run:
             print(json.dumps([str(path.relative_to(app)) if path != app else "." for path in plan], indent=2))
             return
         base = ["/usr/bin/codesign", "--force", "--sign", args.identity]
-        base += ["--timestamp=none"] if args.identity == "-" else ["--timestamp", "--options", "runtime"]
+        # Self-signed code skips the Apple timestamp service and hardened runtime: library validation would refuse
+        # the embedded Sparkle/helper because a self-signed certificate has no Team ID, and nothing is notarized.
+        base += ["--timestamp=none"] if args.identity == "-" or args.self_signed else ["--timestamp", "--options", "runtime"]
         for path in plan:
             options = list(base)
             if path == app:

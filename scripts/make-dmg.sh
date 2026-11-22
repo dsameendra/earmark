@@ -2,7 +2,7 @@
 # Package an already signed app into the branded, deterministic Finder layout.
 set -euo pipefail
 if [ "$#" -ne 4 ]; then
-    echo 'Usage: scripts/make-dmg.sh APP OUTPUT.dmg ARTWORK_DIRECTORY local|distribution' >&2
+    echo 'Usage: scripts/make-dmg.sh APP OUTPUT.dmg ARTWORK_DIRECTORY local|selfsigned|distribution' >&2
     exit 64
 fi
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -13,7 +13,7 @@ app="$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1])
 dmg="$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$2")"
 artwork="$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$3")"
 mode="$4"
-case "$mode" in local|distribution) ;; *) echo 'Invalid package mode.' >&2; exit 64 ;; esac
+case "$mode" in local|selfsigned|distribution) ;; *) echo 'Invalid package mode.' >&2; exit 64 ;; esac
 if [ ! -d "$app" ] || [ "$(basename "$app")" != Earmark.app ] || [ ! -f "$app/Contents/Resources/Earmark.icns" ]; then
     echo 'Expected a built Earmark.app with its compiled icon.' >&2; exit 64
 fi

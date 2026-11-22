@@ -100,7 +100,7 @@ def verify_installer_metadata(mount: Path, layout_assets: Path) -> dict[str, obj
     }
 
 
-def compare_payload(mount: Path, source_app: Path, developer_id: bool, layout_assets: Path | None = None) -> dict[str, object]:
+def compare_payload(mount: Path, source_app: Path, developer_id: bool, layout_assets: Path | None = None, self_signed: bool = False) -> dict[str, object]:
     names = {path.name for path in mount.iterdir()}
     # These are filesystem service directories, not release content. No other hidden payload is accepted.
     system_directories = {".fseventsd", ".Spotlight-V100", ".Trashes"}
@@ -129,7 +129,7 @@ def compare_payload(mount: Path, source_app: Path, developer_id: bool, layout_as
     source = verification.tree_manifest(source_app)
     actual = verification.tree_manifest(mounted_app)
     verification.require(actual == source, "DMG app differs from the staged source in bytes, modes or symlink targets")
-    report = verification.verify_app(mounted_app, developer_id)
+    report = verification.verify_app(mounted_app, developer_id, self_signed)
     result = {"payload": ["Earmark.app", "Applications -> /Applications"], "matchesStagedApp": True,
               "entriesCompared": len(actual), "version": report["version"], "build": report["build"]}
     if layout is not None:
@@ -147,7 +147,7 @@ def matches_mount_point(returned: object, requested: Path) -> bool:
         return False
 
 
-def verify_image(dmg: Path, source_app: Path, developer_id: bool = False, layout_assets: Path | None = None) -> dict[str, object]:
+def verify_image(dmg: Path, source_app: Path, developer_id: bool = False, layout_assets: Path | None = None, self_signed: bool = False) -> dict[str, object]:
     dmg = dmg.resolve(strict=True)
     source_app = source_app.resolve(strict=True)
     verification.command("/usr/bin/hdiutil", "verify", str(dmg))
@@ -164,7 +164,7 @@ def verify_image(dmg: Path, source_app: Path, developer_id: bool = False, layout
                     device = entity.get("dev-entry")
                     break
             verification.require(bool(device), "hdiutil did not return the mounted volume's device")
-            report = compare_payload(mount, source_app, developer_id, layout_assets)
+            report = compare_payload(mount, source_app, developer_id, layout_assets, self_signed)
         finally:
             # Only detach the private mount created by this invocation; never inspect or unmount other volumes.
             if device is not None:
@@ -186,11 +186,12 @@ def main() -> None:
     parser.add_argument("dmg", type=Path)
     parser.add_argument("--source-app", required=True, type=Path)
     parser.add_argument("--require-developer-id", action="store_true")
+    parser.add_argument("--require-self-signed", action="store_true")
     parser.add_argument("--layout-assets", type=Path, help="Authored installer-artwork directory containing background.tiff and volume.icns")
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
     try:
-        report = verify_image(args.dmg, args.source_app, args.require_developer_id, args.layout_assets)
+        report = verify_image(args.dmg, args.source_app, args.require_developer_id, args.layout_assets, args.require_self_signed)
     except (verification.VerificationError, OSError, plistlib.InvalidFileException, subprocess.CalledProcessError) as error:
         parser.exit(1, f"DMG verification failed: {error}\n")
     if args.report:

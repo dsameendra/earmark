@@ -16,7 +16,7 @@ Local transcription, live captions and an editor for the moments worth keeping.
 
 Earmark turns audio and video into searchable, editable transcripts on your Mac. Transcribe a recording, follow a live conversation, capture a meeting or dictate into another app, then refine and export the result.
 
-**Development preview:** local review builds are available through the packaging workflow; public signing, notarization and remaining device acceptance checks are tracked in the [release checklist](specs/qa/release.md).
+**Development preview:** Earmark is distributed without a paid Apple Developer account. Releases are signed with a self-signed certificate and are **not notarized**, so macOS asks you to approve the first launch (see [Getting started](#getting-started)). Remaining device acceptance checks are tracked in the [release checklist](specs/qa/release.md).
 
 ## Features
 
@@ -46,7 +46,11 @@ Screenshots use demo content. See the [full gallery and validation record](specs
 
 ## Getting started
 
-1. Open the Earmark DMG, drag **Earmark** into **Applications**, then launch it.
+1. Open the Earmark DMG, drag **Earmark** into **Applications**, then launch it. Because the app is self-signed and not notarized, macOS blocks the first launch. Either:
+   - open **System Settings → Privacy & Security**, scroll to the Earmark message and click **Open Anyway** (then confirm); or
+   - run `xattr -dr com.apple.quarantine /Applications/Earmark.app` in Terminal, then open it normally.
+
+   You only need to do this once per download; updates delivered inside Earmark are verified with an EdDSA signature and do not repeat the prompt. Check the published SHA-256 against the DMG if you want to confirm the download.
 2. Follow the welcome flow and choose a speech model in **Settings → Models**. Model weights are downloaded separately from the app.
 3. Allow microphone or system-audio access when using capture. Dictation also needs Accessibility access; **Settings → Privacy & Permissions** explains each permission.
 4. Drop a recording onto Home, or start Live captions or meeting capture. Reopen the welcome from **Settings → General** or **Help**.
@@ -69,6 +73,7 @@ scripts/check.sh unit   # serial package suites and dependency boundaries
 scripts/check.sh build  # Debug app build
 scripts/check.sh ui     # isolated UI flows with mock services
 scripts/release.sh local  # local review DMG and verification reports
+scripts/release.sh selfsigned  # self-signed, un-notarized release DMG (see packaging guide)
 ```
 
 See [packaging and release](specs/qa/release.md), [manual acceptance](specs/qa/manual.md) and the [project specifications](specs/00-product.md) for details.

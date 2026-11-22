@@ -1,13 +1,22 @@
 #!/bin/bash
-# Local packages are for testing. Distribution mode explicitly signs and submits artifacts to Apple for notarization.
+# local: ad-hoc test package. selfsigned: stable self-signed identity + Sparkle EdDSA, no Apple account, no notarization.
+# distribution: Developer ID signing and Apple notarization. Set EARMARK_RELEASE_DRY_RUN=1 to validate inputs and stop.
 set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 mode="${1:-local}"
-case "$mode" in local|distribution) ;; *) printf 'Usage: %s local|distribution\n' "$0" >&2; exit 64 ;; esac
+case "$mode" in local|selfsigned|distribution) ;; *) printf 'Usage: %s local|selfsigned|distribution\n' "$0" >&2; exit 64 ;; esac
 for tool in python3 git xcodegen xcodebuild xcrun hdiutil codesign security; do command -v "$tool" >/dev/null; done
 identity=-
 feed=""
 public_key=""
+if [ "$mode" = selfsigned ]; then
+    : "${EARMARK_SIGN_IDENTITY:?Set the self-signed identity name (scripts/make-signing-identity.sh creates 'Earmark Release Signing')}"
+    : "${EARMARK_UPDATE_FEED_URL:?Set the HTTPS Sparkle appcast URL}"
+    : "${EARMARK_SPARKLE_PUBLIC_KEY:?Set the Sparkle Ed25519 public key (scripts/make-appcast.sh keys)}"
+    identity="$EARMARK_SIGN_IDENTITY"
+    feed="$EARMARK_UPDATE_FEED_URL"
+    public_key="$EARMARK_SPARKLE_PUBLIC_KEY"
+fi
 if [ "$mode" = distribution ]; then
     : "${EARMARK_SIGN_IDENTITY:?Set a Developer ID Application identity}"
     : "${EARMARK_UPDATE_FEED_URL:?Set the HTTPS Sparkle appcast URL}"
@@ -31,6 +40,12 @@ bridge=hashlib.sha256()
 for relative in ['NativeRuntime/Bridge/include/earmark_nllb.h','NativeRuntime/Bridge/earmark_nllb.cpp']:
  bridge.update(relative.encode());bridge.update((root/relative).read_bytes())
 module.require(bridge.hexdigest()==metadata.get('bridgeSHA256'),'native C bridge changed without rebuilding/updating its provenance')
+if mode=='selfsigned':
+ module.validate_update_configuration(feed,key)
+ identities=subprocess.check_output(['/usr/bin/security','find-identity','-v','-p','codesigning'],text=True)
+ module.validate_selfsigned_identity(identity,identities,module.certificate_name_lines)
+ changes=subprocess.check_output(['git','-C',str(root),'status','--porcelain','--untracked-files=all','--','App','Packages','NativeRuntime','Config','project.yml','scripts',':(exclude)**/.DS_Store'],text=True)
+ module.require(not changes.strip(),'commit release source and tooling before self-signed packaging')
 if mode=='distribution':
  module.require(identity.startswith('Developer ID Application:'),'distribution requires a Developer ID Application identity')
  module.validate_update_configuration(feed,key)
@@ -39,6 +54,10 @@ if mode=='distribution':
  changes=subprocess.check_output(['git','-C',str(root),'status','--porcelain','--untracked-files=all','--','App','Packages','NativeRuntime','Config','project.yml','scripts',':(exclude)**/.DS_Store'],text=True)
  module.require(not changes.strip(),'commit release source and tooling before distribution packaging')
 PY
+if [ -n "${EARMARK_RELEASE_DRY_RUN:-}" ]; then
+    printf 'Validated %s release inputs; nothing was built or signed.\n' "$mode"
+    exit 0
+fi
 project="$(bash "$repo_root/scripts/project.sh")"
 if [ -n "${EARMARK_RELEASE_ROOT:-}" ]; then
     release_root="$EARMARK_RELEASE_ROOT"
@@ -80,9 +99,13 @@ app="$stage_root/Earmark.app"
 # Finder/File Provider attributes inherited from cloud-synced source bundles invalidate signing.
 # Prepare only our new staging copy, outside Documents; never modify an installed app or its permissions.
 /usr/bin/ditto --norsrc --noextattr "$derived_data/Build/Products/Release/Earmark.app" "$app"
-python3 "$repo_root/scripts/sign-bundle.py" "$app" --identity "$identity" --entitlements "$repo_root/App/Earmark.entitlements"
+sign_args=()
+if [ "$mode" = selfsigned ]; then sign_args=(--self-signed); fi
+python3 "$repo_root/scripts/sign-bundle.py" "$app" --identity "$identity" ${sign_args[@]+"${sign_args[@]}"} --entitlements "$repo_root/App/Earmark.entitlements"
 verify_app() {
-    if [ "$mode" = distribution ]; then
+    if [ "$mode" = selfsigned ]; then
+        python3 "$repo_root/scripts/verify-release.py" "$app" --require-self-signed --report "$release_root/app-manifest.json"
+    elif [ "$mode" = distribution ]; then
         python3 "$repo_root/scripts/verify-release.py" "$app" --require-developer-id --report "$release_root/app-manifest.json"
     else
         python3 "$repo_root/scripts/verify-release.py" "$app" --report "$release_root/app-manifest.json"
@@ -120,7 +143,10 @@ if [ "$mode" = distribution ]; then
     notarize "$dmg" "$release_root/dmg-notarization.json"
     xcrun stapler staple "$dmg"
 fi
-if [ "$mode" = distribution ]; then
+if [ "$mode" = selfsigned ]; then
+    "$dmg_python" "$repo_root/scripts/verify-dmg.py" "$dmg" --source-app "$app" --layout-assets "$release_root/installer-artwork" \
+        --require-self-signed --report "$release_root/dmg-verification.json"
+elif [ "$mode" = distribution ]; then
     "$dmg_python" "$repo_root/scripts/verify-dmg.py" "$dmg" --source-app "$app" --layout-assets "$release_root/installer-artwork" \
         --require-developer-id --report "$release_root/dmg-verification.json"
 else
@@ -131,3 +157,6 @@ fi
 printf 'Prepared %s\n' "$dmg"
 printf 'Signed app: %s\n' "$app"
 printf 'Validation reports: %s\n' "$release_root"
+if [ "$mode" = selfsigned ]; then
+    printf 'Self-signed, not notarized. Next: scripts/make-appcast.sh appcast %q\n' "$release_root"
+fi

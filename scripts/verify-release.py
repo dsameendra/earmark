@@ -49,6 +49,48 @@ def validate_update_configuration(feed: str, public_key: str) -> None:
         raise VerificationError(f"invalid update configuration: {error}") from error
 
 
+def validate_selfsigned_identity(identity: str, listing: str, certificate_names) -> None:
+    """Accept only a named, valid, self-signed (subject == issuer) identity; never Developer ID, ad-hoc or Apple-issued."""
+    require(bool(identity) and identity != "-", "selfsigned mode requires a named signing identity, not ad-hoc '-'")
+    require(not identity.startswith(("Developer ID Application:", "Apple Development:", "Apple Distribution:", "Mac Developer:")),
+            "selfsigned mode requires a self-signed certificate, not an Apple-issued identity (use distribution mode for Developer ID)")
+    require('"' + identity + '"' in listing, "the requested valid self-signed identity is not available in Keychain "
+            "(run scripts/make-signing-identity.sh; an untrusted certificate is not listed as valid)")
+    subject, issuer = certificate_names(identity)
+    require(bool(subject.strip()) and subject.strip() == issuer.strip(), "the signing certificate is not self-signed (issuer differs from subject)")
+
+
+def certificate_name_lines(identity: str) -> tuple[str, str]:
+    """Return the (subject, issuer) lines of the Keychain certificate with this common name."""
+    pem = command("/usr/bin/security", "find-certificate", "-c", identity, "-p")
+    result = subprocess.run(["/usr/bin/openssl", "x509", "-noout", "-subject", "-issuer"], input=pem, text=True, capture_output=True, check=False)
+    require(result.returncode == 0, "could not read the signing certificate")
+    values = dict(line.split("=", 1) for line in result.stdout.splitlines() if "=" in line and line.split("=", 1)[0] in {"subject", "issuer"})
+    return values.get("subject", ""), values.get("issuer", "")
+
+
+def designated_requirement_leaf(requirement_output: str, bundle_identifier: str | None) -> str:
+    """Return the pinned leaf-certificate SHA-1 from `codesign -d -r-` output, requiring the stable identifier+leaf form."""
+    match = re.search(r"^designated => (.+)$", requirement_output, re.M)
+    require(match is not None, "no designated requirement is present")
+    text = match[1]
+    require('identifier "' in text and (bundle_identifier is None or f'identifier "{bundle_identifier}"' in text),
+            "designated requirement does not name the code identifier")
+    leaf = re.search(r'certificate leaf = H"([0-9a-fA-F]{40})"', text)
+    require(leaf is not None and "cdhash" not in text,
+            "designated requirement is not anchored to the signing certificate; permissions and updates would not survive a new build")
+    return leaf[1].lower()
+
+
+def check_selfsigned_signature(signature: str, name: str) -> str:
+    """Validate one `codesign -dv` description and return the signing authority."""
+    require("Signature=adhoc" not in signature, f"ad-hoc signed: {name}")
+    require("Authority=Developer ID Application:" not in signature, f"unexpected Developer ID signature in selfsigned mode: {name}")
+    authority = re.search(r"^Authority=(.+)$", signature, re.M)
+    require(authority is not None, f"no certificate authority in signature: {name}")
+    return authority[1]
+
+
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -101,7 +143,8 @@ def verify_payload(app: Path) -> list[dict[str, str]]:
     return entries
 
 
-def verify_app(app: Path, developer_id: bool = False) -> dict[str, object]:
+def verify_app(app: Path, developer_id: bool = False, self_signed: bool = False) -> dict[str, object]:
+    require(not (developer_id and self_signed), "choose either Developer ID or self-signed verification")
     app = app.resolve(strict=True)
     require(app.is_dir() and app.suffix == ".app", "expected an existing .app bundle")
     info = plistlib.loads((app / "Contents/Info.plist").read_bytes())
@@ -152,11 +195,23 @@ def verify_app(app: Path, developer_id: bool = False) -> dict[str, object]:
         app_team = re.search(r"^TeamIdentifier=(.+)$", signing, re.M)
         helper_team = re.search(r"^TeamIdentifier=(.+)$", command("/usr/bin/codesign", "-dv", "--verbose=4", str(helper)), re.M)
         require(app_team and helper_team and app_team[1] == helper_team[1], "app and native helper signing teams differ")
+    if self_signed:
+        validate_update_configuration(info.get("SUFeedURL", ""), info.get("SUPublicEDKey", ""))
+        sparkle = app / "Contents/Frameworks/Sparkle.framework"
+        authorities = {}
+        leaves = {}
+        for path in [app, helper, sparkle]:
+            authorities[path.name] = check_selfsigned_signature(command("/usr/bin/codesign", "-dv", "--verbose=4", str(path)), path.name)
+            if path != sparkle:
+                leaves[path.name] = designated_requirement_leaf(command("/usr/bin/codesign", "-d", "-r-", str(path)),
+                                                              "lk.dumindu.earmark.Earmark" if path == app else None)
+        require(len(set(authorities.values())) == 1, "app, helper and Sparkle are not signed with one identity")
+        require(len(set(leaves.values())) == 1, "app and helper designated requirements pin different certificates")
     return {
         "bundleIdentifier": info["CFBundleIdentifier"], "version": info["CFBundleShortVersionString"],
         "build": info["CFBundleVersion"], "minimumMacOS": info["LSMinimumSystemVersion"],
         "nativeHelper": True, "pythonRuntime": False, "machOBinaries": macho,
-        "files": entries, "developerID": developer_id,
+        "files": entries, "developerID": developer_id, "selfSigned": self_signed,
     }
 
 
@@ -164,10 +219,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("app", type=Path)
     parser.add_argument("--require-developer-id", action="store_true")
+    parser.add_argument("--require-self-signed", action="store_true", help="accept a stable self-signed identity; no notarization or Gatekeeper claims")
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
     try:
-        report = verify_app(args.app, args.require_developer_id)
+        report = verify_app(args.app, args.require_developer_id, args.require_self_signed)
     except (VerificationError, OSError, plistlib.InvalidFileException) as error:
         parser.exit(1, f"Release verification failed: {error}\n")
     if args.report:

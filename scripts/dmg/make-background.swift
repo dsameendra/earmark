@@ -2,10 +2,11 @@ import AppKit
 
 // Author installer artwork in points, with separate 1x/2x representations for Finder.
 guard CommandLine.arguments.count == 3 else {
-    fatalError("Usage: swift make-background.swift OUTPUT_DIRECTORY local|distribution")
+    fatalError("Usage: swift make-background.swift OUTPUT_DIRECTORY local|selfsigned|distribution")
 }
 let destination = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
 let isPreview = CommandLine.arguments[2] == "local"
+let isSelfSigned = CommandLine.arguments[2] == "selfsigned"
 let width: CGFloat = 660
 let height: CGFloat = 420
 let paper = NSColor(srgbRed: 243 / 255, green: 238 / 255, blue: 229 / 255, alpha: 1)
@@ -77,6 +78,7 @@ func draw(scale: CGFloat) throws {
     text("Listen once. Keep what matters.", top: 338, size: 17, color: ink, serif: true)
     text("macOS 26 or later  ·  Apple silicon", top: 369, size: 11, color: secondary)
     if isPreview { text("LOCAL PREVIEW", top: 397, size: 9, color: secondary) }
+    if isSelfSigned { text("First launch: System Settings  ›  Privacy & Security  ›  Open Anyway", top: 397, size: 9, color: secondary) }
 
     let image = context.makeImage()!
     let bitmap = NSBitmapImageRep(cgImage: image)

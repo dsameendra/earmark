@@ -91,8 +91,9 @@ import Testing
 @Suite("Render smoke") @MainActor struct RenderTests {
     static func views() -> [(String, AnyView)] {
         [
-            ("GlassCard", AnyView(GlassCard { Text("Card") })),
-            ("GlassPanel", AnyView(GlassPanel { Text("Panel") })),
+            ("SheetCard", AnyView(SheetCard { Text("Card") })),
+            ("InsetCard", AnyView(InsetCard { Text("Card") })),
+            ("Floater", AnyView(Text("Panel").padding().dsGlass(.prominent, radius: DSRadius.large))),
             ("Toolbar", AnyView(GlassToolbarButton("Add", systemImage: "plus") {})),
             ("Pill", AnyView(StatusPill(state: .completed))),
             ("Recording", AnyView(RecordingIndicator())),

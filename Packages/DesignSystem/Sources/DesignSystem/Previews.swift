@@ -4,7 +4,7 @@ import SwiftUI
 private struct GalleryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpacing.lg) {
-            GlassCard {
+            SheetCard {
                 VStack(alignment: .leading, spacing: DSSpacing.sm) {
                     HStack {
                         StatusPill(state: .running)

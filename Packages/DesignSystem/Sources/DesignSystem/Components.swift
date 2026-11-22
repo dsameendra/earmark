@@ -1,7 +1,80 @@
 import AppCore
 import SwiftUI
 
-/// Rounded glass container for chrome (never for transcript content).
+/// Solid surface card in the primary tier (Sheet): Sheet fill, 1 px hairline, soft warm shadow.
+/// The default container for content (cards, inspector sections, settings groups). Never glass.
+public struct SheetCard<Content: View>: View {
+    private let padding: CGFloat
+    private let radius: CGFloat
+    private let selected: Bool
+    private let content: Content
+    public init(
+        padding: CGFloat = DSSpacing.lg, radius: CGFloat = DSRadius.card, selected: Bool = false,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.padding = padding
+        self.radius = radius
+        self.selected = selected
+        self.content = content()
+    }
+    public var body: some View {
+        content.padding(padding).dsSolidSurface(.sheet, radius: radius, selected: selected)
+    }
+}
+
+/// Solid surface card in the secondary tier (Inset): rows, chips, grouped regions inside a Sheet.
+public struct InsetCard<Content: View>: View {
+    private let padding: CGFloat
+    private let radius: CGFloat
+    private let selected: Bool
+    private let content: Content
+    public init(
+        padding: CGFloat = DSSpacing.md, radius: CGFloat = DSRadius.large, selected: Bool = false,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.padding = padding
+        self.radius = radius
+        self.selected = selected
+        self.content = content()
+    }
+    public var body: some View {
+        content.padding(padding).dsSolidSurface(.inset, radius: radius, selected: selected)
+    }
+}
+
+/// Solid surface tier.
+public enum DSSurfaceTier: Sendable, Hashable {
+    case sheet, inset
+}
+
+private struct SolidSurfaceModifier: ViewModifier {
+    let tier: DSSurfaceTier
+    let radius: CGFloat
+    let selected: Bool
+
+    func body(content: Content) -> some View {
+        PolicyReader { policy in
+            let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+            let fill: Color = selected ? DSColor.accentTint : (tier == .sheet ? DSColor.contentBackground : DSColor.insetBackground)
+            let border: Color = selected ? DSColor.accent : (policy.usesHighContrast ? DSColor.hairlineStrong : DSColor.hairline)
+            content
+                .background(fill, in: shape)
+                .overlay(shape.strokeBorder(border, lineWidth: selected ? 1.5 : (policy.usesHighContrast ? 1.5 : 1)))
+                .shadow(color: DSColor.shadow.opacity(tier == .sheet && !policy.usesHighContrast ? 0.07 : 0), radius: 12, y: 4)
+        }
+    }
+}
+
+extension View {
+    /// Draws a solid Sheet or Inset surface behind the view (fill, hairline, soft shadow for Sheet). `selected`
+    /// switches to the Ember tint fill with an Ember stroke. Use instead of glass for any content.
+    public func dsSolidSurface(_ tier: DSSurfaceTier = .sheet, radius: CGFloat = DSRadius.card, selected: Bool = false) -> some View {
+        modifier(SolidSurfaceModifier(tier: tier, radius: radius, selected: selected))
+    }
+}
+
+/// Deprecated: glass must not be applied to content. Forwards to a solid ``SheetCard``.
+@available(*, deprecated, message: "Glass on content is not allowed in the M8 design; use SheetCard or InsetCard.")
 public struct GlassCard<Content: View>: View {
     private let padding: CGFloat
     private let content: Content
@@ -9,12 +82,12 @@ public struct GlassCard<Content: View>: View {
         self.padding = padding
         self.content = content()
     }
-    public var body: some View {
-        content.padding(padding).glassBackground(radius: DSRadius.large)
-    }
+    public var body: some View { SheetCard(padding: padding, radius: DSRadius.large) { content } }
 }
 
-/// Larger glass panel (e.g. overlay, HUD, popover body) with a smaller corner radius option.
+/// Larger panel for a transient floater (overlay, HUD, popover body): the Prominent glass layer with its solid twin.
+/// Not for content. Deprecated name kept for source compatibility; prefer `dsGlass(.prominent, ...)`.
+@available(*, deprecated, message: "Use dsGlass(.prominent, radius:) on a transient floater, or SheetCard for content.")
 public struct GlassPanel<Content: View>: View {
     private let radius: CGFloat
     private let content: Content
@@ -23,7 +96,7 @@ public struct GlassPanel<Content: View>: View {
         self.content = content()
     }
     public var body: some View {
-        content.padding(DSSpacing.md).glassBackground(radius: radius)
+        content.padding(DSSpacing.md).dsGlass(.prominent, radius: radius)
     }
 }
 
@@ -101,7 +174,7 @@ public struct RecordingIndicator: View {
                     .fill(DSColor.recording)
                     .frame(width: 8, height: 8)
                     .opacity(pulsing && !policy.suppressesMotion ? 0.35 : 1)
-                    .animation(policy.animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)), value: pulsing)
+                    .animation(DSMotion.pulse(policy), value: pulsing)
                 if let label { Text(label).font(DSTypography.badge).foregroundStyle(DSColor.recording) }
             }
             .onAppear { pulsing = true }
@@ -238,7 +311,7 @@ public struct Skeleton: View {
             RoundedRectangle(cornerRadius: DSRadius.small, style: .continuous)
                 .fill(DSColor.secondaryText.opacity(phase && !policy.suppressesMotion ? 0.12 : 0.22))
                 .frame(width: width, height: height)
-                .animation(policy.animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)), value: phase)
+                .animation(DSMotion.shimmer(policy), value: phase)
                 .onAppear { phase = true }
                 .accessibilityHidden(true)
         }

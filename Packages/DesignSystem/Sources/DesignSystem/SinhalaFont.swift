@@ -23,6 +23,23 @@ public enum SinhalaFont {
         return NSFont(descriptor: desc, size: size) ?? base
     }
 
+    /// New York (the system serif design) with the Sinhala cascade, for transcript text and titles that may mix
+    /// Latin and Sinhala. Latin resolves to New York; Sinhala falls through to the Sinhala families.
+    public static func serifNSFont(size: CGFloat, weight: NSFont.Weight = .regular) -> NSFont {
+        let base = NSFont.systemFont(ofSize: size, weight: weight)
+        let serif = base.fontDescriptor.withDesign(.serif) ?? base.fontDescriptor
+        let cascade = preferredFamilies.map { name in
+            CTFontDescriptorCreateWithAttributes([kCTFontFamilyNameAttribute: name] as CFDictionary)
+        }
+        let desc = serif.addingAttributes([.cascadeList: cascade])
+        return NSFont(descriptor: desc, size: size) ?? NSFont(descriptor: serif, size: size) ?? base
+    }
+
+    /// SwiftUI equivalent of ``serifNSFont(size:weight:)``.
+    public static func serifFont(size: CGFloat, weight: NSFont.Weight = .regular) -> Font {
+        Font(serifNSFont(size: size, weight: weight) as CTFont)
+    }
+
     /// SwiftUI font equivalent of ``nsFont(size:weight:family:)``.
     public static func font(size: CGFloat, weight: NSFont.Weight = .regular, family: String? = nil) -> Font {
         Font(nsFont(size: size, weight: weight, family: family) as CTFont)

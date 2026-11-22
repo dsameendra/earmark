@@ -82,11 +82,9 @@ public struct HomeView: View {
     }
 
     private var quickActions: some View {
-        DSGlassGroup(spacing: DSSpacing.md) {
-            ViewThatFits {
-                HStack(spacing: DSSpacing.md) { actionButtons }
-                VStack(spacing: DSSpacing.md) { actionButtons }
-            }
+        ViewThatFits {
+            HStack(spacing: DSSpacing.md) { actionButtons }
+            VStack(spacing: DSSpacing.md) { actionButtons }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Quick actions")
@@ -100,14 +98,14 @@ public struct HomeView: View {
     }
 
     private func downloadRow(_ status: ModelDownloadStatus) -> some View {
-        GlassCard {
+        SheetCard(radius: DSRadius.large) {
             ProgressRow(
                 title: "Downloading \(status.modelName)", detail: status.isVerifying ? "Verifying" : nil, fraction: status.fraction)
         }
     }
 
     private var jobsSummary: some View {
-        GlassCard {
+        SheetCard(radius: DSRadius.large) {
             VStack(alignment: .leading, spacing: DSSpacing.sm) {
                 ProgressRow(
                     title: "Active jobs", detail: "\(model.summary.running) running, \(model.summary.pending) waiting",
@@ -217,7 +215,7 @@ private struct QuickActionButton: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .glassBackground(radius: DSRadius.large, interactive: true)
+        .dsSolidSurface(.sheet, radius: DSRadius.large)
         .disabled(!isEnabled)
         .opacity(isEnabled ? 1 : 0.55)
         .accessibilityHint(isEnabled ? "" : "Not available yet")

@@ -148,7 +148,7 @@ final class SystemMeetingPrompter: NSObject, MeetingPromptPresenting, UNUserNoti
             _ = try? await center.requestAuthorization(options: [.alert, .sound])
             status = await center.notificationSettings().authorizationStatus
         }
-        return status == .authorized || status == .provisional || status == .ephemeral
+        return status == .authorized || status == .provisional
     }
 
     private func add(_ request: UNNotificationRequest) async {

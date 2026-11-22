@@ -170,8 +170,45 @@ extension View {
         modifier(TokenMotionModifier(motion: motion, value: value))
     }
 
+    /// A semantic arrival/departure transition; reduced motion always crossfades without travel or scale.
+    public func dsTransition(_ motion: DSMotion = .settle) -> some View {
+        modifier(SemanticTransitionModifier(motion: motion))
+    }
+
+    /// One calm arrival when this view enters the hierarchy. Never loops or moves under Reduce Motion.
+    public func dsEntrance() -> some View { modifier(EntranceModifier()) }
+
     /// Guarantees the macOS 26 minimum control height (28 pt).
     public func dsMinControlHeight() -> some View { frame(minHeight: DSLayout.minControlHeight) }
+}
+
+private struct SemanticTransitionModifier: ViewModifier {
+    let motion: DSMotion
+    func body(content: Content) -> some View {
+        PolicyReader { policy in
+            content.transition(
+                .asymmetric(
+                    insertion: (motion == .settle ? DSTransition.settle(policy) : .opacity).animation(motion.animation(policy)),
+                    removal: AnyTransition.opacity.animation(DSMotion.exit.animation(policy))))
+        }
+    }
+}
+
+private struct EntranceModifier: ViewModifier {
+    @State private var entered = false
+    func body(content: Content) -> some View {
+        PolicyReader { policy in
+            content
+                .opacity(entered ? 1 : 0)
+                .offset(y: entered || policy.suppressesMotion ? 0 : 18)
+                .scaleEffect(entered || policy.suppressesMotion ? 1 : 0.985)
+                .task {
+                    await Task.yield()
+                    guard !Task.isCancelled else { return }
+                    withAnimation(DSMotion.settle.animation(policy)) { entered = true }
+                }
+        }
+    }
 }
 
 private struct MotionModifier<V: Equatable>: ViewModifier {
@@ -255,11 +292,11 @@ public enum DSMotion: Sendable, Hashable, CaseIterable {
     }
 }
 
-/// Fade/scale transition that degrades to an instant cut under Reduce Motion.
+/// Transitions that crossfade without movement under Reduce Motion.
 public enum DSTransition {
-    /// Returns `.identity` when motion is reduced; otherwise opacity + slight scale.
+    /// Returns a crossfade when motion is reduced; otherwise opacity + slight scale.
     public static func appear(_ policy: AccessibilityPolicy) -> AnyTransition {
-        policy.suppressesMotion ? .identity : .opacity.combined(with: .scale(scale: 0.96))
+        policy.suppressesMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.985))
     }
 
     /// Sheets, prompts and new items arriving: rise 24 pt while fading in; a plain crossfade under Reduce Motion.

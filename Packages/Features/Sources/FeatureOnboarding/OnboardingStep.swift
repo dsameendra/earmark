@@ -30,7 +30,7 @@ public enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
     public var subtitle: String {
         switch self {
         case .welcome: "Earmark turns speech into transcripts you can edit and export. Everything runs on this Mac."
-        case .languages: "English is the default. Earmark picks the right model for each language."
+        case .languages: "Choose the languages you use. Earmark picks a matching model for each."
         case .permissions: "Nothing is requested now. Each is asked at the moment a feature needs it."
         case .tour: "Close the window and it keeps listening for meetings when you choose."
         case .ready: "Drop a file to begin, or start live captions. Recording consent is explained once, here."
@@ -78,7 +78,7 @@ extension OnboardingHighlight {
         .init(id: "private", title: "Private by default", detail: "No accounts, no cloud, no analytics.", systemImage: "lock"),
         .init(id: "fast", title: "Fast on Apple silicon", detail: "Transcribe files, meetings and live audio.", systemImage: "bolt"),
         .init(
-            id: "languages", title: "English and Sinhala", detail: "Plus 97 more languages, mixed in one transcript.",
+            id: "languages", title: "Speak your language", detail: "Transcribe different languages together in one conversation.",
             systemImage: DSSymbol.language.systemImageName),
     ]
 
@@ -90,7 +90,8 @@ extension OnboardingHighlight {
                 systemImage: "menubar.rectangle"),
             .init(
                 id: "liveCaptions", title: "Live captions",
-                detail: "Start or stop from the menu bar. Captions float over any app.", systemImage: DSSymbol.liveCaptions.systemImageName),
+                detail: "Start or stop from the menu bar. Captions float over any app.",
+                systemImage: DSSymbol.liveCaptions.systemImageName),
             .init(
                 id: "meetings", title: "Meeting capture",
                 detail: "Earmark asks before it records a detected meeting.", systemImage: DSSymbol.meetings.systemImageName),
@@ -104,7 +105,9 @@ extension OnboardingHighlight {
     /// Step 5: where to begin.
     public static let ready: [OnboardingHighlight] = [
         .init(id: "file", title: "Transcribe a file", detail: "Drag audio or video onto Home.", systemImage: "doc.badge.plus"),
-        .init(id: "live", title: "Start live captions", detail: "Choose Live in the sidebar or the menu bar.", systemImage: DSSymbol.liveCaptions.systemImageName),
+        .init(
+            id: "live", title: "Start live captions", detail: "Choose Live in the sidebar or the menu bar.",
+            systemImage: DSSymbol.liveCaptions.systemImageName),
     ]
 }
 

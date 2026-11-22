@@ -13,7 +13,7 @@ public struct OnboardingView: View {
 
     public init(model: OnboardingModel) { self.model = model }
 
-    public static let size = CGSize(width: 760, height: 520)
+    public static let size = CGSize(width: 900, height: 620)
 
     public var body: some View {
         HStack(spacing: 0) {
@@ -25,7 +25,10 @@ public struct OnboardingView: View {
             }
             .background(DSColor.contentBackground)
         }
-        .frame(width: Self.size.width, height: Self.size.height)
+        .frame(width: Self.size.width)
+        .frame(minHeight: Self.size.height, maxHeight: .infinity)
+        .ignoresSafeArea(.container, edges: .top)
+        .dsAnimation(.settle, value: model.step)
         .task { await model.load() }
         .task { await model.permissions.observe() }
     }
@@ -34,19 +37,28 @@ public struct OnboardingView: View {
 
     private var brandPanel: some View {
         VStack(alignment: .leading, spacing: DSSpacing.xl) {
-            Text("earmark").font(DSTypography.title2)
+            Text("earmark").font(DSTypography.title1)
             Spacer()
             Image(nsImage: NSApplication.shared.applicationIconImage)
-                .resizable().scaledToFit().frame(width: 160, height: 160)
+                .resizable().scaledToFit().frame(width: 184, height: 184)
+                .shadow(color: DSColor.shadow.opacity(0.18), radius: 20, y: 10)
+                .dsEntrance()
                 .accessibilityHidden(true)
             Spacer()
             Text("Listen once.\nKeep what matters.").font(DSTypography.transcript).italic()
         }
         .foregroundStyle(DSColor.contentBackground)
         .padding(DSSpacing.xl)
-        .frame(width: 220, alignment: .leading)
+        .padding(.top, DSSpacing.lg)
+        .frame(width: 300, alignment: .leading)
         .frame(maxHeight: .infinity)
         .background(LinearGradient(colors: [DSColor.accent, DSColor.accentText], startPoint: .topLeading, endPoint: .bottomTrailing))
+        .overlay(alignment: .bottomLeading) {
+            Circle().stroke(DSColor.contentBackground.opacity(0.14), lineWidth: 1)
+                .frame(width: 440, height: 440).offset(x: -100, y: 210).allowsHitTesting(false)
+        }
+        .clipped()
+        .environment(\.colorScheme, .light)
         .accessibilityElement(children: .ignore)
     }
 
@@ -57,14 +69,14 @@ public struct OnboardingView: View {
             VStack(alignment: .leading, spacing: DSSpacing.xs) {
                 HStack(spacing: DSSpacing.xs) {
                     ForEach(0..<5) { index in
-                        Capsule().fill(index == model.step.rawValue ? DSColor.accent : DSColor.hairline)
+                        Capsule().fill(index <= model.step.rawValue ? DSColor.accent : DSColor.hairline)
                             .frame(width: index == model.step.rawValue ? 28 : 10, height: 3)
                     }
                 }
                 .accessibilityHidden(true)
                 Text(model.step.progressText).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                     .accessibilityIdentifier("onboarding.progress")
-                Text(model.step.title).font(DSTypography.title).accessibilityAddTraits(.isHeader)
+                Text(model.step.title).font(DSTypography.title1).accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("onboarding.title")
                 Text(model.step.subtitle).font(DSTypography.body).foregroundStyle(DSColor.secondaryText)
             }
@@ -76,8 +88,7 @@ public struct OnboardingView: View {
         .padding(DSSpacing.xl)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .id(model.step)
-        .transition(.opacity)
-        .dsAnimation(.settle, value: model.step)
+        .dsTransition(.settle)
     }
 
     @ViewBuilder private var stepBody: some View {
@@ -96,8 +107,10 @@ public struct OnboardingView: View {
                 PermissionRow(
                     state: model.permissions.rowState(for: kind),
                     onRequest: { Task { await model.permissions.request(kind) } },
-                    onOpenSettings: { openURL(model.permissions.settingsURL(for: kind)) })
-                Divider()
+                    onOpenSettings: { openURL(model.permissions.settingsURL(for: kind)) }
+                )
+                .padding(DSSpacing.md)
+                .background(DSColor.insetBackground, in: RoundedRectangle(cornerRadius: DSRadius.large))
             }
             Text("Denying a permission never blocks Earmark. You can change any of these later in Settings.")
                 .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
@@ -139,12 +152,15 @@ public struct OnboardingView: View {
     private var navigationBar: some View {
         HStack {
             if model.canGoBack {
-                Button("Back") { Task { await model.back() } }
+                Button("Back", systemImage: "chevron.left") { Task { await model.back() } }
+                    .buttonStyle(.plain).foregroundStyle(DSColor.secondaryText).dsMinControlHeight()
                     .keyboardShortcut("[", modifiers: .command)
                     .accessibilityIdentifier("onboarding.back")
             }
             Button("Skip") { Task { await model.skip() } }
-                .buttonStyle(.link)
+                .buttonStyle(.plain)
+                .foregroundStyle(DSColor.secondaryText)
+                .dsMinControlHeight()
                 .accessibilityHint("Closes the welcome. You can reopen it from Settings or the Help menu.")
                 .accessibilityIdentifier("onboarding.skip")
             Spacer()
@@ -153,7 +169,8 @@ public struct OnboardingView: View {
                 .buttonStyle(EmberButtonStyle())
                 .accessibilityIdentifier(model.step.isLast ? "onboarding.finish" : "onboarding.continue")
         }
-        .padding(DSSpacing.lg)
+        .padding(.horizontal, DSSpacing.xl).padding(.vertical, DSSpacing.lg)
+        .background(DSColor.contentBackground)
     }
 }
 
@@ -172,6 +189,9 @@ private struct HighlightList: View {
                         Text(item.detail).font(DSTypography.body).foregroundStyle(DSColor.secondaryText)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(DSSpacing.md)
+                .background(DSColor.insetBackground, in: RoundedRectangle(cornerRadius: DSRadius.large))
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("onboarding.highlight.\(item.id)")
             }
@@ -197,6 +217,8 @@ private struct LanguageStep: View {
                 }
             }
             recommendation
+                .padding(DSSpacing.lg)
+                .background(DSColor.insetBackground, in: RoundedRectangle(cornerRadius: DSRadius.large))
             Text("Your audio stays on this Mac. Downloads start only when you choose.")
                 .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
         }
@@ -298,7 +320,7 @@ private struct RecommendationRow: View {
 
     @ViewBuilder private func progressView(_ progress: OnboardingLanguageModel.DownloadProgress) -> some View {
         switch progress.phase {
-        case .queued: ProgressRow(title: "Waiting", fraction: nil)
+        case .queued: Text("Waiting to download").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
         case .downloading: ProgressRow(title: "Downloading", detail: bytes(progress), fraction: progress.fraction)
         case .paused: ProgressRow(title: "Paused", detail: bytes(progress), fraction: progress.fraction)
         case .verifying: ProgressRow(title: "Verifying", fraction: nil)

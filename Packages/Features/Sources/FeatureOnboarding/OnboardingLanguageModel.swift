@@ -127,8 +127,8 @@ public final class OnboardingLanguageModel {
         self.freeDiskBytes = freeDiskBytes
     }
 
-    /// The languages shown first, in the order of the Onboarding board; the rest sit behind "More…".
-    static let featured: [LanguageCode] = [.english, .sinhala, "ta", "hi", "es"]
+    /// A balanced starting set after the user's saved and preferred languages, filtered to actual model support.
+    static let commonLanguages: [LanguageCode] = [.english, "es", "fr", "de", "zh", "ja", "ar", "hi", "pt", "ko"]
 
     // MARK: Loading
 
@@ -148,18 +148,28 @@ public final class OnboardingLanguageModel {
 
     private func buildOptions() {
         let available = table.languages()
-        let featuredOptions = Self.featured.filter { $0 == .english || available.contains($0) }.map(option)
-        let rest = available.subtracting(Self.featured).sorted { Self.name($0).localizedCompare(Self.name($1)) == .orderedAscending }
-        options = featuredOptions
+        var featured: [LanguageCode] = []
+        let preferred = Locale.preferredLanguages.map { LanguageCode($0).primary }
+        let candidates =
+            selected.sorted() + preferred + Self.commonLanguages
+            + available.sorted { Self.name($0).localizedCompare(Self.name($1)) == .orderedAscending }
+        let limit = max(6, selected.count)
+        for code in candidates where (available.contains(code) || selected.contains(code)) && !featured.contains(code) {
+            guard featured.count < limit else { break }
+            featured.append(code)
+        }
+        let rest = available.subtracting(featured).sorted { Self.name($0).localizedCompare(Self.name($1)) == .orderedAscending }
+        options = featured.map(option)
         moreOptions = rest.map(option)
     }
 
     private func option(_ code: LanguageCode) -> LanguageOption {
         let name = Self.name(code)
         let native = Locale(identifier: code.rawValue).localizedString(forLanguageCode: code.rawValue)
+        let coveringModels = table.models(coveringAll: [code])
         return LanguageOption(
             code: code, name: name, nativeName: native.flatMap { $0 == name || code == .english ? nil : $0 },
-            isDefault: code == .english, isExperimental: code.primary == .sinhala)
+            isDefault: code == .english, isExperimental: !coveringModels.isEmpty && coveringModels.allSatisfy(\.isExperimental))
     }
 
     static func name(_ code: LanguageCode) -> String { Locale.current.localizedString(forLanguageCode: code.rawValue) ?? code.rawValue }

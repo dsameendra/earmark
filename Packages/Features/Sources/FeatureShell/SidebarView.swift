@@ -26,6 +26,7 @@ public struct SidebarRowAppearance: Equatable, Sendable {
 struct SidebarView: View {
     @Bindable var model: ShellModel
     @Namespace private var pillSpace
+    @FocusState private var navigationFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityPolicyOverride) private var policyOverride
 
@@ -33,22 +34,43 @@ struct SidebarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpacing.xs) {
+            brand
+            if model.isRecordingActive { recordingRow }
             ScrollView {
                 VStack(alignment: .leading, spacing: DSSpacing.xs) {
-                    brand
-                    if model.isRecordingActive { recordingRow }
                     ForEach(AppSection.allCases) { section in row(section) }
                     if !model.sidebar.folders.isEmpty { folders }
                 }
+                .compositingGroup()
             }
             .scrollIndicators(.hidden)
-            if let chip = model.sidebar.modelChip { ModelChipView(chip: chip) }
+            if let chip = model.sidebar.modelChip {
+                SettingsLink { ModelChipView(chip: chip) }
+                    .buttonStyle(.plain)
+                    .help("Manage the default file-transcription model in Settings → Models")
+                    .accessibilityLabel("File transcription model, \(chip.name), \(chip.statusText)")
+                    .accessibilityValue(chip.detail)
+                    .accessibilityIdentifier("sidebar.modelChip")
+            }
             settingsRow
         }
         .padding(.horizontal, DSSpacing.sm)
         .padding(.bottom, DSSpacing.sm)
         .dsAnimation(.glide, value: model.selection)
         .dsIconContext(.sidebar)
+        .focusable()
+        .focusEffectDisabled()
+        .focused($navigationFocused)
+        .onKeyPress(.upArrow) {
+            guard navigationFocused else { return .ignored }
+            model.moveSidebarSelection(by: -1)
+            return .handled
+        }
+        .onKeyPress(.downArrow) {
+            guard navigationFocused else { return .ignored }
+            model.moveSidebarSelection(by: 1)
+            return .handled
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Sidebar")
     }
@@ -67,6 +89,7 @@ struct SidebarView: View {
         .padding(.bottom, DSSpacing.md)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Earmark")
+        .accessibilityIdentifier("sidebar.brand")
         .accessibilityAddTraits(.isHeader)
     }
 
@@ -76,6 +99,7 @@ struct SidebarView: View {
         let look = SidebarRowAppearance(section: section, selection: model.selection)
         return Button {
             model.select(section)
+            navigationFocused = true
         } label: {
             HStack(spacing: 11) {
                 DSIcon(section.symbol, style: look.symbolStyle).font(.system(size: 17)).frame(width: 22)
@@ -203,29 +227,50 @@ struct ModelChipView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
+            Text("FILE TRANSCRIPTION")
+                .font(DSTypography.label).tracking(DSTypography.labelTracking)
+                .foregroundStyle(DSColor.secondaryText)
             HStack {
-                Text(chip.name).fontWeight(.semibold).foregroundStyle(DSColor.primaryText).lineLimit(1)
-                Spacer(minLength: DSSpacing.xs)
-                Text(chip.statusText)
-                    .foregroundStyle(chip.status == .ready ? DSColor.success : DSColor.secondaryText)
-                    .fontWeight(.semibold)
+                Text(chip.name).fontWeight(.semibold).foregroundStyle(DSColor.primaryText).lineLimit(2)
+                Spacer(minLength: 0)
             }
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(DSColor.primaryText.opacity(0.1))
-                    Capsule().fill(DSColor.accent).frame(width: proxy.size.width * chip.fraction)
+            HStack(spacing: DSSpacing.xs) {
+                Circle().fill(statusColor).frame(width: 6, height: 6).accessibilityHidden(true)
+                Text(chip.statusText).foregroundStyle(statusColor).fontWeight(.medium)
+            }
+            if showsProgress {
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(DSColor.primaryText.opacity(0.1))
+                        Capsule().fill(DSColor.accent).frame(width: proxy.size.width * chip.fraction)
+                    }
                 }
+                .frame(height: 4)
+                .accessibilityHidden(true)
             }
-            .frame(height: 4)
-            .accessibilityHidden(true)
-            Text(chip.detail).foregroundStyle(DSColor.secondaryText)
+            Text(chip.detail).foregroundStyle(DSColor.secondaryText).lineLimit(2)
         }
         .font(.system(size: 12))
         .padding(.horizontal, DSSpacing.md).padding(.vertical, 10)
         .dsSolidSurface(.inset, radius: DSRadius.large)
         .padding(.horizontal, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(chip.name), \(chip.statusText)")
-        .accessibilityIdentifier("sidebar.modelChip")
+        .dsAnimation(.glide, value: chip)
+    }
+
+    private var showsProgress: Bool {
+        switch chip.status {
+        case .downloading, .paused: true
+        case .ready, .notInstalled, .failed: false
+        }
+    }
+
+    private var statusColor: Color {
+        switch chip.status {
+        case .ready: DSColor.success
+        case .failed: DSColor.danger
+        case .paused: DSColor.warning
+        case .downloading: DSColor.accentText
+        case .notInstalled: DSColor.secondaryText
+        }
     }
 }

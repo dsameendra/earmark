@@ -13,8 +13,8 @@ func symbolCatalogURL() -> URL {
 
 @Suite("DSSymbol") struct DSSymbolTests {
     @Test func coversTheBoardPlusEar() {
-        #expect(DSSymbol.allCases.count == 25)
-        #expect(Set(DSSymbol.allCases.map(\.assetName)).count == 25)
+        #expect(DSSymbol.allCases.count == 27)
+        #expect(Set(DSSymbol.allCases.map(\.assetName)).count == 27)
     }
 
     @Test func everyAssetNameExistsOnDisk() throws {
@@ -31,7 +31,8 @@ func symbolCatalogURL() -> URL {
         let weights = ["Ultralight", "Thin", "Light", "Regular", "Medium", "Semibold", "Bold", "Heavy", "Black"]
         for symbol in DSSymbol.allCases {
             let svg = try String(
-                contentsOf: symbolCatalogURL().appendingPathComponent("\(symbol.assetName).symbolset/\(symbol.assetName).svg"), encoding: .utf8)
+                contentsOf: symbolCatalogURL().appendingPathComponent("\(symbol.assetName).symbolset/\(symbol.assetName).svg"),
+                encoding: .utf8)
             for weight in weights {
                 for scale in ["S", "M", "L"] {
                     #expect(svg.contains("<g id=\"\(weight)-\(scale)\""), "\(symbol) \(weight)-\(scale)")
@@ -48,7 +49,9 @@ func symbolCatalogURL() -> URL {
 
     @Test func fallbacksAreValidSFSymbols() {
         for symbol in DSSymbol.allCases {
-            #expect(NSImage(systemSymbolName: symbol.systemImageName, accessibilityDescription: nil) != nil, Comment(rawValue: "\(symbol): \(symbol.systemImageName)"))
+            #expect(
+                NSImage(systemSymbolName: symbol.systemImageName, accessibilityDescription: nil) != nil,
+                Comment(rawValue: "\(symbol): \(symbol.systemImageName)"))
         }
     }
 

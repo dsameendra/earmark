@@ -1,5 +1,5 @@
-import Foundation
 import DesignSystem
+import Foundation
 
 /// Sections of the Settings window (SET-AC-01). Only General is functional in the shell task.
 public enum SettingsSection: String, CaseIterable, Identifiable, Sendable {
@@ -62,6 +62,51 @@ public enum SettingsSection: String, CaseIterable, Identifiable, Sendable {
         case .storage: "internaldrive"
         case .keyboardShortcuts: "keyboard"
         case .privacyPermissions: "hand.raised"
+        }
+    }
+}
+
+/// Readable groups shared by Settings navigation and its coverage checks.
+public enum SettingsSectionGroup: String, CaseIterable, Identifiable, Sendable {
+    case app, capture, transcripts, system
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .app: "Earmark"
+        case .capture: "Capture"
+        case .transcripts: "Transcripts"
+        case .system: "System"
+        }
+    }
+    public var sections: [SettingsSection] {
+        switch self {
+        case .app: [.general, .models, .languages, .audio]
+        case .capture: [.meetings, .liveCaptions, .dictation]
+        case .transcripts: [.transcriptAppearance, .ignoredSegments, .replacements, .translation, .exportDefaults]
+        case .system: [.storage, .keyboardShortcuts, .privacyPermissions]
+        }
+    }
+}
+
+extension SettingsSection {
+    /// Explains the selected pane rather than repeating the same generic save notice everywhere.
+    public var summary: String {
+        switch self {
+        case .general: "Make Earmark feel at home on your Mac. Changes are saved automatically."
+        case .models: "Choose the local engines you need. Models download only when you ask."
+        case .languages: "Choose your languages and the models that understand them."
+        case .audio: "Choose microphones, test input and set the source for each kind of capture."
+        case .meetings: "Decide what happens when a meeting starts. Ask first is the default."
+        case .liveCaptions: "Shape the captions and overlay that follow your conversations."
+        case .dictation: "Speak where you type, with controls that fit your workflow."
+        case .transcriptAppearance: "Make transcripts comfortable to read and easy to follow."
+        case .ignoredSegments: "Keep unwanted segments out of view without deleting the original words."
+        case .replacements: "Correct familiar words and phrases consistently."
+        case .translation: "Choose how local translation handles your transcripts."
+        case .exportDefaults: "Keep your preferred document and subtitle settings close at hand."
+        case .storage: "Manage what Earmark keeps on this Mac."
+        case .keyboardShortcuts: "Move through Earmark and capture audio from the keyboard."
+        case .privacyPermissions: "Grant access when you need it. Your recordings and transcripts stay on this Mac."
         }
     }
 }

@@ -109,7 +109,9 @@ final class AppEnvironment {
     /// `true` when the debug mock flag is set.
     static var usesMocks: Bool {
         #if DEBUG
-            ProcessInfo.processInfo.arguments.contains("-UseMocks") || ProcessInfo.processInfo.environment["EARMARK_USE_MOCKS"] == "1"
+            Bundle.main.bundleIdentifier == "lk.dumindu.earmark.uihost"
+                || ProcessInfo.processInfo.arguments.contains("-UseMocks")
+                || ProcessInfo.processInfo.environment["EARMARK_USE_MOCKS"] == "1"
         #else
             false
         #endif
@@ -356,10 +358,11 @@ final class AppEnvironment {
         private static func mockServices() -> AppServices {
             let sample = [
                 Transcript(title: "Weekly sync", source: .meeting, duration: 1830, languages: ["en"]),
-                Transcript(title: "සම්මුඛ සාකච්ඡාව", source: .file, duration: 412, languages: ["si"]),
+                Transcript(title: "Project notes", source: .file, duration: 412, languages: ["es"]),
             ]
             let model = ModelDescriptor(
-                id: "mock/asr", displayName: "Mock ASR", kind: .asr, runtime: .coreML, languages: [.english], sizeBytes: 100,
+                id: "mock/asr", displayName: "On-device speech", kind: .asr, runtime: .coreML, languages: [.english, "es", "fr", .sinhala],
+                sizeBytes: 100,
                 license: LicenseInfo(spdx: "MIT"))
             var services = AppServices.preview(transcripts: sample)
             let speakers = [Speaker(name: "Interviewer", colorHex: "1B7A74"), Speaker(name: "Nimali Perera", colorHex: "C44B16")]
@@ -367,20 +370,37 @@ final class AppEnvironment {
                 "And when you look back at the early footage, what do you keep?",
                 "I always keep the first take. The second one is for the editor, but the first one is for me.",
                 "Even when the audio is rough?",
-                "Rough is honest. ශ්‍රී ලංකාව ගැන අපි කතා කරනවා.",
+                "Rough is honest. C’est la première prise qui compte.",
                 "Let's talk about how you earmark a moment worth coming back to.",
                 "Usually it is a pause. Someone stops, and you can hear them deciding whether to say the true thing.",
             ]
             var transcript = sample[0]
             transcript.speakers = speakers
-            transcript.languages = [.english, .sinhala]
+            transcript.languages = [.english, "fr"]
+            if let asset = try? MockPlaybackMedia.makeAsset() {
+                transcript.mediaAssetID = asset.id
+                transcript.duration = asset.duration
+                services.media = InMemoryMedia(items: [asset])
+            }
             let segments = lines.enumerated().map { index, text in
                 Segment(
                     start: Double(index * 12), end: Double(index * 12 + 10), text: text, speakerID: speakers[index % 2].id,
-                    languageCode: index == 3 ? .sinhala : .english)
+                    languageCode: index == 3 ? "fr" : .english)
             }
             services.transcripts = InMemoryTranscripts(items: [transcript, sample[1]], segments: [transcript.id: segments])
             services.models = MockModelManager(descriptors: [model])
+            if UITestConfiguration.value("-EarmarkTestQueue") == "YES" {
+                let states: [(String, JobState)] = [
+                    ("Running interview.wav", .running), ("Paused notes.wav", .paused), ("Waiting clip.wav", .pending),
+                    ("Finished conversation.wav", .completed), ("Stopped recording.wav", .cancelled), ("Failed import.wav", .failed),
+                ]
+                services.jobQueue = PlaceholderJobQueue(
+                    seed: states.map { title, state in
+                        Job(
+                            kind: .transcribeFile, state: state, input: URL(fileURLWithPath: "/tmp/\(title)"),
+                            transcriptID: state == .completed ? transcript.id : nil, progress: state == .completed ? 1 : 0.35)
+                    })
+            }
             return services
         }
     #endif

@@ -1,6 +1,6 @@
 #!/usr/bin/env swift
 // Generates Packages/DesignSystem/Sources/DesignSystem/Symbols/Resources/Symbols.xcassets from the 24 board symbols
-// (specs/design/m8-mockups/source/Icons.dc.html) plus the ear (Main.dc.html), as SF Symbols 7 template SVGs.
+// (Icons.dc.html), the ear (Main.dc.html), and distinct Search/Replace derivatives, as SF Symbols 7 template SVGs.
 //
 // Approach (recorded in specs/design/m8-symbol-review.md): every symbol is authored once as centreline paths on the
 // board's 24 px grid (ink layer + one Ember accent layer). For each of the 27 weight x scale cells the centrelines are
@@ -30,7 +30,13 @@ let glyphs: [Glyph] = [
     .init(name: "Export", asset: "earmark.export", p: "M5 13.5V18a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4.5", a: "M12 15V4.5M8 8.4l4-3.9 4 3.9"),
     .init(name: "Hidden", asset: "earmark.hidden", p: "M3 12s3.4-6 9-6 9 6 9 6-3.4 6-9 6-9-6-9-6z", a: "M4.5 4.5l15 15"),
     .init(name: "Earmark", asset: "earmark.earmark", p: "M7 3.5h10a1 1 0 0 1 1 1V20l-6-3.8L6 20V4.5a1 1 0 0 1 1-1z", a: "M14 3.5v3.5h4"),
-    .init(name: "Find", asset: "earmark.find", p: "M10.5 4.5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM15 15l5 5", a: "M8 10.5h5"),
+    .init(name: "Search", asset: "earmark.search",
+        p: "M10 3.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13z", a: "M15 15l5.5 5.5"),
+    .init(name: "Find", asset: "earmark.find",
+        p: "M6 3.5h9l3 3v5M6 3.5v17h6M15 3.5v4h3M9 8h3M9 11h2",
+        a: "M16 12a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM18.5 18.5l3 3"),
+    .init(name: "Replace", asset: "earmark.replace",
+        p: "M4 5h10M4 9h7M10 15h10M13 19h7", a: "M17 4l3 3-3 3M20 7h-4M7 14l-3 3 3 3M4 17h4"),
     .init(name: "Models", asset: "earmark.models", p: "M8 6.5h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 16V8A1.5 1.5 0 0 1 8 6.5zM9.5 3.5v3M14.5 3.5v3M9.5 17.5v3M14.5 17.5v3M3.5 9.5h3M3.5 14.5h3M17.5 9.5h3M17.5 14.5h3", a: "M10.5 10.5h3v3h-3z"),
     .init(name: "Settings", asset: "earmark.settings", p: "M4 8h9.8M17.6 8H20M4 16h2.4M10.2 16H20", a: "M13.8 8a1.9 1.9 0 1 0 3.8 0 1.9 1.9 0 1 0-3.8 0zM6.4 16a1.9 1.9 0 1 0 3.8 0 1.9 1.9 0 1 0-3.8 0z"),
     .init(name: "Play", asset: "earmark.play", p: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", a: "M10.2 8.8v6.4l5-3.2z"),

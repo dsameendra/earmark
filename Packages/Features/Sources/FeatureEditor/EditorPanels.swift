@@ -165,7 +165,12 @@ struct NoteRow: View {
 /// Font, size, spacing, density, toggles; global default or this transcript only (EDIT-AC-14).
 struct ViewOptionsPanel: View {
     let model: TranscriptEditorModel
-    static let families: [String?] = [nil, "New York", "Helvetica Neue", "Georgia", "Menlo", "Sinhala Sangam MN"]
+    static let families: [String?] = [nil, "New York", "Helvetica Neue", "Georgia", "Menlo"]
+
+    private var availableFamilies: [String?] {
+        guard let chosen = model.options.fontFamily, !Self.families.contains(chosen) else { return Self.families }
+        return Self.families + [chosen]
+    }
 
     var body: some View {
         let options = model.options
@@ -175,7 +180,7 @@ struct ViewOptionsPanel: View {
             }
             .pickerStyle(.segmented)
             Picker("Font", selection: binding(\.fontFamily)) {
-                ForEach(Self.families, id: \.self) { Text($0 ?? "System").tag($0) }
+                ForEach(availableFamilies, id: \.self) { Text($0 ?? "System").tag($0) }
             }
             LabeledContent("Size \(Int(options.fontSize)) pt") {
                 Slider(value: binding(\.fontSize), in: ViewOptions.fontSizeRange, step: 1)

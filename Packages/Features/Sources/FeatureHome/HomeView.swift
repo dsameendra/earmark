@@ -30,9 +30,11 @@ public struct HomeActions {
 
 /// Workbench: quick actions, a solid Recent sheet, and a queue summary alongside it (T35).
 public struct HomeView: View {
+    @State private var dropIsTargeted = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityPolicyOverride) private var policyOverride
     private let model: HomeModel
     private let actions: HomeActions
-    @Environment(\.shellLayout) private var layout
 
     public init(model: HomeModel, actions: HomeActions = HomeActions()) {
         self.model = model
@@ -40,44 +42,59 @@ public struct HomeView: View {
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: DSSpacing.md) {
-                if let message = model.errorMessage {
-                    ErrorState(message: message) { model.dismissError() }.frame(maxHeight: 120)
-                }
-                quickActions
-                if let download = model.download {
-                    ProgressRow(
-                        title: "Downloading \(download.modelName)", detail: download.isVerifying ? "Verifying" : nil,
-                        fraction: download.fraction
-                    )
-                    .padding(DSSpacing.md).dsSolidSurface(.inset)
-                }
-                if layout.widthClass == .regular {
-                    HStack(alignment: .top, spacing: DSSpacing.md) {
-                        recentSheet.frame(maxWidth: .infinity)
-                        VStack(spacing: DSSpacing.md) {
-                            workingSheet
-                            dropZone
-                        }.frame(width: 320)
+        GeometryReader { viewport in
+            let layout = WorkbenchLayout(width: viewport.size.width, height: viewport.size.height)
+            ScrollView {
+                VStack(alignment: .leading, spacing: DSSpacing.md) {
+                    if let message = model.errorMessage {
+                        HStack(spacing: DSSpacing.md) {
+                            Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(DSColor.danger)
+                            Spacer(minLength: DSSpacing.sm)
+                            Button("Dismiss") { model.dismissError() }.buttonStyle(.plain)
+                        }
+                        .padding(DSSpacing.md).background(DSColor.danger.opacity(0.08), in: .rect(cornerRadius: DSRadius.card))
                     }
-                } else {
-                    recentSheet
-                    workingSheet
-                    dropZone
+                    quickActions(columns: layout.actionColumns)
+                    if let download = model.download {
+                        ProgressRow(
+                            title: "Downloading \(download.modelName)", detail: download.isVerifying ? "Verifying" : nil,
+                            fraction: download.fraction
+                        )
+                        .padding(DSSpacing.md).dsSolidSurface(.inset)
+                    }
+                    if layout.showsSidePanel {
+                        HStack(alignment: .top, spacing: DSSpacing.md) {
+                            recentSheet(columns: layout.recentColumns, minimumHeight: layout.bodyMinimumHeight)
+                                .frame(maxWidth: .infinity)
+                            VStack(spacing: DSSpacing.md) {
+                                workingSheet(minimumHeight: max(240, layout.bodyMinimumHeight - 90 - DSSpacing.md))
+                                dropZone
+                            }
+                            .frame(width: layout.sidePanelWidth)
+                        }
+                    } else {
+                        recentSheet(columns: layout.recentColumns, minimumHeight: 300)
+                        workingSheet(minimumHeight: 220)
+                        dropZone
+                    }
                 }
+                .padding(layout.inset)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
             }
-            .padding(DSSpacing.md)
+            .background(DSColor.paper)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DSColor.paper)
         .navigationTitle("Home")
         .accessibilityIdentifier("home.workbench")
         .task { await model.run() }
+        .dsAnimation(.settle, value: model.recent.map(\.id))
+        .dsAnimation(.glide, value: model.summary)
     }
 
-    private var quickActions: some View {
+    private func quickActions(columns: Int) -> some View {
         LazyVGrid(
-            columns: Array(repeating: GridItem(.flexible(), spacing: DSSpacing.md), count: layout.homeActionColumns), spacing: DSSpacing.md
+            columns: Array(repeating: GridItem(.flexible(), spacing: DSSpacing.md), count: columns), spacing: DSSpacing.md
         ) {
             action(
                 "Transcribe a file", detail: "Audio or video, batch ready", symbol: .export, id: "home.transcribe",
@@ -113,7 +130,7 @@ public struct HomeView: View {
         .accessibilityIdentifier(id)
     }
 
-    private var recentSheet: some View {
+    private func recentSheet(columns: Int, minimumHeight: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: DSSpacing.lg) {
             HStack {
                 Text("Recent").font(DSTypography.title2).accessibilityAddTraits(.isHeader)
@@ -130,7 +147,7 @@ public struct HomeView: View {
                 )
                 .frame(minHeight: 280)
             } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: DSSpacing.md)], spacing: DSSpacing.md) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: DSSpacing.md), count: columns), spacing: DSSpacing.md) {
                     ForEach(model.recent.prefix(6)) { transcript in
                         Button {
                             actions.openTranscript(transcript.id)
@@ -139,16 +156,17 @@ public struct HomeView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("home.recent.\(transcript.id)")
+                        .dsTransition(.settle)
                     }
                 }
             }
         }
         .padding(DSSpacing.xl)
-        .frame(maxWidth: .infinity, minHeight: 440, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: minimumHeight, alignment: .topLeading)
         .dsSolidSurface(.sheet, radius: DSRadius.panel)
     }
 
-    private var workingSheet: some View {
+    private func workingSheet(minimumHeight: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: DSSpacing.lg) {
             HStack {
                 Text("Working on").font(DSTypography.headline).accessibilityAddTraits(.isHeader)
@@ -179,7 +197,7 @@ public struct HomeView: View {
                 .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
         }
         .padding(DSSpacing.xl)
-        .frame(maxWidth: .infinity, minHeight: 330, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: minimumHeight, alignment: .topLeading)
         .dsSolidSurface(.sheet, radius: DSRadius.panel)
         .accessibilityIdentifier("home.working")
     }
@@ -194,16 +212,20 @@ public struct HomeView: View {
             Spacer(minLength: 0)
         }
         .padding(DSSpacing.lg)
-        .frame(maxWidth: .infinity)
-        .background(DSColor.insetBackground, in: RoundedRectangle(cornerRadius: DSRadius.card))
+        .frame(maxWidth: .infinity, minHeight: 90)
+        .background(dropIsTargeted ? DSColor.accentTint : DSColor.insetBackground, in: RoundedRectangle(cornerRadius: DSRadius.card))
         .overlay(
             RoundedRectangle(cornerRadius: DSRadius.card).strokeBorder(
-                DSColor.accentText.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                DSColor.accentText.opacity(dropIsTargeted ? 1 : 0.5), style: StrokeStyle(lineWidth: dropIsTargeted ? 2 : 1, dash: [3, 3]))
         )
         .dropDestination(for: URL.self) { urls, _ in
             Task { if await model.enqueue(urls) { actions.openQueue() } }
             return !urls.isEmpty
+        } isTargeted: {
+            dropIsTargeted = $0
         }
+        .scaleEffect(dropIsTargeted && !(policyOverride?.suppressesMotion ?? reduceMotion) ? 1.015 : 1)
+        .dsAnimation(.glide, value: dropIsTargeted)
         .accessibilityLabel("Drop audio, video or folders to transcribe")
         .accessibilityIdentifier("home.dropZone")
     }
@@ -235,4 +257,25 @@ struct RecentTranscriptCard: View {
         .dsSolidSurface(.inset, radius: DSRadius.card)
         .contentShape(RoundedRectangle(cornerRadius: DSRadius.card))
     }
+}
+
+/// Workbench proportions derive from the detail column, rather than a fixed screen-width assumption.
+public struct WorkbenchLayout: Equatable, Sendable {
+    public var width: CGFloat
+    public var height: CGFloat
+
+    public init(width: CGFloat, height: CGFloat) {
+        self.width = max(0, width)
+        self.height = max(0, height)
+    }
+
+    public var inset: CGFloat { width >= 1500 ? DSSpacing.xl : DSSpacing.md }
+    public var actionColumns: Int { width >= 1000 ? 4 : (width >= 560 ? 2 : 1) }
+    public var showsSidePanel: Bool { width >= 1000 }
+    public var sidePanelWidth: CGFloat { min(400, max(280, width * 0.28)) }
+    public var recentColumns: Int {
+        let available = width - 2 * inset - (showsSidePanel ? sidePanelWidth + DSSpacing.md : 0) - 2 * DSSpacing.xl
+        return max(1, min(4, Int(available / (280 + DSSpacing.md))))
+    }
+    public var bodyMinimumHeight: CGFloat { max(360, height - 2 * inset - 112 - 2 * DSSpacing.lg - DSSpacing.md) }
 }

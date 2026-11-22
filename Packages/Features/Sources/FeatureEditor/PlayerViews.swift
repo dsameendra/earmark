@@ -177,8 +177,12 @@ struct TransportBar: View {
                 }
                 .buttonStyle(.plain).disabled(!playback.canPlay)
                 .accessibilityLabel(playback.isPlaying ? "Pause" : "Play").help("Play/Pause (Space or K)")
+                .accessibilityValue(playback.isPlaying ? "Playing" : "Paused")
                 .accessibilityIdentifier("editor.player.play")
                 Text(TimeFormat.clock(playback.currentTime)).font(DSTypography.timestamp).monospacedDigit()
+                    .accessibilityLabel("Playback position")
+                    .accessibilityValue(String(format: "%.2f", playback.currentTime))
+                    .accessibilityIdentifier("editor.player.position")
                 Slider(value: Binding(get: { playback.currentTime }, set: { playback.seek(to: $0) }), in: 0...max(playback.duration, 1))
                     .accessibilityLabel("Seek").disabled(!playback.canPlay)
                     .accessibilityIdentifier("editor.player.seek")
@@ -207,7 +211,7 @@ struct TransportBar: View {
         }
         .buttonStyle(.borderless)
         .padding(DSSpacing.md)
-        .frame(maxWidth: 840)
+        .frame(maxWidth: .infinity)
         .dsGlass(.clear, radius: DSRadius.panel)
         .accessibilityLabel("Player")
     }
@@ -270,5 +274,9 @@ struct DetachedPlayerView: View {
             TransportBar(model: model)
         }
         .frame(minWidth: 420, minHeight: 240)
+        .background(PlaybackKeyboardCapture(playback: model.playback).allowsHitTesting(false))
+        .background(DSColor.paper)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("editor.detachedPlayer")
     }
 }

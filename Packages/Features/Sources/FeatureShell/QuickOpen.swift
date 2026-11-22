@@ -40,6 +40,7 @@ public final class QuickOpenModel {
                 merged.append(QuickOpenResult(id: hit.transcriptID, title: title, snippet: hit.snippet))
             }
         }
+        guard !Task.isCancelled, query.trimmingCharacters(in: .whitespacesAndNewlines) == text else { return }
         results = merged
         highlighted = 0
     }
@@ -50,9 +51,16 @@ public final class QuickOpenModel {
     }
 
     public var highlightedResult: QuickOpenResult? { results.indices.contains(highlighted) ? results[highlighted] : nil }
+
+    /// Starts each new search session empty rather than briefly showing a previous query's results.
+    public func reset() {
+        query = ""
+        results = []
+        highlighted = 0
+    }
 }
 
-/// ⌘K palette sheet. Return opens the highlighted result; Escape dismisses.
+/// Transient ⌘K search popover. Return opens the highlighted result; Escape or an outside click dismisses it.
 struct QuickOpenView: View {
     @Bindable var model: QuickOpenModel
     let onOpen: (TranscriptID) -> Void
@@ -61,7 +69,15 @@ struct QuickOpenView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpacing.sm) {
-            TextField("Search transcripts", text: $model.query)
+            HStack {
+                Label("Search transcripts", symbol: .search).font(DSTypography.headline)
+                Spacer()
+                Text("⌘K").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                Button("Close search", systemImage: "xmark") { onDismiss() }
+                    .labelStyle(.iconOnly).buttonStyle(.plain)
+                    .accessibilityIdentifier("quickOpen.close")
+            }
+            TextField("Title or words in a transcript", text: $model.query)
                 .textFieldStyle(.roundedBorder)
                 .font(.title3)
                 .focused($focused)
@@ -81,9 +97,17 @@ struct QuickOpenView: View {
                 .accessibilityLabel("Quick open")
                 .accessibilityHint("Type to search titles and transcript text. Return opens the selected result.")
             if model.results.isEmpty {
-                Text(model.query.isEmpty ? "Search titles and full text across your library." : "No matches.")
-                    .foregroundStyle(DSColor.secondaryText)
-                    .frame(maxWidth: .infinity, minHeight: 120)
+                VStack(spacing: DSSpacing.sm) {
+                    DSIcon(.search).font(.title2)
+                    Text(model.query.isEmpty ? "Find a moment worth keeping." : "No matching transcripts")
+                        .font(DSTypography.headline)
+                    Text(
+                        model.query.isEmpty
+                            ? "Search titles and the words inside your transcripts." : "Try a different title or a few fewer words."
+                    )
+                    .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                }
+                .frame(maxWidth: .infinity, minHeight: 140)
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: DSSpacing.xxs) {
@@ -92,7 +116,7 @@ struct QuickOpenView: View {
                                 onOpen(result.id)
                             } label: {
                                 VStack(alignment: .leading) {
-                                    Text(result.title)
+                                    Text(result.title).font(DSTypography.headline)
                                     if let snippet = result.snippet {
                                         Text(snippet).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText).lineLimit(1)
                                     }
@@ -114,10 +138,12 @@ struct QuickOpenView: View {
             }
         }
         .padding(DSSpacing.lg)
-        .frame(width: 520)
+        .frame(width: 480)
+        .background(DSColor.contentBackground)
+        .dsAnimation(.glide, value: model.highlighted)
         .task { focused = true }
         .task(id: model.query) {
-            try? await Task.sleep(for: .milliseconds(150))
+            if !model.query.isEmpty { try? await Task.sleep(for: .milliseconds(150)) }
             guard !Task.isCancelled else { return }
             await model.search()
         }

@@ -35,7 +35,7 @@ struct TranslationRuntime: Sendable {
 
 /// `TranslationPreparing`: what each target language still needs (TRN-AC-03, TRN-AC-15).
 final class AppTranslationService: TranslationPreparing, Sendable {
-    static let sinhalaUnavailable = "Sinhala translation unavailable in this build (it needs the NLLB runtime, see ADR-009)."
+    static let sinhalaUnavailable = "Translation for this language pair is unavailable in this build."
 
     private let models: any ModelManaging
     private let nllb: NLLBEngine?

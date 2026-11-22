@@ -51,41 +51,18 @@ public enum LiveSourceChoice: String, CaseIterable, Identifiable, Sendable {
     public var usesMicrophone: Bool { self != .system }
 }
 
-/// Language modes offered on the Live screen; English is the default.
-public enum LiveLanguageChoice: String, CaseIterable, Identifiable, Sendable {
-    case english, sinhala, auto
-    public var id: String { rawValue }
-    public var title: String {
-        switch self {
-        case .english: "English"
-        case .sinhala: "Sinhala (experimental)"
-        case .auto: "Auto-detect"
-        }
-    }
-    public var mode: LanguageMode {
-        switch self {
-        case .english: .single(.english)
-        case .sinhala: .single(.sinhala)
-        case .auto: .autoDetect
-        }
-    }
-    public init(mode: LanguageMode) {
-        switch mode {
-        case .single(let code) where code.primary == .sinhala: self = .sinhala
-        case .autoDetect, .multilingual: self = .auto
-        default: self = .english
-        }
-    }
-}
+/// Shared catalog-driven language choice, also used by the menu-bar controls.
+public typealias LiveLanguageChoice = TranscriptionLanguageChoice
 
 /// Drives the Live screen from `LiveSessionControlling` plus the optional `LiveSessionExtras`.
 @MainActor @Observable
 public final class LiveModel {
     public private(set) var state: LiveSessionState = .idle
     public private(set) var lines: [CaptionLine] = []
+    public private(set) var languageChoices: [LiveLanguageChoice] = [.auto, .english]
     public var source: LiveSourceChoice = .mic { didSet { if source != oldValue { persist(SettingsKey.liveSource, source.rawValue) } } }
     public var language: LiveLanguageChoice = .english {
-        didSet { if language != oldValue { persist(SettingsKey.languageMode, language.mode) } }
+        didSet { if language != oldValue { persistLanguage() } }
     }
     /// `nil` means the system default input.
     public var deviceUID: String? { didSet { if deviceUID != oldValue { persist(SettingsKey.liveInputDeviceUID, deviceUID ?? "") } } }
@@ -104,14 +81,17 @@ public final class LiveModel {
 
     @ObservationIgnored private let live: any LiveSessionControlling
     @ObservationIgnored private let extras: (any LiveSessionExtras)?
+    @ObservationIgnored private let models: any ModelManaging
     @ObservationIgnored private let settings: any SettingsStore
     @ObservationIgnored private let audioDevices: any AudioDeviceProviding
     @ObservationIgnored private var isLoadingPreferences = false
+    @ObservationIgnored private var languageSaveTask: Task<Void, Never>?
 
     public init(services: AppServices) {
         live = services.live
         extras = services.liveExtras
         settings = services.settings
+        models = services.models
         audioDevices = services.audioDevices
     }
 
@@ -120,7 +100,7 @@ public final class LiveModel {
 
     /// Why Start is unavailable, or `nil` when it can start.
     public var startDisabledReason: String? {
-        if source.usesMicrophone, devices.isEmpty, source == .mic { return "No input device available" }
+        if source.usesMicrophone, devices.isEmpty { return "No input device available" }
         return nil
     }
 
@@ -133,7 +113,10 @@ public final class LiveModel {
     public func watchState() async {
         for await next in live.state() {
             state = next
-            if !isRunning { level = 0; isPaused = false }
+            if !isRunning {
+                level = 0
+                isPaused = false
+            }
         }
     }
 
@@ -146,7 +129,10 @@ public final class LiveModel {
     public func watchLevels() async {
         guard let extras else { return }
         for await next in extras.levels() {
-            guard isRunning else { level = 0; continue }
+            guard isRunning else {
+                level = 0
+                continue
+            }
             // Fast attack, slower release so the meter is readable.
             level = next > level ? next : level * 0.7 + next * 0.3
         }
@@ -187,6 +173,7 @@ public final class LiveModel {
         if let mode = await settings.value(for: SettingsKey.languageMode, as: LanguageMode.self) {
             language = LiveLanguageChoice(mode: mode)
         }
+        await reloadLanguageChoices()
         let uid = await settings.value(for: SettingsKey.liveInputDeviceUID, as: String.self)
         let global = await settings.value(for: SettingsKey.inputDeviceUID, as: String.self)
         let chosen = (uid?.isEmpty ?? true) ? global : uid
@@ -196,6 +183,44 @@ public final class LiveModel {
             overlayEnabled = await extras.isOverlayEnabled()
             presets = await extras.presets()
             preset = await extras.activePreset()
+        }
+    }
+
+    /// Follows model availability and shared language preference changes while Live is open.
+    public func watchLanguageChoices() async {
+        let modelChanges = models.stateChanges()
+        let languageChanges = settings.changes(for: SettingsKey.languageMode)
+        let modelWatcher = Task { [weak self] in
+            for await _ in modelChanges { await self?.reloadLanguageChoices() }
+        }
+        defer { modelWatcher.cancel() }
+        for await _ in languageChanges {
+            guard !Task.isCancelled else { return }
+            let saved = await settings.value(for: SettingsKey.languageMode, as: LanguageMode.self)
+            if !isRunning, let mode = saved {
+                let wasLoading = isLoadingPreferences
+                isLoadingPreferences = true
+                language = LiveLanguageChoice(mode: mode)
+                isLoadingPreferences = wasLoading
+            }
+            await reloadLanguageChoices()
+        }
+    }
+
+    private func reloadLanguageChoices() async {
+        languageChoices = LiveLanguageChoice.options(catalog: await models.catalog(), including: language.mode)
+    }
+
+    private func persistLanguage() {
+        guard !isLoadingPreferences else { return }
+        languageSaveTask?.cancel()
+        let choice = language
+        let models = models
+        let settings = settings
+        languageSaveTask = Task {
+            let catalog = await models.catalog()
+            guard !Task.isCancelled else { return }
+            await choice.persist(to: settings, catalog: catalog)
         }
     }
 
@@ -212,10 +237,9 @@ public final class LiveModel {
         savedTranscriptID = nil
         // Live translation (LIVE-AC-13): lines are translated into the default target when the preset shows translations.
         var target: LanguageCode?
-        if preset.showTranslation || preset.translatedOnly,
-            let raw = await settings.value(for: SettingsKey.translationTarget, as: String.self), !raw.isEmpty
-        {
-            target = LanguageCode(raw)
+        if preset.showTranslation || preset.translatedOnly {
+            let raw = await settings.value(for: SettingsKey.translationTarget, as: String.self)
+            if let raw, !raw.isEmpty { target = LanguageCode(raw) }
         }
         let config = LiveSessionConfig(
             source: source.captureSource(deviceUID: deviceUID), languageMode: language.mode, diarize: source != .mic,

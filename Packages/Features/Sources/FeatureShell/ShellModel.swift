@@ -14,6 +14,8 @@ import SwiftUI
 public final class ShellModel {
     public private(set) var selection: AppSection = .home
     public var isQuickOpenPresented = false
+    /// Changes when a search command should focus the single Library search field.
+    public private(set) var librarySearchFocusToken = 0
     /// The transcript currently open in the editor (replaces the section detail until closed).
     public var openedTranscript: TranscriptID?
     public var isImporterPresented = false
@@ -55,6 +57,10 @@ public final class ShellModel {
     /// Responsive layout for the current window width.
     public var layout: ShellLayout { ShellLayout(width: windowWidth) }
 
+    /// Library routes search in place; every other route uses global Quick Open.
+    public var usesLibrarySearch: Bool { openedTranscript == nil && (selection == .library || selection == .recentlyDeleted) }
+    public var searchableLibrary: LibraryModel { selection == .recentlyDeleted ? recentlyDeleted : library }
+
     /// `true` when the Editor inspector should be on screen: always when wide, else only while toggled on.
     public var isInspectorPresented: Bool { !layout.inspectorCollapsed || isInspectorToggledOn }
 
@@ -88,6 +94,7 @@ public final class ShellModel {
 
     /// Selects `section` and remembers it.
     public func select(_ section: AppSection) {
+        isQuickOpenPresented = false
         selection = section
         openedTranscript = nil
         if section == .library { Task { await sidebar.reloadFolders() } }
@@ -95,9 +102,21 @@ public final class ShellModel {
         Task { await persistence.save(section) }
     }
 
+    /// Moves sidebar selection with Up/Down while sidebar navigation has keyboard focus; stops at either end.
+    public func moveSidebarSelection(by offset: Int) {
+        guard let current = AppSection.allCases.firstIndex(of: selection) else { return }
+        let next = min(AppSection.allCases.count - 1, max(0, current + offset))
+        guard next != current else { return }
+        select(AppSection.allCases[next])
+    }
+
     /// Opens the ⌘K palette.
     public func presentQuickOpen() {
-        quickOpen.query = ""
+        if usesLibrarySearch {
+            librarySearchFocusToken += 1
+            return
+        }
+        quickOpen.reset()
         isQuickOpenPresented = true
     }
 
@@ -128,7 +147,8 @@ public final class ShellModel {
     /// Enqueues files/folders and navigates to Queue.
     public func enqueue(_ urls: [URL]) async {
         do {
-            _ = try await services.jobQueue.enqueue(files: urls, settings: JobSettings(), recursive: true)
+            let defaults = await FileJobSettings.load(from: services.settings, catalog: services.models.catalog())
+            _ = try await services.jobQueue.enqueue(files: urls, settings: defaults, recursive: true)
             errorMessage = nil
             select(.queue)
         } catch {

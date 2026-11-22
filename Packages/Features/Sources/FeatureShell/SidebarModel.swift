@@ -19,19 +19,22 @@ public struct SidebarModelChip: Equatable, Sendable {
     public var status: Status
     /// "On this Mac · 1.6 GB".
     public var detail: String
+    public var statusLabel: String?
 
-    public init(name: String, status: Status, detail: String) {
+    public init(name: String, status: Status, detail: String, statusLabel: String? = nil) {
         self.name = name
         self.status = status
         self.detail = detail
+        self.statusLabel = statusLabel
     }
 
     /// Short status word shown at the chip's trailing edge.
     public var statusText: String {
-        switch status {
+        if let statusLabel { return statusLabel }
+        return switch status {
         case .ready: "Ready"
         case .notInstalled: "Not downloaded"
-        case .downloading(let f): "\(Int((f * 100).rounded()))%"
+        case .downloading: "\(Int((fraction * 100).rounded()))%"
         case .paused: "Paused"
         case .failed: "Failed"
         }
@@ -41,7 +44,7 @@ public struct SidebarModelChip: Equatable, Sendable {
     public var fraction: Double {
         switch status {
         case .ready: 1
-        case .downloading(let f), .paused(let f): f
+        case .downloading(let f), .paused(let f): f.isFinite ? min(1, max(0, f)) : 0
         case .notInstalled, .failed: 0
         }
     }
@@ -56,8 +59,45 @@ public struct SidebarModelChip: Equatable, Sendable {
         case .paused(let f): status = .paused(fraction: f)
         case .failed: status = .failed
         }
+        let detail: String
+        switch state {
+        case .installed: detail = model.runtime == .appleAsset ? "Managed by macOS" : "On this Mac · \(size)"
+        case .notInstalled: detail = model.runtime == .appleAsset ? "Language assets managed by macOS" : "Download required · \(size)"
+        case .downloading: detail = "Downloading · \(size)"
+        case .paused: detail = "Download paused · \(size)"
+        case .failed(let reason): detail = reason
+        }
         return SidebarModelChip(
-            name: model.displayName, status: status, detail: status == .ready ? "On this Mac · \(size)" : "Download · \(size)")
+            name: model.displayName, status: status, detail: detail,
+            statusLabel: model.runtime == .appleAsset && status == .notInstalled ? "Needs assets" : nil)
+    }
+
+    static func make(models: [ModelDescriptor], states: [ModelID: ModelState]) -> SidebarModelChip {
+        if models.count == 1, let model = models.first { return make(model: model, state: states[model.id] ?? .notInstalled) }
+        guard !models.isEmpty else {
+            return SidebarModelChip(name: "Choose a speech model", status: .notInstalled, detail: "No compatible file model is available")
+        }
+        let chips = models.map { make(model: $0, state: states[$0.id] ?? .notInstalled) }
+        let ready = chips.filter { $0.status == .ready }.count
+        let status: Status
+        if chips.contains(where: { $0.status == .failed }) {
+            status = .failed
+        } else if chips.contains(where: {
+            if case .downloading = $0.status { return true }
+            return false
+        }) {
+            status = .downloading(fraction: chips.map(\.fraction).reduce(0, +) / Double(chips.count))
+        } else if chips.contains(where: {
+            if case .paused = $0.status { return true }
+            return false
+        }) {
+            status = .paused(fraction: chips.map(\.fraction).reduce(0, +) / Double(chips.count))
+        } else {
+            status = ready == chips.count ? .ready : .notInstalled
+        }
+        return SidebarModelChip(
+            name: "Automatic · \(models.count) models", status: status,
+            detail: "\(ready) of \(models.count) ready · " + models.map(\.displayName).joined(separator: ", "))
     }
 }
 
@@ -126,12 +166,11 @@ public final class SidebarModel {
 
     func reloadModel(changed: ModelID? = nil) async {
         let catalog = await services.models.catalog()
-        guard let model = await PreferredModel.resolve(in: catalog, settings: services.settings) else {
-            modelChip = nil
-            return
-        }
-        if let changed, changed != model.id { return }
-        modelChip = SidebarModelChip.make(model: model, state: await services.models.state(of: model.id))
+        let models = await PreferredModel.fileModels(in: catalog, settings: services.settings, tier: services.hardware.profile.tier)
+        if let changed, !models.contains(where: { $0.id == changed }) { return }
+        var states: [ModelID: ModelState] = [:]
+        for model in models { states[model.id] = await services.models.state(of: model.id) }
+        modelChip = SidebarModelChip.make(models: models, states: states)
     }
 
     static func activeCount(_ jobs: [JobID: Job]) -> Int {

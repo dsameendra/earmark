@@ -9,6 +9,7 @@ public struct QueueView: View {
     @Bindable private var model: QueueModel
     private let onOpenTranscript: (TranscriptID) -> Void
     @State private var isImporterPresented = false
+    @State private var confirmsClearQueue = false
 
     public init(model: QueueModel, onOpenTranscript: @escaping (TranscriptID) -> Void = { _ in }) {
         self.model = model
@@ -37,6 +38,12 @@ public struct QueueView: View {
                 BatchSettingsSheet(model: batch, onCancel: { model.batch = nil }, onAdd: { Task { await model.submitBatch() } })
             }
             .task { await model.run() }
+            .dsAnimation(.settle, value: model.jobs.map { "\($0.id):\($0.state.rawValue)" })
+            .confirmationDialog("Clear the queue?", isPresented: $confirmsClearQueue) {
+                Button("Cancel active work and clear queue", role: .destructive) { Task { await model.clearQueue() } }
+            } message: {
+                Text("Active jobs will stop. Saved transcripts, partial transcripts and source recordings stay in your Library.")
+            }
     }
 
     @ViewBuilder private var content: some View {
@@ -66,7 +73,7 @@ public struct QueueView: View {
                 }
                 List {
                     ForEach(model.visibleGroups) { group in
-                        Section(group.title) {
+                        Section {
                             if group == .pending {
                                 ForEach(model.jobs(in: group)) { job in
                                     QueueRow(job: job, model: model, onOpenTranscript: onOpenTranscript)
@@ -77,6 +84,9 @@ public struct QueueView: View {
                                     QueueRow(job: job, model: model, onOpenTranscript: onOpenTranscript)
                                 }
                             }
+                        } header: {
+                            Text(group.title).font(DSTypography.title2).foregroundStyle(DSColor.primaryText)
+                                .padding(.top, DSSpacing.sm).padding(.bottom, DSSpacing.xs)
                         }
                     }
                 }
@@ -92,11 +102,25 @@ public struct QueueView: View {
         ToolbarItemGroup {
             Button("Add Files…", systemImage: "plus") { isImporterPresented = true }
                 .help("Add audio or video files or folders")
+                .accessibilityIdentifier("queue.add")
+            Button("Clear Finished", systemImage: "checkmark.circle") { Task { await model.clearFinished() } }
+                .labelStyle(.titleAndIcon)
+                .disabled(!model.hasFinished || model.isClearing)
+                .help("Remove completed and cancelled jobs from the queue. Transcripts stay in the Library.")
+                .accessibilityIdentifier("queue.clearFinished")
             Menu("Queue Actions", systemImage: "ellipsis.circle") {
                 Button("Pause All", systemImage: "pause.fill") { Task { await model.pauseAll() } }
+                    .disabled(!model.hasActive || model.isClearing)
                 Button("Resume All", systemImage: "play.fill") { Task { await model.resumeAll() } }
+                    .disabled(model.jobs(in: .paused).isEmpty || model.isClearing)
                 Button("Retry Failed", symbol: .retry) { Task { await model.retryAllFailed() } }
+                    .disabled(model.jobs(in: .failed).isEmpty || model.isClearing)
+                Divider()
+                Button("Clear Queue…", systemImage: "xmark.circle", role: .destructive) { confirmsClearQueue = true }
+                    .disabled(model.jobs.isEmpty || model.isClearing)
+                    .accessibilityIdentifier("queue.clearAll")
             }
+            .accessibilityIdentifier("queue.actions")
             Stepper(
                 "Parallel jobs: \(model.maxConcurrency)",
                 value: Binding(get: { model.maxConcurrency }, set: { value in Task { await model.setConcurrency(value) } }), in: 1...4
@@ -116,16 +140,29 @@ private struct QueueRow: View {
     let onOpenTranscript: (TranscriptID) -> Void
 
     var body: some View {
-        HStack(spacing: DSSpacing.md) {
-            VStack(alignment: .leading, spacing: DSSpacing.xs) {
-                ProgressRow(
-                    title: job.input?.lastPathComponent ?? "Job", detail: QueueFormatting.detail(for: job),
-                    fraction: job.state == .running || job.state == .paused ? job.progress : nil)
-                if let reason = job.failureReason { Text(reason).font(DSTypography.caption).foregroundStyle(DSColor.danger) }
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: DSSpacing.md) {
+                fileIcon
+                titleColumn.frame(minWidth: 180, maxWidth: .infinity, alignment: .leading)
+                progressColumn.frame(minWidth: 180, maxWidth: .infinity, alignment: .leading)
+                rowActions
             }
-            StatusPill(state: job.state)
-            actionButtons
+            VStack(alignment: .leading, spacing: DSSpacing.sm) {
+                HStack(spacing: DSSpacing.sm) {
+                    fileIcon
+                    titleColumn
+                    Spacer(minLength: 0)
+                    StatusPill(state: job.state)
+                }
+                progressColumn
+                HStack {
+                    Spacer()
+                    actionButtons
+                    removeButton
+                }
+            }
         }
+        .disabled(model.removingIDs.contains(job.id) || model.isClearing)
         .padding(DSSpacing.md)
         .background(
             job.state == .failed ? DSColor.danger.opacity(0.08) : DSColor.insetBackground,
@@ -139,9 +176,62 @@ private struct QueueRow: View {
         .accessibilityValue(accessibilityValue)
     }
 
+    private var fileIcon: some View {
+        DSIcon(.waveform).font(DSTypography.title2)
+            .frame(width: 38, height: 38)
+            .background(DSColor.paper, in: RoundedRectangle(cornerRadius: DSRadius.medium))
+            .accessibilityHidden(true)
+    }
+
+    private var titleColumn: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.xs) {
+            Text(job.input?.lastPathComponent ?? "Job").font(DSTypography.body.weight(.medium)).lineLimit(1)
+            Text(QueueFormatting.detail(for: job)).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText).lineLimit(2)
+        }
+    }
+
+    private var progressColumn: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.xs) {
+            if QueueFormatting.showsProgress(for: job.state) {
+                ProgressView(value: QueueFormatting.fraction(job.progress))
+                    .tint(job.state == .paused ? DSColor.secondaryText : DSColor.accent)
+                    .accessibilityLabel(job.state == .paused ? "Paused progress" : "Progress")
+                    .accessibilityIdentifier("queue.progress.\(job.id)")
+                Text(QueueFormatting.fraction(job.progress), format: .percent.precision(.fractionLength(0)))
+                    .font(DSTypography.timestamp).foregroundStyle(DSColor.secondaryText)
+            }
+            if let reason = job.failureReason {
+                Text(reason).font(DSTypography.caption).foregroundStyle(DSColor.danger).lineLimit(3)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var rowActions: some View {
+        HStack(spacing: DSSpacing.sm) {
+            StatusPill(state: job.state)
+            actionButtons
+            removeButton
+        }
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var removeButton: some View {
+        Button {
+            Task { await model.remove(job.id) }
+        } label: {
+            Image(systemName: "minus.circle")
+        }
+        .buttonStyle(.borderless)
+        .frame(minWidth: DSLayout.minControlHeight, minHeight: DSLayout.minControlHeight)
+        .help(job.state == .running || job.state == .pending ? "Cancel and remove from queue" : "Remove from queue")
+        .accessibilityLabel(job.state == .running || job.state == .pending ? "Cancel and remove from queue" : "Remove from queue")
+        .accessibilityIdentifier("queue.remove.\(job.id)")
+    }
+
     private var accessibilityValue: String {
         var parts = [job.state.rawValue]
-        if job.state == .running || job.state == .paused { parts.append("\(Int(job.progress * 100)) percent") }
+        if job.state == .running || job.state == .paused { parts.append("\(Int(QueueFormatting.fraction(job.progress) * 100)) percent") }
         if let reason = job.failureReason { parts.append(reason) }
         return parts.joined(separator: ", ")
     }
@@ -150,10 +240,10 @@ private struct QueueRow: View {
         switch job.state {
         case .pending, .running:
             Button("Pause", systemImage: "pause.fill") { Task { await model.pause(job.id) } }.labelStyle(.iconOnly)
-            Button("Cancel", systemImage: "xmark") { Task { await model.cancel(job.id) } }.labelStyle(.iconOnly)
+            Button("Cancel", systemImage: "stop.fill") { Task { await model.cancel(job.id) } }.labelStyle(.iconOnly)
         case .paused:
             Button("Resume", systemImage: "play.fill") { Task { await model.resume(job.id) } }.labelStyle(.iconOnly)
-            Button("Cancel", systemImage: "xmark") { Task { await model.cancel(job.id) } }.labelStyle(.iconOnly)
+            Button("Cancel", systemImage: "stop.fill") { Task { await model.cancel(job.id) } }.labelStyle(.iconOnly)
         case .failed, .cancelled:
             Button("Retry", symbol: .retry) { Task { await model.retry(job.id) } }.labelStyle(.iconOnly)
         case .completed:

@@ -47,6 +47,8 @@ public final class BatchSettingsModel {
     public private(set) var errorMessage: String?
 
     @ObservationIgnored private let services: AppServices
+    @ObservationIgnored private var defaultsLoaded = false
+    @ObservationIgnored private var hasEditedConfiguration = false
 
     public init(urls: [URL], services: AppServices) {
         self.urls = urls
@@ -56,6 +58,23 @@ public final class BatchSettingsModel {
     /// Loads the model catalog, install state, export presets and queued duplicates.
     public func prepare() async {
         catalog = await services.models.catalog()
+        if !defaultsLoaded {
+            defaultsLoaded = true
+            let defaults = await FileJobSettings.load(from: services.settings, catalog: catalog)
+            if !hasEditedConfiguration {
+                switch defaults.languageMode {
+                case .single(let language):
+                    kind = .single
+                    singleLanguage = language
+                    multiLanguages = [language]
+                case .multilingual(let languages):
+                    kind = .multilingual
+                    multiLanguages = languages
+                case .autoDetect: kind = .autoDetect
+                }
+                modelID = defaults.modelID
+            }
+        }
         installed = await services.models.installedModels()
         presets = (try? await services.presets?.exportPresets())?.filter { $0.deletedAt == nil } ?? []
         let queued = Set(await services.jobQueue.jobs().filter { $0.state != .completed && $0.state != .cancelled }.compactMap(\.input))
@@ -66,16 +85,16 @@ public final class BatchSettingsModel {
 
     public var table: LanguageCapabilityTable { LanguageCapabilityTable(models: catalog) }
 
-    /// Languages offered in the pickers (English and Sinhala when no catalog is available yet).
+    /// Catalog languages plus the current choice, so a saved language is never silently replaced.
     public var languageOptions: [LanguageCode] {
         let all = table.languages()
-        return (all.isEmpty ? [.english, .sinhala] : Array(all)).sorted()
+        return Set(all).union(multiLanguages).union([singleLanguage]).sorted()
     }
 
     /// Languages offered as translation targets.
     public var translationOptions: [LanguageCode] {
         let all = table.languages(kind: .translation)
-        return (all.isEmpty ? [.english, .sinhala] : Array(all)).sorted()
+        return (all.isEmpty ? [.english] : Array(all)).sorted()
     }
 
     public var languageMode: LanguageMode {
@@ -102,16 +121,19 @@ public final class BatchSettingsModel {
     public func isInstalled(_ id: ModelID) -> Bool { installed.contains(id) }
 
     public func setKind(_ newKind: LanguageModeKind) {
+        hasEditedConfiguration = true
         kind = newKind
         reconcileModel()
     }
 
     public func setSingleLanguage(_ code: LanguageCode) {
+        hasEditedConfiguration = true
         singleLanguage = code
         reconcileModel()
     }
 
     public func toggleLanguage(_ code: LanguageCode) {
+        hasEditedConfiguration = true
         if multiLanguages.contains(code) { multiLanguages.remove(code) } else { multiLanguages.insert(code) }
         reconcileModel()
     }
@@ -126,6 +148,7 @@ public final class BatchSettingsModel {
 
     /// Picks a model (`nil` = Auto). An undownloaded model is downloaded with inline progress.
     public func selectModel(_ id: ModelID?) async {
+        hasEditedConfiguration = true
         modelID = id
         download = .idle
         guard let id, !installed.contains(id) else { return }

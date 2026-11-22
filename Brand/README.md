@@ -45,6 +45,6 @@ Regenerate everything with `scripts/render-brand.sh` (macOS built-ins only: swif
 ## Icon Composer bundle
 
 `App/Earmark.icon` (icon.json plus `Assets/*.svg`). The document fill is the tile gradient (Default and Dark specializations);
-layers are curl, arc and ear with `-dark` variants. Strokes must be filled outlines, so `ear*.svg` and `arc*.svg` are generated
-by `scripts/outline-icon-layers.swift`. Tinted and Clear are derived by the system. Format notes: every `*-specializations`
+layers are curl, arc, ear and the full-bleed tile with `-dark` variants. Strokes must be filled outlines, so `ear*.svg` and `arc*.svg` are generated
+by `scripts/outline-icon-layers.swift`. Tinted and Clear are derived by the system. The tile is the back-most layer (Icon Composer orders layers front to back); its SVG preserves the exact 55% middle Ember stop because native document gradients accept only two colors. The curl closes diagonally at `H100Z`, never `H100V0Z`: adding the extra vertical edge turns the triangular folded flap into a square. Run `python3 scripts/check-brand.py` to compare these details directly with the locked Main board. Format notes: every `*-specializations`
 array must include a base entry (no `appearance`) and must replace the plain key (plain `fill` / `image-name` alongside it is ignored).

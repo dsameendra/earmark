@@ -4,32 +4,8 @@ import FeatureSupport
 import Foundation
 import Observation
 
-/// Quick language choices in the menu (MENU-AC-09).
-public enum MenuLanguageChoice: String, CaseIterable, Identifiable, Sendable {
-    case english, sinhala, auto
-    public var id: String { rawValue }
-    public var title: String {
-        switch self {
-        case .english: "English"
-        case .sinhala: "Sinhala (experimental)"
-        case .auto: "Auto-detect"
-        }
-    }
-    public var mode: LanguageMode {
-        switch self {
-        case .english: .single(.english)
-        case .sinhala: .single(.sinhala)
-        case .auto: .autoDetect
-        }
-    }
-    public init(mode: LanguageMode) {
-        switch mode {
-        case .single(let code) where code.primary == .sinhala: self = .sinhala
-        case .autoDetect, .multilingual: self = .auto
-        default: self = .english
-        }
-    }
-}
+/// Capture choices share the catalog-backed language seam with the main Live screen.
+public typealias MenuLanguageChoice = TranscriptionLanguageChoice
 
 /// Event-driven state for the menu bar item. No timers: every update comes from a protocol stream.
 @MainActor @Observable
@@ -38,14 +14,20 @@ public final class MenuBarModel {
     public private(set) var captionPreview: [CaptionLine] = []
     public private(set) var devices: [AudioDevice] = []
     public private(set) var errorMessage: String?
+    public private(set) var modelSummary = "Choosing a local model…"
     public var autoRecord = false
-    public var language: MenuLanguageChoice = .english
+    public var language: MenuLanguageChoice = .english {
+        didSet { languageChoices = MenuLanguageChoice.options(catalog: catalog, including: language.mode) }
+    }
+    public private(set) var languageChoices: [MenuLanguageChoice] = [.auto, .english]
     /// `nil` means the system default input.
     public var inputDeviceUID: String?
 
     @ObservationIgnored private let services: AppServices
     @ObservationIgnored private var jobStates: [JobID: JobState] = [:]
     @ObservationIgnored private var tasks: [Task<Void, Never>] = []
+    @ObservationIgnored private var catalog: [ModelDescriptor] = []
+    @ObservationIgnored private var modelSummaryGeneration = 0
 
     public init(services: AppServices) { self.services = services }
 
@@ -53,7 +35,12 @@ public final class MenuBarModel {
     public var status: MenuBarStatus { MenuBarStatus.resolve(inputs) }
 
     /// Why Start is unavailable, or `nil` when it can start (edge case: no input device).
-    public var startDisabledReason: String? { devices.isEmpty ? "No input device available" : nil }
+    public var startDisabledReason: String? { startDisabledReason(for: .mic) }
+
+    /// System audio does not require a connected microphone.
+    public func startDisabledReason(for choice: LiveSourceChoice) -> String? {
+        choice.usesMicrophone && devices.isEmpty ? "No input device available" : nil
+    }
 
     /// `true` when the app wired dictation (the menu offers the toggle only then).
     public var isDictationAvailable: Bool { services.dictation != nil }
@@ -70,6 +57,7 @@ public final class MenuBarModel {
         tasks = [
             Task { [weak self] in
                 await self?.loadPreferences()
+                await self?.reloadModelSummary()
                 for await state in services.live.state() { self?.inputs.liveState = state }
             },
             Task { [weak self] in
@@ -84,8 +72,9 @@ public final class MenuBarModel {
                 }
             },
             Task { [weak self] in
+                let events = services.jobQueue.events()
                 for job in await services.jobQueue.jobs() { self?.track(job.id, job.state) }
-                for await event in services.jobQueue.events() {
+                for await event in events {
                     switch event {
                     case .updated(let job): self?.track(job.id, job.state)
                     case .removed(let id): self?.track(id, nil)
@@ -101,11 +90,50 @@ public final class MenuBarModel {
                 for await _ in services.audioDevices.changes() { await self?.reloadDevices() }
             },
         ]
+        followCaptureAndPreferences()
+    }
+
+    private func followCaptureAndPreferences() {
+        let services = services
+        if let capture = services.meetingCapture {
+            tasks.append(
+                Task { [weak self] in
+                    for await state in capture.state() {
+                        switch state {
+                        case .capturing(_, let mode, _):
+                            self?.inputs.isRecordingMeeting = mode.recordsAudio
+                            self?.inputs.isTranscribingMeeting = !mode.recordsAudio
+                        default:
+                            self?.inputs.isRecordingMeeting = false
+                            self?.inputs.isTranscribingMeeting = false
+                        }
+                    }
+                })
+        }
+        tasks.append(
+            Task { [weak self] in
+                let changes = services.models.stateChanges()
+                await self?.reloadModelSummary()
+                for await _ in changes { await self?.reloadModelSummary() }
+            })
+        let keys =
+            [SettingsKey.languageMode, SettingsKey.preferredModel, SettingsKey.inputDeviceUID, SettingsKey.autoRecord]
+            + MeetingApp.allCases.map { SettingsKey.meetingPolicy($0.rawValue) }
+        for key in keys {
+            let changes = services.settings.changes(for: key)
+            tasks.append(
+                Task { [weak self] in
+                    for await _ in changes {
+                        await self?.loadPreferences()
+                        await self?.reloadModelSummary()
+                    }
+                })
+        }
     }
 
     /// Stops following services.
     public func stop() {
-        tasks.forEach { $0.cancel() }
+        for task in tasks { task.cancel() }
         tasks = []
     }
 
@@ -121,6 +149,44 @@ public final class MenuBarModel {
         }
         let uid = await services.settings.value(for: SettingsKey.inputDeviceUID, as: String.self)
         inputDeviceUID = (uid?.isEmpty ?? true) ? nil : uid
+    }
+
+    private func reloadModelSummary() async {
+        modelSummaryGeneration += 1
+        let generation = modelSummaryGeneration
+        let catalog = await services.models.catalog()
+        guard generation == modelSummaryGeneration, !Task.isCancelled else { return }
+        self.catalog = catalog
+        languageChoices = MenuLanguageChoice.options(catalog: catalog, including: language.mode)
+        let descriptors = await PreferredModel.fileModels(in: catalog, settings: services.settings, tier: services.hardware.profile.tier)
+        guard generation == modelSummaryGeneration, !Task.isCancelled else { return }
+        guard !descriptors.isEmpty else {
+            modelSummary = "Choose a speech model in Settings."
+            return
+        }
+        var states: [ModelState] = []
+        for descriptor in descriptors { states.append(await services.models.state(of: descriptor.id)) }
+        guard generation == modelSummaryGeneration, !Task.isCancelled else { return }
+        let ready = states.filter { if case .installed = $0 { true } else { false } }.count
+        let names = descriptors.map(\.displayName).joined(separator: " + ")
+        if descriptors.count > 1 {
+            modelSummary =
+                ready == descriptors.count
+                ? "\(descriptors.count) speech models ready on this Mac"
+                : "\(ready) of \(descriptors.count) speech models ready · Review Models in Settings"
+        } else {
+            modelSummary = "\(names) · \(Self.modelStateText(states[0]))"
+        }
+    }
+
+    private static func modelStateText(_ state: ModelState) -> String {
+        switch state {
+        case .installed: "On this Mac"
+        case .notInstalled: "Download in Settings"
+        case .downloading(let fraction): "Downloading \(Int((fraction * 100).rounded()))%"
+        case .paused: "Download paused"
+        case .failed: "Download needs attention"
+        }
     }
 
     private func reloadDevices() async {
@@ -144,7 +210,33 @@ public final class MenuBarModel {
             try await services.live.start(config)
             errorMessage = nil
         } catch {
-            errorMessage = String(describing: error)
+            errorMessage = Self.captureMessage(error)
+        }
+    }
+
+    /// Clears the inline message without hiding capture controls.
+    public func dismissError() { errorMessage = nil }
+
+    private static func captureMessage(_ error: any Error) -> String? {
+        guard let error = error as? AppError else {
+            return "Live captions could not start. Open Earmark to review the audio and model settings."
+        }
+        switch error {
+        case .cancelled: return nil
+        case .permissionDenied:
+            return "Audio access is needed. Open Privacy & Permissions in Settings to allow it, then try again."
+        case .deviceUnavailable:
+            return "No microphone is available. Reconnect it or choose another input."
+        case .modelNotInstalled:
+            return "Download a compatible speech model in Settings → Models, then try again."
+        case .unsupportedLanguage(let code):
+            return "No speech model is available for \(TranscriptionLanguageChoice.name(code)). Choose another language or model."
+        case .outOfMemory:
+            return "There is not enough memory. Close another demanding app or choose a smaller speech model."
+        case .engineFailure(_, let reason), .modelDownloadFailed(_, let reason), .captureSilent(let reason), .other(let reason):
+            return reason
+        default:
+            return "Live captions could not start. Open Earmark to review the audio and model settings."
         }
     }
 
@@ -170,7 +262,8 @@ public final class MenuBarModel {
         autoRecord = value
         for app in MeetingApp.allCases {
             var policy =
-                await services.settings.value(for: SettingsKey.meetingPolicy(app.rawValue), as: MeetingPolicy.self) ?? MeetingPolicy(app: app)
+                await services.settings.value(for: SettingsKey.meetingPolicy(app.rawValue), as: MeetingPolicy.self)
+                ?? MeetingPolicy(app: app)
             if value {
                 policy.behavior = .autoTranscribeAndRecord
             } else if policy.behavior == .autoTranscribeAndRecord {
@@ -183,7 +276,7 @@ public final class MenuBarModel {
 
     public func setLanguage(_ choice: MenuLanguageChoice) async {
         language = choice
-        await services.settings.set(choice.mode, for: SettingsKey.languageMode)
+        await choice.persist(to: services.settings, catalog: await services.models.catalog())
     }
 
     public func setInputDevice(_ uid: String?) async {

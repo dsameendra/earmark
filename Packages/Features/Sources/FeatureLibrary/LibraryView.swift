@@ -7,6 +7,8 @@ import UniformTypeIdentifiers
 /// Library and Recently Deleted: search, filters, sort, list/grid, item actions, empty/loading/error states.
 public struct LibraryView: View {
     @Bindable private var model: LibraryModel
+    private let searchFocusToken: Int
+    @FocusState private var searchFocused: Bool
     private let onOpenTranscript: (TranscriptID) -> Void
 
     @State private var confirmPurge = false
@@ -19,8 +21,9 @@ public struct LibraryView: View {
     @State private var relinking: Transcript?
     @State private var isRelinkerPresented = false
 
-    public init(model: LibraryModel, onOpenTranscript: @escaping (TranscriptID) -> Void = { _ in }) {
+    public init(model: LibraryModel, searchFocusToken: Int = 0, onOpenTranscript: @escaping (TranscriptID) -> Void = { _ in }) {
         self.model = model
+        self.searchFocusToken = searchFocusToken
         self.onOpenTranscript = onOpenTranscript
     }
 
@@ -37,15 +40,22 @@ public struct LibraryView: View {
                 )
                 .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                 .frame(maxWidth: .infinity, alignment: .leading).padding(DSSpacing.lg)
+                .accessibilityIdentifier("library.retention")
             }
             if model.layout == .list && !model.items.isEmpty { LibraryColumnsHeader() }
             content
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .dsSolidSurface(.sheet, radius: DSRadius.panel)
         .padding(DSSpacing.md)
         .background(DSColor.paper)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("library.surface")
         .navigationTitle(title)
-        .searchable(text: $model.searchText, prompt: "Search titles and transcript text")
+        .searchable(text: $model.searchText, placement: .toolbar, prompt: "Search transcripts")
+        .searchFocused($searchFocused)
+        .onChange(of: searchFocusToken) { searchFocused = true }
         .toolbar { toolbarContent }
         .confirmationDialog(
             "Delete \(model.selection.count) permanently?", isPresented: $confirmPurge, titleVisibility: .visible
@@ -78,6 +88,9 @@ public struct LibraryView: View {
             guard !Task.isCancelled else { return }
             await model.refresh()
         }
+        .dsAnimation(.settle, value: model.items.map(\.id))
+        .dsAnimation(.glide, value: model.newlyAddedIDs)
+        .task { await model.watchJobCompletions() }
     }
 
     @ViewBuilder private var content: some View {
@@ -86,7 +99,7 @@ public struct LibraryView: View {
         } else if let message = model.errorMessage, model.items.isEmpty {
             ErrorState(message: message) { Task { await model.reload() } }
         } else if model.items.isEmpty {
-            emptyState
+            emptyState.accessibilityIdentifier("library.empty")
         } else {
             VStack(spacing: 0) {
                 if let message = model.errorMessage {
@@ -118,7 +131,11 @@ public struct LibraryView: View {
                 .tag(item.id)
                 .padding(.vertical, DSSpacing.xs)
                 .listRowSeparator(.hidden)
-                .listRowBackground(model.selection.contains(item.id) ? DSColor.accentTint : DSColor.contentBackground)
+                .listRowBackground(
+                    model.selection.contains(item.id) || model.newlyAddedIDs.contains(item.id)
+                        ? DSColor.accentTint : DSColor.contentBackground
+                )
+                .dsTransition(.settle)
                 .accessibilityIdentifier("library.item.\(item.id)")
                 .contextMenu { menu(for: item) }
                 .task { await model.checkMedia(for: item) }
@@ -136,13 +153,16 @@ public struct LibraryView: View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: DSSpacing.md)], spacing: DSSpacing.md) {
                 ForEach(model.items) { item in
-                    LibraryCard(item: item, model: model, isSelected: model.selection.contains(item.id))
-                        .onTapGesture(count: 2) { if model.mode == .library { onOpenTranscript(item.id) } }
-                        .onTapGesture { model.selection = [item.id] }
-                        .contextMenu { menu(for: item) }
-                        .accessibilityAddTraits(model.selection.contains(item.id) ? .isSelected : [])
-                        .accessibilityAction(named: "Open") { if model.mode == .library { onOpenTranscript(item.id) } }
-                        .task { await model.checkMedia(for: item) }
+                    LibraryCard(
+                        item: item, model: model, isSelected: model.selection.contains(item.id) || model.newlyAddedIDs.contains(item.id)
+                    )
+                    .dsTransition(.settle)
+                    .onTapGesture(count: 2) { if model.mode == .library { onOpenTranscript(item.id) } }
+                    .onTapGesture { model.selection = [item.id] }
+                    .contextMenu { menu(for: item) }
+                    .accessibilityAddTraits(model.selection.contains(item.id) ? .isSelected : [])
+                    .accessibilityAction(named: "Open") { if model.mode == .library { onOpenTranscript(item.id) } }
+                    .task { await model.checkMedia(for: item) }
                 }
             }
             .padding(DSSpacing.lg)
@@ -152,16 +172,16 @@ public struct LibraryView: View {
     @ViewBuilder private var emptyState: some View {
         if model.isNarrowed {
             EmptyState(
-                systemImage: DSSymbol.find.systemImageName, title: "No results",
+                symbol: .search, title: "No matching transcripts",
                 message: "Nothing matches your search and filters.", actionTitle: "Clear Search and Filters"
             ) { model.clearFilters() }
         } else if model.mode == .library {
             EmptyState(
-                systemImage: DSSymbol.library.systemImageName, title: "Your library is empty",
+                symbol: .library, title: "Your library is empty",
                 message: "Transcripts you create appear here, searchable by title and full text. Add files from Home or the Queue.")
         } else {
             EmptyState(
-                systemImage: DSSymbol.recentlyDeleted.systemImageName, title: "Nothing deleted",
+                symbol: .recentlyDeleted, title: "Nothing in Recently Deleted",
                 message: model.retentionDays == 0
                     ? "Deleted transcripts stay here until you remove them."
                     : "Deleted transcripts stay here for \(model.retentionDays) days before they are removed.")

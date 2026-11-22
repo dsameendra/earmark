@@ -48,6 +48,13 @@ private struct EditorContent: View {
 
     var body: some View {
         editorSurface
+            .dsEntrance()
+            .dsAnimation(.glide, value: find.isVisible)
+            .background(
+                PlaybackKeyboardCapture(playback: model.playback) {
+                    model.editingSegmentID == nil && !findFocused && activeTool == nil && !showExport
+                }.allowsHitTesting(false)
+            )
             .task { await model.load() }
             .onChange(of: model.revision) { find.refresh() }
             .onChange(of: model.selection) { if find.scope == .selection { find.refresh() } }
@@ -75,15 +82,15 @@ private struct EditorContent: View {
                 playerWindow?.close()
                 Task { await model.flush() }
             }
-            .sheet(isPresented: $showExport) { ExportSheet(export: export) { showExport = false } }
+            .sheet(isPresented: $showExport) { ExportSheet(export: export) { showExport = false }.dsEntrance() }
             .popover(item: $activeTool) { tool in
-                toolContent(tool).presentationBackground(DSColor.contentBackground)
+                toolContent(tool).dsEntrance().presentationBackground(DSColor.contentBackground)
             }
     }
 
     private var editorSurface: some View {
         VStack(spacing: 0) {
-            if find.isVisible { FindBarView(model: model, find: find, fieldFocused: $findFocused) }
+            if find.isVisible { FindBarView(model: model, find: find, fieldFocused: $findFocused).dsTransition(.glide) }
             if let message = model.languageError {
                 HStack {
                     Label(message, systemImage: "exclamationmark.triangle").font(DSTypography.caption).foregroundStyle(DSColor.danger)
@@ -104,11 +111,12 @@ private struct EditorContent: View {
                     inspector.frame(width: 260)
                 }
             }
-            .frame(maxWidth: DSLayout.contentMaxWidth)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(DSSpacing.md)
         }
         .background(DSColor.paper)
+        .dsAnimation(.glide, value: find.isVisible)
+        .dsAnimation(.glide, value: find.showsReplace)
         .navigationTitle(model.transcript?.title ?? "Transcript")
         .toolbar { editorToolbar }
     }
@@ -131,7 +139,7 @@ private struct EditorContent: View {
                 Toggle(
                     "Show ignored (\(model.hiddenIgnoredCount))",
                     isOn: Binding(get: { model.showIgnored }, set: { model.setShowIgnored($0) }))
-                Button("Find and Replace") {
+                Button("Find and Replace", symbol: .replace) {
                     find.open(replace: true)
                     findFocused = true
                 }
@@ -220,13 +228,6 @@ private struct EditorContent: View {
                 .focusable()
                 .focusEffectDisabled()
                 .focused($listFocused)
-                .onKeyPress(phases: .down) { press in
-                    guard model.editingSegmentID == nil, !findFocused,
-                        let shortcut = PlaybackShortcut.resolve(key: press.key, modifiers: press.modifiers)
-                    else { return .ignored }
-                    model.playback.perform(shortcut)
-                    return .handled
-                }
                 .onAppear { listFocused = true }
         }
     }

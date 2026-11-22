@@ -11,7 +11,7 @@ public enum DSSymbol: String, CaseIterable, Sendable, Hashable, Identifiable {
     case dictation, record, speaker, translate, export, hidden
     case earmark, find, models, settings, play, waveform
     case folder, language, download, systemAudio, video, retry
-    case ear
+    case ear, search, replace
 
     public var id: String { assetName }
 
@@ -32,6 +32,8 @@ public enum DSSymbol: String, CaseIterable, Sendable, Hashable, Identifiable {
         case .hidden: "earmark.hidden"
         case .earmark: "earmark.earmark"
         case .find: "earmark.find"
+        case .search: "earmark.search"
+        case .replace: "earmark.replace"
         case .models: "earmark.models"
         case .settings: "earmark.settings"
         case .play: "earmark.play"
@@ -62,7 +64,9 @@ public enum DSSymbol: String, CaseIterable, Sendable, Hashable, Identifiable {
         case .export: "square.and.arrow.up"
         case .hidden: "eye.slash"
         case .earmark: "bookmark"
-        case .find: "magnifyingglass"
+        case .find: "doc.text.magnifyingglass"
+        case .search: "magnifyingglass"
+        case .replace: "arrow.triangle.2.circlepath"
         case .models: "cpu"
         case .settings: "gearshape"
         case .play: "play.circle"
@@ -93,7 +97,9 @@ public enum DSSymbol: String, CaseIterable, Sendable, Hashable, Identifiable {
         case .export: "Export"
         case .hidden: "Hidden"
         case .earmark: "Earmark"
-        case .find: "Find"
+        case .find: "Find in transcript"
+        case .search: "Search transcripts"
+        case .replace: "Replace text"
         case .models: "Models"
         case .settings: "Settings"
         case .play: "Play"
@@ -125,7 +131,9 @@ public enum DSSymbol: String, CaseIterable, Sendable, Hashable, Identifiable {
         case .export: ["square.and.arrow.up"]
         case .hidden: ["eye.slash"]
         case .earmark: ["bookmark"]
-        case .find: ["magnifyingglass"]
+        case .find: ["doc.text.magnifyingglass"]
+        case .search: ["magnifyingglass"]
+        case .replace: []
         case .models: ["cpu"]
         case .settings: ["gearshape", "slider.horizontal.3"]
         case .play: ["play.circle"]

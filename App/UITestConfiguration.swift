@@ -1,4 +1,5 @@
 import AppKit
+import DesignSystem
 import Foundation
 import SwiftUI
 
@@ -14,6 +15,10 @@ enum UITestConfiguration {
     }
     static var width: Double { value("-EarmarkTestWidth").flatMap(Double.init) ?? 1280 }
     static var height: Double { value("-EarmarkTestHeight").flatMap(Double.init) ?? 800 }
+    static var accessibilityPolicy: AccessibilityPolicy? {
+        guard value("-EarmarkTestAccessibility") == "reduced" else { return nil }
+        return AccessibilityPolicy(reduceTransparency: true, increaseContrast: true, reduceMotion: true)
+    }
 
     static func applyAppearance() {
         guard let appearance = value("-EarmarkTestAppearance") else { return }

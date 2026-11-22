@@ -40,6 +40,8 @@ public actor PersistentJobQueue: JobQueue {
     /// Languages reported by the pipeline's language detection while a job runs.
     var detected: [JobID: Set<LanguageCode>] = [:]
     var running: [JobID: RunningJob] = [:]
+    /// Reserved while cancellation and persistence removal suspend; these ids cannot be scheduled or resumed.
+    private var removing = Set<JobID>()
     var batches: [UUID: BatchState] = [:]
     var batchOf: [JobID: UUID] = [:]
     private var loaded = false
@@ -86,12 +88,14 @@ public actor PersistentJobQueue: JobQueue {
 
     public func prioritize(_ id: JobID, to index: Int) async {
         await loadIfNeeded()
+        guard !removing.contains(id) else { return }
         var ordered = sortedJobs()
         guard let from = ordered.firstIndex(where: { $0.id == id }) else { return }
         let moved = ordered.remove(at: from)
         ordered.insert(moved, at: max(0, min(index, ordered.count)))
         // `JobRepository.allJobs` orders by priority descending, so renumber everything from the top.
-        for (position, var job) in ordered.enumerated() {
+        for (position, reference) in ordered.enumerated() {
+            guard var job = store[reference.id], !removing.contains(reference.id) else { continue }
             let priority = ordered.count - position
             guard job.priority != priority else { continue }
             job.priority = priority
@@ -102,6 +106,7 @@ public actor PersistentJobQueue: JobQueue {
 
     public func pause(_ id: JobID) async {
         await loadIfNeeded()
+        guard !removing.contains(id) else { return }
         guard let job = store[id], JobStateMachine.next(from: job.state, command: .pause) != nil else { return reject(id, .pause) }
         if job.state == .running, running[id] != nil {
             running[id]?.intent = .pause
@@ -113,12 +118,14 @@ public actor PersistentJobQueue: JobQueue {
 
     public func resume(_ id: JobID) async {
         await loadIfNeeded()
+        guard !removing.contains(id) else { return }
         guard await apply(id, .resume) else { return }
         await schedule()
     }
 
     public func cancel(_ id: JobID) async {
         await loadIfNeeded()
+        guard !removing.contains(id) else { return }
         guard let job = store[id], JobStateMachine.next(from: job.state, command: .cancel) != nil else { return reject(id, .cancel) }
         if job.state == .running, running[id] != nil {
             running[id]?.intent = .cancel
@@ -131,6 +138,7 @@ public actor PersistentJobQueue: JobQueue {
 
     public func retry(_ id: JobID) async {
         await loadIfNeeded()
+        guard !removing.contains(id) else { return }
         guard let job = store[id], JobStateMachine.next(from: job.state, command: .retry) != nil else { return reject(id, .retry) }
         let wasFailed = job.state == .failed
         let applied = await apply(id, .retry) {
@@ -184,17 +192,32 @@ public actor PersistentJobQueue: JobQueue {
     /// The error behind a `.failed` job during this session (the persisted `failureReason` is the display text).
     public func failure(for id: JobID) -> AppError? { failures[id] }
 
-    /// Removes a job that is not running from the queue (soft delete in the repository).
-    public func remove(_ id: JobID) async {
+    /// Cancels and joins active work, then soft-deletes only the queue entry. Transcripts and media stay in the library.
+    public func remove(_ id: JobID) async throws {
         await loadIfNeeded()
-        guard let job = store[id], job.state != .running else { return }
+        guard store[id] != nil, removing.insert(id).inserted else { return }
+        defer { removing.remove(id) }
+        if let active = running[id] {
+            running[id]?.intent = .cancel
+            active.task.cancel()
+            await active.task.value
+        } else if store[id]?.state == .pending {
+            await apply(id, .cancel) { $0.etaSeconds = nil }
+            await jobReachedFinalState(id)
+        }
+        // Publish removal only after the durable operation succeeds. A storage error leaves the row retryable.
+        try await services.jobs.remove(id)
         store[id] = nil
         notes[id] = nil
         failures[id] = nil
-        do { try await services.jobs.remove(id) } catch {
-            log.error("Could not remove job: \(String(describing: error), privacy: .public)")
+        detected[id] = nil
+        if let batchID = batchOf.removeValue(forKey: id), var batch = batches[batchID] {
+            batch.remaining.remove(id)
+            batch.jobIDs.removeAll { $0 == id }
+            if batch.remaining.isEmpty { batches[batchID] = nil } else { batches[batchID] = batch }
         }
         bus.send(.removed(id))
+        await schedule()
     }
 
     /// The media asset id used for a job's input: stable per job, so a missing-file error can be attributed to it.
@@ -226,7 +249,7 @@ public actor PersistentJobQueue: JobQueue {
                 log.error("Could not save job: \(String(describing: error), privacy: .public)")
             }
         }
-        bus.send(.updated(job))
+        if let latest = store[job.id] { bus.send(.updated(latest)) }
     }
 
     /// Changes a stored job and commits it.
@@ -277,7 +300,8 @@ public actor PersistentJobQueue: JobQueue {
         if let until = memoryHoldUntil, configuration.now() < until { return }
         // No suspension point below: the count check and registration are atomic with respect to other callers.
         while running.count < decision.concurrency {
-            guard let next = sortedJobs().first(where: { $0.state == .pending && running[$0.id] == nil }) else { break }
+            guard let next = sortedJobs().first(where: { $0.state == .pending && running[$0.id] == nil && !removing.contains($0.id) })
+            else { break }
             let id = next.id
             let task = Task(priority: decision.priority) { [self] in await execute(id) }
             running[id] = RunningJob(task: task)

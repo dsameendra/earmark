@@ -16,6 +16,62 @@ private func job(_ name: String, _ state: JobState, progress: Double = 0) -> Job
 }
 
 @Suite @MainActor struct QueueTests {
+    @Test func onlyRunningAndPausedRowsHaveDeterminateProgress() {
+        #expect(QueueFormatting.showsProgress(for: .running))
+        #expect(QueueFormatting.showsProgress(for: .paused))
+        for state in [JobState.pending, .completed, .cancelled, .failed] {
+            #expect(!QueueFormatting.showsProgress(for: state))
+        }
+        #expect(QueueFormatting.fraction(.nan) == 0)
+        #expect(QueueFormatting.fraction(.infinity) == 0)
+        #expect(QueueFormatting.fraction(-1) == 0)
+        #expect(QueueFormatting.fraction(4) == 1)
+    }
+
+    @Test func clearFinishedPreservesFailedAndActiveWork() async throws {
+        let completed = job("done", .completed)
+        let cancelled = job("cancelled", .cancelled)
+        let failed = job("failed", .failed)
+        let pending = job("waiting", .pending)
+        let queue = QueueModel(services: .preview(jobs: [completed, cancelled, failed, pending]))
+        let observing = Task { await queue.run() }
+        defer { observing.cancel() }
+        #expect(await eventually { !queue.isLoading })
+        await queue.clearFinished()
+        #expect(Set(queue.jobs.map(\.id)) == [failed.id, pending.id])
+        #expect(!queue.hasFinished)
+    }
+
+    @Test func clearQueueRemovesAllStatesThroughTheService() async {
+        let jobs = PlaceholderJobQueue(seed: [
+            job("active", .running), job("waiting", .pending), job("paused", .paused), job("done", .completed),
+        ])
+        var services = AppServices.preview()
+        services.jobQueue = jobs
+        let queue = QueueModel(services: services)
+        let observing = Task { await queue.run() }
+        defer { observing.cancel() }
+        #expect(await eventually { !queue.isLoading })
+        await queue.clearQueue()
+        #expect(queue.jobs.isEmpty)
+        #expect(await jobs.jobs().isEmpty)
+        #expect(!queue.isClearing && queue.removingIDs.isEmpty)
+    }
+
+    @Test func unsupportedRemovalShowsAnErrorWithoutHidingTheJob() async throws {
+        let jobs = InstantlyFailingQueue()
+        let id = try await jobs.enqueue(job("failed", .pending))
+        var services = AppServices.preview()
+        services.jobQueue = jobs
+        let queue = QueueModel(services: services)
+        let observing = Task { await queue.run() }
+        defer { observing.cancel() }
+        #expect(await eventually { !queue.isLoading })
+        await queue.remove(id)
+        #expect(queue.jobs.map(\.id) == [id])
+        #expect(queue.errorMessage != nil)
+    }
+
     @Test func groupsJobsByStateInDisplayOrder() async {  // FILE-AC-14
         let services = AppServices.preview(jobs: [
             job("a", .failed), job("b", .running, progress: 0.3), job("c", .pending), job("d", .paused),

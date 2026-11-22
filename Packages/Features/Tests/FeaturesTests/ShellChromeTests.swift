@@ -52,9 +52,9 @@ import Testing
         #expect(ShellLayout(width: 1440).droppedLibraryColumns.isEmpty)
     }
 
-    @Test func contentIsCappedAt1120() {
+    @Test func workspaceUsesAvailableWidthWithLocalReadingLimits() {
         let layout = ShellLayout(width: 1800)
-        #expect(layout.contentMaxWidth == 1120 && layout.contentWidth(available: 1568) == 1120)
+        #expect(layout.contentMaxWidth == .infinity && layout.contentWidth(available: 1568) == 1568)
         #expect(layout.contentWidth(available: 900) == 900)
         #expect(DSLayout.minWindowSize == CGSize(width: 960, height: 600))
     }
@@ -142,7 +142,7 @@ import Testing
         let uses = glassCalls.reduce(0) { $0 + shell.components(separatedBy: $1).count - 1 }
         // Budget: sidebar (system material, no call) + toolbar (the primary capsule) + one floater owned by the screen.
         #expect(uses <= DSGlass.maxLayersPerScreen - 1, "shell glass uses: \(uses)")
-        #expect(shell.contains("ToolbarItemGroup"))
+        #expect(shell.contains("ToolbarItem"))
         #expect(DSGlass.maxLayersPerScreen == 3 && DSGlass.allowedLayerMarkers == ["sidebar", "toolbar", "floater"])
     }
 

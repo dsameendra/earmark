@@ -137,7 +137,15 @@ public struct GlassToolbarButton: View {
 
 extension GlassToolbarButton {
     @ViewBuilder fileprivate var buttonLabel: some View {
-        if let symbol { Label { Text(title) } icon: { DSIcon(symbol) } } else { Label(title, systemImage: systemImage ?? "questionmark") }
+        if let symbol {
+            Label {
+                Text(title)
+            } icon: {
+                DSIcon(symbol)
+            }
+        } else {
+            Label(title, systemImage: systemImage ?? "questionmark")
+        }
     }
 }
 
@@ -176,7 +184,9 @@ public struct StatusPill: View {
 
     public var body: some View {
         HStack(spacing: DSSpacing.xs) {
-            if let symbol { DSIcon(symbol).dsIconContext(.menu) } else if let systemImage {
+            if let symbol {
+                DSIcon(symbol).dsIconContext(.menu)
+            } else if let systemImage {
                 Image(systemName: systemImage).accessibilityHidden(true)
             }
             Text(text)
@@ -310,17 +320,34 @@ public struct EmptyState: View {
         self.action = action
     }
     public var body: some View {
-        ContentUnavailableView {
-            if let symbol {
-                Label { Text(title) } icon: { DSIcon(symbol).dsIconContext(.emptyState) }
-            } else {
-                Label(title, systemImage: systemImage ?? "questionmark")
+        VStack(spacing: DSSpacing.md) {
+            Group {
+                if let symbol {
+                    DSIcon(symbol).dsIconContext(.emptyState)
+                } else if let custom = DSSymbol(replacingStock: systemImage ?? "") {
+                    DSIcon(custom).dsIconContext(.emptyState)
+                } else {
+                    Image(systemName: systemImage ?? "questionmark")
+                }
             }
-        } description: {
-            if let message { Text(message) }
-        } actions: {
-            if let actionTitle, let action { Button(actionTitle, action: action) }
+            .font(.system(size: 30, weight: .regular))
+            .foregroundStyle(DSColor.accent)
+            .frame(width: 68, height: 68)
+            .background(DSColor.accentTint, in: RoundedRectangle(cornerRadius: DSRadius.card))
+            .accessibilityHidden(true)
+            Text(title).font(DSTypography.title2).foregroundStyle(DSColor.primaryText).accessibilityAddTraits(.isHeader)
+            if let message {
+                Text(message).font(DSTypography.body).foregroundStyle(DSColor.secondaryText)
+                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true).frame(maxWidth: 420)
+            }
+            if let actionTitle, let action {
+                Button(actionTitle, action: action).buttonStyle(EmberButtonStyle()).padding(.top, DSSpacing.xs)
+            }
         }
+        .padding(DSSpacing.xl)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+
     }
 }
 
@@ -335,13 +362,20 @@ public struct ErrorState: View {
         self.retry = retry
     }
     public var body: some View {
-        ContentUnavailableView {
-            Label(title, systemImage: "exclamationmark.triangle")
-        } description: {
-            Text(message)
-        } actions: {
-            if let retry { Button("Retry", action: retry) }
+        VStack(spacing: DSSpacing.md) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 30)).foregroundStyle(DSColor.danger)
+                .frame(width: 68, height: 68).background(DSColor.danger.opacity(0.1), in: RoundedRectangle(cornerRadius: DSRadius.card))
+                .accessibilityHidden(true)
+            Text(title).font(DSTypography.title2).foregroundStyle(DSColor.primaryText).accessibilityAddTraits(.isHeader)
+            Text(message).font(DSTypography.body).foregroundStyle(DSColor.secondaryText)
+                .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true).frame(maxWidth: 440)
+            if let retry { Button("Retry", action: retry).buttonStyle(EmberButtonStyle()).padding(.top, DSSpacing.xs) }
         }
+        .padding(DSSpacing.xl)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+
     }
 }
 

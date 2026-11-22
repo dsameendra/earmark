@@ -199,11 +199,20 @@ public protocol JobQueue: Sendable {
     func resume(_ id: JobID) async
     func cancel(_ id: JobID) async
     func retry(_ id: JobID) async
+    /// Removes queue history only, preserving transcripts and media. Active work is cancelled and joined first.
+    func remove(_ id: JobID) async throws
     func setMaxConcurrency(_ n: Int) async
     func jobs() async -> [Job]
     func events() -> AsyncStream<JobEvent>
     /// Re-queues interrupted jobs after launch.
     func resumeInterrupted() async
+}
+
+extension JobQueue {
+    /// Adapters without persistent queue editing report the unsupported action instead of hiding an item locally.
+    public func remove(_ id: JobID) async throws {
+        throw AppError.other("Removing queue items is unavailable for this queue.")
+    }
 }
 
 // MARK: - Export

@@ -40,6 +40,10 @@ public actor PlaceholderJobQueue: JobQueue {
             $0.failureReason = nil
         }
     }
+    public func remove(_ id: JobID) async throws {
+        store.removeAll { $0.id == id }
+        bus.send(.removed(id))
+    }
     public func setMaxConcurrency(_ n: Int) async {}
     public func jobs() async -> [Job] { store }
     public nonisolated func events() -> AsyncStream<JobEvent> { bus.stream() }

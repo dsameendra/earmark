@@ -527,7 +527,7 @@ struct PersistentJobQueueTests {
         let h = try Harness()
         let stream = h.queue.events()
         let id = try await h.queue.enqueue(Job(kind: .transcribeFile, state: .paused, input: try h.makeFile()))
-        await h.queue.remove(id)
+        try await h.queue.remove(id)
         var sawUpdate = false
         var sawRemoval = false
         for await event in stream {

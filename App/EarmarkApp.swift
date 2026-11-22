@@ -22,6 +22,8 @@ struct EarmarkApp: App {
                 LibraryRecoveryView(message: message) { environment = AppEnvironment() }
             } else {
                 ShellView(model: environment.shell)
+                    .background(WorkspaceWindowChrome())
+                    .environment(\.accessibilityPolicyOverride, UITestConfiguration.accessibilityPolicy)
                     .background(UITestWindowPlacement())
                     .onboardingLauncher(settings: environment.services.settings)
                     .background { if let packs = environment.translationPacks { TranslationPackHost(installer: packs) } }
@@ -30,6 +32,7 @@ struct EarmarkApp: App {
         }
         .defaultSize(width: UITestConfiguration.width, height: UITestConfiguration.height)
         .defaultLaunchBehavior(.presented)
+        .windowToolbarStyle(.unifiedCompact)
         .restorationBehavior(AppEnvironment.usesMocks ? .disabled : .automatic)
         .windowResizability(.contentMinSize)
         .commands {
@@ -39,16 +42,24 @@ struct EarmarkApp: App {
             AboutCommands()
         }
 
-        Window("Welcome to Earmark", id: OnboardingWindow.id) {
+        Window("", id: OnboardingWindow.id) {
             if let message = environment.startupFailure {
                 LibraryRecoveryView(message: message) { environment = AppEnvironment() }
             } else {
                 OnboardingWindowRoot(services: environment.services, router: environment.engineRouter)
+                    .environment(\.accessibilityPolicyOverride, UITestConfiguration.accessibilityPolicy)
+                    .background(WelcomeWindowPresentation())
                     .background(UITestWindowPlacement()).tint(DSColor.accent)
             }
         }
         .windowResizability(.contentSize)
+        .windowStyle(.hiddenTitleBar)
+        .windowManagerRole(.associated)
+        .commandsRemoved()
+        .defaultLaunchBehavior(.suppressed)
+        .restorationBehavior(.disabled)
         .defaultPosition(.center)
+        .defaultSize(width: 900, height: 620)
 
         Window("About Earmark", id: "about") { AboutView() }
             .windowResizability(.contentSize)
@@ -59,17 +70,21 @@ struct EarmarkApp: App {
                 LibraryRecoveryView(message: message) { environment = AppEnvironment() }
             } else {
                 SettingsRootView(dependencies: environment.settingsDependencies)
+                    .background(WorkspaceWindowChrome(isSettings: true))
+                    .environment(\.accessibilityPolicyOverride, UITestConfiguration.accessibilityPolicy)
                     .background(UITestWindowPlacement())
                     .onboardingLauncher(settings: environment.services.settings)
                     .tint(DSColor.accent)
             }
         }
+        .windowToolbarStyle(.unifiedCompact)
 
         MenuBarExtra {
             if environment.startupFailure != nil {
                 LibraryUnavailableMenu()
             } else {
                 MenuBarHost(environment: environment).tint(DSColor.accent)
+                    .environment(\.accessibilityPolicyOverride, UITestConfiguration.accessibilityPolicy)
             }
         } label: {
             MenuBarGlyphView(model: environment.menuBar)
@@ -103,6 +118,10 @@ private struct MenuBarHost: View {
                 openLibrary: {
                     showMainWindow()
                     environment.shell.select(.library)
+                },
+                openMeetings: {
+                    showMainWindow()
+                    environment.shell.select(.meetings)
                 },
                 openMainWindow: showMainWindow,
                 openSettings: {

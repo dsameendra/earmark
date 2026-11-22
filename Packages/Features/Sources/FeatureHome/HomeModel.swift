@@ -105,7 +105,8 @@ public final class HomeModel {
         let files = urls.filter(\.isFileURL)
         guard !files.isEmpty else { return false }
         do {
-            _ = try await services.jobQueue.enqueue(files: files, settings: JobSettings(), recursive: true)
+            let defaults = await FileJobSettings.load(from: services.settings, catalog: services.models.catalog())
+            _ = try await services.jobQueue.enqueue(files: files, settings: defaults, recursive: true)
             errorMessage = nil
             return true
         } catch {
@@ -118,12 +119,14 @@ public final class HomeModel {
     public func reloadModelStatus() async {
         let catalog = await services.models.catalog()
         let installed = await services.models.installedModels()
-        guard let model = await PreferredModel.resolve(in: catalog, settings: services.settings) else {
+        let required = await PreferredModel.fileModels(in: catalog, settings: services.settings, tier: services.hardware.profile.tier)
+        guard let model = required.first else {
             modelStatus = nil
             return
         }
         modelStatus = ModelStatusSummary(
-            name: model.displayName, isInstalled: installed.contains(model.id),
+            name: required.count == 1 ? model.displayName : "Automatic · \(required.count) models",
+            isInstalled: required.allSatisfy { installed.contains($0.id) },
             installedCount: catalog.filter { $0.kind == .asr && installed.contains($0.id) }.count)
     }
 
@@ -146,24 +149,25 @@ public final class HomeModel {
     public func ensureDefaultModel() async -> Bool {
         let catalog = await services.models.catalog()
         let installed = await services.models.installedModels()
-        guard let model = await PreferredModel.resolve(in: catalog, settings: services.settings) else { return true }
-        if installed.contains(model.id) { return true }
-        download = ModelDownloadStatus(modelName: model.displayName, fraction: 0)
+        let required = await PreferredModel.fileModels(in: catalog, settings: services.settings, tier: services.hardware.profile.tier)
         defer { download = nil }
-        do {
-            for try await event in services.models.ensureAvailable(model.id) {
-                switch event {
-                case .progress(let fraction, _, _): download = ModelDownloadStatus(modelName: model.displayName, fraction: fraction)
-                case .verifying: download = ModelDownloadStatus(modelName: model.displayName, fraction: 1, isVerifying: true)
-                case .completed: break
+        for model in required where !installed.contains(model.id) {
+            download = ModelDownloadStatus(modelName: model.displayName, fraction: 0)
+            do {
+                for try await event in services.models.ensureAvailable(model.id) {
+                    switch event {
+                    case .progress(let fraction, _, _): download = ModelDownloadStatus(modelName: model.displayName, fraction: fraction)
+                    case .verifying: download = ModelDownloadStatus(modelName: model.displayName, fraction: 1, isVerifying: true)
+                    case .completed: break
+                    }
                 }
+            } catch {
+                errorMessage = "Could not download \(model.displayName): \(error)"
+                return false
             }
-            await reloadModelStatus()
-            return true
-        } catch {
-            errorMessage = "Could not download \(model.displayName): \(error)"
-            return false
         }
+        await reloadModelStatus()
+        return true
     }
 
     /// Clears the inline error banner.

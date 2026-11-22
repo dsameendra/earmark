@@ -15,6 +15,8 @@ public enum LibraryMode: Sendable {
 public final class LibraryModel {
     public let mode: LibraryMode
     public private(set) var items: [Transcript] = []
+    public private(set) var newlyAddedIDs: Set<TranscriptID> = []
+    public private(set) var isFollowingJobs = false
     public private(set) var isLoading = true
     public private(set) var errorMessage: String?
     public var searchText = ""
@@ -77,6 +79,27 @@ public final class LibraryModel {
     }
 
     // MARK: Loading
+
+    /// A completed background job updates the open Library immediately, without polling or reopening the screen.
+    public func watchJobCompletions() async {
+        let events = services.jobQueue.events()
+        isFollowingJobs = true
+        defer { isFollowingJobs = false }
+        for await event in events {
+            guard !Task.isCancelled else { return }
+            guard case .updated(let job) = event, job.state == .completed else { continue }
+            let previous = Set(items.map(\.id))
+            await refresh()
+            let arrivals = Set(items.map(\.id)).subtracting(previous)
+            newlyAddedIDs.formUnion(arrivals)
+            if !arrivals.isEmpty {
+                Task { [weak self] in
+                    try? await Task.sleep(for: .milliseconds(700))
+                    self?.newlyAddedIDs.subtract(arrivals)
+                }
+            }
+        }
+    }
 
     /// First load: restores persisted preferences, applies auto-purge, then loads the list.
     public func start() async {
@@ -248,9 +271,13 @@ public final class LibraryModel {
                 errorMessage = "The media for this transcript can't be found. Relink it first."
                 return
             }
-            let mode: LanguageMode = item.languages.count == 1 ? .single(item.languages.first ?? .english) : .default
+            let mode: LanguageMode? =
+                item.languages.isEmpty
+                ? nil
+                : item.languages.count == 1 ? .single(item.languages.first ?? .english) : .multilingual(item.languages)
+            let defaults = await FileJobSettings.load(from: services.settings, catalog: services.models.catalog(), languageOverride: mode)
             _ = try await services.jobQueue.enqueue(
-                Job(kind: .transcribeFile, input: url, transcriptID: id, settings: JobSettings(languageMode: mode)))
+                Job(kind: .transcribeFile, input: url, transcriptID: id, settings: defaults))
             errorMessage = nil
         } catch {
             errorMessage = String(describing: error)

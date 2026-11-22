@@ -70,51 +70,120 @@ public struct SettingsRootView: View {
     /// Store-only wiring: model, rule and permission sections use placeholders until the app supplies real services.
     public init(store: any SettingsStore) { environment = SettingsEnvironment(.standalone(store: store)) }
 
-    private let primarySections: [SettingsSection] = [
-        .general, .audio, .models, .languages, .meetings, .exportDefaults, .privacyPermissions,
-    ]
+    @Namespace private var selectionSpace
+    @FocusState private var focusedSection: SettingsSection?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityPolicyOverride) private var policyOverride
+
+    private var motionReduced: Bool { policyOverride?.suppressesMotion ?? reduceMotion }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: DSSpacing.md) {
-            Text(selection.title).font(DSTypography.title1).accessibilityAddTraits(.isHeader)
-            Text("Everything runs on this Mac. Your preferences are saved as you change them.")
-                .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
-            detail
-                .scrollContentBackground(.hidden)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .padding(DSSpacing.xl)
-        .background(DSColor.contentBackground)
-        .navigationTitle("Earmark Settings")
-        .toolbar {
-            ToolbarItemGroup {
-                ForEach(primarySections) { section in
-                    Button {
-                        selection = section
-                    } label: {
-                        Label(
-                            section == .privacyPermissions ? "Privacy" : section.title, symbol: section.symbol, orStock: section.systemImage
-                        )
-                    }
-                    .tint(selection == section ? DSColor.accent : DSColor.secondaryText)
-                    .accessibilityLabel(section.title)
-                    .accessibilityAddTraits(selection == section ? .isSelected : [])
-                    .accessibilityIdentifier("settings.section.\(section.rawValue)")
-                }
-                Menu("More settings", systemImage: "ellipsis") {
-                    ForEach(SettingsSection.allCases.filter { !primarySections.contains($0) }) { section in
-                        Button {
-                            selection = section
-                        } label: {
-                            Label(section.title, symbol: section.symbol, orStock: section.systemImage)
+        NavigationSplitView {
+            GeometryReader { _ in
+                ScrollViewReader { proxy in
+                    VStack(alignment: .leading, spacing: DSSpacing.md) {
+                        VStack(alignment: .leading, spacing: DSSpacing.xxs) {
+                            Text("earmark").font(DSTypography.title2)
+                            Text("Settings").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                         }
-                        .accessibilityIdentifier("settings.section.\(section.rawValue)")
+                        .padding(.horizontal, DSSpacing.lg).padding(.top, DSSpacing.lg)
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: DSSpacing.lg) {
+                                ForEach(SettingsSectionGroup.allCases) { group in
+                                    VStack(alignment: .leading, spacing: DSSpacing.xxs) {
+                                        SectionCaption(LocalizedStringKey(group.title)).padding(.horizontal, DSSpacing.sm)
+                                            .padding(.bottom, DSSpacing.xs)
+                                        ForEach(group.sections) { section in sectionButton(section).id(section) }
+                                    }
+                                }
+                            }
+                            .padding(DSSpacing.md)
+                        }
+                        .scrollIndicators(.automatic)
+                        .accessibilityIdentifier("settings.navigation")
+                    }
+                    .onChange(of: focusedSection) { _, value in if let value { proxy.scrollTo(value, anchor: .center) } }
+                    .onKeyPress(.upArrow) {
+                        moveSelection(by: -1)
+                        return .handled
+                    }
+                    .onKeyPress(.downArrow) {
+                        moveSelection(by: 1)
+                        return .handled
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
+            .navigationSplitViewColumnWidth(min: 220, ideal: 238, max: 270)
+            .accessibilityLabel("Settings navigation")
+        } detail: {
+            GeometryReader { _ in
+                VStack(alignment: .leading, spacing: DSSpacing.lg) {
+                    VStack(alignment: .leading, spacing: DSSpacing.xs) {
+                        Text(selection.title).font(DSTypography.title1).accessibilityAddTraits(.isHeader)
+                        Text(selection.summary).font(DSTypography.body).foregroundStyle(DSColor.secondaryText)
+                    }
+                    .padding(.horizontal, DSSpacing.lg).padding(.top, DSSpacing.lg)
+                    detail
+                        .scrollContentBackground(.hidden)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .id(selection)
+                        .dsTransition(.settle)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(DSColor.paper)
+            }
+        }
+        .background(DSColor.paper)
+        .navigationTitle("Settings")
+        .toolbar(removing: .sidebarToggle)
+        .dsIconContext(.sidebar)
+        .dsAnimation(.glide, value: selection)
+        .frame(minWidth: 900, minHeight: 620)
+    }
+
+    private func sectionButton(_ section: SettingsSection) -> some View {
+        let selected = selection == section
+        return Button {
+            selection = section
+            focusedSection = section
+        } label: {
+            HStack(spacing: DSSpacing.sm) {
+                DSIcon(section.symbol, orStock: section.systemImage, style: selected ? .duotone : .monochrome)
+                    .frame(width: 22)
+                Text(section.title).font(DSTypography.body.weight(selected ? .semibold : .regular))
+                    .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(selected ? DSColor.primaryText : DSColor.secondaryText)
+            .padding(.horizontal, DSSpacing.sm).padding(.vertical, DSSpacing.sm)
+            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+            .background {
+                if selected {
+                    if motionReduced {
+                        RoundedRectangle(cornerRadius: DSRadius.medium).fill(DSColor.selectionPill)
+                    } else {
+                        RoundedRectangle(cornerRadius: DSRadius.medium).fill(DSColor.selectionPill)
+                            .matchedGeometryEffect(id: "settings-selection", in: selectionSpace)
                     }
                 }
             }
+            .contentShape(RoundedRectangle(cornerRadius: DSRadius.medium))
         }
-        .dsIconContext(.toolbar)
-        .frame(minWidth: 760, minHeight: 520)
+        .buttonStyle(.plain)
+        .focusable()
+        .focused($focusedSection, equals: section)
+        .accessibilityLabel(section.title)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityIdentifier("settings.section.\(section.rawValue)")
+    }
+
+    private func moveSelection(by offset: Int) {
+        let sections = SettingsSectionGroup.allCases.flatMap(\.sections)
+        guard let index = sections.firstIndex(of: focusedSection ?? selection) else { return }
+        let next = sections[max(0, min(sections.count - 1, index + offset))]
+        selection = next
+        focusedSection = next
     }
 
     @ViewBuilder private var detail: some View {

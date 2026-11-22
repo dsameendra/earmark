@@ -23,16 +23,23 @@ public struct ShellView: View {
 
     public var body: some View {
         NavigationSplitView(columnVisibility: $model.columnVisibility) {
-            SidebarView(model: model)
-                .navigationSplitViewColumnWidth(min: 190, ideal: DSLayout.sidebarWidth, max: 280)
-        } detail: {
-            VStack(spacing: 0) {
-                if let message = model.errorMessage { errorBanner(message) }
-                detail
+            GeometryReader { _ in
+                SidebarView(model: model)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
-            .background(DSColor.paper)
+            .navigationSplitViewColumnWidth(min: 190, ideal: DSLayout.sidebarWidth, max: 280)
+        } detail: {
+            GeometryReader { _ in
+                VStack(spacing: 0) {
+                    if let message = model.errorMessage { errorBanner(message) }
+                    detail
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(DSColor.paper)
+            }
             .toolbar { shellToolbar }
         }
+        .background(DSColor.paper)
         .frame(minWidth: DSLayout.minWindowSize.width, minHeight: DSLayout.minWindowSize.height)
         .onGeometryChange(for: CGFloat.self) {
             $0.size.width
@@ -47,10 +54,6 @@ public struct ShellView: View {
             isPresented: $model.isImporterPresented, allowedContentTypes: [.audiovisualContent, .folder], allowsMultipleSelection: true
         ) { result in
             if case .success(let urls) = result { model.handleDrop(urls) }
-        }
-        .sheet(isPresented: $model.isQuickOpenPresented) {
-            QuickOpenView(
-                model: model.quickOpen, onOpen: { model.openTranscript($0) }, onDismiss: { model.isQuickOpenPresented = false })
         }
         .task { await model.restore() }
         .task { await model.sidebar.run() }
@@ -80,14 +83,25 @@ public struct ShellView: View {
                     .accessibilityIdentifier("toolbar.back")
             }
         }
-        ToolbarItemGroup {
-            Button("Search transcripts", symbol: .find) { model.presentQuickOpen() }
-                .labelStyle(.titleAndIcon)
-                .help("Quick Open (⌘K)")
-                .accessibilityLabel("Quick Open")
-                .accessibilityHint("Search transcripts by title and text")
-                .accessibilityIdentifier("toolbar.quickOpen")
-            if model.openedTranscript != nil && model.layout.inspectorCollapsed {
+        if !model.usesLibrarySearch {
+            ToolbarItem {
+                Button("Search transcripts", symbol: .search) { model.presentQuickOpen() }
+                    .labelStyle(.titleAndIcon)
+                    .controlSize(.large)
+                    .help("Quick Open (⌘K)")
+                    .accessibilityLabel("Quick Open")
+                    .accessibilityHint("Search transcripts by title and text")
+                    .accessibilityIdentifier("toolbar.quickOpen")
+                    .popover(isPresented: $model.isQuickOpenPresented, arrowEdge: .bottom) {
+                        QuickOpenView(
+                            model: model.quickOpen, onOpen: { model.openTranscript($0) }, onDismiss: { model.isQuickOpenPresented = false }
+                        )
+                        .presentationBackground(DSColor.contentBackground)
+                    }
+            }
+        }
+        if model.openedTranscript != nil && model.layout.inspectorCollapsed {
+            ToolbarItem {
                 Toggle(isOn: $model.isInspectorToggledOn) { Label("Inspector", systemImage: "sidebar.trailing") }
                     .help("Show or hide the inspector")
                     .accessibilityIdentifier("toolbar.inspector")
@@ -114,14 +128,24 @@ public struct ShellView: View {
     }
 
     @ViewBuilder private var sectionDetail: some View {
+        sectionContent.dsEntrance().id(model.selection)
+    }
+
+    @ViewBuilder private var sectionContent: some View {
         switch model.selection {
         case .home: HomeView(model: model.home, actions: model.homeActions).shellContentWidth()
         case .queue: QueueView(model: model.queue, onOpenTranscript: { model.openTranscript($0) }).shellContentWidth()
         case .meetings: MeetingsView(model: model.meetings, onOpenTranscript: { model.openTranscript($0) }).shellContentWidth()
         case .live: LiveView(model: model.live).shellContentWidth()
-        case .library: LibraryView(model: model.library, onOpenTranscript: { model.openTranscript($0) }).shellContentWidth()
+        case .library:
+            LibraryView(
+                model: model.library, searchFocusToken: model.librarySearchFocusToken, onOpenTranscript: { model.openTranscript($0) }
+            ).shellContentWidth()
         case .recentlyDeleted:
-            LibraryView(model: model.recentlyDeleted, onOpenTranscript: { model.openTranscript($0) }).shellContentWidth()
+            LibraryView(
+                model: model.recentlyDeleted, searchFocusToken: model.librarySearchFocusToken,
+                onOpenTranscript: { model.openTranscript($0) }
+            ).shellContentWidth()
         }
     }
 }
@@ -141,26 +165,15 @@ public struct ShellCommands: Commands {
             Divider()
             Button("Quick Open…") { model.presentQuickOpen() }
                 .keyboardShortcut("k", modifiers: [.command])
+            if model.usesLibrarySearch {
+                Button("Search This Library") { model.presentQuickOpen() }
+                    .keyboardShortcut("f", modifiers: [.command])
+            }
         }
     }
 }
 
 #Preview("Shell") { ShellView(model: ShellModel(services: .preview())) }
-
-/// Search affordance in the toolbar: magnifier, prompt and the ⌘K hint (Home board).
-private struct SearchField: View {
-    var body: some View {
-        HStack(spacing: DSSpacing.sm) {
-            DSIcon(.find).dsIconContext(.toolbar)
-            Text("Search transcripts").foregroundStyle(DSColor.secondaryText)
-            Spacer(minLength: DSSpacing.md)
-            Text("⌘K").font(DSTypography.caption).foregroundStyle(DSColor.tertiaryText)
-        }
-        .frame(width: 240)
-        .padding(.horizontal, DSSpacing.xs)
-        .contentShape(Rectangle())
-    }
-}
 
 /// The one primary action of a view: a solid Ember capsule in every appearance.
 private struct PrimaryToolbarButton: View {

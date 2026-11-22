@@ -20,25 +20,39 @@ enum LiveSymbol {
 /// speaker chips) with a level meter, overlay controls and "Save as transcript" alongside it.
 public struct LiveView: View {
     @Bindable private var model: LiveModel
+    @Environment(\.shellLayout) private var layout
 
     public init(model: LiveModel) { self.model = model }
 
     public var body: some View {
-        HStack(alignment: .top, spacing: DSSpacing.md) {
-            VStack(spacing: 0) {
-                if let notice = model.notice, notice.kind != .resumed { noticeBanner(notice) }
-                Divider()
-                captions
+        GeometryReader { viewport in
+            let sizing = LiveWorkspaceLayout(width: viewport.size.width)
+            Group {
+                if sizing.stacksPanels {
+                    VStack(spacing: 0) {
+                        captionPane
+                        Divider()
+                        sidePanel.frame(height: 260)
+                    }
+                } else {
+                    HStack(spacing: 0) {
+                        captionPane
+                        Divider()
+                        sidePanel.frame(width: sizing.sidePanelWidth)
+                    }
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(DSColor.contentBackground, in: RoundedRectangle(cornerRadius: DSRadius.panel))
-            sidePanel
-                .frame(width: 250)
-                .background(DSColor.contentBackground, in: RoundedRectangle(cornerRadius: DSRadius.panel))
+            .background(DSColor.contentBackground)
+            .clipShape(RoundedRectangle(cornerRadius: DSRadius.panel))
+            .dsSolidSurface(.sheet, radius: DSRadius.panel)
         }
         .padding(DSSpacing.md)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DSColor.paper)
-        .toolbar { ToolbarItemGroup { controls } }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("live.surface")
+        .toolbar { toolbarControls }
         .navigationTitle("Live")
         .task { await model.loadPreferences() }
         .task { await model.watchState() }
@@ -46,42 +60,79 @@ public struct LiveView: View {
         .task { await model.watchLevels() }
         .task { await model.watchNotices() }
         .task { await model.watchDevices() }
+        .task { await model.watchLanguageChoices() }
+    }
+
+    private var captionPane: some View {
+        VStack(spacing: 0) {
+            if let notice = model.notice, notice.kind != .resumed { noticeBanner(notice) }
+            captions.frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(DSColor.contentBackground)
     }
 
     // MARK: Controls
 
-    private var controls: some View {
-        HStack(spacing: DSSpacing.md) {
-            Picker("Source", selection: $model.source) {
-                ForEach(LiveSourceChoice.allCases) { Text($0.title).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .disabled(model.isRunning)
-            .frame(width: 360)
-            .accessibilityIdentifier("live.source")
-            if model.isRunning {
+    @ToolbarContentBuilder private var toolbarControls: some ToolbarContent {
+        ToolbarItem {
+            sourcePicker
+        }
+        if model.isRunning {
+            ToolbarItem {
                 if model.isPaused {
                     StatusPill("Paused", systemImage: LiveSymbol.pause, tone: .warning)
                 } else {
                     RecordingIndicator(label: "Live")
                 }
+            }
+        }
+        ToolbarItemGroup(placement: .primaryAction) {
+            if model.isRunning {
                 if model.hasExtras {
                     Button(model.isPaused ? "Resume" : "Pause", systemImage: model.isPaused ? LiveSymbol.resume : LiveSymbol.pause) {
                         Task { await model.togglePause() }
                     }
+                    .help(model.isPaused ? "Resume live captions" : "Pause live captions")
                     .accessibilityIdentifier("live.pause")
                 }
                 Button("Stop", systemImage: LiveSymbol.stop) { Task { await model.stop() } }
+                    .labelStyle(.titleAndIcon)
                     .keyboardShortcut(.return, modifiers: [.command])
                     .accessibilityIdentifier("live.stop")
             } else {
                 Button("Start", systemImage: LiveSymbol.start) { Task { await model.start() } }
+                    .labelStyle(.titleAndIcon)
                     .buttonStyle(EmberButtonStyle())
                     .keyboardShortcut(.return, modifiers: [.command])
                     .disabled(model.startDisabledReason != nil)
                     .help(model.startDisabledReason ?? "Start live captions")
                     .accessibilityIdentifier("live.start")
             }
+        }
+        .sharedBackgroundVisibility(.hidden)
+    }
+
+    @ViewBuilder private var sourcePicker: some View {
+        if layout.width < 1250 {
+            Picker("Source", selection: $model.source) {
+                ForEach(LiveSourceChoice.allCases) { Label($0.title, symbol: $0.symbol).tag($0) }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .disabled(model.isRunning)
+            .accessibilityIdentifier("live.source")
+        } else {
+            Picker("Source", selection: $model.source) {
+                Text("Mic").tag(LiveSourceChoice.mic)
+                Text("System").tag(LiveSourceChoice.system)
+                Text("Mic + system").tag(LiveSourceChoice.micAndSystem)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 260)
+            .disabled(model.isRunning)
+            .accessibilityIdentifier("live.source")
         }
     }
 
@@ -93,7 +144,7 @@ public struct LiveView: View {
         }
         .foregroundStyle(notice.kind == .problem ? DSColor.danger : DSColor.secondaryText)
         .padding(.horizontal, DSSpacing.lg)
-        .padding(.bottom, DSSpacing.sm)
+        .padding(.vertical, DSSpacing.md)
         .accessibilityIdentifier("live.notice")
     }
 
@@ -104,7 +155,7 @@ public struct LiveView: View {
             ErrorState(title: "Live captions stopped", message: message) { Task { await model.start() } }
         } else if model.lines.isEmpty {
             EmptyState(
-                systemImage: LiveSymbol.empty.systemImageName, title: model.isRunning ? "Listening" : "No live session",
+                symbol: LiveSymbol.empty, title: model.isRunning ? "Listening" : "No live session",
                 message: model.isRunning
                     ? "Captions appear here as people speak."
                     : "Choose a source and press Start. Captions appear here as people speak.")
@@ -115,10 +166,13 @@ public struct LiveView: View {
                         CaptionLineView(line: line)
                     }
                 }
-                .padding(DSSpacing.lg)
+                .padding(DSSpacing.xl)
+                .frame(maxWidth: 1000, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .defaultScrollAnchor(.bottom)
             .accessibilityIdentifier("live.transcript")
+            .dsAnimation(.settle, value: model.lines.map(\.id))
         }
     }
 
@@ -129,16 +183,22 @@ public struct LiveView: View {
             VStack(alignment: .leading, spacing: DSSpacing.lg) {
                 section("Input") {
                     if model.source.usesMicrophone {
+                        Text("Microphone").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                         Picker("Microphone", selection: $model.deviceUID) {
                             Text("System Default").tag(String?.none)
                             ForEach(model.devices) { Text($0.name).tag(String?.some($0.id)) }
                         }
+                        .labelsHidden()
+                        .frame(maxWidth: .infinity)
                         .disabled(model.isRunning)
                         .accessibilityIdentifier("live.device")
                     }
+                    Text("Language").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                     Picker("Language", selection: $model.language) {
-                        ForEach(LiveLanguageChoice.allCases) { Text($0.title).tag($0) }
+                        ForEach(model.languageChoices) { Text($0.title).tag($0) }
                     }
+                    .labelsHidden()
+                    .frame(maxWidth: .infinity)
                     .disabled(model.isRunning)
                     .accessibilityIdentifier("live.language")
                     LevelMeter(level: model.level)
@@ -146,6 +206,7 @@ public struct LiveView: View {
                         .accessibilityValue("\(Int(model.level * 100)) percent")
                         .accessibilityIdentifier("live.levelMeter")
                 }
+                Divider()
                 section("Transcript") {
                     Toggle("Save as transcript", isOn: $model.saveAsTranscript)
                         .disabled(model.isRunning)
@@ -157,10 +218,18 @@ public struct LiveView: View {
                             .accessibilityIdentifier("live.saved")
                     }
                 }
-                if model.hasExtras { overlaySection }
+                if model.hasExtras {
+                    Divider()
+                    overlaySection
+                }
+                Text("Captions stay on this Mac. Final lines settle in place as you speak.")
+                    .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
             }
             .padding(DSSpacing.lg)
         }
+        .frame(maxHeight: .infinity)
+        .background(DSColor.insetBackground.opacity(0.6))
+        .accessibilityIdentifier("live.sidebar")
     }
 
     private var overlaySection: some View {
@@ -219,9 +288,20 @@ struct CaptionLineView: View {
                 .foregroundStyle(line.isVolatile ? DSColor.secondaryText : DSColor.primaryText)
             if let translation = line.translation { Text(translation).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText) }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, DSSpacing.sm)
+        .dsTransition(.settle)
         .accessibilityElement(children: .combine)
         .accessibilityValue(line.isVolatile ? "In progress" : "")
     }
 }
 
 #Preview("Live - idle") { LiveView(model: LiveModel(services: .preview())).frame(width: 920, height: 520) }
+
+/// Compact windows stack controls below captions; ordinary windows reserve a predictable solid inspector width.
+public struct LiveWorkspaceLayout: Equatable, Sendable {
+    public var width: CGFloat
+    public init(width: CGFloat) { self.width = max(0, width) }
+    public var stacksPanels: Bool { width < 700 }
+    public var sidePanelWidth: CGFloat { width >= 1500 ? 320 : 280 }
+}

@@ -7,7 +7,7 @@ import SwiftUI
 /// - Below 1100 pt the Editor inspector hides behind a toolbar toggle and opens as a solid popover.
 /// - Below 800 pt the sidebar collapses (a toolbar button reveals it as an overlay). With a 960 pt window minimum this
 ///   only applies to a window that is narrower than the minimum for a moment (live resize, Stage Manager tiles).
-/// - Content never stretches past 1120 pt; wider windows add margin.
+/// - Workspace surfaces fill the detail column. Long-form prose may set a local reading width.
 /// - Home action cards: four across, two across when narrow, one column when compact.
 public struct ShellLayout: Equatable, Sendable {
     public var width: CGFloat
@@ -34,8 +34,8 @@ public struct ShellLayout: Equatable, Sendable {
     public var sidebarCollapsed: Bool { width < DSLayout.sidebarCollapseWidth }
     /// `true` below 1100 pt: the Editor inspector is behind a toolbar toggle.
     public var inspectorCollapsed: Bool { width < DSLayout.inspectorCollapseWidth }
-    /// Maximum content width (centred).
-    public var contentMaxWidth: CGFloat { DSLayout.contentMaxWidth }
+    /// Available workspace width. The user's full-window refinement supersedes the old global 1120 pt cap.
+    public var contentMaxWidth: CGFloat { .infinity }
     /// Home quick-action cards across.
     public var homeActionColumns: Int {
         switch widthClass {
@@ -54,8 +54,8 @@ public struct ShellLayout: Equatable, Sendable {
         }
     }
 
-    /// Width of centred content in a window `width` wide (never above `contentMaxWidth`).
-    public func contentWidth(available: CGFloat) -> CGFloat { min(available, contentMaxWidth) }
+    /// Uses every available point for the workspace; individual prose views retain their own readable line length.
+    public func contentWidth(available: CGFloat) -> CGFloat { max(0, available) }
 }
 
 private struct ShellLayoutKey: EnvironmentKey {
@@ -91,8 +91,9 @@ extension EnvironmentValues {
 }
 
 extension View {
-    /// Centres content and caps it at the 1120 pt maximum width.
+    /// Fills the workspace and paints its whole extent, including empty/loading states and maximized windows.
     public func shellContentWidth() -> some View {
-        frame(maxWidth: DSLayout.contentMaxWidth).frame(maxWidth: .infinity)
+        frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(DSColor.paper)
     }
 }

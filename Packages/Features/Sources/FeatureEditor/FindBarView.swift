@@ -57,7 +57,7 @@ struct FindBarView: View {
                 Button {
                     find.toggleReplace()
                 } label: {
-                    Image(systemName: "arrow.triangle.swap")
+                    DSIcon(.replace)
                 }
                 .help("Show replace (⌥⌘F)")
                 Button {
@@ -68,7 +68,7 @@ struct FindBarView: View {
             }
             if find.showsReplace {
                 HStack(spacing: DSSpacing.sm) {
-                    Image(systemName: "arrow.turn.down.right").foregroundStyle(DSColor.secondaryText)
+                    DSIcon(.replace).foregroundStyle(DSColor.secondaryText)
                     TextField("Replace with", text: $find.replacement).textFieldStyle(.roundedBorder).frame(minWidth: 160)
                         .accessibilityLabel("Replace with")
                     Button("Replace") { Task { await find.replaceCurrent() } }.disabled(!find.canReplace)

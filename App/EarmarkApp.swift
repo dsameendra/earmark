@@ -40,7 +40,7 @@ struct EarmarkApp: App {
         MenuBarExtra {
             MenuBarHost(environment: environment)
         } label: {
-            MenuBarIconView(model: environment.menuBar)
+            MenuBarGlyphView(model: environment.menuBar)
         }
         .menuBarExtraStyle(.window)
     }
@@ -84,4 +84,53 @@ private struct MenuBarHost: View {
         openWindow(id: MainWindow.id)
         NSApplication.shared.activate()
     }
+}
+
+/// Menu bar label using the Earmark ear glyph. Idle is a template image (the system tints it for the
+/// menu bar); recording composes the same glyph with the recording-red dot (never Ember) into an image
+/// that redraws for the current appearance. Behaviour matches `MenuBarIconView`: pulse while recording
+/// unless Reduce Motion is on (MENU-AC-07).
+private struct MenuBarGlyphView: View {
+    let model: MenuBarModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var dimmed = false
+
+    var body: some View {
+        let recording = model.status.isRecording
+        let pulsing = recording && !reduceMotion
+        Group {
+            if recording {
+                Image(nsImage: MenuBarGlyph.recording)
+            } else {
+                Image("MenuBarIdle")
+            }
+        }
+        .opacity(pulsing && dimmed ? 0.55 : 1)
+        .animation(pulsing ? .easeInOut(duration: 0.9).repeatForever(autoreverses: true) : .default, value: dimmed)
+        .onChange(of: pulsing, initial: true) { _, isPulsing in dimmed = isPulsing }
+        .accessibilityLabel("Earmark")
+        .accessibilityValue(model.status.text)
+    }
+}
+
+@MainActor
+private enum MenuBarGlyph {
+    /// Template ear tinted with the current label colour plus the non-template red dot asset.
+    static let recording: NSImage = {
+        let glyph = NSImage(named: "MenuBarIdle")
+        let dot = NSImage(named: "MenuBarRecordingDot")
+        let size = glyph?.size ?? NSSize(width: 18, height: 18)
+        let image = NSImage(size: size, flipped: false) { rect in
+            if let glyph {
+                glyph.draw(in: rect)
+                NSColor.labelColor.setFill()
+                rect.fill(using: .sourceIn)
+            }
+            dot?.draw(in: rect)
+            return true
+        }
+        image.isTemplate = false
+        return image
+    }()
 }

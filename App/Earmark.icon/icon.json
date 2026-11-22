@@ -1,0 +1,56 @@
+{
+  "fill-specializations" : [
+    {
+      "value" : {
+        "linear-gradient" : [
+          "srgb:0.91000,0.47500,0.29000,1.00000",
+          "srgb:0.56000,0.21000,0.05500,1.00000"
+        ],
+        "orientation" : { "start" : { "x" : 0.0, "y" : 0.0 }, "stop" : { "x" : 1.0, "y" : 1.0 } }
+      }
+    },
+    {
+      "appearance" : "dark",
+      "value" : {
+        "linear-gradient" : [
+          "srgb:0.18000,0.16900,0.15300,1.00000",
+          "srgb:0.06700,0.06300,0.05500,1.00000"
+        ],
+        "orientation" : { "start" : { "x" : 0.0, "y" : 0.0 }, "stop" : { "x" : 1.0, "y" : 1.0 } }
+      }
+    }
+  ],
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "glass" : false,
+          "image-name-specializations" : [
+            { "value" : "curl.svg" },
+            { "appearance" : "dark", "value" : "curl-dark.svg" }
+          ],
+          "name" : "curl"
+        },
+        {
+          "glass" : false,
+          "image-name-specializations" : [
+            { "value" : "arc.svg" },
+            { "appearance" : "dark", "value" : "arc-dark.svg" }
+          ],
+          "name" : "arc"
+        },
+        {
+          "glass" : false,
+          "image-name-specializations" : [
+            { "value" : "ear.svg" },
+            { "appearance" : "dark", "value" : "ear-dark.svg" }
+          ],
+          "name" : "ear"
+        }
+      ],
+      "shadow" : { "kind" : "neutral", "opacity" : 0.5 },
+      "translucency" : { "enabled" : false, "value" : 0.5 }
+    }
+  ],
+  "supported-platforms" : { "squares" : [ "macOS" ] }
+}

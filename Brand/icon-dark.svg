@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="1024" height="1024" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <linearGradient id="gN" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2E2B27"/><stop offset="1" stop-color="#11100E"/></linearGradient>
+    <linearGradient id="gFN" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB48C"/><stop offset="1" stop-color="#D4602A"/></linearGradient>
+    <clipPath id="cl"><path d="M22 0H78a22 22 0 0 1 22 22V78a22 22 0 0 1-22 22H22A22 22 0 0 1 0 78V22A22 22 0 0 1 22 0Z"/></clipPath>
+  </defs>
+  <path d="M22 0H78a22 22 0 0 1 22 22V78a22 22 0 0 1-22 22H22A22 22 0 0 1 0 78V22A22 22 0 0 1 22 0Z" fill="url(#gN)"/>
+  <g transform="translate(12 16) scale(1.15)" fill="none">
+    <path d="M30 8c-9 0-16 7-16 16v6c0 5 3 7 6 10 2 2 3 4 3 7a6 6 0 0 0 11 3M30 20c-4 0-7 3-7 7" stroke="#F3EFE7" stroke-width="4.8"/>
+    <path d="M44 20a15 15 0 0 1 0 20" stroke="#F28A57" stroke-width="4.2"/>
+  </g>
+  <g clip-path="url(#cl)">
+    <path d="M72 0H100V28Z" fill="#000000" fill-opacity=".5"/>
+    <path d="M72 0V24a4 4 0 0 0 4 4H100Z" fill="url(#gFN)"/>
+    <path d="M72 0L100 28" stroke="#FFFFFF" stroke-opacity=".4" stroke-width=".9" fill="none"/>
+  </g>
+</svg>

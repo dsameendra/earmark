@@ -7,7 +7,7 @@ ADR-003 makes NLLB-200 distilled 600M (CC-BY-NC-4.0, user-downloaded) the Sinhal
 `EarmarkTranslation.NLLBEngine` therefore runs through the `NLLBRuntime` protocol, and the only implementation today is `CTranslate2WorkerRuntime`: a persistent Python worker (JSON lines over stdio) that needs a user-installed interpreter with `ctranslate2` and `sentencepiece`. It is verified on this Mac and is acceptable for development and measurement. It is **not shippable**: an app must not depend on the user's Python, and a sandboxed build cannot launch it.
 
 ## Current behaviour (this build)
-- The worker is **off by default**. It is enabled only by `EARMARK_DEV_NLLB_PYTHON=/path/to/python3` (see `NLLBDevRuntime`).
+- The worker is **off by default**. It is enabled only by the environment variable `EARMARK_DEV_NLLB_PYTHON=/path/to/python3` (see `NLLBDevRuntime`; there is no settings switch yet).
 - Without the flag the router has no NLLB engine. Any pair involving Sinhala fails with `TranslationFailure.noEngine`, shown as "Sinhala translation unavailable in this build". The Translate popover lists Sinhala as unavailable with that reason; Apple-translatable pairs are unaffected.
 - With the flag, the NLLB model is still a normal user download through `ModelManaging.ensureAvailable` (size and licence shown first), and the translate job, live translation and dictation use it through the router.
 

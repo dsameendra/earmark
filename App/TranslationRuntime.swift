@@ -102,11 +102,21 @@ final class AppTranslationService: TranslationPreparing, Sendable {
 final class ApplePackInstaller {
     var configuration: TranslationSession.Configuration?
     @ObservationIgnored private var waiter: CheckedContinuation<Bool, Never>?
+    @ObservationIgnored private var hostStarted = false
+    @ObservationIgnored private var watchdog: Task<Void, Never>?
 
     /// Shows the system sheet for the pair and returns whether the pack is installed afterwards.
     func install(source: LanguageCode, target: LanguageCode) async -> Bool {
         waiter?.resume(returning: false)
+        hostStarted = false
         let new = TranslationSession.Configuration(source: Self.language(source), target: Self.language(target))
+        // If no host view picks the configuration up (the main window is gone) nothing would ever resume the caller.
+        watchdog?.cancel()
+        watchdog = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled, let self, !self.hostStarted else { return }
+            self.finish(installed: false)
+        }
         return await withCheckedContinuation { continuation in
             waiter = continuation
             if configuration?.source == new.source, configuration?.target == new.target {
@@ -119,9 +129,13 @@ final class ApplePackInstaller {
 
     /// Called by the host once the system sheet finished (or failed) for the current configuration.
     func finish(installed: Bool) {
+        watchdog?.cancel()
         waiter?.resume(returning: installed)
         waiter = nil
     }
+
+    /// The host received the session: the system sheet is up and the user is in charge of how long it takes.
+    func hostDidStart() { hostStarted = true }
 
     private static func language(_ code: LanguageCode) -> Locale.Language {
         Locale.Language(identifier: code.rawValue == "zh" ? "zh-Hans" : code.rawValue)
@@ -136,6 +150,7 @@ struct TranslationPackHost: View {
         Color.clear
             .frame(width: 0, height: 0)
             .translationTask(installer.configuration) { session in
+                installer.hostDidStart()
                 var installed = false
                 do {
                     try await session.prepareTranslation()

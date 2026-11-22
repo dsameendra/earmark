@@ -149,6 +149,19 @@ private final class FakeTranslation: TranslationPreparing, @unchecked Sendable {
         #expect(model.translationDisplay(for: model.segments[0])?.text == "Hallo")
     }
 
+    @Test func aJobThatFinishesInsideEnqueueIsNotMissed() async throws {
+        // The real queue starts the job inside `enqueue`; a failing or empty translation can end before any later subscription.
+        var transcript = Fixtures.transcript()
+        transcript.languages = ["en"]
+        let (model, _) = await Fixtures.model(segments: [Fixtures.segment("hello", start: 0)], transcript: transcript)
+        model.translationService = FakeTranslation()
+        model.jobQueue = InstantlyFailingQueue()
+        await model.translate(to: "de")
+        for _ in 0..<100 where model.translationStatus == nil { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(model.translationStatus == "engine exploded")
+        #expect(!model.isTranslating)
+    }
+
     @Test func translateStopsWhenThePairNeedsADownload() async throws {  // TRN-AC-03
         let queue = PlaceholderJobQueue()
         var transcript = Fixtures.transcript()

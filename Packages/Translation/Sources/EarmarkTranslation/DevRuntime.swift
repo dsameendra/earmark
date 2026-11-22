@@ -5,10 +5,9 @@ import Foundation
 ///
 /// `NLLBEngine` needs CTranslate2 and SentencePiece, which today run through a Python worker (`CTranslate2WorkerRuntime`).
 /// That is acceptable for development and non-sandboxed local builds, not for a shippable app: the app must not depend on a
-/// user's Python. The worker is therefore **off unless explicitly enabled**:
-///
-/// - environment `EARMARK_DEV_NLLB_PYTHON=/path/to/python3` (an interpreter with `ctranslate2` and `sentencepiece`), or
-/// - the `dev.nllbPython` setting with the same path.
+/// user's Python. The worker is therefore **off unless explicitly enabled** with the environment variable
+/// `EARMARK_DEV_NLLB_PYTHON=/path/to/python3` (an interpreter with `ctranslate2` and `sentencepiece`). `settingValue` and
+/// `settingsKey` are reserved for a future developer setting; the app does not read it yet.
 ///
 /// Without it the router has no NLLB engine and Sinhala translation reports ``TranslationFailure/noEngine(_:)``
 /// ("Sinhala translation unavailable in this build").

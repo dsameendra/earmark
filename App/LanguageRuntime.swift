@@ -23,9 +23,12 @@ struct SegmentRetranscriptionAdapter: SegmentRetranscriptionService {
         let resolver = LanguageEngineResolver.make(
             router: router, basePlan: base, useCase: .file, tier: tier, explicitModel: explicit,
             installed: { [models] in await models.installedModels() }, engines: engines)
-        // The engine for the new language must have its model; the editor shows a download hint otherwise.
-        if let assignment = base.assignments.first, assignment.requiresDownload, let model = assignment.model {
-            throw AppError.modelNotInstalled(model)
+        // The engine that will really run (the user's model when it covers the language) must have its model installed; the
+        // editor shows a download hint otherwise.
+        if let model = try await resolver(language).model,
+            await models.catalog().first(where: { $0.id == model })?.runtime != .appleAsset
+        {
+            guard case .installed = await models.state(of: model) else { throw AppError.modelNotInstalled(model) }
         }
         let retranscriber = SegmentRetranscriber(engines: resolver)
         return try await retranscriber.retranscribe(

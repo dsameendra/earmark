@@ -153,12 +153,20 @@ extension TranscriptEditorModel {
             }
         }
         let job = Job(kind: .translate, transcriptID: transcriptID, settings: JobSettings(translateTo: target))
+        translationJob = job
+        translationChoice.target = target
+        // Subscribe before enqueueing: the queue starts the job inside `enqueue`, and a quick one (nothing to translate, a
+        // failing engine) can finish before a later subscription exists.
+        watchTranslationJob(job.id, target: target)
         do {
-            let id = try await jobQueue.enqueue(job)
-            translationJob = job
-            translationChoice.target = target
-            watchTranslationJob(id, target: target)
+            _ = try await jobQueue.enqueue(job)
+            // Catch up on a job that already reached a final state while the subscription was being set up.
+            if let latest = await jobQueue.jobs().first(where: { $0.id == job.id }), translationJob?.state != latest.state {
+                await translationJobUpdated(latest, target: target)
+            }
         } catch {
+            translationWatcher?.cancel()
+            translationJob = nil
             translationStatus = "Could not start the translation: \(error.localizedDescription)"
         }
     }

@@ -69,7 +69,7 @@ def verify_installer_metadata(mount: Path, layout_assets: Path) -> dict[str, obj
             }
             verification.require(isinstance(window, dict) and set(window) == expected_window_keys, "unexpected Finder window settings")
             bounds = re.fullmatch(r"\{\{(-?\d+), (-?\d+)\}, \{(\d+), (\d+)\}\}", window["WindowBounds"])
-            verification.require(bounds and tuple(map(int, bounds.groups()[2:])) == (660, 420), "installer window must be 660 by 420 points")
+            verification.require(bounds and tuple(map(int, bounds.groups()[2:])) == (660, 448), "installer window must be 660 by 448 points")
             for key in expected_window_keys - {"WindowBounds", "SidebarWidth"}:
                 verification.require(window[key] is False, f"installer chrome must be hidden: {key}")
             verification.require(window["SidebarWidth"] == 180, "unexpected Finder sidebar width")
@@ -77,7 +77,7 @@ def verify_installer_metadata(mount: Path, layout_assets: Path) -> dict[str, obj
                 "viewOptionsVersion": 1, "backgroundType": 2, "backgroundColorRed": 1.0, "backgroundColorGreen": 1.0,
                 "backgroundColorBlue": 1.0, "gridOffsetX": 0.0, "gridOffsetY": 0.0, "gridSpacing": 80.0,
                 "arrangeBy": "none", "showIconPreview": False, "showItemInfo": False, "labelOnBottom": True,
-                "textSize": 13.0, "iconSize": 128.0, "scrollPositionX": 0.0, "scrollPositionY": 0.0,
+                "textSize": 13.0, "iconSize": 112.0, "scrollPositionX": 0.0, "scrollPositionY": 0.0,
             }
             verification.require(isinstance(icons, dict) and set(icons) == set(expected_icon_values) | {"backgroundImageAlias"},
                                  "unexpected Finder icon settings")
@@ -86,15 +86,15 @@ def verify_installer_metadata(mount: Path, layout_assets: Path) -> dict[str, obj
             alias = Alias.from_bytes(icons["backgroundImageAlias"])
             verification.require(alias.target.filename == ".background.tiff" and alias.target.kind == 0 and
                                  alias.target.posix_path.lstrip("/") == ".background.tiff", "Finder background alias points outside the authored image")
-            for name, position in [("Earmark.app", (170, 200)), ("Applications", (490, 200))]:
+            for name, position in [("Earmark.app", (180, 190)), ("Applications", (480, 190))]:
                 verification.require(store[name]["Iloc"] == position, f"incorrect installer icon position: {name}")
     except verification.VerificationError:
         raise
     except Exception as error:
         raise verification.VerificationError(f"invalid Finder layout metadata: {error}") from error
     return {
-        "windowSize": [660, 420], "iconSize": 128, "textSize": 13,
-        "iconPositions": {"Earmark.app": [170, 200], "Applications": [490, 200]},
+        "windowSize": [660, 448], "iconSize": 112, "textSize": 13,
+        "iconPositions": {"Earmark.app": [180, 190], "Applications": [480, 190]},
         "artworkMatches": True,
         "metadataSHA256": {name: verification.sha256(mount / name) for name in sorted(INSTALLER_METADATA)},
     }

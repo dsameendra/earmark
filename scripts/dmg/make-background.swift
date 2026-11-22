@@ -49,7 +49,7 @@ func draw(scale: CGFloat) throws {
     text("Install Earmark", top: 27, size: 31, color: ink, serif: true)
     text("Drag Earmark into your Applications folder.", top: 77, size: 14, color: secondary)
 
-    let card = NSBezierPath(roundedRect: NSRect(x: 28, y: height - 316, width: 604, height: 192), xRadius: 24, yRadius: 24)
+    let card = NSBezierPath(roundedRect: NSRect(x: 28, y: height - 292, width: 604, height: 180), xRadius: 24, yRadius: 24)
     sheet.setFill()
     card.fill()
     ink.withAlphaComponent(0.08).setStroke()
@@ -57,7 +57,7 @@ func draw(scale: CGFloat) throws {
     card.stroke()
 
     // Finder supplies both actual icons and their labels; the background supplies only the directional cue.
-    let arrowY = height - 200
+    let arrowY = height - 190
     let shaft = NSBezierPath()
     shaft.move(to: NSPoint(x: 282, y: arrowY))
     shaft.line(to: NSPoint(x: 377, y: arrowY))
@@ -75,10 +75,10 @@ func draw(scale: CGFloat) throws {
     ember.setStroke()
     tip.stroke()
 
-    text("Listen once. Keep what matters.", top: 338, size: 17, color: ink, serif: true)
-    text("macOS 26 or later  ·  Apple silicon", top: 369, size: 11, color: secondary)
-    if isPreview { text("LOCAL PREVIEW", top: 397, size: 9, color: secondary) }
-    if isSelfSigned { text("First launch: System Settings  ›  Privacy & Security  ›  Open Anyway", top: 397, size: 9, color: secondary) }
+    text("Listen once. Keep what matters.", top: 310, size: 17, color: ink, serif: true)
+    text("macOS 26 or later  ·  Apple silicon", top: 342, size: 11, color: secondary)
+    if isPreview { text("LOCAL PREVIEW", top: 376, size: 9, color: secondary) }
+    if isSelfSigned { text("First launch: System Settings  ›  Privacy & Security  ›  Open Anyway", top: 376, size: 9, color: secondary) }
 
     let image = context.makeImage()!
     let bitmap = NSBitmapImageRep(cgImage: image)

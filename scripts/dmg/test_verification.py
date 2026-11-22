@@ -55,7 +55,7 @@ class DMGMetadataTests(unittest.TestCase):
             store["."]["vSrn"] = ("long", 1)
             store["."]["icvl"] = ("type", b"icnv")
             store["."]["bwsp"] = {
-                "WindowBounds": "{{200, 140}, {660, 420}}", "ShowStatusBar": False,
+                "WindowBounds": "{{200, 140}, {660, 448}}", "ShowStatusBar": False,
                 "ContainerShowSidebar": False, "PreviewPaneVisibility": False, "SidebarWidth": 180,
                 "ShowTabView": False, "ShowToolbar": False, "ShowPathbar": False, "ShowSidebar": False,
             }
@@ -63,11 +63,11 @@ class DMGMetadataTests(unittest.TestCase):
                 "viewOptionsVersion": 1, "backgroundType": 2, "backgroundColorRed": 1.0,
                 "backgroundColorGreen": 1.0, "backgroundColorBlue": 1.0, "gridOffsetX": 0.0, "gridOffsetY": 0.0,
                 "gridSpacing": 80.0, "arrangeBy": "none", "showIconPreview": False, "showItemInfo": False,
-                "labelOnBottom": True, "textSize": 13.0, "iconSize": 128.0,
+                "labelOnBottom": True, "textSize": 13.0, "iconSize": 112.0,
                 "scrollPositionX": 0.0, "scrollPositionY": 0.0, "backgroundImageAlias": background_alias(),
             }
-            store["Earmark.app"]["Iloc"] = (170, 200)
-            store["Applications"]["Iloc"] = (490, 200)
+            store["Earmark.app"]["Iloc"] = (180, 190)
+            store["Applications"]["Iloc"] = (480, 190)
 
     def verify(self, assets: bool = True) -> dict:
         return verifier.compare_payload(self.mount, self.source, False, self.assets if assets else None)
@@ -102,8 +102,8 @@ class DMGMetadataTests(unittest.TestCase):
     def test_branded_payload_matches_authored_artwork_and_layout(self) -> None:
         self.styled()
         report = self.verify()
-        self.assertEqual(report["installerLayout"]["windowSize"], [660, 420])
-        self.assertEqual(report["installerLayout"]["iconPositions"]["Applications"], [490, 200])
+        self.assertEqual(report["installerLayout"]["windowSize"], [660, 448])
+        self.assertEqual(report["installerLayout"]["iconPositions"]["Applications"], [480, 190])
         self.assertEqual(set(report["installerLayout"]["metadataSHA256"]), verifier.INSTALLER_METADATA)
 
     def test_artwork_tampering_is_rejected(self) -> None:
@@ -153,13 +153,13 @@ class DMGMetadataTests(unittest.TestCase):
     def test_wrong_icon_positions_are_rejected(self) -> None:
         self.styled()
         with DSStore.open(str(self.mount / ".DS_Store"), "r+") as store:
-            store["Earmark.app"]["Iloc"] = (170, 250)
+            store["Earmark.app"]["Iloc"] = (180, 250)
         self.rejects("incorrect installer icon position")
 
     def test_wrong_window_size_is_rejected(self) -> None:
         self.styled()
         self.change_record("bwsp", "WindowBounds", "{{200, 140}, {800, 600}}")
-        self.rejects("window must be 660 by 420")
+        self.rejects("window must be 660 by 448")
 
     def test_visible_chrome_is_rejected(self) -> None:
         self.styled()

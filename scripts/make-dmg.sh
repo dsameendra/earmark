@@ -54,6 +54,6 @@ import hashlib,importlib.metadata,json,pathlib,sys
 root=pathlib.Path(sys.argv[1])
 report={'tools':{name:importlib.metadata.version(name) for name in ['dmgbuild','ds_store','mac_alias']},
         'assets':{name:hashlib.sha256((root/name).read_bytes()).hexdigest() for name in ['background.tiff','volume.icns']},
-        'windowSize':[660,420], 'iconLocations':{'Earmark.app':[170,200],'Applications':[490,200]}}
+        'windowSize':[660,448], 'iconLocations':{'Earmark.app':[180,190],'Applications':[480,190]}}
 (root/'manifest.json').write_text(json.dumps(report,indent=2)+'\n')
 PY

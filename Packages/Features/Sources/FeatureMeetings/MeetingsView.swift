@@ -26,6 +26,8 @@ public struct MeetingsView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
+            PermissionGateBanner(model: model.permissionGate, feature: "Meeting capture", identifier: "meetings.permissions")
+                .padding(.bottom, model.permissionGate.isBlocked ? DSSpacing.md : 0)
             inline
             content
         }

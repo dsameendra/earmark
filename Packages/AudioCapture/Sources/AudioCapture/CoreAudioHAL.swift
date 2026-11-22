@@ -71,12 +71,29 @@ enum HAL {
 
     static func audioDevice(_ id: AudioObjectID) -> AudioDevice? {
         guard let uid = string(id, kAudioDevicePropertyDeviceUID) else { return nil }
+        // Hidden devices (for example the private aggregate a process tap creates) are not user choices.
+        if (get(id, kAudioDevicePropertyIsHidden, default: UInt32(0)) ?? 0) != 0 { return nil }
         let transport = get(id, kAudioDevicePropertyTransportType, default: UInt32(0)) ?? 0
         return AudioDevice(
             id: uid, name: string(id, kAudioObjectPropertyName) ?? uid,
             isInput: channelCount(id, scope: kAudioDevicePropertyScopeInput) > 0,
             isOutput: channelCount(id, scope: kAudioDevicePropertyScopeOutput) > 0,
-            isBluetooth: transport == kAudioDeviceTransportTypeBluetooth || transport == kAudioDeviceTransportTypeBluetoothLE)
+            isBluetooth: transport == kAudioDeviceTransportTypeBluetooth || transport == kAudioDeviceTransportTypeBluetoothLE,
+            transportLabel: transportLabel(transport))
+    }
+
+    static func transportLabel(_ transport: UInt32) -> String? {
+        switch transport {
+        case kAudioDeviceTransportTypeBuiltIn: "Built-in"
+        case kAudioDeviceTransportTypeUSB: "USB"
+        case kAudioDeviceTransportTypeBluetooth, kAudioDeviceTransportTypeBluetoothLE: "Bluetooth"
+        case kAudioDeviceTransportTypeAggregate: "Aggregate"
+        case kAudioDeviceTransportTypeVirtual: "Virtual"
+        case kAudioDeviceTransportTypeAirPlay: "AirPlay"
+        case kAudioDeviceTransportTypeThunderbolt: "Thunderbolt"
+        case kAudioDeviceTransportTypeHDMI, kAudioDeviceTransportTypeDisplayPort: "Display"
+        default: nil
+        }
     }
 
     /// Headphone hint: Bluetooth transport (may be a speaker), or built-in output whose data source is 'hdpn'.

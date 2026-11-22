@@ -19,6 +19,12 @@ private final class FakeSources: MeetingAudioSourceProviding {
         self.log = log
     }
     func micSource(deviceUID: String?) -> any AudioSource { StubSource(tag: .mic(deviceUID: nil), failure: nil, name: "mic", log: log) }
+    /// The Meetings override from Settings > Audio.
+    func preferredMicDeviceUID() async -> String? { "usb-meetings" }
+    func makeMicSource() async -> any AudioSource {
+        await log.add("mic.device=\(await preferredMicDeviceUID() ?? "default")")
+        return micSource(deviceUID: await preferredMicDeviceUID())
+    }
     func remoteSource(for app: MeetingApp) -> any AudioSource {
         StubSource(tag: .app(bundleID: app.bundleIDs[0]), failure: remoteFailure, name: "remote", log: log)
     }
@@ -90,6 +96,7 @@ private final class FakeLive: LiveSessionControlling {
     init(log: CallLog) { self.log = log }
     func start(_ config: LiveSessionConfig) async throws {
         await log.add("live.start:diarize=\(config.diarize):save=\(config.saveAsTranscript)")
+        if case .micAndSystem(let uid, _) = config.source { await log.add("live.mic=\(uid ?? "default")") }
     }
     func stop() async -> TranscriptID? {
         await log.add("live.stop")
@@ -160,7 +167,7 @@ struct ControllerTests {
         let rig = Rig()
         await rig.setBehavior(.autoTranscribe)
         await rig.zoomStarted()
-        #expect(await rig.logRef.entries == ["live.start:diarize=true:save=true"])
+        #expect(await rig.logRef.entries == ["live.start:diarize=true:save=true", "live.mic=usb-meetings"])
         let session = await rig.controller.currentSession
         #expect(session?.transcribing == true)
         #expect(session?.recording == false)
@@ -176,6 +183,8 @@ struct ControllerTests {
         #expect(events.contains(.recordingIndicator(true)))
         let log = await rig.logRef.entries
         #expect(log.contains("mic.start") && log.contains("remote.start"))
+        #expect(log.contains("mic.device=usb-meetings"), "the recording uses the Meetings microphone choice")
+        #expect(log.contains("live.mic=usb-meetings"), "live transcription of the meeting uses it too")
         #expect(log.contains { $0.hasPrefix("recorder.start:") && $0.hasSuffix("video=true") })
         #expect(await rig.controller.currentSession?.recordsVideo == true)
 

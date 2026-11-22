@@ -52,12 +52,12 @@ struct PlayerPanelView: View {
     }
 }
 
-/// Video with pinch to scale (50 % to 300 %), drag to pan when scaled up, double-click for 100 %, and Command or Option
-/// plus scroll to zoom. The same scale is driven by View > Zoom In / Out / Actual Size while the pointer is over the video.
+/// Video with drag to pan when scaled up, double-click for 100 %, and Command or Option plus scroll to zoom (50 % to
+/// 300 %). The same scale is driven by View > Zoom In / Out / Actual Size while the pointer is over the video.
+/// A plain pinch is not handled here: it resizes the popup window (see ``PlayerWindowController``).
 private struct VideoPanel: View {
     let model: TranscriptEditorModel
     let player: AVPlayer
-    @State private var magnifyStart: Double?
     @State private var panStart: CGSize?
 
     var body: some View {
@@ -71,14 +71,6 @@ private struct VideoPanel: View {
                 .overlay {
                     Color.clear.contentShape(Rectangle())
                         .gesture(
-                            MagnifyGesture()
-                                .onChanged { value in
-                                    if magnifyStart == nil { magnifyStart = zoom.videoScale }
-                                    zoom.setVideoScale((magnifyStart ?? 1) * value.magnification)
-                                }
-                                .onEnded { _ in magnifyStart = nil }
-                        )
-                        .simultaneousGesture(
                             DragGesture()
                                 .onChanged { value in
                                     guard zoom.videoScale > 1 else { return }
@@ -208,16 +200,33 @@ struct TransportBar: View {
 
 /// Hosts the player in its own window; the same `PlaybackModel` drives it, so seeking and highlighting stay in sync
 /// across windows (EDIT-AC-17).
+///
+/// Pinching on the window (two-finger pinch out = larger, in = smaller) or View > Make Player Larger / Smaller scales the
+/// whole window about its centre, never the video inside it. Scaling is uniform, so the aspect ratio holds, and it is
+/// clamped to ``PlayerWindowSizing`` and to the screen. The frame is persisted under ``autosaveName``.
 @MainActor
-final class PlayerWindowController: NSObject, NSWindowDelegate {
+final class PlayerWindowController: NSObject, NSWindowDelegate, PlayerResizing {
+    static let defaultAutosaveName = "EarmarkPlayerWindow"
+
     private var window: NSWindow?
     private let model: TranscriptEditorModel
     private let onRelink: () -> Void
+    private let autosaveName: String?
+    private let registry: PlayerSizeRegistry
+    var sizing = PlayerWindowSizing()
+    private var magnifyMonitor: Any?
 
-    init(model: TranscriptEditorModel, onRelink: @escaping () -> Void) {
+    init(
+        model: TranscriptEditorModel, onRelink: @escaping () -> Void, autosaveName: String? = PlayerWindowController.defaultAutosaveName,
+        registry: PlayerSizeRegistry = .shared
+    ) {
         self.model = model
         self.onRelink = onRelink
+        self.autosaveName = autosaveName
+        self.registry = registry
     }
+
+    var currentFrame: NSRect? { window?.frame }
 
     func show() {
         if let window {
@@ -233,26 +242,77 @@ final class PlayerWindowController: NSObject, NSWindowDelegate {
         // The window, not the SwiftUI content, owns its size: resizing stays smooth and never snaps to an ideal size.
         host.sizingOptions = []
         window.contentViewController = host
-        window.minSize = NSSize(width: 420, height: 240)
+        window.setContentSize(NSSize(width: 640, height: 400))  // a content controller can leave the window at the view size
+        window.contentMinSize = sizing.minSize
+        window.contentMaxSize = sizing.maxSize
         window.animationBehavior = .documentWindow
         window.isReleasedWhenClosed = false
         window.delegate = self
-        window.center()
+        let restored = autosaveName.map { window.setFrameUsingName($0) } ?? false
+        if !restored { window.center() }
+        if let autosaveName { window.setFrameAutosaveName(autosaveName) }
         window.makeKeyAndOrderFront(nil)
         self.window = window
+        installMagnifyMonitor()
+        if window.isKeyWindow { registry.activate(self) }
     }
 
     func close() {
         guard let window else { return }
         window.delegate = nil
+        removeMagnifyMonitor()
+        registry.deactivate(self)
         window.close()
         self.window = nil
         model.playback.isDetached = false
     }
 
     func windowWillClose(_ notification: Notification) {
+        removeMagnifyMonitor()
+        registry.deactivate(self)
         window = nil
         model.playback.isDetached = false
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) { registry.activate(self) }
+    func windowDidResignKey(_ notification: Notification) { registry.deactivate(self) }
+
+    // MARK: Scaling
+
+    func makeLarger() { scale(by: PlayerWindowSizing.step, animated: true) }
+    func makeSmaller() { scale(by: 1 / PlayerWindowSizing.step, animated: true) }
+
+    /// Scales the whole window by `factor` about its centre. Pinch events apply it per event without animation (the
+    /// trackpad already smooths them); the menu steps animate.
+    func scale(by factor: Double, animated: Bool) {
+        guard let window else { return }
+        let content = window.contentRect(forFrameRect: window.frame).size
+        let visible = window.screen?.visibleFrame
+        let extra = CGSize(width: window.frame.width - content.width, height: window.frame.height - content.height)
+        let available = visible.map { CGSize(width: $0.width - extra.width, height: $0.height - extra.height) }
+        let size = sizing.scaled(content, by: factor, available: available)
+        guard size != content else { return }
+        let frame = PlayerWindowSizing.frame(centeredOn: window.frame, size: size, extra: extra, within: visible)
+        window.setFrame(frame, display: true, animate: animated)
+    }
+
+    private func installMagnifyMonitor() {
+        removeMagnifyMonitor()
+        magnifyMonitor = NSEvent.addLocalMonitorForEvents(matching: .magnify) { [weak self] event in
+            let consumed = MainActor.assumeIsolated { self?.handleMagnify(event) ?? false }
+            return consumed ? nil : event
+        }
+    }
+
+    private func removeMagnifyMonitor() {
+        if let magnifyMonitor { NSEvent.removeMonitor(magnifyMonitor) }
+        magnifyMonitor = nil
+    }
+
+    private func handleMagnify(_ event: NSEvent) -> Bool {
+        guard let window, event.window === window else { return false }
+        scale(by: 1 + Double(event.magnification), animated: false)
+        return true
     }
 }
 

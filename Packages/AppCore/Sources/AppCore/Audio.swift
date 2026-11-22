@@ -35,7 +35,10 @@ public struct AudioDevice: Hashable, Codable, Sendable, Identifiable {
     public var isInput: Bool
     public var isOutput: Bool
     public var isBluetooth: Bool
-    public init(id: String, name: String, isInput: Bool, isOutput: Bool, isBluetooth: Bool = false) {
+    /// "Built-in", "USB", "Bluetooth", "Aggregate", "Virtual" and so on; `nil` when unknown. Used to tell same-named devices apart.
+    public var transportLabel: String?
+    public init(id: String, name: String, isInput: Bool, isOutput: Bool, isBluetooth: Bool = false, transportLabel: String? = nil) {
+        self.transportLabel = transportLabel
         self.id = id
         self.name = name
         self.isInput = isInput
@@ -69,6 +72,13 @@ public protocol AudioDeviceProviding: Sendable {
     func defaultInput() async -> AudioDevice?
     /// Emits whenever the device list or defaults change.
     func changes() -> AsyncStream<Void>
+    /// True when the default output is headphones (Bluetooth or the headphone jack): the mic will not hear system audio.
+    func defaultOutputLooksLikeHeadphones() async -> Bool
+}
+
+extension AudioDeviceProviding {
+    /// Providers that cannot tell assume speakers, the safer reading for the echo hint.
+    public func defaultOutputLooksLikeHeadphones() async -> Bool { false }
 }
 
 /// Decodes any AVFoundation-readable file into 16 kHz mono Float32 chunks with bounded memory.

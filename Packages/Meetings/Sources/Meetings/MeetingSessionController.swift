@@ -6,6 +6,16 @@ public protocol MeetingAudioSourceProviding: Sendable {
     func micSource(deviceUID: String?) -> any AudioSource
     /// Remote (everyone else) audio for the app, e.g. an app tap on its bundle ID.
     func remoteSource(for app: MeetingApp) -> any AudioSource
+    /// The microphone the user chose for meetings (Settings > Audio: the Meetings override, else the global device);
+    /// `nil` follows the system default.
+    func preferredMicDeviceUID() async -> String?
+    /// The microphone source for a session, honouring the Meetings device choice and voice processing.
+    func makeMicSource() async -> any AudioSource
+}
+
+extension MeetingAudioSourceProviding {
+    public func preferredMicDeviceUID() async -> String? { nil }
+    public func makeMicSource() async -> any AudioSource { micSource(deviceUID: await preferredMicDeviceUID()) }
 }
 
 public struct MeetingSessionInfo: Sendable, Equatable {
@@ -175,7 +185,9 @@ public actor MeetingSessionController {
         if transcribe, let live {
             do {
                 try await live.start(
-                    LiveSessionConfig(source: .micAndSystem(deviceUID: nil, lanes: true), diarize: true, saveAsTranscript: true))
+                    LiveSessionConfig(
+                        source: .micAndSystem(deviceUID: await sources.preferredMicDeviceUID(), lanes: true), diarize: true,
+                        saveAsTranscript: true))
             } catch {
                 broadcaster.send(.failed(reason: "Live transcription failed to start: \(error)"))
                 info.transcribing = false
@@ -205,7 +217,7 @@ public actor MeetingSessionController {
         let recorder = makeRecorder(
             RecordingSession(meetingID: state.info.meetingID, app: app, startedAt: state.info.startedAt, relativeDirectory: folder))
 
-        let mic = sources.micSource(deviceUID: nil)
+        let mic = await sources.makeMicSource()
         let remote = sources.remoteSource(for: app)
         let micStream: AsyncStream<AudioChunk>
         do { micStream = try await mic.start() } catch {

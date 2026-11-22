@@ -1,6 +1,7 @@
 import AppCore
 import AppKit
 import DesignSystem
+import FeatureSupport
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -91,9 +92,13 @@ struct AudioSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Input device") {
+            if let gate = model.permissionGate, gate.isBlocked {
+                Section { PermissionGateBanner(model: gate, feature: "The microphone", identifier: "settings.audio.permission") }
+            }
+            Section {
                 devicePicker("Microphone", pref: model.globalDevice, allowGlobal: false)
                     .disabled(model.isTestingMicrophone)
+                    .accessibilityIdentifier("settings.audio.device")
                 HStack {
                     ProgressView(value: Double(model.inputLevel)).frame(maxWidth: 220)
                         .accessibilityLabel("Input level").accessibilityValue("\(Int(model.inputLevel * 100)) percent")
@@ -105,20 +110,54 @@ struct AudioSettingsView: View {
                     .disabled(!model.canTestMicrophone)
                     .accessibilityIdentifier("settings.audio.testMicrophone")
                 }
-                Text("Test microphone listens locally until you stop or leave this pane. It asks for microphone access when needed.")
+                Text("Speak and watch the meter. The test listens locally, records nothing, and stops when you press Stop or leave this pane.")
                     .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                if let note = model.meterNote {
+                    Text(note).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                        .accessibilityIdentifier("settings.audio.meterNote")
+                }
                 if let message = model.meterError {
                     Text(message).font(DSTypography.caption).foregroundStyle(DSColor.danger)
-                    if let url = model.microphoneSettingsURL { Button("Open Microphone Settings") { openURL(url) } }
+                        .accessibilityIdentifier("settings.audio.meterError")
+                    if model.meterNeedsPermission, let url = model.microphoneSettingsURL {
+                        Button("Open Microphone Settings") { openURL(url) }
+                    }
                 }
-                Toggle("Voice processing (echo cancellation, noise suppression)", isOn: model.voiceProcessing.binding)
+            } header: {
+                Text("Input device")
+            } footer: {
+                Text("System default follows whichever input macOS uses, including when you plug in or switch headphones.")
             }
             Section {
-                devicePicker("Live captions", pref: model.liveDevice, allowGlobal: true)
-                devicePicker("Meetings", pref: model.meetingsDevice, allowGlobal: true)
-                devicePicker("Dictation", pref: model.dictationDevice, allowGlobal: true)
+                Toggle("Voice processing (echo cancellation, noise suppression)", isOn: model.voiceProcessing.binding)
+                    .accessibilityIdentifier("settings.audio.voiceProcessing")
+                Text(
+                    "Cleans up your microphone for live captions and meetings. "
+                        + "It can lower the volume of other audio while capturing. Turn it off if your voice sounds processed."
+                )
+                .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                if let warning = model.echoWarning {
+                    Label { Text(warning) } icon: { DSIcon(DSSymbol.systemAudio) }
+                        .font(DSTypography.caption).foregroundStyle(DSColor.warning)
+                        .accessibilityIdentifier("settings.audio.echoWarning")
+                }
+            } header: {
+                Text("Echo and noise")
+            }
+            Section {
+                ForEach(MicrophonePreference.Feature.allCases, id: \.self) { feature in
+                    VStack(alignment: .leading, spacing: DSSpacing.xxs) {
+                        devicePicker(LocalizedStringKey(feature.title), pref: pref(for: feature), allowGlobal: true)
+                        Text(model.usage(for: feature)).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                            .accessibilityIdentifier("settings.audio.usage.\(feature)")
+                    }
+                }
             } header: {
                 Text("Per-feature overrides")
+            } footer: {
+                Text(
+                    "A feature set to \u{201C}Use global setting\u{201D} uses the microphone above. "
+                        + "If a chosen device is unplugged, Earmark uses the system default and switches back when it returns.")
             }
         }
         .formStyle(.grouped)
@@ -136,11 +175,19 @@ struct AudioSettingsView: View {
         }
     }
 
+    private func pref(for feature: MicrophonePreference.Feature) -> Pref<String> {
+        switch feature {
+        case .live: model.liveDevice
+        case .meetings: model.meetingsDevice
+        case .dictation: model.dictationDevice
+        }
+    }
+
     private func devicePicker(_ title: LocalizedStringKey, pref: Pref<String>, allowGlobal: Bool) -> some View {
         Picker(title, selection: pref.binding) {
-            Text(allowGlobal ? "Use global setting" : "System default\(model.systemDefaultName.map { " (\($0))" } ?? "")").tag("")
-            ForEach(model.inputs) { Text($0.name).tag($0.id) }
-            if model.isMissing(pref.value) { Text("Disconnected device").tag(pref.value) }
+            Text(allowGlobal ? "Use global setting" : model.systemDefaultTitle).tag("")
+            ForEach(model.inputs) { Text(model.label(for: $0)).tag($0.id) }
+            if model.isMissing(pref.value) { Text(model.missingLabel(pref.value)).tag(pref.value) }
         }
     }
 }
@@ -360,6 +407,9 @@ struct DictationSettingsView: View {
 
     var body: some View {
         Form {
+            if let gate = model.permissionGate, gate.isBlocked {
+                Section { PermissionGateBanner(model: gate, feature: "Dictation", identifier: "settings.dictation.permission") }
+            }
             Section {
                 Picker("Hotkey behavior", selection: model.mode.binding) {
                     Text("Push to talk").tag(HotkeyMode.pushToTalk)
@@ -577,7 +627,13 @@ struct PrivacySettingsView: View {
                 ForEach(PermissionKind.allCases, id: \.self) { kind in
                     PermissionRow(
                         state: model.rowState(kind),
-                        onRequest: { Task { await model.request(kind) } },
+                        onRequest: {
+                            Task {
+                                let wasDenied = model.status(kind) == .denied
+                                await model.request(kind)
+                                if wasDenied, model.status(kind) != .granted { openURL(model.settingsURL(for: kind)) }
+                            }
+                        },
                         onOpenSettings: { openURL(model.settingsURL(for: kind)) },
                         onRecheck: { Task { await model.recheck(kind) } })
                 }

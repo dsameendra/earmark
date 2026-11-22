@@ -13,7 +13,11 @@ public final class DictationSettingsModel {
     public let translateBeforeInsert: Pref<Bool>
     public let historySize: Pref<Int>
 
-    public init(store: any SettingsStore) {
+    /// Microphone and Accessibility, the permissions dictation needs (nil without a permissions service).
+    public let permissionGate: PermissionGateModel?
+
+    public init(store: any SettingsStore, permissions: (any PermissionsServicing)? = nil) {
+        permissionGate = permissions.map { PermissionGateModel(kinds: [.microphone, .accessibility], service: $0) }
         mode = Pref(SettingsKey.dictationMode, default: .pushToTalk, store: store)
         insertion = Pref(SettingsKey.dictationInsertion, default: .pasteboardPaste, store: store)
         removeFillers = Pref(SettingsKey.dictationRemoveFillers, default: false, store: store)
@@ -252,7 +256,8 @@ public final class PermissionsSettingsModel {
         for await (kind, status) in service.changes() { statuses[kind] = status }
     }
 
-    public func request(_ kind: PermissionKind) async { statuses[kind] = await service.request(kind) }
+    /// "Request access": the system prompt when never asked, the re-raisable prompts after a denial, otherwise a re-read.
+    public func request(_ kind: PermissionKind) async { statuses[kind] = await service.requestAgain(kind) }
 
     /// Re-reads the OS state (the "Re-check" button); never prompts.
     public func recheck(_ kind: PermissionKind) async { statuses[kind] = await service.status(kind) }
@@ -263,27 +268,5 @@ public final class PermissionsSettingsModel {
 
     public func rowState(_ kind: PermissionKind, context: PermissionRowContext = .settings) -> PermissionRowState {
         PermissionRowState(kind: kind, status: status(kind), context: context)
-    }
-}
-
-extension PermissionKind {
-    public var title: String {
-        switch self {
-        case .microphone: "Microphone"
-        case .systemAudioRecording: "System Audio Recording"
-        case .screenRecording: "Screen Recording"
-        case .accessibility: "Accessibility"
-        case .notifications: "Notifications"
-        }
-    }
-
-    public var purpose: String {
-        switch self {
-        case .microphone: "Transcribe your voice for live captions, dictation and meetings."
-        case .systemAudioRecording: "Capture audio from other apps and meetings."
-        case .screenRecording: "Record meeting video (optional)."
-        case .accessibility: "Insert dictated text into other apps."
-        case .notifications: "Tell you when a meeting starts or a job finishes."
-        }
     }
 }

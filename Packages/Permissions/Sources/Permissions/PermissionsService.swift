@@ -59,6 +59,29 @@ public final class PermissionsService: PermissionsServicing {
         return resolved
     }
 
+    /// "Request access" for a permission that may already have been answered. Not determined: the normal prompt.
+    /// Denied: Accessibility and Screen Recording raise their system request again (it leads to the right pane and
+    /// succeeds immediately when the user has meanwhile toggled the switch); microphone, notifications and the audio tap
+    /// cannot be prompted again by macOS, so the current state is simply re-read and the caller offers System Settings.
+    public func requestAgain(_ kind: PermissionKind) async -> PermissionStatus {
+        let current = await resolve(kind)
+        switch current {
+        case .notDetermined, .granted, .restricted:
+            return await request(kind)
+        case .denied:
+            guard kind.canPromptAfterDenial else {
+                publish(kind, current)
+                return current
+            }
+            memory.markRequested(kind)
+            _ = await probe.performRequest(kind)
+            state.withLock { _ = $0.silentlyDenied.remove(kind) }
+            let resolved = await resolve(kind)
+            publish(kind, resolved)
+            return resolved
+        }
+    }
+
     public func settingsURL(for kind: PermissionKind) -> URL { Self.settingsURL(for: kind) }
 
     public func changes() -> AsyncStream<(PermissionKind, PermissionStatus)> {

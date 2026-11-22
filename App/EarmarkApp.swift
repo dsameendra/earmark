@@ -40,6 +40,7 @@ struct EarmarkApp: App {
             CommandGroup(replacing: .sidebar) {}  // the navigation pane is persistent: no Hide/Show Sidebar
             ShellCommands(model: environment.shell)
             PlayerZoomCommands()
+            PlayerSizeCommands()
             OnboardingCommands(settings: environment.services.settings)
             UpdateCommands(updates: environment.updates)
             AboutCommands()

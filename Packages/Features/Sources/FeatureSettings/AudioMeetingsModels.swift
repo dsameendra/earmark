@@ -17,10 +17,20 @@ public final class AudioSettingsModel {
     public private(set) var inputLevel: Float = 0
     public private(set) var isTestingMicrophone = false
     public private(set) var meterError: String?
+    /// True when the last test failed because microphone access is missing (the pane then offers "Request access").
+    public private(set) var meterNeedsPermission = false
+    /// Set when the chosen device is not connected, so the test used the system default instead.
+    public private(set) var meterNote: String?
+    /// True when the default output is speakers: a mic that hears system audio can echo it into captions.
+    public private(set) var outputIsSpeakers = false
     public let microphoneSettingsURL: URL?
+    /// Microphone permission gate for the inline "Request access" in this pane (nil without a permissions service).
+    public let permissionGate: PermissionGateModel?
     public var canTestMicrophone: Bool { microphonePreview != nil }
 
     @ObservationIgnored private let provider: any AudioDeviceProviding
+    @ObservationIgnored private let store: any SettingsStore
+    @ObservationIgnored private var knownNames: [String: String] = [:]
     @ObservationIgnored private let microphonePreview: (@Sendable (String?) -> any AudioSource)?
     @ObservationIgnored private let sourceErrors: (@Sendable (any AudioSource) -> AsyncStream<AppError>)?
     @ObservationIgnored private var meterSource: (any AudioSource)?
@@ -29,9 +39,12 @@ public final class AudioSettingsModel {
 
     public init(
         provider: any AudioDeviceProviding, store: any SettingsStore, microphonePreview: (@Sendable (String?) -> any AudioSource)? = nil,
-        microphoneSettingsURL: URL? = nil, sourceErrors: (@Sendable (any AudioSource) -> AsyncStream<AppError>)? = nil
+        microphoneSettingsURL: URL? = nil, sourceErrors: (@Sendable (any AudioSource) -> AsyncStream<AppError>)? = nil,
+        permissions: (any PermissionsServicing)? = nil
     ) {
         self.provider = provider
+        self.store = store
+        permissionGate = permissions.map { PermissionGateModel(kinds: [.microphone], service: $0) }
         self.microphonePreview = microphonePreview
         self.microphoneSettingsURL = microphoneSettingsURL
         self.sourceErrors = sourceErrors
@@ -48,6 +61,7 @@ public final class AudioSettingsModel {
         await meetingsDevice.load()
         await dictationDevice.load()
         await voiceProcessing.load()
+        knownNames = await store.value(for: SettingsKey.knownInputDeviceNames, as: [String: String].self) ?? [:]
         await refreshDevices()
     }
 
@@ -59,16 +73,56 @@ public final class AudioSettingsModel {
     private func refreshDevices() async {
         inputs = await provider.devices().filter(\.isInput)
         systemDefaultName = await provider.defaultInput()?.name
+        outputIsSpeakers = !(await provider.defaultOutputLooksLikeHeadphones())
+        var names = knownNames
+        for device in inputs { names[device.id] = device.name }
+        if names != knownNames {
+            knownNames = names
+            await store.set(names, for: SettingsKey.knownInputDeviceNames)
+        }
     }
 
     /// Effective device UID for a feature override (`nil` means the system default).
     public func effectiveDevice(override: Pref<String>) -> String? {
-        let chosen = override.value.isEmpty ? globalDevice.value : override.value
-        return chosen.isEmpty ? nil : chosen
+        MicrophonePreference.resolve(override: override.value, global: globalDevice.value)
     }
 
     /// True when a stored UID no longer matches any connected input (device unplugged).
     public func isMissing(_ uid: String) -> Bool { !uid.isEmpty && !inputs.contains { $0.id == uid } }
+
+    /// Picker text for a connected input. Same-named devices are told apart by transport ("USB", "Bluetooth").
+    public func label(for device: AudioDevice) -> String {
+        guard inputs.contains(where: { $0.id != device.id && $0.name == device.name }) else { return device.name }
+        return "\(device.name) (\(device.transportLabel ?? String(device.id.suffix(4))))"
+    }
+
+    /// Picker text for a stored UID whose device is not connected.
+    public func missingLabel(_ uid: String) -> String {
+        knownNames[uid].map { "\($0) (disconnected)" } ?? "Disconnected device"
+    }
+
+    /// "System default" row, naming what the default currently is.
+    public var systemDefaultTitle: String { "System default\(systemDefaultName.map { " (\($0))" } ?? "")" }
+
+    /// One line under a feature's picker saying which microphone it will really use right now.
+    public func usage(for feature: MicrophonePreference.Feature) -> String {
+        let override: Pref<String> =
+            switch feature {
+            case .live: liveDevice
+            case .meetings: meetingsDevice
+            case .dictation: dictationDevice
+            }
+        guard let uid = effectiveDevice(override: override) else { return "Uses \(systemDefaultName ?? "the system default input")." }
+        if let device = inputs.first(where: { $0.id == uid }) { return "Uses \(label(for: device))." }
+        return "\(missingLabel(uid)): using \(systemDefaultName ?? "the system default") until it is reconnected."
+    }
+
+    /// Shown when mic and system audio capture can feed each other: speakers as output and no voice processing.
+    public var echoWarning: String? {
+        guard outputIsSpeakers, !voiceProcessing.value else { return nil }
+        return "Audio playing through your speakers can reach the microphone and appear twice in captions. "
+            + "Use headphones, or turn on voice processing."
+    }
 
     /// Starts an explicit microphone test. Closing the pane or pressing Stop releases capture.
     public func startMicrophoneTest() async {
@@ -77,7 +131,13 @@ public final class AudioSettingsModel {
         let generation = meterGeneration
         isTestingMicrophone = true
         meterError = nil
-        let source = microphonePreview(globalDevice.value.isEmpty ? nil : globalDevice.value)
+        meterNeedsPermission = false
+        let chosen = globalDevice.value.isEmpty ? nil : globalDevice.value
+        meterNote = nil
+        if let chosen, isMissing(chosen) {
+            meterNote = "\(missingLabel(chosen)). Testing \(systemDefaultName ?? "the system default input") instead."
+        }
+        let source = microphonePreview(meterNote == nil ? chosen : nil)
         meterSource = source
         let levels = source.levels
         let health = source.health
@@ -94,7 +154,22 @@ public final class AudioSettingsModel {
             guard generation == meterGeneration else { return }
             meterSource = nil
             isTestingMicrophone = false
-            meterError = "Microphone test could not start. Check microphone access in System Settings. \(error.localizedDescription)"
+            let (message, needsPermission) = Self.describeStartFailure(error)
+            meterError = message
+            meterNeedsPermission = needsPermission
+            if needsPermission { await permissionGate?.load() }
+        }
+    }
+
+    /// A different message per cause, and whether the pane should offer to request microphone access.
+    static func describeStartFailure(_ error: any Error) -> (message: String, needsPermission: Bool) {
+        switch error as? AppError {
+        case .permissionDenied:
+            return ("Earmark does not have microphone access. Allow it to test the microphone.", true)
+        case .deviceUnavailable:
+            return ("The microphone is not available. Reconnect it or choose another input, then test again.", false)
+        default:
+            return ("The microphone test could not start. \(error.localizedDescription)", false)
         }
     }
 
@@ -153,6 +228,7 @@ public final class AudioSettingsModel {
         meterGeneration += 1
         for task in meterTasks { task.cancel() }
         meterTasks = []
+        meterNote = nil
         let source = meterSource
         meterSource = nil
         isTestingMicrophone = false

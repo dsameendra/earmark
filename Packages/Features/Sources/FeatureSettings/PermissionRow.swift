@@ -14,90 +14,34 @@ public enum PermissionRowAction: Sendable, Equatable {
     case request, none
 }
 
-extension PermissionStatus {
-    /// Chip text for the Privacy & Permissions list.
-    public var chipLabel: String {
-        switch self {
-        case .granted: "Allowed"
-        case .denied: "Denied"
-        case .restricted: "Restricted"
-        case .notDetermined: "Not requested"
-        }
-    }
-
-    public var chipTone: DSTone {
-        switch self {
-        case .granted: .success
-        case .denied: .danger
-        case .restricted: .warning
-        case .notDetermined: .neutral
-        }
-    }
-
-    public var chipSystemImage: String {
-        switch self {
-        case .granted: "checkmark.circle.fill"
-        case .denied: "xmark.circle.fill"
-        case .restricted: "lock.fill"
-        case .notDetermined: "circle.dashed"
-        }
-    }
-}
-
-extension PermissionKind {
-    /// Duotone symbol where covered by `DSSymbol`; other permissions keep their stock `systemImage`.
-    public var symbol: DSSymbol? {
-        switch self {
-        case .microphone: .dictation
-        case .systemAudioRecording: .systemAudio
-        case .screenRecording, .accessibility, .notifications: nil
-        }
-    }
-
-    public var systemImage: String {
-        switch self {
-        case .microphone: DSSymbol.dictation.systemImageName
-        case .systemAudioRecording: DSSymbol.systemAudio.systemImageName
-        case .screenRecording: "rectangle.dashed.badge.record"
-        case .accessibility: "accessibility"
-        case .notifications: "bell"
-        }
-    }
-
-    /// What breaks without the permission, in plain words. Shown after a denial together with the recovery steps.
-    public var consequence: String {
-        switch self {
-        case .microphone: "Live captions, dictation and microphone meeting capture are unavailable."
-        case .systemAudioRecording: "Captions and meeting capture cannot hear other apps."
-        case .screenRecording: "Meeting video cannot be recorded. Audio transcripts still work."
-        case .accessibility: "Dictation falls back to copying text to the clipboard."
-        case .notifications: "Meeting and job alerts are not shown. Earmark keeps working."
-        }
-    }
-}
-
 /// Everything a row shows for a (kind, status, context) triple; views stay layout-only.
 public struct PermissionRowState: Sendable, Equatable {
     public let kind: PermissionKind
     public let status: PermissionStatus
     public let context: PermissionRowContext
+    public let bundleID: String?
 
-    public init(kind: PermissionKind, status: PermissionStatus, context: PermissionRowContext = .settings) {
+    public init(
+        kind: PermissionKind, status: PermissionStatus, context: PermissionRowContext = .settings,
+        bundleID: String? = Bundle.main.bundleIdentifier
+    ) {
         self.kind = kind
         self.status = status
         self.context = context
+        self.bundleID = bundleID
     }
 
     /// Onboarding says "Ask later" instead of the neutral "Not requested" (Flow, step 3).
     public var chipLabel: String { context == .onboarding && status == .notDetermined ? "Ask later" : status.chipLabel }
 
-    /// Only a never-asked permission can be requested; denied ones go through System Settings. Granted needs nothing.
-    /// In Settings a denied microphone or notifications row also offers "Request access": the OS state is exact, so the
-    /// system prompt appears again whenever macOS reports it as not determined (after a reset or reinstall).
+    /// A never-asked permission is requested; a denied one offers "Request access" too: it raises the prompts macOS lets an
+    /// app raise again (Accessibility, Screen Recording), re-reads the rest, and opens the exact System Settings pane when
+    /// that is still not enough. Granted and restricted rows need nothing.
     public var action: PermissionRowAction {
-        if status == .notDetermined { return .request }
-        if context == .settings, status == .denied, kind == .microphone || kind == .notifications { return .request }
-        return .none
+        switch status {
+        case .notDetermined, .denied: .request
+        case .granted, .restricted: .none
+        }
     }
 
     public var actionTitle: String {
@@ -105,14 +49,16 @@ public struct PermissionRowState: Sendable, Equatable {
         return context == .onboarding ? "Allow now" : "Allow…"
     }
 
-    /// A denied row in Settings can be re-read from the OS without relaunching.
-    public var showsRecheck: Bool { context == .settings && status == .denied }
+    /// A denied row can be re-read from the OS without relaunching, in Settings and in onboarding.
+    public var showsRecheck: Bool { status == .denied }
 
-    /// Help for the "toggle is on but Earmark still says access is needed" case (ad-hoc builds and reinstalls change identity).
+    /// "Reset and re-request": the tccutil command for the toggle-is-on-but-still-denied case (ad-hoc builds and reinstalls
+    /// change identity) and for getting the system prompt back. `nil` unless denied.
     public var helpNote: String? {
-        guard context == .settings, status == .denied, kind == .microphone else { return nil }
-        return "If the toggle is on but Earmark still says access is needed, run "
-            + "tccutil reset Microphone lk.dumindu.earmark.Earmark and relaunch."
+        guard status == .denied else { return nil }
+        if kind.tccServiceName == nil { return kind.resetHint(bundleID: bundleID) }
+        return "To be asked again, or if the toggle is on but Earmark still says access is needed, quit Earmark and run "
+            + "\(kind.resetHint(bundleID: bundleID)) in Terminal, then reopen it."
     }
 
     /// Denied or restricted rows explain how to recover (ONB-AC-06); `nil` otherwise.

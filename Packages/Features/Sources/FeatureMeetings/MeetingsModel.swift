@@ -100,6 +100,8 @@ public final class MeetingsModel {
     @ObservationIgnored private let prompter: (any MeetingPromptPresenting)?
     @ObservationIgnored private let live: any LiveSessionControlling
     @ObservationIgnored private let settings: any SettingsStore
+    /// Microphone and System Audio Recording, the two permissions a meeting capture needs (Screen Recording only adds video).
+    @ObservationIgnored public let permissionGate: PermissionGateModel
     @ObservationIgnored private let clock: @Sendable () -> Date
     @ObservationIgnored private let calendar: Calendar
     @ObservationIgnored private var liveState: LiveSessionState = .idle
@@ -115,6 +117,7 @@ public final class MeetingsModel {
         live = services.live
         settings = services.settings
         consent = MeetingConsentModel(store: services.settings)
+        permissionGate = PermissionGateModel(kinds: [.microphone, .systemAudioRecording], service: services.permissions)
         self.clock = clock
         self.calendar = calendar
     }

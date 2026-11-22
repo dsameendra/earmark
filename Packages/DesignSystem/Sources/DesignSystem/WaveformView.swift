@@ -18,7 +18,8 @@ public enum WaveformStyle: Sendable, Equatable {
 }
 
 /// Bar-style waveform scrubber: played bars in Ember, unplayed muted, a thin Ember playhead, optional speaker ribbon,
-/// bookmark flags and a highlighted active segment. Click or drag to scrub; pinch, scroll or the zoom buttons to zoom.
+/// bookmark flags and a highlighted active segment. Click or drag to scrub; Command or Option plus scroll, or the zoom buttons,
+/// to zoom. Pinch zooms only when `pinchZooms` is set: players leave it off so a pinch resizes the player window instead.
 ///
 /// Generic on purpose: it knows nothing about transcripts. Feed it peaks, segments and a clock closure. The closure is
 /// called only by the playhead layer, so the bars and ribbon are not redrawn when time advances, and between 30 Hz
@@ -37,6 +38,7 @@ public struct WaveformView: View {
     private let onAdjust: (TimeInterval) -> Void
     private let label: String
     private let identifier: String
+    private let pinchZooms: Bool
 
     @State private var hoverPoint: CGPoint?
     @State private var dragOrigin: CGPoint?
@@ -51,7 +53,7 @@ public struct WaveformView: View {
         bookmarks: [WaveformBookmark] = [], activeSegment: Int? = nil, style: WaveformStyle = .bars,
         viewport: Binding<WaveformViewport>, clock: @escaping @MainActor () -> WaveformClockSample,
         onSeek: @escaping (TimeInterval) -> Void, onAdjust: @escaping (TimeInterval) -> Void,
-        label: String = "Playback position", identifier: String = "waveform"
+        label: String = "Playback position", identifier: String = "waveform", pinchZooms: Bool = false
     ) {
         self.peaks = peaks
         self.loadState = loadState
@@ -66,6 +68,7 @@ public struct WaveformView: View {
         self.onAdjust = onAdjust
         self.label = label
         self.identifier = identifier
+        self.pinchZooms = pinchZooms
     }
 
     public var body: some View {
@@ -86,7 +89,7 @@ public struct WaveformView: View {
             }
             .contentShape(Rectangle())
             .gesture(scrubGesture(metrics: metrics))
-            .simultaneousGesture(magnifyGesture(width: metrics.size.width))
+            .simultaneousGesture(magnifyGesture(width: metrics.size.width), including: pinchZooms ? .all : .none)
             .onContinuousHover { phase in
                 switch phase {
                 case .active(let point): hoverPoint = point

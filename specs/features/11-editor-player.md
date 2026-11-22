@@ -25,6 +25,7 @@ Segment/paragraph transcript view on solid background; docked AVKit player (resi
 - EDIT-AC-15 (manual) WHEN Sinhala text is displayed THE SYSTEM SHALL render correct shaping, font fallback and line breaking (PROD-AC-05).
 - EDIT-AC-16 (UI) THE SYSTEM SHALL show an optional waveform scrubber with speaker-coloured regions.
 - EDIT-AC-17 (UI) WHEN the player is detached THE SYSTEM SHALL keep word click/seek and highlighting in sync across windows.
+- EDIT-AC-17a (UI) WHEN the user pinches on the popup player window THE SYSTEM SHALL scale the whole window (pinch out larger, pinch in smaller) about its centre, keeping its aspect ratio within minimum, maximum and screen limits, and remember the size; View > Make Player Larger (⌥⌘+) and Make Player Smaller (⌥⌘−) animate the same steps. THE SYSTEM SHALL NOT scale the video or the waveform on a plain pinch; waveform zoom stays on ⌘/⌥ + scroll, the zoom buttons and View > Zoom. The in-app mini-player steps between compact, regular and large presets on pinch.
 - EDIT-AC-18 (integration) WHEN edits are made THE SYSTEM SHALL persist them incrementally without blocking typing (> 60 fps input).
 - EDIT-AC-19 (UI) WHEN media is missing THE SYSTEM SHALL disable player controls and offer Relink while keeping the text editable.
 

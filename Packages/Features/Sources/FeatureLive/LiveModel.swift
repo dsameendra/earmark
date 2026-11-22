@@ -74,6 +74,8 @@ public final class LiveModel {
     /// Smoothed 0...1 input level (0 when no session is running).
     public private(set) var level: Float = 0
     public private(set) var devices: [AudioDevice] = []
+    /// Inputs that are really connected, `nil` until the first device read.
+    @ObservationIgnored private var connectedDevices: [AudioDevice]?
     public private(set) var notice: LiveNotice?
     public private(set) var savedTranscriptID: TranscriptID?
     public private(set) var presets: [CaptionPreset] = []
@@ -158,10 +160,18 @@ public final class LiveModel {
     }
 
     private func reloadDevices() async {
-        devices = await audioDevices.devices().filter(\.isInput)
-        // A vanished device falls back to the system default (MENU-AC-10).
-        if let uid = deviceUID, !devices.contains(where: { $0.id == uid }) { deviceUID = nil }
+        let connected = await audioDevices.devices().filter(\.isInput)
+        connectedDevices = connected
+        devices = connected
+        // A vanished device falls back to the system default for capture (MENU-AC-10) but the saved choice is kept, shown
+        // as a disconnected entry, so it applies again when the device returns.
+        if let uid = deviceUID, !connected.contains(where: { $0.id == uid }) {
+            devices.append(AudioDevice(id: uid, name: "Disconnected device (using system default)", isInput: true, isOutput: false))
+        }
     }
+
+    /// The device capture will use: the chosen one while connected, else `nil` (the system default).
+    var effectiveDeviceUID: String? { connectedDevices.map { MicrophonePreference.effective(deviceUID, connected: $0).uid } ?? deviceUID }
 
     /// Loads saved preferences and presets. Call once when the screen appears.
     public func loadPreferences() async {
@@ -242,7 +252,7 @@ public final class LiveModel {
             if let raw, !raw.isEmpty { target = LanguageCode(raw) }
         }
         let config = LiveSessionConfig(
-            source: source.captureSource(deviceUID: deviceUID), languageMode: language.mode, diarize: source != .mic,
+            source: source.captureSource(deviceUID: effectiveDeviceUID), languageMode: language.mode, diarize: source != .mic,
             translateTo: target, saveAsTranscript: saveAsTranscript, presetID: preset.id)
         do {
             try await live.start(config)

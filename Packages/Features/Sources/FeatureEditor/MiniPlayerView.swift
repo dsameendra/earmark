@@ -7,10 +7,19 @@ import SwiftUI
 public struct MiniPlayerView: View {
     private let center: PlaybackCenter
     private let onOpenTranscript: (TranscriptID) -> Void
+    @State private var size: MiniPlayerSizeModel
+    private let registry: PlayerSizeRegistry
 
-    public init(center: PlaybackCenter, onOpenTranscript: @escaping (TranscriptID) -> Void) {
+    /// A pinch on the mini-player scales the player itself between compact, regular and large (never the waveform), and
+    /// View > Make Player Larger / Smaller step through the same presets.
+    public init(
+        center: PlaybackCenter, onOpenTranscript: @escaping (TranscriptID) -> Void, size: MiniPlayerSizeModel? = nil,
+        registry: PlayerSizeRegistry = .shared
+    ) {
         self.center = center
         self.onOpenTranscript = onOpenTranscript
+        _size = State(initialValue: size ?? MiniPlayerSizeModel())
+        self.registry = registry
     }
 
     public var body: some View {
@@ -21,13 +30,14 @@ public struct MiniPlayerView: View {
 
     private func content(_ session: PlaybackSession) -> some View {
         let playback = session.playback
-        return HStack(spacing: DSSpacing.md) {
+        let scale = size.scale
+        return HStack(spacing: DSSpacing.md * scale) {
             Button {
                 playback.togglePlay()
             } label: {
                 Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
                     .font(DSTypography.headline)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 32 * scale, height: 32 * scale)
                     .foregroundStyle(DSColor.primaryText)
                     .background(DSColor.accentTint, in: Circle())
             }
@@ -39,8 +49,8 @@ public struct MiniPlayerView: View {
             Button {
                 onOpenTranscript(session.transcriptID)
             } label: {
-                Text(session.title).font(DSTypography.headline).lineLimit(1).truncationMode(.tail)
-                    .frame(maxWidth: 220, alignment: .leading)
+                Text(session.title).font(size.preset == .compact ? DSTypography.body : DSTypography.headline).lineLimit(1).truncationMode(.tail)
+                    .frame(maxWidth: 220 * scale, alignment: .leading)
             }
             .buttonStyle(.plain)
             .help("Open \(session.title)")
@@ -51,7 +61,7 @@ public struct MiniPlayerView: View {
                 .accessibilityValue(String(format: "%.2f", playback.currentTime))
                 .accessibilityIdentifier("miniPlayer.position")
             MiniPlayerWaveform(session: session)
-                .frame(minWidth: 120, minHeight: 36, maxHeight: 36)
+                .frame(minWidth: 120 * scale, minHeight: 36 * scale, maxHeight: 36 * scale)
             Text(TimeFormat.clock(playback.duration)).font(DSTypography.timestamp).foregroundStyle(DSColor.secondaryText)
             Button {
                 center.stop()
@@ -63,9 +73,19 @@ public struct MiniPlayerView: View {
             .accessibilityLabel("Close player")
             .accessibilityIdentifier("miniPlayer.close")
         }
-        .padding(DSSpacing.md)
+        .padding(DSSpacing.md * scale)
         .frame(maxWidth: .infinity)
         .dsGlass(.clear, radius: DSRadius.panel)
+        .dsAnimation(.glide, value: size.preset)
+        .gesture(
+            MagnifyGesture()
+                .onChanged { size.pinch(magnification: $0.magnification) }
+                .onEnded { _ in size.endPinch() }
+        )
+        .onHover { if $0 { registry.activate(size) } else { registry.deactivate(size) } }
+        .onDisappear { registry.deactivate(size) }
+        .accessibilityAction(named: "Make larger") { size.makeLarger() }
+        .accessibilityAction(named: "Make smaller") { size.makeSmaller() }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Mini player")
         .accessibilityIdentifier("miniPlayer")

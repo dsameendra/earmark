@@ -31,6 +31,10 @@ public struct OnboardingView: View {
         .dsAnimation(.settle, value: model.step)
         .task { await model.load() }
         .task { await model.permissions.observe() }
+        // The user may have flipped a permission in System Settings while Earmark was in the background.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await model.permissions.load() }
+        }
     }
 
     // MARK: Brand panel
@@ -106,8 +110,17 @@ public struct OnboardingView: View {
             ForEach(OnboardingPermissionsModel.kinds, id: \.self) { kind in
                 PermissionRow(
                     state: model.permissions.rowState(for: kind),
-                    onRequest: { Task { await model.permissions.request(kind) } },
-                    onOpenSettings: { openURL(model.permissions.settingsURL(for: kind)) }
+                    onRequest: {
+                        Task {
+                            let wasDenied = model.permissions.rowState(for: kind).status == .denied
+                            await model.permissions.request(kind)
+                            if wasDenied, model.permissions.rowState(for: kind).status != .granted {
+                                openURL(model.permissions.settingsURL(for: kind))
+                            }
+                        }
+                    },
+                    onOpenSettings: { openURL(model.permissions.settingsURL(for: kind)) },
+                    onRecheck: { Task { await model.permissions.recheck(kind) } }
                 )
                 .padding(DSSpacing.md)
                 .background(DSColor.insetBackground, in: RoundedRectangle(cornerRadius: DSRadius.large))

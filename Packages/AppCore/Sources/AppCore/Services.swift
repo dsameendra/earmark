@@ -12,6 +12,9 @@ public protocol PermissionsServicing: Sendable {
     func status(_ kind: PermissionKind) async -> PermissionStatus
     /// Requests where the OS allows; otherwise returns the current status. Called only when a feature first needs it.
     func request(_ kind: PermissionKind) async -> PermissionStatus
+    /// The "Request access" action after an earlier answer: prompts when the OS has not been asked, raises the prompts that
+    /// can reappear (Accessibility, Screen Recording) after a denial, and otherwise re-reads the state. Defaults to `request`.
+    func requestAgain(_ kind: PermissionKind) async -> PermissionStatus
     func settingsURL(for kind: PermissionKind) -> URL
     func changes() -> AsyncStream<(PermissionKind, PermissionStatus)>
 }

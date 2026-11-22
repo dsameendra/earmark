@@ -39,7 +39,7 @@ enum MeetingRuntimeFactory {
         let root: @Sendable () async -> URL = { await recordingsRoot(settings: settings) }
         let controller = MeetingSessionController(
             detector: detector, policies: policies, consent: MeetingConsentStore(store: settings),
-            sources: SystemMeetingSources(permissions: permissions),
+            sources: SystemMeetingSources(permissions: permissions, settings: settings),
             // Video is opt-in (policy `recordVideo`): the recorder only starts it when the session asks for it, which is
             // when the policy allows it; Screen Recording permission is requested at that first start, never at launch.
             makeRecorder: { session in MeetingRecorder(session: session, video: ScreenCaptureVideoRecorder()) },
@@ -105,9 +105,22 @@ enum MeetingRuntimeFactory {
 /// Mic ("You") and the meeting app's own audio (a per-app Core Audio tap) for a session; sources are single use.
 struct SystemMeetingSources: MeetingAudioSourceProviding {
     let permissions: any PermissionsServicing
+    let settings: any SettingsStore
+
+    /// The Meetings microphone override, else the global device, kept while it is unplugged: capture then falls back to the
+    /// system default on its own and returns to the chosen device when it reappears.
+    func preferredMicDeviceUID() async -> String? {
+        await MicrophonePreference.deviceUID(for: .meetings, store: settings)
+    }
 
     func micSource(deviceUID: String?) -> any AudioSource {
         MicrophoneSource(deviceUID: deviceUID, permissions: permissions)
+    }
+
+    func makeMicSource() async -> any AudioSource {
+        MicrophoneSource(
+            deviceUID: await preferredMicDeviceUID(), voiceProcessing: await MicrophonePreference.voiceProcessing(store: settings),
+            permissions: permissions)
     }
 
     func remoteSource(for app: MeetingApp) -> any AudioSource {

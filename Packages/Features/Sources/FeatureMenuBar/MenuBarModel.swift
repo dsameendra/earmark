@@ -14,6 +14,10 @@ public final class MenuBarModel {
     public private(set) var captionPreview: [CaptionLine] = []
     public private(set) var devices: [AudioDevice] = []
     public private(set) var errorMessage: String?
+    /// True when the last capture failed for a missing permission, so the popup offers an inline "Request access".
+    public private(set) var permissionBlocked = false
+    /// Microphone and System Audio Recording, the permissions menu-bar capture needs.
+    @ObservationIgnored public let permissionGate: PermissionGateModel
     public private(set) var modelSummary = "Choosing a local model…"
     public var autoRecord = false
     public var language: MenuLanguageChoice = .english {
@@ -28,8 +32,12 @@ public final class MenuBarModel {
     @ObservationIgnored private var tasks: [Task<Void, Never>] = []
     @ObservationIgnored private var catalog: [ModelDescriptor] = []
     @ObservationIgnored private var modelSummaryGeneration = 0
+    @ObservationIgnored private var devicesLoaded = false
 
-    public init(services: AppServices) { self.services = services }
+    public init(services: AppServices) {
+        self.services = services
+        permissionGate = PermissionGateModel(kinds: [.microphone, .systemAudioRecording], service: services.permissions)
+    }
 
     /// Current status derived from inputs.
     public var status: MenuBarStatus { MenuBarStatus.resolve(inputs) }
@@ -191,8 +199,22 @@ public final class MenuBarModel {
 
     private func reloadDevices() async {
         devices = await services.audioDevices.devices().filter(\.isInput)
-        // MENU-AC-10: a vanished mic falls back to the system default.
-        if let uid = inputDeviceUID, !devices.contains(where: { $0.id == uid }) { await setInputDevice(nil) }
+        devicesLoaded = true
+        // MENU-AC-10: a vanished mic falls back to the system default for capture. The saved choice is kept (it applies
+        // again when the device returns) and the picker shows it as disconnected.
+    }
+
+    /// True when the saved microphone is not connected right now.
+    public var inputDeviceIsMissing: Bool {
+        guard devicesLoaded, let uid = inputDeviceUID else { return false }
+        return !devices.contains { $0.id == uid }
+    }
+
+    /// The device Live capture will use: the Live override, else the global choice, while connected; otherwise the system default.
+    func effectiveInputDeviceUID() async -> String? {
+        let liveOverride = await services.settings.value(for: SettingsKey.liveInputDeviceUID, as: String.self)
+        let chosen = MicrophonePreference.resolve(override: liveOverride, global: inputDeviceUID)
+        return devicesLoaded ? MicrophonePreference.effective(chosen, connected: devices).uid : chosen
     }
 
     /// Starts live captions with `choice` (MENU-AC-03).
@@ -201,21 +223,27 @@ public final class MenuBarModel {
         let save = await services.settings.value(for: SettingsKey.liveSaveAsTranscript, as: Bool.self) ?? false
         var config = LiveSessionConfig(
             source: choice.captureSource, languageMode: language.mode, diarize: choice != .mic, saveAsTranscript: save)
+        let uid = await effectiveInputDeviceUID()
         switch choice {
-        case .mic: config.source = .mic(deviceUID: inputDeviceUID)
-        case .micAndSystem: config.source = .micAndSystem(deviceUID: inputDeviceUID, lanes: true)
+        case .mic: config.source = .mic(deviceUID: uid)
+        case .micAndSystem: config.source = .micAndSystem(deviceUID: uid, lanes: true)
         case .system: break
         }
         do {
             try await services.live.start(config)
             errorMessage = nil
+            permissionBlocked = false
         } catch {
             errorMessage = Self.captureMessage(error)
+            if case .permissionDenied = error as? AppError { permissionBlocked = true }
         }
     }
 
     /// Clears the inline message without hiding capture controls.
-    public func dismissError() { errorMessage = nil }
+    public func dismissError() {
+        errorMessage = nil
+        permissionBlocked = false
+    }
 
     private static func captureMessage(_ error: any Error) -> String? {
         guard let error = error as? AppError else {

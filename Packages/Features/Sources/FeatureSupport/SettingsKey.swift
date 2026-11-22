@@ -51,6 +51,8 @@ public enum SettingsKey {
     public static let liveInputDeviceUID = "audio.live.inputDeviceUID"
     public static let meetingsInputDeviceUID = "audio.meetings.inputDeviceUID"
     public static let dictationInputDeviceUID = "audio.dictation.inputDeviceUID"
+    /// `[String: String]`; last known name per input device UID, so a disconnected choice is still shown by name.
+    public static let knownInputDeviceNames = "audio.knownInputDeviceNames"
     /// `Bool`; voice processing (echo cancellation / noise suppression) on the microphone.
     public static let voiceProcessing = "audio.voiceProcessing"
     /// `Bool`; auto-record meetings.

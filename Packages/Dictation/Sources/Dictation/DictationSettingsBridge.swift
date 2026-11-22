@@ -24,10 +24,7 @@ public enum DictationSettingsBridge {
             settings.historyEnabled = size > 0
             settings.historyLimit = max(size, 1)
         }
-        let override = await store.value(for: SettingsKey.dictationInputDeviceUID, as: String.self)
-        let global = await store.value(for: SettingsKey.inputDeviceUID, as: String.self)
-        let uid = (override?.isEmpty ?? true) ? global : override
-        settings.deviceUID = (uid?.isEmpty ?? true) ? nil : uid
+        settings.deviceUID = await MicrophonePreference.deviceUID(for: .dictation, store: store)
         let comboKey = SettingsKey.shortcut(HotkeyAction.dictation.rawValue)
         if let combo = await store.value(for: comboKey, as: KeyCombo.self) {
             settings.combo = combo

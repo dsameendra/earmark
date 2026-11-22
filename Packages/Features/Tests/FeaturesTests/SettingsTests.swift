@@ -401,7 +401,7 @@ private func descriptor(
         let onboarding = PermissionRowState(kind: .microphone, status: .notDetermined, context: .onboarding)
         #expect(onboarding.chipLabel == "Ask later" && !onboarding.showsSettingsLink && onboarding.actionTitle == "Allow now")
         let denied = PermissionRowState(kind: .accessibility, status: .denied, context: .onboarding)
-        #expect(denied.action == .none && denied.showsSettingsLink && denied.recoveryNote?.contains("System Settings") == true)
+        #expect(denied.action == .request && denied.showsSettingsLink && denied.recoveryNote?.contains("System Settings") == true)
         let granted = PermissionRowState(kind: .notifications, status: .granted)
         #expect(granted.action == .none && granted.recoveryNote == nil && granted.status.chipTone == .success)
         #expect(PermissionRowState(kind: .screenRecording, status: .restricted).recoveryNote != nil)

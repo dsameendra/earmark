@@ -52,7 +52,8 @@ public final class SettingsEnvironment {
         languages = LanguageSelectionModel(manager: modelManager, store: deps.store)
         audio = AudioSettingsModel(
             provider: deps.audioDevices, store: deps.store, microphonePreview: deps.microphonePreview,
-            microphoneSettingsURL: deps.permissions.settingsURL(for: .microphone), sourceErrors: deps.microphonePreviewErrors)
+            microphoneSettingsURL: deps.permissions.settingsURL(for: .microphone), sourceErrors: deps.microphonePreviewErrors,
+            permissions: deps.permissions)
         meetings = MeetingsSettingsModel(store: deps.store)
         meetingDiagnostics = MeetingDiagnosticsModel(source: deps.meetingDiagnostics)
         captions = CaptionPresetsModel(repository: deps.presets, store: deps.store)
@@ -60,7 +61,7 @@ public final class SettingsEnvironment {
         overlayPlacement = OverlayPlacementSettingsModel(
             store: deps.store, displays: deps.displays ?? SystemDisplayProvider(), controller: deps.overlayPlacement,
             previewPreset: { captionModel.draft }, knownPresetIDs: { captionModel.presets.map(\.id) })
-        dictation = DictationSettingsModel(store: deps.store)
+        dictation = DictationSettingsModel(store: deps.store, permissions: deps.permissions)
         appearance = AppearanceSettingsModel(store: deps.store)
         ignored = IgnoredSegmentsModel(
             repository: deps.rules, store: deps.store, rederive: Self.rederiveAction(deps))

@@ -109,6 +109,9 @@ public struct MenuBarContentView: View {
                 .background(DSColor.danger.opacity(0.1), in: RoundedRectangle(cornerRadius: DSRadius.medium))
                 .dsTransition(.settle)
                 .accessibilityIdentifier("menuBar.error")
+                if model.permissionBlocked {
+                    PermissionGateBanner(model: model.permissionGate, feature: "Live captions", identifier: "menuBar.permissions")
+                }
             }
             Divider()
             navigation
@@ -207,6 +210,9 @@ public struct MenuBarContentView: View {
                     ) {
                         Text("System default").tag("")
                         ForEach(model.devices) { Text($0.name).tag($0.id) }
+                        if model.inputDeviceIsMissing, let uid = model.inputDeviceUID {
+                            Text("Disconnected device (using system default)").tag(uid)
+                        }
                     }
                     .labelsHidden().frame(maxWidth: 190).disabled(model.status.isRecording)
                     .accessibilityIdentifier("menuBar.microphone")

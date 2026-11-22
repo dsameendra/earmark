@@ -31,7 +31,10 @@ public final class OnboardingPermissionsModel {
     }
 
     /// Only called from an explicit "Allow now" tap.
-    public func request(_ kind: PermissionKind) async { statuses[kind] = await permissions.request(kind) }
+    public func request(_ kind: PermissionKind) async { statuses[kind] = await permissions.requestAgain(kind) }
+
+    /// Re-reads the OS state after a trip to System Settings; never prompts.
+    public func recheck(_ kind: PermissionKind) async { statuses[kind] = await permissions.status(kind) }
 
     public func settingsURL(for kind: PermissionKind) -> URL { permissions.settingsURL(for: kind) }
 }

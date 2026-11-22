@@ -145,6 +145,10 @@ public final class PermissionsSettingsModel {
     public func settingsURL(for kind: PermissionKind) -> URL { service.settingsURL(for: kind) }
 
     public func status(_ kind: PermissionKind) -> PermissionStatus { statuses[kind] ?? .notDetermined }
+
+    public func rowState(_ kind: PermissionKind, context: PermissionRowContext = .settings) -> PermissionRowState {
+        PermissionRowState(kind: kind, status: status(kind), context: context)
+    }
 }
 
 extension PermissionKind {

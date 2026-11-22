@@ -9,6 +9,7 @@ import FeatureSupport
 import Foundation
 import Jobs
 import Models
+import Permissions
 import Persistence
 import Transcription
 
@@ -67,7 +68,7 @@ final class AppEnvironment {
         let models = ModelManager(hardware: hardware)
         // One settings store instance: its change streams are tied to it, and the queue observes the same one.
         let settings = database.makeSettingsStore()
-        let permissions = PlaceholderPermissions()
+        let permissions = PermissionsService()
         let audioDevices = PlaceholderAudioDevices()
         let services = AppServices(
             jobQueue: makeJobQueue(database: database, models: models, hardware: hardware, settings: settings),

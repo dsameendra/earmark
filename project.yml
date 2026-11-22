@@ -25,6 +25,7 @@ packages:
   Processing: { path: Packages/Processing }
   Export: { path: Packages/Export }
   Jobs: { path: Packages/Jobs }
+  Permissions: { path: Packages/Permissions }
 targets:
   Earmark:
     type: application
@@ -48,6 +49,7 @@ targets:
       - package: Transcription
       - package: Diarization
       - package: Jobs
+      - package: Permissions
       - package: AppCore
         product: AppCoreTesting   # debug `-UseMocks` composition only
       - package: Features

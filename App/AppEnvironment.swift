@@ -52,7 +52,11 @@ final class AppEnvironment {
         menuBar.start()
         activation.start()
         live?.extras.start()
-        if let dictation { Task { await dictation.controller.start() } }
+        if let dictation {
+            let store = services.settings
+            let controller = dictation.controller
+            Task { await DictationSettingsBridge.run(store: store, controller: controller) }
+        }
         // FILE-AC-08: jobs left running by a crash or quit continue from their last checkpoint.
         let queue = services.jobQueue
         Task { await queue.resumeInterrupted() }

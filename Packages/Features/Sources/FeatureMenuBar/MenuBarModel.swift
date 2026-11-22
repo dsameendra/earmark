@@ -131,7 +131,10 @@ public final class MenuBarModel {
 
     /// Starts live captions with `choice` (MENU-AC-03).
     public func startLive(_ choice: LiveSourceChoice) async {
-        var config = LiveSessionConfig(source: choice.captureSource, languageMode: language.mode)
+        // Same defaults as the Live screen: "Save as transcript" and speaker labels for system audio.
+        let save = await services.settings.value(for: SettingsKey.liveSaveAsTranscript, as: Bool.self) ?? false
+        var config = LiveSessionConfig(
+            source: choice.captureSource, languageMode: language.mode, diarize: choice != .mic, saveAsTranscript: save)
         switch choice {
         case .mic: config.source = .mic(deviceUID: inputDeviceUID)
         case .micAndSystem: config.source = .micAndSystem(deviceUID: inputDeviceUID, lanes: true)

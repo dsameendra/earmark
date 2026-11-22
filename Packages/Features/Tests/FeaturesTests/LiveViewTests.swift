@@ -186,6 +186,20 @@ private final class FakeExtras: LiveSessionExtras, @unchecked Sendable {
         model.stop()
     }
 
+    @Test func menuBarStartHonoursSaveAsTranscriptAndDiarization() async throws {
+        let live = RecordingLive()
+        let store = InMemorySettingsStore()
+        await store.set(true, for: SettingsKey.liveSaveAsTranscript)
+        var services = AppServices.preview()
+        services.live = live
+        services.settings = store
+        let model = MenuBarModel(services: services)
+        await model.startLive(.system)
+        let config = try #require(await live.configs.first)
+        #expect(config.saveAsTranscript)
+        #expect(config.diarize)
+    }
+
     @Test func noDictationControlMeansUnavailable() {
         #expect(!MenuBarModel(services: .preview()).isDictationAvailable)
     }

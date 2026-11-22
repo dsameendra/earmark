@@ -57,14 +57,15 @@ package_args=(-disableAutomaticPackageResolution -skipPackageUpdates)
 if [ -n "${EARMARK_SOURCE_PACKAGES_DIR:-}" ]; then
     package_args+=(-clonedSourcePackagesDirPath "$EARMARK_SOURCE_PACKAGES_DIR")
 fi
-mkdir "$release_root/stage"
-python3 - "$repo_root" "$release_root/build-provenance.json" "$mode" <<'PY'
+mkdir -p "$(dirname "$project")/PackagingStages"
+stage_root="$(mktemp -d "$(dirname "$project")/PackagingStages/Earmark-$mode.XXXXXX")"
+python3 - "$repo_root" "$release_root/build-provenance.json" "$mode" "$stage_root/Earmark.app" <<'PY'
 from pathlib import Path
 import datetime,json,subprocess,sys
 root=Path(sys.argv[1]);destination=Path(sys.argv[2])
 head=subprocess.check_output(['git','-C',str(root),'rev-parse','HEAD'],text=True).strip()
 changes=subprocess.check_output(['git','-C',str(root),'status','--porcelain','--untracked-files=all','--','App','Packages','NativeRuntime','Config','project.yml','scripts'],text=True).splitlines()
-destination.write_text(json.dumps(dict(commit=head,mode=sys.argv[3],createdAt=datetime.datetime.now(datetime.timezone.utc).isoformat(),sourceChanges=changes),indent=2)+'\n')
+destination.write_text(json.dumps(dict(commit=head,mode=sys.argv[3],stagedApp=sys.argv[4],createdAt=datetime.datetime.now(datetime.timezone.utc).isoformat(),sourceChanges=changes),indent=2)+'\n')
 PY
 # Compile without signing; the explicit inside-out pass below gives all nested code one consistent identity.
 if ! xcodebuild -project "$project" -scheme Earmark -configuration Release -destination 'platform=macOS' \
@@ -75,8 +76,10 @@ if ! xcodebuild -project "$project" -scheme Earmark -configuration Release -dest
     printf 'Build log: %s\n' "$release_root/build.log" >&2
     exit 1
 fi
-app="$release_root/stage/Earmark.app"
-/usr/bin/ditto "$derived_data/Build/Products/Release/Earmark.app" "$app"
+app="$stage_root/Earmark.app"
+# Finder/File Provider attributes inherited from cloud-synced source bundles invalidate signing.
+# Prepare only our new staging copy, outside Documents; never modify an installed app or its permissions.
+/usr/bin/ditto --norsrc --noextattr "$derived_data/Build/Products/Release/Earmark.app" "$app"
 python3 "$repo_root/scripts/sign-bundle.py" "$app" --identity "$identity" --entitlements "$repo_root/App/Earmark.entitlements"
 verify_app() {
     if [ "$mode" = distribution ]; then
@@ -126,4 +129,5 @@ else
 fi
 (cd "$release_root" && shasum -a 256 "$dmg_name" > "$dmg_name.sha256")
 printf 'Prepared %s\n' "$dmg"
+printf 'Signed app: %s\n' "$app"
 printf 'Validation reports: %s\n' "$release_root"

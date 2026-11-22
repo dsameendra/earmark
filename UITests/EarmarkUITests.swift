@@ -249,6 +249,20 @@ final class EarmarkUITests: XCTestCase {
         XCTAssertEqual(forward - before, 5, accuracy: 0.25)
         app.typeKey(.leftArrow, modifierFlags: [])
         XCTAssertEqual(Double(position.value as? String ?? "") ?? 0, before, accuracy: 0.25)
+        // The waveform scrubber: click seeks, VoiceOver gets a spoken value, View > Zoom In zooms it and Fit resets.
+        let seek = app.descendants(matching: .any)["editor.player.seek"].firstMatch
+        XCTAssertTrue(seek.waitForExistence(timeout: 5))
+        seek.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.45)).click()
+        let scrubbed = Double(position.value as? String ?? "") ?? 0
+        XCTAssertTrue((30...55).contains(scrubbed), "Clicking 60 % across a 72 s file seeks near 43 s, got \(scrubbed)")
+        app.menuBars.menuBarItems["View"].click()
+        app.menuBars.menuBarItems["View"].menuItems["Zoom In"].click()
+        let fit = app.buttons["editor.player.seek.fit"]
+        XCTAssertTrue(fit.waitForExistence(timeout: 3), "Zooming in shows the Fit button")
+        capture(app, "editor-player-dock-zoomed-light")
+        fit.click()
+        XCTAssertFalse(fit.waitForExistence(timeout: 1))
+        capture(app, "editor-player-dock-light")
         app.menuButtons["editor.player.options"].click()
         app.menuItems["Detach player"].click()
         let detached = app.descendants(matching: .any)["editor.detachedPlayer"].firstMatch

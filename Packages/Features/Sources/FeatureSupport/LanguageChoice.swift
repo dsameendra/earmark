@@ -37,8 +37,9 @@ public struct TranscriptionLanguageChoice: Hashable, Identifiable, Sendable {
     /// Clearing the model first makes subsequent preference observers resolve a compatible automatic model.
     public func persist(to settings: any SettingsStore, catalog: [ModelDescriptor]) async {
         guard !Task.isCancelled else { return }
-        if let preferred = await settings.value(for: SettingsKey.preferredModel, as: String.self), !preferred.isEmpty {
-            let descriptor = catalog.first { $0.kind == .asr && $0.id.rawValue == preferred }
+        for useCase in UseCase.allCases {
+            guard let preferred = await PreferredModel.explicitID(for: useCase, settings: settings) else { continue }
+            let descriptor = catalog.first { $0.kind == .asr && $0.id == preferred }
             let compatible: Bool
             if let descriptor {
                 switch mode {
@@ -52,7 +53,7 @@ public struct TranscriptionLanguageChoice: Hashable, Identifiable, Sendable {
                 compatible = false
             }
             guard !Task.isCancelled else { return }
-            if !compatible { await settings.set("", for: SettingsKey.preferredModel) }
+            if !compatible { await PreferredModel.set(nil, for: useCase, settings: settings) }
         }
         guard !Task.isCancelled else { return }
         await settings.set(mode, for: SettingsKey.languageMode)

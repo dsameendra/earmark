@@ -122,7 +122,7 @@ private func descriptor(
         #expect(await languages.chooseModel("B") == true)
         #expect(languages.languages == ["si"])  // english invalid for B: reset to the model's first language
         #expect(languages.availableLanguages == ["si"])
-        #expect(await store.value(for: SettingsKey.preferredModel, as: String.self) == "B")
+        #expect(await store.value(for: SettingsKey.preferredModelFile, as: String.self) == "B")
         #expect(await store.value(for: SettingsKey.languageMode, as: LanguageMode.self) == .single("si"))
     }
 
@@ -139,7 +139,7 @@ private func descriptor(
         #expect(manager.row("A")?.isInstalled == true)
         #expect(languages.selectedModel == "A")
         #expect(languages.downloadingModel == nil)
-        #expect(await store.value(for: SettingsKey.preferredModel, as: String.self) == "A")
+        #expect(await store.value(for: SettingsKey.preferredModelFile, as: String.self) == "A")
     }
 
     @Test func nonCommercialChoiceWaitsForConfirmation() async {

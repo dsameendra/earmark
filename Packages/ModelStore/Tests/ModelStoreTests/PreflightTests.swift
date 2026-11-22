@@ -162,6 +162,16 @@ struct PreflightTests {
         #expect(events.last == .completed)
     }
 
+    @Test("consent recorded through the protocol (Settings, the sidebar picker) stops the hook asking again")
+    func recordConsentViaProtocol() async throws {
+        let harness = harnessWithQwenAndNLLB()
+        let consent = RecordingConsent(answer: false)
+        let gated: any ModelManaging = harness.manager(hardware: Provider(tier: .tier16), consent: consent)
+        await gated.recordConsent(for: qwen)
+        _ = try await collect(gated.ensureAvailable(qwen))
+        #expect(consent.asked.isEmpty)
+    }
+
     @Test("an old state.json without the consent list still loads")
     func oldStateLoads() async throws {
         let harness = Harness()

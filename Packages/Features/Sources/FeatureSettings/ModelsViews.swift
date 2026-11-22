@@ -1,5 +1,6 @@
 import AppCore
 import DesignSystem
+import FeatureSupport
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -50,44 +51,96 @@ struct LanguageChips: View {
 struct ModelRowView: View {
     let row: ModelManagerModel.Row
     let isActive: Bool
+    var recommendations: [ModelRecommendation] = []
     let onDownload: () -> Void
     let onPause: () -> Void
     let onResume: () -> Void
     let onCancel: () -> Void
     let onDelete: () -> Void
+    @State private var showsLanguages = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DSSpacing.sm) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(row.descriptor.displayName).font(DSTypography.headline)
-                if row.descriptor.isExperimental { StatusPill("Experimental", systemImage: "flask", tone: .warning) }
-                if row.descriptor.isCustom { StatusPill("Custom", tone: .info) }
-                if isActive { StatusPill("Default", systemImage: "checkmark", tone: .success) }
-                Spacer()
-                Text(ModelFormat.bytes(row.descriptor.sizeBytes)).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
-                actions
+        VStack(alignment: .leading, spacing: DSSpacing.md) {
+            HStack(alignment: .top, spacing: DSSpacing.md) {
+                VStack(alignment: .leading, spacing: DSSpacing.xs) {
+                    Text(row.descriptor.displayName).font(DSTypography.headline).fixedSize(horizontal: false, vertical: true)
+                    if !row.descriptor.notes.isEmpty {
+                        Text(row.descriptor.notes).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Spacer(minLength: DSSpacing.md)
+                HStack(spacing: DSSpacing.sm) { actions }.fixedSize()
             }
-            if !row.descriptor.notes.isEmpty {
-                Text(row.descriptor.notes).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+            if isActive || row.descriptor.isCustom || !recommendations.isEmpty { badges }
+            if let why = recommendations.first?.why {
+                Text(why).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("models.recommendedWhy.\(row.id.rawValue)")
             }
-            HStack(spacing: DSSpacing.sm) {
-                let badge = ModelFormat.licenseBadge(row.descriptor.license)
-                StatusPill(
-                    LocalizedStringKey(badge.text), systemImage: row.descriptor.license.isNonCommercial ? "exclamationmark.triangle" : nil,
-                    tone: badge.tone)
-                LanguageChips(languages: row.descriptor.languages)
+            WrappingChips(spacing: DSSpacing.xs) {
+                if row.descriptor.kind == .asr { languagesButton }
+                ForEach(ModelCapabilitySummary.chips(for: row.descriptor).filter { $0.id != "languages" }) { CapabilityChipView($0) }
             }
             statusLine
         }
-        .padding(.vertical, DSSpacing.xs)
+        .padding(.vertical, DSSpacing.sm)
         .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("models.row.\(row.id.rawValue)")
+    }
+
+    private var badges: some View {
+        WrappingChips(spacing: DSSpacing.xs) {
+            ForEach(recommendations, id: \.useCase) { recommendation in
+                StatusPill(LocalizedStringKey(recommendation.badgeText), systemImage: "star.fill", tone: .success)
+                    .accessibilityIdentifier("models.recommended.\(row.id.rawValue).\(recommendation.useCase.rawValue)")
+            }
+            if isActive { StatusPill("Default", systemImage: "checkmark", tone: .success) }
+            if row.descriptor.isCustom { StatusPill("Custom", tone: .info) }
+        }
+    }
+
+    /// Languages as a chip that opens the full list (a long list never crowds the row).
+    private var languagesButton: some View {
+        let chip = ModelCapabilitySummary.chips(for: row.descriptor).first { $0.id == "languages" }
+        return Button { showsLanguages = true } label: {
+            HStack(spacing: DSSpacing.xs) {
+                DSIcon(.language).accessibilityHidden(true)
+                Text(chip?.text ?? "Languages")
+                Image(systemName: "chevron.down").imageScale(.small).accessibilityHidden(true)
+            }
+            .font(DSTypography.badge)
+            .foregroundStyle(DSColor.primaryText)
+            .padding(.horizontal, DSSpacing.sm).padding(.vertical, DSSpacing.xxs + 1)
+            .background(DSColor.primaryText.opacity(0.08), in: Capsule())
+            .fixedSize()
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(chip?.spoken ?? "Languages")
+        .accessibilityHint("Shows the full list")
+        .accessibilityIdentifier("models.languages.\(row.id.rawValue)")
+        .popover(isPresented: $showsLanguages) {
+            let names = ModelCapabilitySummary.languageNames(row.descriptor)
+            VStack(alignment: .leading, spacing: DSSpacing.sm) {
+                Text("\(names.count) \(names.count == 1 ? "language" : "languages")").font(DSTypography.headline)
+                ScrollView {
+                    Text(names.joined(separator: ", ")).font(DSTypography.body)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxHeight: 240)
+            }
+            .padding(DSSpacing.lg)
+            .frame(width: 300)
+        }
     }
 
     @ViewBuilder private var actions: some View {
         switch row.state {
         case .notInstalled:
             Button("Download", symbol: .download, action: onDownload).accessibilityLabel(
-                "Download \(row.descriptor.displayName)")
+                "Download \(row.descriptor.displayName)"
+            ).accessibilityIdentifier("models.download.\(row.id.rawValue)")
         case .downloading:
             Button("Pause", systemImage: "pause.circle", action: onPause).labelStyle(.iconOnly).accessibilityLabel("Pause download")
             Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download")
@@ -99,7 +152,9 @@ struct ModelRowView: View {
                 .labelStyle(.iconOnly)
                 .accessibilityLabel("Delete \(row.descriptor.displayName)")
         case .failed:
-            Button("Retry", symbol: .retry, action: onDownload)
+            Button("Retry", symbol: .retry, action: onDownload).accessibilityIdentifier("models.retry.\(row.id.rawValue)")
+            Button("Cancel", systemImage: "xmark.circle", action: onCancel).accessibilityLabel("Cancel and discard \(row.descriptor.displayName)")
+                .accessibilityIdentifier("models.cancel.\(row.id.rawValue)")
         }
     }
 
@@ -120,6 +175,7 @@ struct ModelRowView: View {
                 .font(DSTypography.caption).foregroundStyle(DSColor.success)
         case .failed(let reason):
             Label(reason, systemImage: "exclamationmark.triangle.fill").font(DSTypography.caption).foregroundStyle(DSColor.danger)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -149,26 +205,46 @@ struct ModelsSettingsView: View {
         model.rows.filter { kinds?.contains($0.descriptor.kind) ?? true }
     }
 
+    private var visibleKinds: [ModelKind] {
+        [ModelKind.asr, .diarization, .translation, .languageID, .vad].filter { kind in visibleRows.contains { $0.descriptor.kind == kind } }
+    }
+
+    static func title(for kind: ModelKind) -> LocalizedStringKey {
+        switch kind {
+        case .asr: "Speech recognition"
+        case .diarization: "Speaker labels"
+        case .translation: "Translation"
+        case .languageID: "Language detection"
+        case .vad: "Voice activity"
+        }
+    }
+
     var body: some View {
         Form {
-            Section {
-                ForEach(visibleRows) { row in
-                    ModelRowView(
-                        row: row, isActive: row.id == model.activeModelID,
-                        onDownload: { start(row.id) }, onPause: { Task { await model.pause(row.id) } },
-                        onResume: { Task { await model.resume(row.id) } }, onCancel: { Task { await model.cancel(row.id) } },
-                        onDelete: { Task { await model.requestDelete(row.id) } })
+            ForEach(visibleKinds, id: \.self) { kind in
+                Section {
+                    ForEach(model.rows(of: kind)) { row in
+                        ModelRowView(
+                            row: row, isActive: row.id == model.activeModelID, recommendations: model.recommendations(for: row.id),
+                            onDownload: { start(row.id) }, onPause: { Task { await model.pause(row.id) } },
+                            onResume: { Task { await model.resume(row.id) } }, onCancel: { Task { await model.cancel(row.id) } },
+                            onDelete: { Task { await model.requestDelete(row.id) } })
+                    }
+                } header: {
+                    HStack {
+                        Text(Self.title(for: kind))
+                        Spacer()
+                        if kind == visibleKinds.first {
+                            Text("Disk usage: \(ModelFormat.bytes(model.totalDiskUsage))").font(DSTypography.caption)
+                        }
+                    }
+                } footer: {
+                    if kind == visibleKinds.last {
+                        Text("Models are downloaded only when you choose to. Your audio stays on this Mac.")
+                    }
                 }
-                if visibleRows.isEmpty { Text("No models available.").foregroundStyle(DSColor.secondaryText) }
-            } header: {
-                HStack {
-                    Text("Models")
-                    Spacer()
-                    Text("Disk usage: \(ModelFormat.bytes(model.totalDiskUsage))").font(DSTypography.caption)
-                }
-            } footer: {
-                Text("Models are downloaded only when you choose to. Your audio stays on this Mac.")
             }
+            if visibleRows.isEmpty { Section { Text("No models available.").foregroundStyle(DSColor.secondaryText) } }
             if kinds == nil {
                 Section("Custom model") {
                     Button("Import WhisperKit CoreML folder…", systemImage: "folder.badge.plus") { showImporter = true }

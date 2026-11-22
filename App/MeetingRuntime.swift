@@ -269,8 +269,7 @@ struct MeetingFinalization: Sendable {
 
     private func prepare() async throws -> (any TranscriptionEngine, FinalizationConfig) {
         let mode = await settings.value(for: SettingsKey.languageMode, as: LanguageMode.self) ?? .default
-        let preferred = await settings.value(for: SettingsKey.preferredModel, as: String.self)
-        let explicit = (preferred?.isEmpty ?? true) ? nil : preferred.map { ModelID($0) }
+        let explicit = await PreferredModel.explicitID(for: .file, settings: settings)
         let request = RoutingRequest(
             languageMode: mode, useCase: .file, tier: hardware.profile.tier, installedModels: await models.installedModels(),
             explicitModel: explicit)

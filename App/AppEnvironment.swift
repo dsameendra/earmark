@@ -74,6 +74,9 @@ final class AppEnvironment {
         activation = ActivationPolicyController(settings: services.settings)
         guard startupFailure == nil else { return }
         menuBar.start()
+        // The single shared model key became one key per use case; copy the old choice to file transcription once.
+        let settingsStore = services.settings
+        Task { await PreferredModel.migrateLegacy(settings: settingsStore) }
         shell.startBackgroundWork()
         activation.start()
         live?.extras.start()
@@ -181,8 +184,11 @@ final class AppEnvironment {
         // Apple's speech assets are system-managed; without this provider the Models screen reported them as "not available".
         let apple = AppleSpeechEngine()
         let appleReadiness = AppleSpeechReadiness()
+        // Every download (batch sheet, queue, Home, onboarding, translation, diarization models) runs the manager's preflight;
+        // when it needs consent (licence, under-spec hardware) this hook asks, and insufficient disk refuses it.
         let models = ModelManager(
-            appleAssets: AppleSpeechAssetProvider(engine: apple, readiness: appleReadiness), hardware: hardware)
+            appleAssets: AppleSpeechAssetProvider(engine: apple, readiness: appleReadiness), hardware: hardware,
+            consent: PromptingModelConsent(presenter: ModelConsentAlert()))
         let systemLanguage = LanguageCode(Locale.current.language.languageCode?.identifier ?? "en")
         Task { await appleReadiness.refresh(engine: apple, languages: [systemLanguage, .english]) }
         // One settings store instance: its change streams are tied to it, and the queue observes the same one.
@@ -235,11 +241,7 @@ final class AppEnvironment {
             ])
         let meetings = MeetingRuntimeFactory.make(
             database: database, settings: settings, permissions: permissions, jobs: queue, live: live.session, prompts: meetingPrompter)
-        let explicitModel: @Sendable () async -> ModelID? = {
-            let raw = await settings.value(for: SettingsKey.preferredModel, as: String.self)
-            guard let raw, !raw.isEmpty else { return nil }
-            return ModelID(raw)
-        }
+        let explicitModel: @Sendable () async -> ModelID? = { await PreferredModel.explicitID(for: .file, settings: settings) }
         let services = AppServices(
             jobQueue: queue, transcripts: database.transcripts, meetings: database.meetings, models: models, live: live.session,
             meetingDetector: meetings.detector, hardware: hardware, permissions: permissions, audioDevices: audioDevices,
@@ -273,11 +275,8 @@ final class AppEnvironment {
         router: any EngineRouter, whisper: WhisperKitEngine, translation: any TranslationRouter
     ) -> LiveRuntime {
         let audio = LiveAudioProvider(permissions: permissions, settings: settings, deviceProvider: audioDevices)
-        let explicitModel: @Sendable () async -> ModelID? = {
-            let raw = await settings.value(for: SettingsKey.preferredModel, as: String.self)
-            guard let raw, !raw.isEmpty else { return nil }
-            return ModelID(raw)
-        }
+        // Live captions have their own preferred model (a file-only model must never reach streaming).
+        let explicitModel: @Sendable () async -> ModelID? = { await PreferredModel.explicitID(for: .live, settings: settings) }
         // Single languages and auto-detect use the router; a multilingual set of several languages code-switches through
         // `MultilingualEngine` (language ID on Whisper small, one engine per language).
         let provider = LiveLanguageEngineProvider(

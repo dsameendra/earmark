@@ -63,6 +63,8 @@ public final class ModelManagerModel {
     public private(set) var rows: [Row] = []
     public private(set) var usage = DiskUsage(totalBytes: 0, perModel: [:])
     public private(set) var activeModelID: ModelID?
+    /// "Recommended for this Mac" per use case (SCR-011): one `ModelRecommender` rule, with a one-line why.
+    public private(set) var recommendations: [ModelRecommendation] = []
     public var errorMessage: String?
     /// Set when deleting the active default needs confirmation (ENG-AC-06).
     public var pendingDeletion: ModelDescriptor?
@@ -96,9 +98,9 @@ public final class ModelManagerModel {
             built.append(Row(descriptor: descriptor, state: await manager.state(of: descriptor.id), progress: nil))
         }
         rows = built
+        recommendations = ModelRecommendations.compute(catalog: catalog, tier: hardware.profile.tier)
         usage = await manager.diskUsage()
-        let preferred = await store.value(for: SettingsKey.preferredModel, as: String.self) ?? ""
-        activeModelID = preferred.isEmpty ? nil : ModelID(preferred)
+        activeModelID = await PreferredModel.explicitID(for: .file, settings: store)
     }
 
     /// Follows `stateChanges()` until cancelled.
@@ -112,6 +114,17 @@ public final class ModelManagerModel {
     public var catalog: [ModelDescriptor] { rows.map(\.descriptor) }
 
     public func row(_ id: ModelID) -> Row? { rows.first { $0.id == id } }
+
+    /// Where `id` is the recommended default on this Mac (empty for most models).
+    public func recommendations(for id: ModelID) -> [ModelRecommendation] { recommendations.filter { $0.model == id } }
+
+    /// Rows for one kind, ASR ordered Recommended, then installed, then the rest (catalog order inside each band).
+    public func rows(of kind: ModelKind) -> [Row] {
+        let ofKind = rows.filter { $0.descriptor.kind == kind }
+        guard kind == .asr else { return ofKind }
+        func band(_ row: Row) -> Int { !recommendations(for: row.id).isEmpty ? 0 : row.isInstalled ? 1 : 2 }
+        return ofKind.enumerated().sorted { (band($0.element), $0.offset) < (band($1.element), $1.offset) }.map(\.element)
+    }
 
     private func apply(state: ModelState, to id: ModelID) {
         guard let index = rows.firstIndex(where: { $0.id == id }) else { return }
@@ -150,15 +163,25 @@ public final class ModelManagerModel {
     public func download(_ id: ModelID, confirmed: Bool = false) async -> DownloadOutcome {
         guard let index = rows.firstIndex(where: { $0.id == id }) else { return .failed("Unknown model") }
         if rows[index].isInstalled { return .completed }
-        if !confirmed {
-            let warnings = preflight(id)
-            if !warnings.isEmpty { return .needsConfirmation(warnings) }
+        let warnings = preflight(id)
+        // Too little disk space is refused outright: confirming cannot help, and the manager would refuse it anyway.
+        for case .lowDiskSpace(let needed, let available) in warnings {
+            let refusal = ModelPreflightResult(
+                model: id, displayName: rows[index].descriptor.displayName, downloadBytes: needed, freeDiskBytes: available,
+                issues: [.insufficientDisk(needed: needed + needed / 5, available: available)])
+            let reason = ModelConsentText.insufficientDisk(refusal) ?? "Not enough free disk space."
+            errorMessage = reason
+            return .failed(reason)
         }
+        if !confirmed, !warnings.isEmpty { return .needsConfirmation(warnings) }
+        if confirmed { await manager.recordConsent(for: id) }  // the consent hook must not ask a second time
+        let isRetry: Bool
+        if case .failed = rows[index].state { isRetry = true } else { isRetry = false }
         errorMessage = nil
         rows[index].progress = Progress(fraction: 0, bytesReceived: 0, bytesTotal: nil, isVerifying: false, startedAt: Date())
         rows[index].state = .downloading(fraction: 0)
         do {
-            for try await event in manager.ensureAvailable(id) {
+            for try await event in (isRetry ? manager.retryDownload(id) : manager.ensureAvailable(id)) {
                 guard let current = rows.firstIndex(where: { $0.id == id }) else { continue }
                 switch event {
                 case .progress(let fraction, let received, let total):
@@ -254,15 +277,5 @@ public final class ModelManagerModel {
 
     public var totalDiskUsage: Int64 { usage.totalBytes }
 
-    static func describe(_ error: any Error) -> String {
-        if let app = error as? AppError {
-            switch app {
-            case .checksumMismatch: return "The download was corrupted (checksum mismatch) and was removed. Try again."
-            case .modelDownloadFailed(_, let reason): return reason
-            case .persistence(let reason), .other(let reason): return reason
-            default: return "\(app)"
-            }
-        }
-        return error.localizedDescription
-    }
+    static func describe(_ error: any Error) -> String { ModelDownloadErrorText.message(for: error) }
 }

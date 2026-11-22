@@ -117,7 +117,7 @@ public final class MenuBarModel {
                 for await _ in changes { await self?.reloadModelSummary() }
             })
         let keys =
-            [SettingsKey.languageMode, SettingsKey.preferredModel, SettingsKey.inputDeviceUID, SettingsKey.autoRecord]
+            [SettingsKey.languageMode, SettingsKey.preferredModelFile, SettingsKey.inputDeviceUID, SettingsKey.autoRecord]
             + MeetingApp.allCases.map { SettingsKey.meetingPolicy($0.rawValue) }
         for key in keys {
             let changes = services.settings.changes(for: key)

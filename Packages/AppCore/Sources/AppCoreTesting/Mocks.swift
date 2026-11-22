@@ -58,6 +58,10 @@ public final class MockAudioSource: AudioSource {
 public actor MockModelManager: ModelManaging {
     private var descriptors: [ModelDescriptor]
     private var states: [ModelID: ModelState] = [:]
+    private var preflights: [ModelID: ModelPreflightResult] = [:]
+    private var failures: [ModelID: AppError] = [:]
+    private var consented: Set<ModelID> = []
+    private var ensureCalls: [ModelID] = []
     public init(descriptors: [ModelDescriptor] = [], installed: Set<ModelID> = []) {
         self.descriptors = descriptors
         for id in installed { states[id] = .installed(bytesOnDisk: 1) }
@@ -66,9 +70,29 @@ public actor MockModelManager: ModelManaging {
     public func state(of model: ModelID) -> ModelState { states[model] ?? .notInstalled }
     public nonisolated func stateChanges() -> AsyncStream<(ModelID, ModelState)> { AsyncStream { $0.finish() } }
     public func installedModels() -> Set<ModelID> { Set(states.compactMap { if case .installed = $0.value { $0.key } else { nil } }) }
+    /// Test hooks: a canned preflight result, a forced download failure, and what the UI recorded.
+    public func setPreflight(_ result: ModelPreflightResult) { preflights[result.model] = result }
+    public func setFailure(_ error: AppError?, for model: ModelID) { failures[model] = error }
+    public func setState(_ state: ModelState, for model: ModelID) { states[model] = state }
+    public func consentedModels() -> Set<ModelID> { consented }
+    /// Every model passed to `ensureAvailable`, in call order.
+    public func ensureAvailableCalls() -> [ModelID] { ensureCalls }
+    public func preflight(_ model: ModelID) -> ModelPreflightResult {
+        preflights[model]
+            ?? ModelPreflightResult(model: model, displayName: descriptors.first { $0.id == model }?.displayName ?? model.rawValue, downloadBytes: 0)
+    }
+    public func recordConsent(for model: ModelID) { consented.insert(model) }
+    private func noteEnsure(_ model: ModelID) -> AppError? {
+        ensureCalls.append(model)
+        return failures[model]
+    }
     public nonisolated func ensureAvailable(_ model: ModelID) -> AsyncThrowingStream<ModelDownloadEvent, any Error> {
         AsyncThrowingStream { c in
             Task {
+                if let failure = await self.noteEnsure(model) {
+                    c.finish(throwing: failure)
+                    return
+                }
                 if await self.installedModels().contains(model) {
                     c.yield(.completed)
                     c.finish()

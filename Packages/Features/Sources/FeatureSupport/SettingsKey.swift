@@ -1,3 +1,5 @@
+import AppCore
+
 /// `SettingsStore` keys shared by the shell, menu bar and Settings scene.
 public enum SettingsKey {
     /// `String` raw value of the last selected sidebar section (NAV-AC-15).
@@ -16,8 +18,23 @@ public enum SettingsKey {
     public static let notifyJobCompleted = "general.notifyJobCompleted"
     /// `LanguageMode`; default for the next session (MENU-AC-09).
     public static let languageMode = "defaults.languageMode"
-    /// `String`; chosen ASR model id; empty or absent means "Auto" (ADR-008).
+    /// LEGACY single shared model key. Read only by the one-time migration and as the `.file` fallback (see
+    /// ``PreferredModel/migrateLegacy(settings:)``); new code uses ``preferredModelKey(for:)``.
     public static let preferredModel = "defaults.preferredModel"
+    /// `String`; chosen ASR model id for file transcription; empty or absent means "Auto" (ADR-008).
+    public static let preferredModelFile = "defaults.preferredModel.file"
+    /// `String`; chosen ASR model id for live captions (own key so a file-only model never reaches streaming).
+    public static let preferredModelLive = "defaults.preferredModel.live"
+    /// `String`; chosen ASR model id for dictation.
+    public static let preferredModelDictation = "defaults.preferredModel.dictation"
+    /// The preferred-model key for one use case.
+    public static func preferredModelKey(for useCase: UseCase) -> String {
+        switch useCase {
+        case .file: preferredModelFile
+        case .live: preferredModelLive
+        case .dictation: preferredModelDictation
+        }
+    }
     /// `String`; chosen input device UID (absent means system default).
     public static let inputDeviceUID = "audio.inputDeviceUID"
     /// `String`; per-feature input device overrides (empty means "use global").

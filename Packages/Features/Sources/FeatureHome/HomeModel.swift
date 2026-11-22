@@ -71,7 +71,7 @@ public final class HomeModel {
     public func run() async {
         let events = services.jobQueue.events()  // subscribe before loading so no update is lost
         let modelChanges = services.models.stateChanges()
-        let preferredChanges = services.settings.changes(for: SettingsKey.preferredModel)
+        let preferredChanges = services.settings.changes(for: SettingsKey.preferredModelFile)
         let languageChanges = services.settings.changes(for: SettingsKey.languageMode)
         let watchers = [
             Task { [weak self] in for await _ in modelChanges { await self?.reloadModelStatus() } },
@@ -162,7 +162,7 @@ public final class HomeModel {
                     }
                 }
             } catch {
-                errorMessage = "Could not download \(model.displayName): \(error)"
+                errorMessage = ModelDownloadErrorText.message(for: error, modelName: model.displayName)
                 return false
             }
         }

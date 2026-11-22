@@ -225,6 +225,8 @@ public actor ModelManager: ModelManaging {
         save()
     }
 
+    public func recordConsent(for model: ModelID) { grantConsent(for: model) }
+
     /// Runs the preflight and the consent hook. `nil` means the download may start.
     private func gate(_ model: ModelID) async -> AppError? {
         let result = await preflight(model)

@@ -110,9 +110,14 @@ public final class SidebarModel {
     public private(set) var folders: [LibraryFolder] = []
     public private(set) var modelChip: SidebarModelChip?
 
+    /// The model chip's popover: per-use-case model choice, greying and downloads.
+    public let picker: ModelPickerModel
     @ObservationIgnored private let services: AppServices
 
-    public init(services: AppServices) { self.services = services }
+    public init(services: AppServices) {
+        self.services = services
+        picker = ModelPickerModel(services: services)
+    }
 
     /// Badge text for the Queue row (`nil` hides it).
     public var queueBadge: String? { activeJobs > 0 ? String(activeJobs) : nil }
@@ -121,7 +126,7 @@ public final class SidebarModel {
     public func run() async {
         let events = services.jobQueue.events()  // subscribe before loading so no update is lost
         let stateChanges = services.models.stateChanges()
-        let preferredChanges = services.settings.changes(for: SettingsKey.preferredModel)
+        let preferredChanges = services.settings.changes(for: SettingsKey.preferredModelFile)
         let languageChanges = services.settings.changes(for: SettingsKey.languageMode)
         let folderChanges = services.settings.changes(for: SettingsKey.libraryFolders)
         var jobs: [JobID: Job] = [:]
@@ -129,17 +134,29 @@ public final class SidebarModel {
         activeJobs = Self.activeCount(jobs)
         await reloadFolders()
         await reloadModel()
+        await picker.reload()
         let watcher = Task { [weak self] in
-            for await (id, _) in stateChanges {
+            for await (id, state) in stateChanges {
                 guard !Task.isCancelled else { return }
+                await self?.picker.apply(state, for: id)
                 await self?.reloadModel(changed: id)
             }
         }
         let preferredWatcher = Task { [weak self] in
-            for await _ in preferredChanges { await self?.reloadModel() }
+            for await _ in preferredChanges {
+                await self?.reloadModel()
+                await self?.picker.reload()
+            }
+        }
+        let pickerWatchers = [SettingsKey.preferredModelLive, SettingsKey.preferredModelDictation].map { key in
+            let changes = services.settings.changes(for: key)
+            return Task { [weak self] in for await _ in changes { await self?.picker.reload() } }
         }
         let languageWatcher = Task { [weak self] in
-            for await _ in languageChanges { await self?.reloadModel() }
+            for await _ in languageChanges {
+                await self?.reloadModel()
+                await self?.picker.reload()
+            }
         }
         let folderWatcher = Task { [weak self] in
             for await _ in folderChanges { await self?.reloadFolders() }
@@ -147,6 +164,7 @@ public final class SidebarModel {
         defer {
             watcher.cancel()
             preferredWatcher.cancel()
+            pickerWatchers.forEach { $0.cancel() }
             languageWatcher.cancel()
             folderWatcher.cancel()
         }

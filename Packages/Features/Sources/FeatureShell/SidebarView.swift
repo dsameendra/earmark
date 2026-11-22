@@ -27,6 +27,8 @@ struct SidebarView: View {
     @Bindable var model: ShellModel
     @Namespace private var pillSpace
     @FocusState private var navigationFocused: Bool
+    @State private var isModelPickerPresented = false
+    @Environment(\.openSettings) private var openSettings
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityPolicyOverride) private var policyOverride
 
@@ -45,12 +47,18 @@ struct SidebarView: View {
             }
             .scrollIndicators(.hidden)
             if let chip = model.sidebar.modelChip {
-                SettingsLink { ModelChipView(chip: chip) }
+                Button { isModelPickerPresented.toggle() } label: { ModelChipView(chip: chip) }
                     .buttonStyle(.plain)
-                    .help("Manage the default file-transcription model in Settings → Models")
-                    .accessibilityLabel("File transcription model, \(chip.name), \(chip.statusText)")
+                    .help("Choose the speech model for files, live captions and dictation")
+                    .accessibilityLabel("Speech model, \(chip.name), \(chip.statusText). Opens the model picker.")
                     .accessibilityValue(chip.detail)
                     .accessibilityIdentifier("sidebar.modelChip")
+                    .popover(isPresented: $isModelPickerPresented, arrowEdge: .trailing) {
+                        ModelPickerView(model: model.sidebar.picker, onManageModels: {
+                            isModelPickerPresented = false
+                            openSettings()
+                        })
+                    }
             }
             settingsRow
         }

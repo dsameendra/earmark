@@ -133,7 +133,7 @@ public final class LanguageSelectionModel {
         table = LanguageCapabilityTable(models: manager.catalog)
         let stored = await store.value(for: SettingsKey.languageMode, as: LanguageMode.self) ?? .default
         apply(mode: stored)
-        let preferred = await store.value(for: SettingsKey.preferredModel, as: String.self) ?? ""
+        let preferred = await PreferredModel.explicitID(for: .file, settings: store)?.rawValue ?? ""
         selectedModel = preferred.isEmpty ? nil : ModelID(preferred)
     }
 
@@ -241,6 +241,6 @@ public final class LanguageSelectionModel {
 
     private func persist() async {
         await store.set(languageMode, for: SettingsKey.languageMode)
-        await store.set(selectedModel?.rawValue ?? "", for: SettingsKey.preferredModel)
+        await PreferredModel.set(selectedModel, for: .file, settings: store)
     }
 }

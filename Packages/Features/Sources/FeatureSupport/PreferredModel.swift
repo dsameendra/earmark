@@ -3,6 +3,30 @@ import AppCore
 /// Resolves the user's explicit ASR model for status displays, falling back to a compatible catalog model.
 /// This does not load or download models; engine routing still owns execution-time selection.
 public enum PreferredModel {
+    /// The explicitly chosen model for `useCase`, or `nil` for "Auto". File transcription falls back to the legacy shared
+    /// key until ``migrateLegacy(settings:)`` has copied it, so a pre-split install keeps its choice.
+    public static func explicitID(for useCase: UseCase, settings: any SettingsStore) async -> ModelID? {
+        var raw = await settings.value(for: SettingsKey.preferredModelKey(for: useCase), as: String.self)
+        if raw == nil, useCase == .file { raw = await settings.value(for: SettingsKey.preferredModel, as: String.self) }
+        guard let raw, !raw.isEmpty else { return nil }
+        return ModelID(raw)
+    }
+
+    /// Saves the choice for one use case (`nil` means Auto).
+    public static func set(_ id: ModelID?, for useCase: UseCase, settings: any SettingsStore) async {
+        await settings.set(id?.rawValue ?? "", for: SettingsKey.preferredModelKey(for: useCase))
+    }
+
+    /// One-time migration from the single shared key: the old choice becomes the FILE choice only (live and dictation start on
+    /// Auto, because the shared value could be a file-only model). Idempotent and never overwrites a newer value.
+    public static func migrateLegacy(settings: any SettingsStore) async {
+        guard let legacy = await settings.value(for: SettingsKey.preferredModel, as: String.self) else { return }
+        if await settings.value(for: SettingsKey.preferredModelFile, as: String.self) == nil {
+            await settings.set(legacy, for: SettingsKey.preferredModelFile)
+        }
+        await settings.set("", for: SettingsKey.preferredModel)
+    }
+
     public static func resolve(
         in catalog: [ModelDescriptor], settings: any SettingsStore, tier: HardwareTier = .tier16
     ) async -> ModelDescriptor? {
@@ -14,7 +38,7 @@ public enum PreferredModel {
     public static func fileModels(
         in catalog: [ModelDescriptor], settings: any SettingsStore, tier: HardwareTier = .tier16
     ) async -> [ModelDescriptor] {
-        let preferred = await settings.value(for: SettingsKey.preferredModel, as: String.self)
+        let preferred = await explicitID(for: .file, settings: settings)?.rawValue
         let mode = await settings.value(for: SettingsKey.languageMode, as: LanguageMode.self) ?? .default
         let languages: Set<LanguageCode>
         switch mode {

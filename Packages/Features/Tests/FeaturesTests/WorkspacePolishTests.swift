@@ -119,22 +119,22 @@ struct WorkspacePolishTests {
         let multilingual = descriptor("multilingual", languages: [.english, "fr", "de"])
         services.settings = store
         services.models = MockModelManager(descriptors: [english, multilingual])
-        await store.set(english.id.rawValue, for: SettingsKey.preferredModel)
+        await store.set(english.id.rawValue, for: SettingsKey.preferredModelFile)
         let model = LiveModel(services: services)
         await model.loadPreferences()
         model.language = LiveLanguageChoice(mode: .single("fr"))
         #expect(
             await eventually {
                 let mode = await store.value(for: SettingsKey.languageMode, as: LanguageMode.self)
-                let preferred = await store.value(for: SettingsKey.preferredModel, as: String.self)
+                let preferred = await store.value(for: SettingsKey.preferredModelFile, as: String.self)
                 return mode == .single("fr") && preferred == ""
             })
-        await store.set(multilingual.id.rawValue, for: SettingsKey.preferredModel)
+        await store.set(multilingual.id.rawValue, for: SettingsKey.preferredModelFile)
         model.language = LiveLanguageChoice(mode: .single("de"))
         #expect(
             await eventually {
                 let mode = await store.value(for: SettingsKey.languageMode, as: LanguageMode.self)
-                let preferred = await store.value(for: SettingsKey.preferredModel, as: String.self)
+                let preferred = await store.value(for: SettingsKey.preferredModelFile, as: String.self)
                 return mode == .single("de") && preferred == multilingual.id.rawValue
             })
     }

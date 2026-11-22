@@ -170,6 +170,9 @@ public protocol ModelManaging: Sendable {
     func preflight(_ model: ModelID) async -> ModelPreflightResult
     /// Restarts a failed download from a clean state (stale resume data discarded). Same events as `ensureAvailable`.
     func retryDownload(_ model: ModelID) -> AsyncThrowingStream<ModelDownloadEvent, any Error>
+    /// Records that the user already confirmed `model`'s preflight in a UI of their own (Settings, the sidebar picker), so the
+    /// consent hook does not ask a second time.
+    func recordConsent(for model: ModelID) async
 }
 
 extension ModelManaging {
@@ -179,6 +182,7 @@ extension ModelManaging {
         return ModelPreflightResult(model: model, displayName: descriptor?.displayName ?? model.rawValue, downloadBytes: 0)
     }
     public func retryDownload(_ model: ModelID) -> AsyncThrowingStream<ModelDownloadEvent, any Error> { ensureAvailable(model) }
+    public func recordConsent(for model: ModelID) async {}
 }
 
 // MARK: - Language ↔ model capability (ADR-008)

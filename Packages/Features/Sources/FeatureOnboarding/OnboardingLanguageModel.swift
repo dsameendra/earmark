@@ -329,7 +329,7 @@ public final class OnboardingLanguageModel {
                     downloads[id]?.phase = .cancelled
                 } else {
                     isOffline = !(await isOnline())
-                    downloads[id]?.phase = .failed(isOffline ? Self.offlineNotice : "Download failed: \(error.localizedDescription)")
+                    downloads[id]?.phase = .failed(isOffline ? Self.offlineNotice : "Download failed: " + ModelDownloadErrorText.message(for: error))
                     break
                 }
             }

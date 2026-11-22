@@ -26,7 +26,7 @@ struct SettingsBridgeTests {
         await store.set(TextInsertionMethod.accessibility, for: SettingsKey.dictationInsertion)
         await store.set(false, for: SettingsKey.dictationAutoPunctuate)
         await store.set(["Earmark", "WhisperKit"], for: SettingsKey.customVocabulary)
-        await store.set("whisper-large", for: SettingsKey.preferredModel)
+        await store.set("whisper-large", for: SettingsKey.preferredModelDictation)
         await store.set("fr", for: SettingsKey.translationTarget)
         await store.set(KeyCombo.functionKey, for: comboKey())
         await DictationSettingsBridge.sync(store: store)
@@ -38,6 +38,20 @@ struct SettingsBridgeTests {
         #expect(s.modelID == ModelID("whisper-large"))
         #expect(s.translationTarget == LanguageCode("fr"))
         #expect(s.combo == .functionKey)
+    }
+
+    @Test func dictationUsesItsOwnPreferredModelNotTheFileOrLiveOnes() async {
+        let store = InMemorySettingsStore()
+        await store.set("file-model", for: SettingsKey.preferredModelFile)
+        await store.set("live-model", for: SettingsKey.preferredModelLive)
+        await store.set("legacy-model", for: SettingsKey.preferredModel)
+        await DictationSettingsBridge.sync(store: store)
+        #expect(await DictationSettings.load(from: store).modelID == nil)
+        await store.set("dictation-model", for: SettingsKey.preferredModelDictation)
+        await DictationSettingsBridge.sync(store: store)
+        #expect(await DictationSettings.load(from: store).modelID == ModelID("dictation-model"))
+        #expect(DictationSettingsBridge.observedKeys.contains(SettingsKey.preferredModelDictation))
+        #expect(!DictationSettingsBridge.observedKeys.contains(SettingsKey.preferredModelFile))
     }
 
     @Test func historySizeZeroDisablesHistoryAndOtherwiseSetsTheLimit() async {

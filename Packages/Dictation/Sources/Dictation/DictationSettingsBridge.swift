@@ -9,7 +9,7 @@ public enum DictationSettingsBridge {
     public static let observedKeys = [
         SettingsKey.dictationMode, SettingsKey.dictationInsertion, SettingsKey.dictationAutoPunctuate, SettingsKey.dictationHistorySize,
         SettingsKey.dictationInputDeviceUID, SettingsKey.inputDeviceUID, SettingsKey.shortcut(HotkeyAction.dictation.rawValue),
-        SettingsKey.languageMode, SettingsKey.preferredModel, SettingsKey.customVocabulary, SettingsKey.translationTarget,
+        SettingsKey.languageMode, SettingsKey.preferredModelDictation, SettingsKey.customVocabulary, SettingsKey.translationTarget,
     ]
 
     /// Rebuilds the controller's settings from the Settings-scene keys (keeps fields the UI does not edit, such as the HUD position).
@@ -35,8 +35,7 @@ public enum DictationSettingsBridge {
             settings.combo = .defaultDictation  // the Shortcuts pane default, Control-Option-D
         }
         if let mode = await store.value(for: SettingsKey.languageMode, as: LanguageMode.self) { settings.languageMode = mode }
-        let model = await store.value(for: SettingsKey.preferredModel, as: String.self)
-        settings.modelID = (model?.isEmpty ?? true) ? nil : model.map { ModelID($0) }
+        settings.modelID = await PreferredModel.explicitID(for: .dictation, settings: store)
         settings.vocabulary = await store.value(for: SettingsKey.customVocabulary, as: [String].self) ?? []
         let target = await store.value(for: SettingsKey.translationTarget, as: String.self)
         settings.translationTarget = (target?.isEmpty ?? true) ? nil : target.map { LanguageCode($0) }

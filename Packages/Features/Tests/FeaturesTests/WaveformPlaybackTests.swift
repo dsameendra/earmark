@@ -9,7 +9,7 @@ import Testing
 /// Peak extraction, the on-disk cache and the Features adapter of the waveform scrubber.
 @Suite struct WaveformPlaybackTests {
     /// A mono 16 kHz 16-bit WAV: `segments` of (seconds, amplitude) filled with a 220 Hz tone.
-    private static func writeWAV(_ parts: [(seconds: Double, amplitude: Double)], to url: URL) throws {
+    static func writeWAV(_ parts: [(seconds: Double, amplitude: Double)], to url: URL) throws {
         var samples = Data()
         var index = 0
         for part in parts {
@@ -33,7 +33,7 @@ import Testing
         try data.write(to: url)
     }
 
-    private static func tempDirectory() throws -> URL {
+    static func tempDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("waveform-tests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url

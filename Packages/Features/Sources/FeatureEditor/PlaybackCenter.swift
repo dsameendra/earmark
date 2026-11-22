@@ -1,4 +1,5 @@
 import AppCore
+import DesignSystem
 import Foundation
 import Observation
 
@@ -12,6 +13,57 @@ public final class PlaybackSession {
     public internal(set) var title: String
     public let mediaURL: URL
     public let playback: PlaybackModel
+
+    // MARK: Waveform (owned by the session so the mini-player works with no editor on screen)
+
+    /// Peaks for this session's media; nil while decoding or when there is nothing to draw.
+    public private(set) var waveformPeaks: WaveformPeaks?
+    public private(set) var waveformPyramid: PeakPyramid?
+    public private(set) var waveformState: WaveformLoadState = .loading
+    /// Speaker ribbon pieces and bookmark flags, pushed by the editor while it is open and kept after it closes.
+    public private(set) var waveformSegments: [WaveformSegment] = []
+    public private(set) var waveformSegmentIDs: [SegmentID] = []
+    public private(set) var waveformBookmarks: [WaveformBookmark] = []
+    @ObservationIgnored private var waveformTask: Task<Void, Never>?
+    @ObservationIgnored private var waveformRequested = false
+
+    /// What the scrubber shows: a missing file draws the flat unavailable line whatever the decoder said.
+    public var waveformLoadState: WaveformLoadState { playback.mediaState == .missing ? .unavailable : waveformState }
+
+    /// Index into ``waveformSegments`` of the segment being spoken, for the highlighted ribbon piece.
+    public var waveformActiveIndex: Int? {
+        guard let id = playback.activeRef?.segmentID else { return nil }
+        return waveformSegmentIDs.firstIndex(of: id)
+    }
+
+    /// Decodes (or reads from the disk cache) the peaks once per session; later callers await the same work.
+    public func loadWaveform(service: WaveformService, assetID: String?) async {
+        if !waveformRequested {
+            waveformRequested = true
+            waveformState = .loading
+            let url = mediaURL
+            waveformTask = Task { [weak self] in
+                let result = await service.peaks(for: url, assetID: assetID)
+                let pyramid = await Task.detached { result.peaks?.pyramid }.value
+                guard !Task.isCancelled, let self else { return }
+                waveformPeaks = result.peaks
+                waveformPyramid = pyramid
+                waveformState = result.peaks == nil ? .unavailable : .ready
+            }
+        }
+        await waveformTask?.value
+    }
+
+    func updateRibbon(segments: [WaveformSegment], ids: [SegmentID], bookmarks: [WaveformBookmark]) {
+        waveformSegments = segments
+        waveformSegmentIDs = ids
+        waveformBookmarks = bookmarks
+    }
+
+    func cancelWaveform() {
+        waveformTask?.cancel()
+        waveformTask = nil
+    }
 
     init(transcriptID: TranscriptID, title: String, mediaURL: URL, playback: PlaybackModel) {
         self.transcriptID = transcriptID
@@ -74,6 +126,7 @@ public final class PlaybackCenter {
         generation &+= 1
         guard let current = session else { return }
         session = nil
+        current.cancelWaveform()
         current.playback.stop()
     }
 

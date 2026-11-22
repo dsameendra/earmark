@@ -61,7 +61,7 @@ public final class TranscriptEditorModel {
     public private(set) var listFocusToken = 0
     /// Speaker-coloured regions for the scrubber, rebuilt only when segments change.
     public private(set) var speakerRegions: [SpeakerRegion] = []
-    public internal(set) var bookmarks: [TranscriptBookmark] = []
+    public internal(set) var bookmarks: [TranscriptBookmark] = [] { didSet { syncSessionRibbon() } }
     public internal(set) var highlights: [TextHighlight] = []
     public private(set) var persistenceError: String?
     /// Unseen live-to-offline speaker relabel (DIA-AC-06); `nil` once acknowledged or when nothing changed.
@@ -110,8 +110,6 @@ public final class TranscriptEditorModel {
     public private(set) var waveformPyramid: PeakPyramid?
     @ObservationIgnored var waveformTask: Task<Void, Never>?
     @ObservationIgnored public var waveformService = WaveformService()
-
-    isolated deinit { waveformTask?.cancel() }
 
     public private(set) var showIgnored = false { didSet { rebuildDerived() } }
     public private(set) var options = ViewOptions() { didSet { if oldValue.layout != options.layout { rebuildDerived() } } }
@@ -299,6 +297,7 @@ public final class TranscriptEditorModel {
             playback.attach(made.engine, isVideo: made.isVideo)
         }
         playback.setTimeline(WordTimeline(segments: segments))
+        syncSessionRibbon()
         startWaveformLoad(url: url, assetID: transcript.mediaAssetID.map { "\($0)" })
     }
 
@@ -306,6 +305,17 @@ public final class TranscriptEditorModel {
     private func startWaveformLoad(url: URL, assetID: String?) {
         waveformState = .loading
         let service = waveformService
+        if let session = playbackCenter?.session(for: transcriptID), session.mediaURL == url {
+            // The session owns the peaks (and keeps them for the mini-player); the editor mirrors them.
+            waveformTask = Task { [weak self] in
+                await session.loadWaveform(service: service, assetID: assetID)
+                guard !Task.isCancelled, let self else { return }
+                waveform = session.waveformPeaks
+                waveformPyramid = session.waveformPyramid
+                waveformState = session.waveformState
+            }
+            return
+        }
         waveformTask = Task { [weak self] in
             let result = await service.peaks(for: url, assetID: assetID)
             let pyramid = await Task.detached { result.peaks?.pyramid }.value
@@ -326,6 +336,7 @@ public final class TranscriptEditorModel {
     }
 
     isolated deinit {
+        waveformTask?.cancel()
         debounce?.cancel()
         translationWatcher?.cancel()
         if playbackCenter == nil { playback.stop() }
@@ -341,6 +352,13 @@ public final class TranscriptEditorModel {
         indexByID = Dictionary(uniqueKeysWithValues: segments.enumerated().map { ($1.id, $0) })
         speakerRegions = SpeakerRegions.make(from: segments)
         playback.setTimeline(WordTimeline(segments: segments))
+        syncSessionRibbon()
+    }
+
+    /// Keeps the shared session's speaker ribbon and bookmark flags current so the mini-player can draw them without this editor.
+    func syncSessionRibbon() {
+        guard let session = playbackCenter?.session(for: transcriptID) else { return }
+        session.updateRibbon(segments: waveformSegments, ids: segments.map(\.id), bookmarks: waveformBookmarks)
     }
 
     public func segment(_ id: SegmentID) -> Segment? { indexByID[id].map { segments[$0] } }

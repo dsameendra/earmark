@@ -50,11 +50,8 @@ public struct MiniPlayerView: View {
                 .accessibilityLabel("Playback position")
                 .accessibilityValue(String(format: "%.2f", playback.currentTime))
                 .accessibilityIdentifier("miniPlayer.position")
-            Slider(
-                value: Binding(get: { playback.currentTime }, set: { playback.seek(to: $0) }), in: 0...max(playback.duration, 1)
-            )
-            .accessibilityLabel("Seek").disabled(!playback.canPlay)
-            .accessibilityIdentifier("miniPlayer.seek")
+            MiniPlayerWaveform(session: session)
+                .frame(minWidth: 120, minHeight: 36, maxHeight: 36)
             Text(TimeFormat.clock(playback.duration)).font(DSTypography.timestamp).foregroundStyle(DSColor.secondaryText)
             Button {
                 center.stop()
@@ -92,5 +89,37 @@ public struct SharedPlaybackShortcuts: View {
         } else {
             Color.clear.allowsHitTesting(false)
         }
+    }
+}
+
+
+/// The mini-player's scrubber: the shared ``WaveformView`` fed by the session's own peaks and ribbon, so it needs no editor.
+struct MiniPlayerWaveform: View {
+    let session: PlaybackSession
+    var identifier = "miniPlayer.seek"
+
+    var body: some View {
+        let playback = session.playback
+        let zoom = playback.zoom
+        WaveformView(
+            peaks: session.waveformPyramid, loadState: session.waveformLoadState,
+            duration: max(playback.duration, session.waveformPeaks?.duration ?? 0),
+            segments: session.waveformSegments, bookmarks: session.waveformBookmarks,
+            activeSegment: session.waveformActiveIndex, style: .bars, viewport: Bindable(zoom).viewport,
+            clock: { WaveformClockSample(time: playback.currentTime, isPlaying: playback.isPlaying, rate: playback.speed) },
+            onSeek: { time in
+                guard playback.canPlay else { return }
+                playback.seek(to: time)
+            },
+            onAdjust: { playback.skip(by: $0) }, label: "Playback position", identifier: identifier
+        )
+        .onHover {
+            if $0 {
+                zoom.target = .waveform
+                PlayerZoomRegistry.shared.activate(zoom)  // View > Zoom In / Out / Actual Size act on this player while it is hovered
+            }
+        }
+        .opacity(playback.canPlay ? 1 : 0.5)
+        .allowsHitTesting(playback.canPlay)
     }
 }

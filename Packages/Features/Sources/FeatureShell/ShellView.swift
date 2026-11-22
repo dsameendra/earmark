@@ -38,7 +38,7 @@ public struct ShellView: View {
                     if model.showsMiniPlayer {
                         MiniPlayerView(center: model.playback) { model.openTranscript($0) }
                             .padding(DSSpacing.md)
-                            .transition(.opacity)
+                            .dsTransition(.settle)  // arrives on settle, leaves on the exit curve; Reduce Motion crossfades
                     }
                 }
                 .background(

@@ -103,7 +103,7 @@ final class AppEnvironment {
         let apple = AppleSpeechEngine()
         let appleReadiness = AppleSpeechReadiness()
         let models = ModelManager(
-            hardware: hardware, appleAssets: AppleSpeechAssetProvider(engine: apple, readiness: appleReadiness))
+            appleAssets: AppleSpeechAssetProvider(engine: apple, readiness: appleReadiness), hardware: hardware)
         let systemLanguage = LanguageCode(Locale.current.language.languageCode?.identifier ?? "en")
         Task { await appleReadiness.refresh(engine: apple, languages: [systemLanguage, .english]) }
         // One settings store instance: its change streams are tied to it, and the queue observes the same one.

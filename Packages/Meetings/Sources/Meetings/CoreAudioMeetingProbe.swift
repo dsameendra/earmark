@@ -96,19 +96,30 @@ public final class CoreAudioMeetingProbe: MeetingProbe {
 
 /// Running-process lookup by name through libproc (no permission needed for the user's own processes).
 enum ProcessNames {
-    static func anyRunning(_ names: [String]) -> Bool {
-        let count = proc_listallpids(nil, 0)
-        guard count > 0 else { return false }
-        var pids = [pid_t](repeating: 0, count: Int(count) + 32)
-        let bytes = proc_listallpids(&pids, Int32(pids.count * MemoryLayout<pid_t>.size))
-        guard bytes > 0 else { return false }
-        var buffer = [UInt8](repeating: 0, count: 256)
-        for pid in pids.prefix(Int(bytes) / MemoryLayout<pid_t>.size) where pid > 0 {
-            let length = Int(proc_name(pid, &buffer, UInt32(buffer.count)))
-            guard length > 0 else { continue }
-            if names.contains(String(decoding: buffer.prefix(length), as: UTF8.self)) { return true }
+    static func anyRunning(
+        _ names: [String], pids: () -> [pid_t] = ProcessNames.systemPIDs, nameOf: (pid_t) -> String? = ProcessNames.systemName
+    ) -> Bool {
+        for pid in pids() where pid > 0 {
+            if let name = nameOf(pid), names.contains(name) { return true }
         }
         return false
+    }
+
+    /// `proc_listallpids` returns the NUMBER of pids written, not bytes (unlike `proc_listpids`); treating it as bytes
+    /// scanned only the first quarter of the table and missed recently spawned helpers such as Zoom's `CptHost`.
+    static func systemPIDs() -> [pid_t] {
+        let capacity = proc_listallpids(nil, 0)
+        guard capacity > 0 else { return [] }
+        var pids = [pid_t](repeating: 0, count: Int(capacity) + 64)
+        let written = proc_listallpids(&pids, Int32(pids.count * MemoryLayout<pid_t>.size))
+        guard written > 0 else { return [] }
+        return Array(pids.prefix(Int(written)))
+    }
+
+    static func systemName(_ pid: pid_t) -> String? {
+        var buffer = [UInt8](repeating: 0, count: 256)
+        let length = Int(proc_name(pid, &buffer, UInt32(buffer.count)))
+        return length > 0 ? String(decoding: buffer.prefix(length), as: UTF8.self) : nil
     }
 }
 

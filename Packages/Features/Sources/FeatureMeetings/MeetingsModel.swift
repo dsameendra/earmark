@@ -107,6 +107,12 @@ public final class MeetingsModel {
     @ObservationIgnored private var liveState: LiveSessionState = .idle
     @ObservationIgnored private var usesLiveFallback = false
     @ObservationIgnored private var runTask: Task<Void, Never>?
+    /// Apps whose current detection the user dismissed or ignored, and until when a re-detection of the same app stays
+    /// quiet after that meeting "ended". Output-only (listen-only) calls can fall silent past the end grace and be
+    /// detected again a moment later; without this the user would be asked again about the call they just ignored.
+    @ObservationIgnored private var dismissedByUser: Set<MeetingApp> = []
+    @ObservationIgnored private var quietUntil: [MeetingApp: Date] = [:]
+    static let reDetectionQuietPeriod: TimeInterval = 5 * 60
 
     public init(services: AppServices, clock: @escaping @Sendable () -> Date = { Date() }, calendar: Calendar = .current) {
         repository = services.meetings
@@ -268,14 +274,18 @@ public final class MeetingsModel {
             let policy = await loadPolicy(app)
             policies[app] = policy
             let decision = MeetingPromptPolicy.decide(policy: policy, hour: MeetingPromptPolicy.hour(of: date, calendar: calendar))
-            detections[app] = DetectedMeeting(app: app, startedAt: date, decision: decision)
+            var detected = DetectedMeeting(app: app, startedAt: date, decision: decision)
+            if decision == .prompt, let until = quietUntil[app], date < until { detected.isDismissed = true }
+            detections[app] = detected
             lastApp = app
+            if detected.isDismissed { return }
             switch decision {
             case .none: break
             case .prompt: await prompter?.present(MeetingPrompt(app: app, startedAt: date))
             case .auto(let record): await startCapture(app, mode: record ? .transcribeAndRecord : .transcribeOnly, automatic: true)
             }
-        case .ended(let app, _):
+        case .ended(let app, let date):
+            if dismissedByUser.remove(app) != nil { quietUntil[app] = date.addingTimeInterval(Self.reDetectionQuietPeriod) }
             detections[app] = nil
             if pendingRecording?.app == app { pendingRecording = nil }
             await prompter?.withdraw(app: app)
@@ -340,6 +350,7 @@ public final class MeetingsModel {
     /// "Dismiss" and "Ignore this meeting": hides the banner and withdraws the notification until the meeting ends.
     public func dismissDetection(_ app: MeetingApp) async {
         detections[app]?.isDismissed = true
+        if detections[app] != nil { dismissedByUser.insert(app) }
         await prompter?.withdraw(app: app)
     }
 

@@ -11,18 +11,36 @@ private final class FakeDetector: MeetingDetector {
     func events() -> AsyncStream<MeetingEvent> { broadcaster.stream() }
 }
 
+/// Holds a start open so a test can deliver a detector event in the middle of it.
+private actor Latch {
+    private var isOpen = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+    func wait() async {
+        if isOpen { return }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+    func open() {
+        isOpen = true
+        waiters.forEach { $0.resume() }
+        waiters = []
+    }
+}
+
 private final class FakeSources: MeetingAudioSourceProviding {
     let remoteFailure: AppError?
     let log: CallLog
-    init(remoteFailure: AppError? = nil, log: CallLog) {
+    let hold: Latch?
+    init(remoteFailure: AppError? = nil, log: CallLog, hold: Latch? = nil) {
         self.remoteFailure = remoteFailure
         self.log = log
+        self.hold = hold
     }
     func micSource(deviceUID: String?) -> any AudioSource { StubSource(tag: .mic(deviceUID: nil), failure: nil, name: "mic", log: log) }
     /// The Meetings override from Settings > Audio.
     func preferredMicDeviceUID() async -> String? { "usb-meetings" }
     func makeMicSource() async -> any AudioSource {
         await log.add("mic.device=\(await preferredMicDeviceUID() ?? "default")")
+        await hold?.wait()
         return micSource(deviceUID: await preferredMicDeviceUID())
     }
     func remoteSource(for app: MeetingApp) -> any AudioSource {
@@ -118,7 +136,9 @@ private struct Rig {
     let controller: MeetingSessionController
     let sessionEvents: Collector<MeetingSessionEvent>
 
-    init(remoteFailure: AppError? = nil, recorderFails: Bool = false) {
+    let latch = Latch()
+
+    init(remoteFailure: AppError? = nil, recorderFails: Bool = false, holdStart: Bool = false) {
         let log = CallLog()
         self.live = FakeLive(log: log)
         let recorder = FakeRecorder(log: log, failStart: recorderFails)
@@ -126,7 +146,7 @@ private struct Rig {
         let policies = MeetingPolicyStore(store: settings)
         controller = MeetingSessionController(
             detector: detector, policies: policies, consent: MeetingConsentStore(store: settings),
-            sources: FakeSources(remoteFailure: remoteFailure, log: log), makeRecorder: { _ in recorder },
+            sources: FakeSources(remoteFailure: remoteFailure, log: log, hold: holdStart ? latch : nil), makeRecorder: { _ in recorder },
             recordingsRoot: { URL(fileURLWithPath: "/tmp/earmark-test-root") }, meetings: meetings, jobs: jobs, live: live,
             transcripts: transcripts, clock: clock)
         sessionEvents = Collector(controller.events())
@@ -206,6 +226,20 @@ struct ControllerTests {
         #expect(log.filter { $0 == "mic.start" }.count == 1)
         #expect(log.filter { $0.hasPrefix("recorder.start:") }.count == 1)
         #expect(await rig.controller.currentSession != nil)
+    }
+
+    @Test("a meeting that ends while capture is still starting does not leave a recording running")
+    func endedWhileStarting() async throws {
+        let rig = Rig(holdStart: true)
+        await rig.setBehavior(.autoTranscribeAndRecord)
+        let starting = Task { await rig.zoomStarted() }
+        while await !rig.logRef.entries.contains(where: { $0.hasPrefix("mic.device=") }) { try await Task.sleep(for: .milliseconds(5)) }
+        await rig.controller.handle(.ended(.zoom, at: rig.clock.now()))
+        await rig.latch.open()
+        await starting.value
+        #expect(await rig.controller.currentSession == nil, "the ended meeting must not stay recording")
+        let log = await rig.logRef.entries
+        #expect(log.contains("recorder.stop") && log.contains("live.stop") && log.contains("mic.stop"))
     }
 
     // MTG-AC-06

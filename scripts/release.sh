@@ -5,7 +5,9 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 mode="${1:-local}"
 case "$mode" in local|selfsigned|distribution) ;; *) printf 'Usage: %s local|selfsigned|distribution\n' "$0" >&2; exit 64 ;; esac
-for tool in python3 git xcodegen xcodebuild xcrun hdiutil codesign security; do command -v "$tool" >/dev/null; done
+for tool in python3 git xcodegen xcodebuild xcrun hdiutil codesign security; do
+    command -v "$tool" >/dev/null || { printf 'Required tool not found: %s\n' "$tool" >&2; exit 69; }
+done
 identity=-
 feed=""
 public_key=""

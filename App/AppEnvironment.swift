@@ -109,9 +109,20 @@ final class AppEnvironment {
         let queue = services.jobQueue
         let repository = services.meetings
         let controller = meetings.controller
-        // Ask for notification permission now, while the user is in Earmark, not mid-call when the dialog would hide behind Zoom.
+        // Ask for notification permission while the user is in Earmark, not mid-call when the dialog would hide behind Zoom.
+        // Not before onboarding has finished: its own permission step asks, and a system dialog on the very first launch
+        // would land on top of the welcome flow.
         if let prompter = services.meetingPrompts as? SystemMeetingPrompter {
-            Task { await prompter.requestAuthorizationIfNeeded() }
+            Task {
+                guard await settings.value(for: SettingsKey.onboardingCompleted, as: Bool.self) == true else { return }
+                await prompter.requestAuthorizationIfNeeded()
+            }
+        }
+        // Quitting during a meeting stops and finalizes it (recorder closed, live transcript saved, finalization queued)
+        // instead of leaving a half-written recording for the next launch to repair.
+        AppDelegate.terminationWork = {
+            guard await controller.currentSession != nil else { return }
+            await controller.shutdown()
         }
         Task {
             // Recovery finishes before detection starts, so an auto-started recording can never be mistaken for a leftover.

@@ -339,6 +339,15 @@ struct RealProbeTests {
         #expect(zoom.callHelperNames.contains("CptHost"))
     }
 
+    @Test("process-name lookup scans every pid, including the last ones")
+    func processNameLookupScansAllPids() {
+        let pids: () -> [pid_t] = { Array(1...1000) }
+        #expect(ProcessNames.anyRunning(["CptHost"], pids: pids, nameOf: { $0 == 1000 ? "CptHost" : "other" }))
+        #expect(!ProcessNames.anyRunning(["CptHost"], pids: pids, nameOf: { _ in "other" }))
+        #expect(ProcessNames.systemPIDs().contains(getpid()), "the real table includes this process")
+        #expect(ProcessNames.systemPIDs().count > 50)
+    }
+
     @Test("reading the live system never crashes and an absent app is inactive")
     func readsSystem() async {
         let probe = CoreAudioMeetingProbe(signatures: [MeetingAppSignature(app: .teams, bundleIDPrefixes: ["com.example.no-such-app"])])

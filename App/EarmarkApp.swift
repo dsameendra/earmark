@@ -10,6 +10,39 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) { UITestConfiguration.applyAppearance() }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    /// Work to finish before the app quits (stopping a running meeting capture). Set once by `AppEnvironment`.
+    @MainActor static var terminationWork: (@MainActor () async -> Void)?
+
+    /// Waits for `terminationWork`, but never longer than `terminationTimeout`: a stuck recorder must not block quitting.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let work = Self.terminationWork else { return .terminateNow }
+        Self.terminationWork = nil
+        let reply = TerminationReply(application: sender)
+        Task { @MainActor in
+            await work()
+            reply.send()
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: Self.terminationTimeout)
+            reply.send()
+        }
+        return .terminateLater
+    }
+
+    /// Answers `applicationShouldTerminate` exactly once, whichever of the work or the timeout finishes first.
+    @MainActor private final class TerminationReply {
+        private let application: NSApplication
+        private var sent = false
+        init(application: NSApplication) { self.application = application }
+        func send() {
+            guard !sent else { return }
+            sent = true
+            application.reply(toApplicationShouldTerminate: true)
+        }
+    }
+
+    private static let terminationTimeout = Duration.seconds(15)
 }
 
 @main

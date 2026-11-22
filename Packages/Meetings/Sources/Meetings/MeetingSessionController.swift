@@ -85,6 +85,10 @@ public actor MeetingSessionController {
     private var active: Active?
     /// Set synchronously when `startSession` begins, because it suspends many times before `active` exists.
     private var starting = false
+    /// The app whose session is being started, and whether the detector reported its meeting over meanwhile. Without
+    /// this an `.ended` that lands while the (slow, suspending) start is in flight is dropped and the recording runs on.
+    private var startingApp: MeetingApp?
+    private var endedWhileStarting = false
     /// The folder a session that is still starting is about to write, so crash recovery never mistakes it for a leftover.
     private var startingDirectory: URL?
     private var pendingPrompts: [MeetingApp: Date] = [:]
@@ -154,6 +158,7 @@ public actor MeetingSessionController {
                 await startSession(app: app, startedAt: at, transcribe: true, record: true, video: decision.recordVideo)
             }
         case .ended(let app, _):
+            if starting, startingApp == app { endedWhileStarting = true }
             if pendingPrompts.removeValue(forKey: app) != nil { broadcaster.send(.promptDismissed(app)) }
             if active?.info.app == app { _ = await stopSession() }
         }
@@ -163,8 +168,12 @@ public actor MeetingSessionController {
     public func startSession(app: MeetingApp, startedAt: Date? = nil, transcribe: Bool, record: Bool, video: Bool = false) async {
         guard active == nil, !starting, transcribe || record else { return }
         starting = true
+        startingApp = app
+        endedWhileStarting = false
         defer {
             starting = false
+            startingApp = nil
+            endedWhileStarting = false
             startingDirectory = nil
         }
         pendingPrompts[app] = nil
@@ -203,6 +212,8 @@ public actor MeetingSessionController {
         active = state
         broadcaster.send(.sessionStarted(info))
         if info.recording { broadcaster.send(.recordingIndicator(true)) }
+        // The meeting ended while capture was still starting: finish it now instead of recording an empty room forever.
+        if endedWhileStarting { _ = await stopSession() }
     }
 
     private func beginRecording(_ state: inout Active, video: Bool) async {

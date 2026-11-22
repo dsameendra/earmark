@@ -352,9 +352,19 @@ private func following(
         await model.handle(started(.zoom))  // same meeting reported again: still ignored
         #expect(prompter?.presented.count == 1)
         await model.handle(ended(.zoom))
-        await model.handle(started(.zoom))  // a new meeting
+        await model.handle(.started(.zoom, at: Date(timeIntervalSince1970: 1_700_000_000 + 3_600 + 6 * 60)))  // a new meeting
         #expect(prompter?.presented.count == 2)
         #expect(model.bannerDetections.count == 1)
+    }
+
+    @Test func aCallDetectedAgainRightAfterBeingIgnoredDoesNotPromptAgain() async {
+        let (model, _, prompter, _) = make()
+        await model.handle(started(.zoom))
+        await model.handle(MeetingPromptResponse(app: .zoom, action: .ignoreThisMeeting))
+        await model.handle(ended(.zoom))  // a listen-only call fell silent past the end grace
+        await model.handle(.started(.zoom, at: Date(timeIntervalSince1970: 1_700_000_000 + 3_600 + 60)))  // and resumed
+        #expect(prompter?.presented.count == 1, "the ignored call must not prompt again within the quiet period")
+        #expect(model.bannerDetections.isEmpty)
     }
 
     @Test func recordActionStartsRecordingAfterConsent() async {

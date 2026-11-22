@@ -20,7 +20,9 @@ fi
 if [ -e "$dmg" ] || [ -L "$dmg" ] || [ -e "$artwork" ] || [ -L "$artwork" ]; then
     echo 'Output image and artwork directory must be new, unused paths.' >&2; exit 64
 fi
-for tool in python3 swift tiffutil hdiutil ditto; do command -v "$tool" >/dev/null; done
+for tool in python3 swift tiffutil hdiutil ditto; do
+    command -v "$tool" >/dev/null || { printf 'Required tool not found: %s\n' "$tool" >&2; exit 69; }
+done
 build_root="${EARMARK_BUILD_ROOT:-$HOME/Library/Caches/EarmarkBuild}"
 dmg_python="${EARMARK_DMG_PYTHON:-$build_root/dmg-venv/bin/python}"
 if [ -z "${EARMARK_DMG_PYTHON:-}" ] && [ ! -x "$dmg_python" ]; then

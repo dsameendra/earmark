@@ -37,6 +37,18 @@ public enum AppSection: String, CaseIterable, Identifiable, Sendable {
 
     /// 1-based keyboard shortcut digit.
     public var shortcutNumber: Int { (Self.allCases.firstIndex(of: self) ?? 0) + 1 }
+
+    /// The key equivalent character for ⌘1…⌘6.
+    public var shortcutKey: Character { Character(String(shortcutNumber)) }
+
+    /// The section selected by ⌘`digit` (1-based); `nil` outside 1...6 (NAV-AC-02).
+    public init?(shortcutDigit digit: Int) {
+        guard digit >= 1, digit <= Self.allCases.count else { return nil }
+        self = Self.allCases[digit - 1]
+    }
+
+    /// Stable accessibility identifier of the sidebar row (rule A6).
+    public var accessibilityIdentifier: String { "sidebar.\(rawValue)" }
 }
 
 /// Persists the last-selected section through `SettingsStore` (NAV-AC-15). Home is the first-launch default (NAV-AC-01).

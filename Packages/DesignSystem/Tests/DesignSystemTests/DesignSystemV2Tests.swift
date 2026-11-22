@@ -22,18 +22,34 @@ import Testing
     static let textTokens: [(String, DSColorToken)] = [
         ("ink", DSPalette.ink), ("ink2", DSPalette.ink2), ("ink3", DSPalette.ink3),
     ]
+    /// Small-text colours: 4.5:1 on every surface, no exceptions except the two below.
     static let statusTokens: [(String, DSColorToken)] = [
-        ("ember", DSPalette.ember), ("recording", DSPalette.recording), ("success", DSPalette.success),
+        ("accentText", DSPalette.accentText), ("recordingText", DSPalette.recordingText), ("success", DSPalette.success),
         ("warning", DSPalette.warning), ("danger", DSPalette.danger),
     ]
+    /// Fill and large-text colours (locked brand hexes): 3:1 non-text on every surface, 4.5:1 on sheet.
+    static let fillTokens: [(String, DSColorToken)] = [("ember", DSPalette.ember), ("recording", DSPalette.recording)]
 
-    /// Known pairs (light appearance) below 4.5:1 for small text, with the minimum they do reach. These are the
-    /// locked brand hexes (not changed); use at >= 14 pt bold or as non-text (3:1) and re-check at T40.
+    /// Light pairs below 4.5:1 for small text. Ember and recording moved to `accentText` / `recordingText`
+    /// (T34), so only success and warning on the Ember tint remain; T40 to confirm.
     static let knownSub45: [String: Double] = [
-        "ember/paper": 3.0, "ember/inset": 3.0, "ember/emberTint": 3.0,
-        "recording/paper": 3.0, "recording/inset": 3.0, "recording/emberTint": 3.0,
         "success/emberTint": 3.0, "warning/emberTint": 3.0,
     ]
+
+    @Test(arguments: [false, true]) func fillTokensMeetNonTextContrast(dark: Bool) {
+        for (name, token) in Self.fillTokens {
+            for s in Surface.allCases {
+                let ratio = RGB.contrast(token.value(dark: dark).rgb, Self.surface(s, dark: dark))
+                #expect(ratio >= 3.0, "\(name) on \(s) dark=\(dark): \(ratio)")
+            }
+        }
+    }
+
+    @Test func accentTextKeepsEmberHueAndDarkEqualsEmber() {
+        #expect(DSPalette.accentText.dark == DSPalette.ember.dark)
+        #expect(DSPalette.recordingText.dark == DSPalette.recording.dark)
+        #expect(DSPalette.accentText.light != DSPalette.ember.light)
+    }
 
     @Test(arguments: [false, true]) func bodyTextTokensMeetAA(dark: Bool) {
         for (name, token) in Self.textTokens {
@@ -77,7 +93,7 @@ import Testing
                 }
             }
         }
-        // Light: ember, recording and the amber/green tokens on emberTint, plus paper/inset for ember and recording.
+        // Light: the amber and green tokens on emberTint.
         let listed = Set(Self.knownSub45.keys)
         #expect(below.isSubset(of: listed), "undocumented sub-4.5 pairs: \(below.subtracting(listed).sorted())")
     }

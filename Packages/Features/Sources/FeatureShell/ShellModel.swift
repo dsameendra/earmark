@@ -7,6 +7,7 @@ import FeatureQueue
 import FeatureSupport
 import Foundation
 import Observation
+import SwiftUI
 
 /// Shell state: sidebar selection (persisted), quick open, file import and drop handling.
 @MainActor @Observable
@@ -25,6 +26,14 @@ public final class ShellModel {
     public let library: LibraryModel
     public let recentlyDeleted: LibraryModel
     public let quickOpen: QuickOpenModel
+    public let sidebar: SidebarModel
+
+    /// Window width as last measured; drives ``layout``.
+    public private(set) var windowWidth: CGFloat = 1440
+    /// Sidebar column visibility. Collapses (detail only) below 800 pt; the system toolbar button reveals it as an overlay.
+    public var columnVisibility: NavigationSplitViewVisibility = .all
+    /// Editor inspector toolbar toggle (only meaningful when the window is below 1100 pt).
+    public var isInspectorToggledOn = false
 
     @ObservationIgnored public let services: AppServices
     @ObservationIgnored private let persistence: SectionPersistence
@@ -39,7 +48,36 @@ public final class ShellModel {
         library = LibraryModel(services: services, mode: .library)
         recentlyDeleted = LibraryModel(services: services, mode: .recentlyDeleted)
         quickOpen = QuickOpenModel(transcripts: services.transcripts)
+        sidebar = SidebarModel(services: services)
         meetings.navigate = { [weak self] in self?.select(.meetings) }
+    }
+
+    /// Responsive layout for the current window width.
+    public var layout: ShellLayout { ShellLayout(width: windowWidth) }
+
+    /// `true` when the Editor inspector should be on screen: always when wide, else only while toggled on.
+    public var isInspectorPresented: Bool { !layout.inspectorCollapsed || isInspectorToggledOn }
+
+    /// Records the window width and applies the responsive rules. Only crossing the 800 pt boundary changes the
+    /// sidebar, so a user who revealed it in a compact window is not fought on every resize tick.
+    public func updateWindowWidth(_ width: CGFloat) {
+        let wasCollapsed = layout.sidebarCollapsed
+        windowWidth = width
+        let nowCollapsed = layout.sidebarCollapsed
+        if nowCollapsed != wasCollapsed { columnVisibility = nowCollapsed ? .detailOnly : .all }
+        if !layout.inspectorCollapsed { isInspectorToggledOn = false }
+    }
+
+    /// Recording is always visible (handoff 5): a live session or a meeting recording is running.
+    public var isRecordingActive: Bool { live.isRunning || meetings.isRecording }
+
+    /// The section the recording indicator row opens.
+    public var recordingSection: AppSection { meetings.isRecording ? .meetings : .live }
+
+    /// Opens Library narrowed to `folder` (sidebar folders).
+    public func openFolder(_ folder: FolderID) {
+        library.filters.folderID = folder
+        select(.library)
     }
 
     /// Starts app-lifetime followers (meeting detection, prompts and auto-capture). Call once at launch; idempotent.
@@ -52,6 +90,7 @@ public final class ShellModel {
     public func select(_ section: AppSection) {
         selection = section
         openedTranscript = nil
+        if section == .library { Task { await sidebar.reloadFolders() } }
         let persistence = persistence
         Task { await persistence.save(section) }
     }

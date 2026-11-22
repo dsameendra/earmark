@@ -6,6 +6,16 @@ Status: FROZEN at Phase 5 gate. Milestones follow the brief (M1–M7), plus M8 U
 
 **Isolation:** each task touches only its owned package + tests. Cross-package changes go through an SCR.
 
+## Execution record (Codex handover, 2026-11-22)
+
+The owner approved completion of M8 followed by M7, recovery of interrupted T34, correction of the identified feature gaps, and a bundled CTranslate2/SentencePiece runtime for ADR-009. The local final-v1 boards remain authoritative; the private canvas could not be independently fetched during handover.
+
+- Preserved pre-handover `main` as `backup/pre-codex-handover`; an external snapshot contains the Git bundle, complete T34 edits, untracked files and the duplicate remote-ref file. The original Claude worktree is retained.
+- T31/T32/T33 and Features subscription-wait fixes were on local `main`, ten commits ahead of the verified remote. T34 was uncommitted in `agent-af4277854b2ef2466` and is recovered on `codex/complete-m8-release`.
+- Handover baseline: committed DesignSystem 64 tests, Features 271; recovered T34 DesignSystem 71, Features 291. Committed app Debug build passed without signing. These are not real capture/permission or visual acceptance results.
+- The original generated Xcode project stalls in file coordination; a temporary generated-project copy referencing the same sources builds. Developer ID distribution is pending; two Apple Development identities are available.
+- In progress: finish T34, then T35-T38, T39-T40, correctness gaps and M7. No screen or release task is complete merely because unit tests pass.
+
 ## Design alignment for tasks before M8 (non-blocking; read before starting any UI task)
 The final UI/UX and brand design exists (`/specs/design/m8-mockups/`, index `README.md`, gallery `index.html`; locked decisions `/specs/design/m8-ui-overhaul.md`; build guide `/specs/design/m8-handoff.md`) and is implemented last, in M8 (T31-T40). It is a restyle of the UI layer, so everything built now should make that restyle cheap. M8 relies on, and will not rework, the following. Do not add scope for the overhaul in M2-M7; just follow these rules.
 **Rules for all UI code written before M8**

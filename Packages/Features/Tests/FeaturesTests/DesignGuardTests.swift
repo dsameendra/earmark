@@ -30,6 +30,30 @@ import Testing
         return out.sorted { $0.path < $1.path }
     }
 
+    /// Packages outside Features that host floating panels (live caption overlay, dictation HUD). Only the glass
+    /// rules apply to them: each glass use must be a marked `floater` (the third budgeted layer).
+    static let extraGlassRoots: [(name: String, url: URL)] = ["LiveCaptions", "Dictation"].map {
+        (
+            $0,
+            sourcesRoot.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("\($0)/Sources")
+        )
+    }
+
+    /// Features sources plus the panel packages (paths prefixed `LiveCaptions/` and `Dictation/`).
+    static func glassScanFiles() -> [SourceFile] {
+        var out = sourceFiles()
+        for root in extraGlassRoots {
+            guard let walker = FileManager.default.enumerator(at: root.url, includingPropertiesForKeys: nil) else { continue }
+            for case let url as URL in walker where url.pathExtension == "swift" {
+                guard let raw = try? String(contentsOf: url, encoding: .utf8) else { continue }
+                let code = raw.split(separator: "\n", omittingEmptySubsequences: false)
+                    .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }.joined(separator: "\n")
+                out.append(SourceFile(path: root.name + "/" + String(url.path.dropFirst(root.url.path.count + 1)), code: code, raw: raw))
+            }
+        }
+        return out.sorted { $0.path < $1.path }
+    }
+
     static func contains(_ file: SourceFile, anyOf patterns: [String]) -> Bool {
         patterns.contains { file.code.contains($0) }
     }
@@ -52,7 +76,7 @@ import Testing
     @Test func glassRequiresALayerMarker() {
         let markers = DSGlassMarkers.allowed.map { "// glass-layer: \($0)" }
         var offenders: [String] = []
-        for file in Self.sourceFiles() where Self.contains(file, anyOf: Self.glassAPIs) {
+        for file in Self.glassScanFiles() where Self.contains(file, anyOf: Self.glassAPIs) {
             if !markers.contains(where: { file.raw.contains($0) }) { offenders.append(file.path) }
         }
         #expect(
@@ -61,9 +85,23 @@ import Testing
         )
     }
 
+    @Test func panelPackagesAreScanned() {
+        let paths = Self.glassScanFiles().map(\.path)
+        #expect(paths.contains { $0.hasPrefix("LiveCaptions/") }, "LiveCaptions sources not found")
+        #expect(paths.contains { $0.hasPrefix("Dictation/") }, "Dictation sources not found")
+    }
+
+    @Test func panelPackageGlassIsAFloater() {
+        for file in Self.glassScanFiles() where file.path.hasPrefix("LiveCaptions/") || file.path.hasPrefix("Dictation/") {
+            if Self.contains(file, anyOf: Self.glassAPIs) {
+                #expect(file.raw.contains("// glass-layer: floater"), "\(file.path) hosts a panel and must be marked floater")
+            }
+        }
+    }
+
     @Test func glassMarkersOnlyInFilesThatUseGlass() {
         let markers = DSGlassMarkers.allowed.map { "// glass-layer: \($0)" }
-        let stale = Self.sourceFiles().filter { f in
+        let stale = Self.glassScanFiles().filter { f in
             markers.contains(where: { f.raw.contains($0) }) && !Self.contains(f, anyOf: Self.glassAPIs)
         }.map(\.path)
         #expect(stale.isEmpty, "glass-layer marker without glass: \(stale)")

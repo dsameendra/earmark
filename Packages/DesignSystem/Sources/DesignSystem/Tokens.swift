@@ -160,10 +160,18 @@ public enum DSPalette {
     public static let emberTint = DSColorToken(
         light: DSRGBA(hex: 0xF7E4D8), dark: DSRGBA(hex: 0xF28A57, alpha: 0.16))
     public static let recording = DSColorToken(light: 0xD1352B, dark: 0xFF6B5E)
+    /// Ember for small text (links, labels, badge numerals): 4.5:1 on paper, sheet, inset and emberTint in light
+    /// (4.63 to 5.99). `ember` (#C44B16) stays for fills, icons and text at 24 pt and above. Dark equals `ember`.
+    public static let accentText = DSColorToken(light: 0xA83E10, dark: 0xF28A57)
+    /// Recording red for small text next to the dot (4.68 to 6.07 on the light surfaces). The dot and fills keep `recording`.
+    public static let recordingText = DSColorToken(light: 0xB52A22, dark: 0xFF6B5E)
     public static let success = DSColorToken(light: 0x2F7A4F, dark: 0x6CC48F)
     /// Not specified by the boards; amber chosen at T31 to reach 4.5:1 on paper, sheet and inset in both appearances.
     public static let warning = DSColorToken(light: 0x8F5300, dark: 0xE8A93C)
     public static let danger = DSColorToken(light: 0xB3321F, dark: 0xFF8A7A)
+    /// Sidebar selection pill (Sidebar board): translucent Sheet on the glass sidebar. Ink on it reads as on sheet.
+    public static let selectionPill = DSColorToken(
+        light: DSRGBA(hex: 0xFFFCF6, alpha: 0.85), dark: DSRGBA(hex: 0xFFFFFF, alpha: 0.10))
     /// Warm shadow colour (apply 7-14 % alpha, 14-24 pt blur).
     public static let shadow = DSColorToken(light: 0x3C2814, dark: 0x000000)
 }
@@ -194,11 +202,17 @@ public enum DSColor {
     public static let ember = DSPalette.ember.color
     /// Selected row / chip / karaoke background.
     public static let accentTint = DSPalette.emberTint.color
+    /// Ember for small text (links, labels): 4.5:1 on every surface. Use ``accent`` for fills, icons, large text.
+    public static let accentText = DSPalette.accentText.color
     /// Recording red. Never Ember.
     public static let recording = DSPalette.recording.color
+    /// Recording red for small text (labels beside the recording dot).
+    public static let recordingText = DSPalette.recordingText.color
     public static let success = DSPalette.success.color
     public static let warning = DSPalette.warning.color
     public static let danger = DSPalette.danger.color
+    /// Selected sidebar row pill.
+    public static let selectionPill = DSPalette.selectionPill.color
     /// Warm drop shadow colour.
     public static let shadow = DSPalette.shadow.color
 }
@@ -211,7 +225,7 @@ public enum DSTone: Sendable, Hashable, CaseIterable {
     public var color: Color {
         switch self {
         case .neutral: DSColor.secondaryText
-        case .info: DSColor.accent
+        case .info: DSColor.accentText
         case .success: DSColor.success
         case .warning: DSColor.warning
         case .danger: DSColor.danger

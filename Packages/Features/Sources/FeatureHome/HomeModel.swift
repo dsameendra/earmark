@@ -116,7 +116,7 @@ public final class HomeModel {
             installedCount: catalog.filter { $0.kind == .asr && installed.contains($0.id) }.count)
     }
 
-    static func defaultModel(in catalog: [ModelDescriptor]) -> ModelDescriptor? {
+    public static func defaultModel(in catalog: [ModelDescriptor]) -> ModelDescriptor? {
         catalog.first(where: { $0.kind == .asr && !$0.isExperimental }) ?? catalog.first(where: { $0.kind == .asr })
     }
 

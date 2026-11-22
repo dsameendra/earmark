@@ -11,45 +11,32 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// Main window: `NavigationSplitView` with the Liquid Glass sidebar (NAV-AC-01) and the section detail views.
+///
+/// Glass budget (three layers at most per screen): (1) the sidebar, the system `NavigationSplitView` material;
+/// (2) the floating toolbar groups, system toolbar glass (never a full-width bar); the one primary action is a solid
+/// Ember capsule; (3) one transient floater (player dock, overlay, popover) owned by the screen that shows it.
+/// Content (cards, lists, inspector, transcript) is solid.
 public struct ShellView: View {
     @Bindable private var model: ShellModel
 
     public init(model: ShellModel) { self.model = model }
 
     public var body: some View {
-        NavigationSplitView {
-            List(
-                AppSection.allCases,
-                selection: Binding<AppSection?>(get: { model.selection }, set: { if let section = $0 { model.select(section) } })
-            ) { section in
-                Label(section.title, symbol: section.symbol)
-                    .tag(section)
-                    .accessibilityLabel(section.title)
-                    .accessibilityHint("Command \(section.shortcutNumber)")
-            }
-            .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 280)
-            .accessibilityLabel("Sidebar")
+        NavigationSplitView(columnVisibility: $model.columnVisibility) {
+            SidebarView(model: model)
+                .navigationSplitViewColumnWidth(min: 190, ideal: DSLayout.sidebarWidth, max: 280)
         } detail: {
             VStack(spacing: 0) {
-                if let message = model.errorMessage {
-                    HStack {
-                        Label(message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(DSColor.danger)
-                        Spacer()
-                        Button("Dismiss") { model.dismissError() }
-                    }
-                    .padding(DSSpacing.md)
-                }
+                if let message = model.errorMessage { errorBanner(message) }
                 detail
             }
-            .toolbar {
-                ToolbarItem {
-                    Button("Quick Open", symbol: .find) { model.presentQuickOpen() }
-                        .help("Quick Open (⌘K)")
-                        .accessibilityHint("Search transcripts by title and text")
-                }
-            }
+            .background(DSColor.paper)
+            .toolbar { shellToolbar }
         }
-        .frame(minWidth: 820, minHeight: 520)
+        .frame(minWidth: DSLayout.minWindowSize.width, minHeight: DSLayout.minWindowSize.height)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { model.updateWindowWidth($0) }
+        .environment(\.shellLayout, model.layout)
+        .environment(\.inspectorPresented, model.isInspectorPresented)
         .dropDestination(for: URL.self) { urls, _ in model.handleDrop(urls) }
         .fileImporter(
             isPresented: $model.isImporterPresented, allowedContentTypes: [.audiovisualContent, .folder], allowsMultipleSelection: true
@@ -61,19 +48,61 @@ public struct ShellView: View {
                 model: model.quickOpen, onOpen: { model.openTranscript($0) }, onDismiss: { model.isQuickOpenPresented = false })
         }
         .task { await model.restore() }
+        .task { await model.sidebar.run() }
+    }
+
+    /// Inline error banner on a danger tint (never a blocking modal).
+    private func errorBanner(_ message: String) -> some View {
+        HStack {
+            Label(message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(DSColor.danger)
+            Spacer()
+            Button("Dismiss") { model.dismissError() }.accessibilityIdentifier("shell.dismissError")
+        }
+        .padding(DSSpacing.md)
+        .background(DSColor.danger.opacity(0.1), in: RoundedRectangle(cornerRadius: DSRadius.large, style: .continuous))
+        .padding(.horizontal, DSSpacing.lg).padding(.top, DSSpacing.sm)
+    }
+
+    // MARK: Toolbar
+
+    /// Two floating groups: search (and the inspector toggle when the window is narrow), then the primary action.
+    @ToolbarContentBuilder private var shellToolbar: some ToolbarContent {
+        if model.openedTranscript != nil {
+            ToolbarItem(placement: .navigation) {
+                Button("Back", systemImage: "chevron.backward") { model.closeTranscript() }
+                    .help("Back to \(model.selection.title)")
+                    .keyboardShortcut("[", modifiers: [.command])
+                    .accessibilityIdentifier("toolbar.back")
+            }
+        }
+        ToolbarItemGroup {
+            Button { model.presentQuickOpen() } label: { SearchField() }
+                .buttonStyle(.plain)
+                .help("Quick Open (⌘K)")
+                .accessibilityLabel("Quick Open")
+                .accessibilityHint("Search transcripts by title and text")
+                .accessibilityIdentifier("toolbar.quickOpen")
+            if model.openedTranscript != nil && model.layout.inspectorCollapsed {
+                Toggle(isOn: $model.isInspectorToggledOn) { Label("Inspector", systemImage: "sidebar.trailing") }
+                    .help("Show or hide the inspector")
+                    .accessibilityIdentifier("toolbar.inspector")
+            }
+        }
+        if model.selection == .home && model.openedTranscript == nil {
+            ToolbarSpacer(.fixed)
+            ToolbarItem(placement: .primaryAction) {
+                PrimaryToolbarButton(title: "Transcribe", systemImage: "plus") { model.presentImporter() }
+                    .help("Choose audio or video files to transcribe")
+                    .accessibilityIdentifier("toolbar.transcribe")
+            }
+            .sharedBackgroundVisibility(.hidden)
+        }
     }
 
     @ViewBuilder private var detail: some View {
         if let id = model.openedTranscript {
             TranscriptEditorView(transcriptID: id, services: model.services)
                 .id(id)
-                .toolbar {
-                    ToolbarItem(placement: .navigation) {
-                        Button("Back", systemImage: "chevron.backward") { model.closeTranscript() }
-                            .help("Back to \(model.selection.title)")
-                            .keyboardShortcut("[", modifiers: [.command])
-                    }
-                }
         } else {
             sectionDetail
         }
@@ -81,12 +110,13 @@ public struct ShellView: View {
 
     @ViewBuilder private var sectionDetail: some View {
         switch model.selection {
-        case .home: HomeView(model: model.home, actions: model.homeActions)
-        case .queue: QueueView(model: model.queue, onOpenTranscript: { model.openTranscript($0) })
-        case .meetings: MeetingsView(model: model.meetings, onOpenTranscript: { model.openTranscript($0) })
-        case .live: LiveView(model: model.live)
-        case .library: LibraryView(model: model.library, onOpenTranscript: { model.openTranscript($0) })
-        case .recentlyDeleted: LibraryView(model: model.recentlyDeleted, onOpenTranscript: { model.openTranscript($0) })
+        case .home: HomeView(model: model.home, actions: model.homeActions).shellContentWidth()
+        case .queue: QueueView(model: model.queue, onOpenTranscript: { model.openTranscript($0) }).shellContentWidth()
+        case .meetings: MeetingsView(model: model.meetings, onOpenTranscript: { model.openTranscript($0) }).shellContentWidth()
+        case .live: LiveView(model: model.live).shellContentWidth()
+        case .library: LibraryView(model: model.library, onOpenTranscript: { model.openTranscript($0) }).shellContentWidth()
+        case .recentlyDeleted:
+            LibraryView(model: model.recentlyDeleted, onOpenTranscript: { model.openTranscript($0) }).shellContentWidth()
         }
     }
 }
@@ -101,7 +131,7 @@ public struct ShellCommands: Commands {
         CommandMenu("Go") {
             ForEach(AppSection.allCases) { section in
                 Button(section.title) { model.select(section) }
-                    .keyboardShortcut(KeyEquivalent(Character(String(section.shortcutNumber))), modifiers: [.command])
+                    .keyboardShortcut(KeyEquivalent(section.shortcutKey), modifiers: [.command])
             }
             Divider()
             Button("Quick Open…") { model.presentQuickOpen() }
@@ -111,3 +141,41 @@ public struct ShellCommands: Commands {
 }
 
 #Preview("Shell") { ShellView(model: ShellModel(services: .preview())) }
+
+/// Search affordance in the toolbar: magnifier, prompt and the ⌘K hint (Home board).
+private struct SearchField: View {
+    var body: some View {
+        HStack(spacing: DSSpacing.sm) {
+            DSIcon(.find).dsIconContext(.toolbar)
+            Text("Search transcripts").foregroundStyle(DSColor.secondaryText)
+            Spacer(minLength: DSSpacing.md)
+            Text("⌘K").font(DSTypography.caption).foregroundStyle(DSColor.tertiaryText)
+        }
+        .frame(width: 240)
+        .padding(.horizontal, DSSpacing.xs)
+        .contentShape(Rectangle())
+    }
+}
+
+/// The one primary action of a view: a solid Ember capsule (`glassProminent` tinted Ember; `borderedProminent` when
+/// Reduce Transparency or Increase Contrast asks for solid surfaces).
+// glass-layer: toolbar
+private struct PrimaryToolbarButton: View {
+    let title: LocalizedStringKey
+    let systemImage: String
+    let action: () -> Void
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityPolicyOverride) private var policyOverride
+
+    private var solid: Bool {
+        (policyOverride ?? AccessibilityPolicy(reduceTransparency: reduceTransparency, increaseContrast: contrast == .increased))
+            .usesSolidSurface
+    }
+
+    var body: some View {
+        let button = Button(action: action) { Label(title, systemImage: systemImage) }
+            .tint(DSColor.accent).dsMinControlHeight()
+        if solid { button.buttonStyle(.borderedProminent).buttonBorderShape(.capsule) } else { button.buttonStyle(.glassProminent) }
+    }
+}

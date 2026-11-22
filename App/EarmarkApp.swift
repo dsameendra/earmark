@@ -22,7 +22,8 @@ struct EarmarkApp: App {
                 .background { if let packs = environment.translationPacks { TranslationPackHost(installer: packs) } }
                 .tint(DSColor.accent)
         }
-        .defaultSize(width: 1000, height: 640)
+        .defaultSize(width: 1280, height: 800)
+        .windowResizability(.contentMinSize)
         .commands {
             ShellCommands(model: environment.shell)
             OnboardingCommands(settings: environment.services.settings)

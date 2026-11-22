@@ -103,18 +103,29 @@ public struct GlassPanel<Content: View>: View {
 /// Toolbar button using the system glass button style (bordered fallback when transparency is reduced).
 public struct GlassToolbarButton: View {
     private let title: LocalizedStringKey
-    private let systemImage: String
+    private let systemImage: String?
+    private let symbol: DSSymbol?
     private let prominent: Bool
     private let action: () -> Void
     public init(_ title: LocalizedStringKey, systemImage: String, prominent: Bool = false, action: @escaping () -> Void) {
         self.title = title
         self.systemImage = systemImage
+        self.symbol = nil
+        self.prominent = prominent
+        self.action = action
+    }
+    /// Custom symbol (stock fallback at toolbar size for the heavy five, see ``DSIconContext``).
+    public init(_ title: LocalizedStringKey, symbol: DSSymbol, prominent: Bool = false, action: @escaping () -> Void) {
+        self.title = title
+        self.systemImage = nil
+        self.symbol = symbol
         self.prominent = prominent
         self.action = action
     }
     public var body: some View {
         PolicyReader { policy in
-            let button = Button(action: action) { Label(title, systemImage: systemImage) }.labelStyle(.iconOnly).help(Text(title))
+            let button = Button(action: action) { buttonLabel }
+                .labelStyle(.iconOnly).help(Text(title)).dsIconContext(.toolbar)
             if policy.usesSolidSurface {
                 if prominent { button.buttonStyle(.borderedProminent) } else { button.buttonStyle(.bordered) }
             } else {
@@ -124,14 +135,30 @@ public struct GlassToolbarButton: View {
     }
 }
 
+extension GlassToolbarButton {
+    @ViewBuilder fileprivate var buttonLabel: some View {
+        if let symbol { Label { Text(title) } icon: { DSIcon(symbol) } } else { Label(title, systemImage: systemImage ?? "questionmark") }
+    }
+}
+
 /// Small capsule showing a status with icon and text (never color alone).
 public struct StatusPill: View {
     private let text: LocalizedStringKey
     private let systemImage: String?
+    private let symbol: DSSymbol?
     private let tone: DSTone
     public init(_ text: LocalizedStringKey, systemImage: String? = nil, tone: DSTone = .neutral) {
         self.text = text
         self.systemImage = systemImage
+        self.symbol = nil
+        self.tone = tone
+    }
+
+    /// Pill with a `DSSymbol` icon.
+    public init(_ text: LocalizedStringKey, symbol: DSSymbol, tone: DSTone = .neutral) {
+        self.text = text
+        self.systemImage = nil
+        self.symbol = symbol
         self.tone = tone
     }
 
@@ -149,7 +176,9 @@ public struct StatusPill: View {
 
     public var body: some View {
         HStack(spacing: DSSpacing.xs) {
-            if let systemImage { Image(systemName: systemImage).accessibilityHidden(true) }
+            if let symbol { DSIcon(symbol).dsIconContext(.menu) } else if let systemImage {
+                Image(systemName: systemImage).accessibilityHidden(true)
+            }
             Text(text)
         }
         .font(DSTypography.badge)
@@ -175,7 +204,7 @@ public struct RecordingIndicator: View {
                     .frame(width: 8, height: 8)
                     .opacity(pulsing && !policy.suppressesMotion ? 0.35 : 1)
                     .animation(DSMotion.pulse(policy), value: pulsing)
-                if let label { Text(label).font(DSTypography.badge).foregroundStyle(DSColor.recording) }
+                if let label { Text(label).font(DSTypography.badge).foregroundStyle(DSColor.recordingText) }
             }
             .onAppear { pulsing = true }
             .accessibilityElement(children: .combine)
@@ -250,7 +279,8 @@ public struct ProgressRow: View {
 
 /// Centered empty-state with icon, message and optional action.
 public struct EmptyState: View {
-    private let systemImage: String
+    private let systemImage: String?
+    private let symbol: DSSymbol?
     private let title: LocalizedStringKey
     private let message: LocalizedStringKey?
     private let actionTitle: LocalizedStringKey?
@@ -260,6 +290,20 @@ public struct EmptyState: View {
         actionTitle: LocalizedStringKey? = nil, action: (() -> Void)? = nil
     ) {
         self.systemImage = systemImage
+        self.symbol = nil
+        self.title = title
+        self.message = message
+        self.actionTitle = actionTitle
+        self.action = action
+    }
+
+    /// Empty state with a custom duotone symbol (custom stays at empty-state size).
+    public init(
+        symbol: DSSymbol, title: LocalizedStringKey, message: LocalizedStringKey? = nil,
+        actionTitle: LocalizedStringKey? = nil, action: (() -> Void)? = nil
+    ) {
+        self.systemImage = nil
+        self.symbol = symbol
         self.title = title
         self.message = message
         self.actionTitle = actionTitle
@@ -267,7 +311,11 @@ public struct EmptyState: View {
     }
     public var body: some View {
         ContentUnavailableView {
-            Label(title, systemImage: systemImage)
+            if let symbol {
+                Label { Text(title) } icon: { DSIcon(symbol).dsIconContext(.emptyState) }
+            } else {
+                Label(title, systemImage: systemImage ?? "questionmark")
+            }
         } description: {
             if let message { Text(message) }
         } actions: {

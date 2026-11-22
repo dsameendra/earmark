@@ -91,10 +91,10 @@ public struct HomeView: View {
     }
 
     @ViewBuilder private var actionButtons: some View {
-        QuickActionButton(title: "Transcribe File", systemImage: "doc.badge.waveform", action: actions.transcribeFile)
-        QuickActionButton(title: "Start Live Captions", systemImage: "captions.bubble", action: startLive)
-        QuickActionButton(title: "Start Meeting Capture", systemImage: "person.2.wave.2", action: {}, isEnabled: false)
-        QuickActionButton(title: "Dictation", systemImage: "mic", action: {}, isEnabled: false, caption: "Not set up")
+        QuickActionButton(title: "Transcribe File", symbol: .export, action: actions.transcribeFile)
+        QuickActionButton(title: "Start Live Captions", symbol: .liveCaptions, action: startLive)
+        QuickActionButton(title: "Start Meeting Capture", symbol: .meetings, action: {}, isEnabled: false)
+        QuickActionButton(title: "Dictation", symbol: .dictation, action: {}, isEnabled: false, caption: "Not set up")
     }
 
     private func downloadRow(_ status: ModelDownloadStatus) -> some View {
@@ -176,7 +176,11 @@ public struct HomeView: View {
         VStack(alignment: .leading, spacing: DSSpacing.xs) {
             if let status = model.modelStatus {
                 HStack(spacing: DSSpacing.sm) {
-                    Image(systemName: status.isInstalled ? "checkmark.seal" : "arrow.down.circle").accessibilityHidden(true)
+                    if status.isInstalled {
+                        Image(systemName: "checkmark.seal").accessibilityHidden(true)
+                    } else {
+                        DSIcon(.download).dsIconContext(.menu)
+                    }
                     Text(status.isInstalled ? "\(status.name) is ready." : "\(status.name) is not downloaded yet.")
                     if !status.isInstalled && model.download == nil {
                         Button("Download") { Task { _ = await model.ensureDefaultModel() } }
@@ -186,7 +190,7 @@ public struct HomeView: View {
                 .accessibilityElement(children: .combine)
             }
             HStack(spacing: DSSpacing.sm) {
-                Image(systemName: "cpu").accessibilityHidden(true)
+                DSIcon(.models)
                 Text("This Mac: \(model.hardwareDescription). Models run on-device.")
                     .font(DSTypography.caption)
                     .foregroundStyle(DSColor.secondaryText)
@@ -198,7 +202,7 @@ public struct HomeView: View {
 
 private struct QuickActionButton: View {
     let title: LocalizedStringKey
-    let systemImage: String
+    let symbol: DSSymbol
     let action: () -> Void
     var isEnabled = true
     var caption: LocalizedStringKey?
@@ -206,7 +210,7 @@ private struct QuickActionButton: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: DSSpacing.xs) {
-                Image(systemName: systemImage).font(.title2).accessibilityHidden(true)
+                DSIcon(symbol).font(.title2)
                 Text(title).font(DSTypography.body)
                 if let caption { Text(caption).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText) }
             }

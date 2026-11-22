@@ -2,6 +2,8 @@ import AppCore
 import DesignSystem
 import SwiftUI
 
+// glass-layer: floater (the one transient floater of its screen: caption overlay / dictation HUD)
+
 /// SwiftUI content of the caption overlay. Tokens and DesignSystem components only; M8 restyles this view.
 ///
 /// - Volatile lines are italic and dimmed; finals replace them in place (same `CaptionLine.id`).

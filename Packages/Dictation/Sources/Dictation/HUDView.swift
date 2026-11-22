@@ -1,6 +1,8 @@
 import DesignSystem
 import SwiftUI
 
+// glass-layer: floater (the one transient floater of its screen: caption overlay / dictation HUD)
+
 /// The dictation HUD capsule: recording dot, listening bars, live text and the release hint.
 /// Recording is always `DSColor.recording`, never the accent. Glass falls back to solid under Reduce Transparency
 /// (via `glassBackground`), and bars do not animate under Reduce Motion (DICT-AC-16). M8 restyles this view only.

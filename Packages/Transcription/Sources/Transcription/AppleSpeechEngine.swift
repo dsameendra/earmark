@@ -146,12 +146,22 @@ public actor AppleSpeechEngine: TranscriptionEngine {
         do {
             try await withTaskCancellationHandler {
                 try await analyzer.start(inputSequence: inputs)
+                var fed = false
                 for await chunk in audio {
                     try Task.checkCancellation()
                     baseBox.setIfNeeded(chunk.startSeconds)
-                    if let buffer = try converter.convert(chunk.samples) { inputContinuation.yield(AnalyzerInput(buffer: buffer)) }
+                    if let buffer = try converter.convert(chunk.samples) {
+                        fed = true
+                        inputContinuation.yield(AnalyzerInput(buffer: buffer))
+                    }
                 }
                 inputContinuation.finish()
+                // SpeechAnalyzer never finalizes when it received no audio; end cleanly instead of waiting forever.
+                guard fed else {
+                    results.cancel()
+                    await analyzer.cancelAndFinishNow()
+                    return
+                }
                 try await analyzer.finalizeAndFinishThroughEndOfInput()
                 try await results.value
             } onCancel: {

@@ -89,7 +89,7 @@ private struct EditorContent: View {
             }
             .sheet(isPresented: $showExport) { ExportSheet(export: export) { showExport = false }.dsEntrance() }
             .popover(item: $activeTool) { tool in
-                toolContent(tool).dsEntrance().presentationBackground(DSColor.contentBackground)
+                toolContent(tool).dsEntrance().presentationBackground(DSColor.contentBackground).presentationSizing(.fitted)
             }
     }
 
@@ -129,17 +129,24 @@ private struct EditorContent: View {
     // MARK: Header
 
     @ToolbarContentBuilder private var editorToolbar: some ToolbarContent {
-        ToolbarItemGroup {
+        // Groups: [Find] | [Speakers, Translate] | [More]; icon-only, system-sized, with fixed spacers.
+        ToolbarItem {
             Button("Find", symbol: .find) {
                 find.open()
                 findFocused = true
             }
             .keyboardShortcut("f", modifiers: .command)
             .accessibilityIdentifier("editor.find")
+        }
+        ToolbarSpacer(.fixed)
+        ToolbarItemGroup {
             Button("Speakers", symbol: .speaker) { presentTool(.speakers) }
                 .accessibilityIdentifier("editor.speakers")
             Button("Translate", symbol: .translate) { presentTool(.translation) }
                 .accessibilityIdentifier("editor.translation")
+        }
+        ToolbarSpacer(.fixed)
+        ToolbarItem {
             Menu("More", systemImage: "ellipsis") {
                 Toggle(
                     "Show ignored (\(model.hiddenIgnoredCount))",
@@ -164,11 +171,11 @@ private struct EditorContent: View {
         }
         ToolbarSpacer(.fixed)
         ToolbarItem(placement: .primaryAction) {
-            Button("Export", symbol: .export) { showExport = true }
-                .labelStyle(.titleAndIcon).buttonStyle(EmberButtonStyle())
+            // System prominent capsule: padding, height and pressed/disabled behaviour come from the toolbar.
+            Button { showExport = true } label: { Label("Export", symbol: .export) }
+                .buttonStyle(.borderedProminent).tint(DSColor.accent)
                 .accessibilityIdentifier("editor.export")
         }
-        .sharedBackgroundVisibility(.hidden)
     }
 
     private var inspector: some View {

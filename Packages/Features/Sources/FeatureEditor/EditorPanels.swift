@@ -15,8 +15,9 @@ struct SpeakersPanel: View {
             if model.speakers.isEmpty {
                 Text("No speakers yet.").foregroundStyle(DSColor.secondaryText)
             }
-            ForEach(model.speakers) { speaker in
-                SpeakerRow(model: model, speaker: speaker)
+            ViewThatFits(in: .vertical) {
+                speakerRows
+                ScrollView { speakerRows.padding(.vertical, 2) }.frame(height: 320)
             }
             if let message = model.voiceProfileError {
                 Text(message).font(DSTypography.caption).foregroundStyle(DSColor.danger).accessibilityIdentifier(
@@ -31,7 +32,16 @@ struct SpeakersPanel: View {
             }
         }
         .padding(DSSpacing.lg)
-        .frame(width: 360)
+        .frame(minWidth: 340, idealWidth: 360)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var speakerRows: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.md) {
+            ForEach(model.speakers) { speaker in
+                SpeakerRow(model: model, speaker: speaker)
+            }
+        }
     }
 
     private func add() {
@@ -133,7 +143,7 @@ struct BookmarksPanel: View {
             .frame(minHeight: 160)
         }
         .padding(DSSpacing.lg)
-        .frame(width: 380, height: 320)
+        .frame(minWidth: 340, idealWidth: 380, minHeight: 280, idealHeight: 320, maxHeight: 480)
     }
 }
 
@@ -203,7 +213,9 @@ struct ViewOptionsPanel: View {
                 .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
         }
         .formStyle(.grouped)
-        .frame(width: 360)
+        .scrollContentBackground(.hidden)
+        .frame(minWidth: 340, idealWidth: 360)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func binding<V>(_ keyPath: WritableKeyPath<ViewOptions, V>) -> Binding<V> {
@@ -228,26 +240,10 @@ struct ExportSheet: View {
                             "Documents", formats: EditorExportModel.formats.filter { ![.srt, .vtt, .ass, .sbv, .ttml, .lrc].contains($0) })
                         formatGroup("Subtitles", formats: [.srt, .vtt, .ass, .sbv, .ttml, .lrc])
                         exportOptions
-                        if !export.presets.isEmpty {
-                            Menu("Presets") {
-                                ForEach(export.presets) { preset in Button(preset.name) { export.apply(preset) } }
-                                Divider()
-                                ForEach(export.presets) { preset in
-                                    Button("Delete “\(preset.name)”", role: .destructive) { Task { await export.deletePreset(preset) } }
-                                }
-                            }
-                        }
-                        HStack {
-                            TextField("Save as preset", text: $presetName).textFieldStyle(.roundedBorder)
-                            Button("Save") {
-                                Task {
-                                    await export.savePreset(named: presetName)
-                                    presetName = ""
-                                }
-                            }
-                            .disabled(presetName.trimmingCharacters(in: .whitespaces).isEmpty)
-                        }
+                        presetsGroup
                     }
+                    .padding(.horizontal, DSSpacing.sm)  // room for focus rings and borders inside the scroll bounds
+                    .padding(.vertical, DSSpacing.xs)
                 }
                 .frame(maxWidth: .infinity)
                 VStack(alignment: .leading, spacing: DSSpacing.md) {
@@ -259,17 +255,19 @@ struct ExportSheet: View {
                     Text("First six segments").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                 }
                 .padding(DSSpacing.lg)
-                .frame(width: 280, height: 410)
+                .frame(width: 240)
+                .frame(minHeight: 360, maxHeight: .infinity)
                 .dsSolidSurface(.inset, radius: DSRadius.card)
                 .accessibilityIdentifier("export.preview")
             }
+            .frame(minHeight: 360, idealHeight: 420, maxHeight: 520)
             if let message = export.errorMessage {
                 Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(DSColor.danger).font(DSTypography.caption)
             } else if let status = export.statusMessage {
                 Text(status).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
             }
-            HStack {
-                Menu("Copy and share", systemImage: "square.and.arrow.up") {  // stock-chrome: native system share action
+            HStack(spacing: DSSpacing.sm) {
+                Menu {  // stock-chrome: native system share action
                     Button("Copy as Text") { Task { await export.copy(markdown: false) } }
                     Button("Copy as Markdown") { Task { await export.copy(markdown: true) } }
                     if let shareURL {
@@ -277,32 +275,82 @@ struct ExportSheet: View {
                     } else {
                         Button("Prepare to share") { Task { shareURL = await export.prepareShareFile() } }
                     }
+                } label: {
+                    Label("Copy and share", systemImage: "square.and.arrow.up")  // stock-chrome: native system share glyph
                 }
+                .menuStyle(.borderedButton)
+                .menuIndicator(.visible)
+                .controlSize(.large)
+                .fixedSize()
                 Spacer()
-                Button("Cancel", role: .cancel, action: onClose).keyboardShortcut(.cancelAction)
+                if export.isWorking { ProgressView().controlSize(.small) }
+                Button("Cancel", role: .cancel, action: onClose)
+                    .buttonStyle(.bordered).controlSize(.large).keyboardShortcut(.cancelAction)
+                    .accessibilityIdentifier("export.cancel")
                 Button("Export \(export.options.format.rawValue.uppercased())…") { save() }
-                    .buttonStyle(EmberButtonStyle()).keyboardShortcut(.defaultAction).disabled(export.isWorking)
+                    .buttonStyle(.borderedProminent).tint(DSColor.accent).controlSize(.large)
+                    .keyboardShortcut(.defaultAction).disabled(export.isWorking)
                     .accessibilityIdentifier("export.save")
             }
         }
         .padding(DSSpacing.xl)
-        .frame(width: 840)
+        .frame(minWidth: 720, idealWidth: 760)
         .background(DSColor.contentBackground)
         .task { await export.loadPresets() }
         .task(id: export.options) { await export.refreshPreview() }
         .onChange(of: export.options) { shareURL = nil }
     }
 
+    private var canSavePreset: Bool { !presetName.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    private func savePreset() {
+        guard canSavePreset else { return }
+        Task {
+            await export.savePreset(named: presetName)
+            presetName = ""
+        }
+    }
+
+    /// Existing presets menu plus a labelled "save as preset" row (field submits on Return).
+    private var presetsGroup: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.sm) {
+            SectionCaption("Presets")
+            if !export.presets.isEmpty {
+                Menu("Apply preset") {
+                    ForEach(export.presets) { preset in Button(preset.name) { export.apply(preset) } }
+                    Divider()
+                    ForEach(export.presets) { preset in
+                        Button("Delete “\(preset.name)”", role: .destructive) { Task { await export.deletePreset(preset) } }
+                    }
+                }
+                .menuStyle(.borderedButton).fixedSize()
+            }
+            HStack(spacing: DSSpacing.sm) {
+                TextField("Preset name", text: $presetName, prompt: Text("Save current options as…"))
+                    .textFieldStyle(.roundedBorder)
+                    .controlSize(.regular)
+                    .frame(minHeight: 28)
+                    .onSubmit(savePreset)
+                    .accessibilityLabel("Save as preset")
+                    .accessibilityIdentifier("export.presetName")
+                Button("Save", action: savePreset)
+                    .buttonStyle(.bordered).controlSize(.regular)
+                    .disabled(!canSavePreset)
+                    .accessibilityIdentifier("export.presetSave")
+            }
+        }
+    }
+
     private func formatGroup(_ title: LocalizedStringKey, formats: [ExportFormat]) -> some View {
         VStack(alignment: .leading, spacing: DSSpacing.sm) {
             SectionCaption(title)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: DSSpacing.sm) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 64, maximum: 84), spacing: 6)], alignment: .leading, spacing: 6) {
                 ForEach(formats, id: \.self) { format in
                     Button {
                         export.options.format = format
                     } label: {
                         Text(format == .markdown ? "MD" : format.rawValue.uppercased())
-                            .font(DSTypography.badge).frame(maxWidth: .infinity, minHeight: DSLayout.minControlHeight)
+                            .font(DSTypography.badge).frame(maxWidth: .infinity, minHeight: 24)
                             .foregroundStyle(export.options.format == format ? DSColor.accentText : DSColor.secondaryText)
                             .background(export.options.format == format ? DSColor.accentTint : DSColor.insetBackground, in: Capsule())
                     }

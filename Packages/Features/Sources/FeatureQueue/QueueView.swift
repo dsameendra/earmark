@@ -63,6 +63,7 @@ public struct QueueView: View {
             ) { isImporterPresented = true }
         } else {
             VStack(spacing: 0) {
+                concurrencyHeader
                 if let message = model.errorMessage {
                     HStack {
                         Label(message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(DSColor.danger)
@@ -98,16 +99,35 @@ public struct QueueView: View {
         }
     }
 
+    /// Steppers do not belong in a toolbar (HIG): parallelism lives in the queue header.
+    private var concurrencyHeader: some View {
+        HStack {
+            Spacer()
+            Stepper(
+                "Parallel jobs: \(model.maxConcurrency)",
+                value: Binding(get: { model.maxConcurrency }, set: { value in Task { await model.setConcurrency(value) } }), in: 1...4
+            )
+            .accessibilityHint("Number of jobs processed at the same time")
+            .accessibilityIdentifier("queue.concurrency")
+        }
+        .padding(.bottom, DSSpacing.sm)
+    }
+
+    /// Functional groups separated by fixed spacers: [Add, Clear Finished] | [Actions].
     @ToolbarContentBuilder private var toolbarContent: some ToolbarContent {
-        ToolbarItemGroup {
+        ToolbarItem {
             Button("Add Files…", systemImage: "plus") { isImporterPresented = true }
                 .help("Add audio or video files or folders")
                 .accessibilityIdentifier("queue.add")
+        }
+        ToolbarItem {
             Button("Clear Finished", systemImage: "checkmark.circle") { Task { await model.clearFinished() } }
-                .labelStyle(.titleAndIcon)
                 .disabled(!model.hasFinished || model.isClearing)
                 .help("Remove completed and cancelled jobs from the queue. Transcripts stay in the Library.")
                 .accessibilityIdentifier("queue.clearFinished")
+        }
+        ToolbarSpacer(.fixed)
+        ToolbarItem {
             Menu("Queue Actions", systemImage: "ellipsis.circle") {
                 Button("Pause All", systemImage: "pause.fill") { Task { await model.pauseAll() } }
                     .disabled(!model.hasActive || model.isClearing)
@@ -121,11 +141,6 @@ public struct QueueView: View {
                     .accessibilityIdentifier("queue.clearAll")
             }
             .accessibilityIdentifier("queue.actions")
-            Stepper(
-                "Parallel jobs: \(model.maxConcurrency)",
-                value: Binding(get: { model.maxConcurrency }, set: { value in Task { await model.setConcurrency(value) } }), in: 1...4
-            )
-            .accessibilityHint("Number of jobs processed at the same time")
         }
     }
 }

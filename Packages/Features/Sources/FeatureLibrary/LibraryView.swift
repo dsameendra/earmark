@@ -231,14 +231,20 @@ public struct LibraryView: View {
     }
 
     @ToolbarContentBuilder private var toolbarContent: some ToolbarContent {
-        ToolbarItemGroup {
-            if model.mode == .library {
+        // Functional groups with fixed spacers: [Layout] | [Sort] | [Delete]; each control is its own item so a
+        // segmented picker or menu never nests inside another control's glass capsule.
+        if model.mode == .library {
+            ToolbarItem {
                 Picker("Layout", selection: Binding(get: { model.layout }, set: { value in Task { await model.setLayout(value) } })) {
                     Label("List", systemImage: "list.bullet").tag(LibraryLayout.list)
                     Label("Grid", systemImage: "square.grid.2x2").tag(LibraryLayout.grid)
                 }
                 .pickerStyle(.segmented)
+                .labelStyle(.iconOnly)
                 .accessibilityLabel("Layout")
+            }
+            ToolbarSpacer(.fixed)
+            ToolbarItem {
                 Picker("Sort", selection: $model.sort) {
                     Text("Newest").tag(LibrarySort.createdDesc)
                     Text("Oldest").tag(LibrarySort.createdAsc)
@@ -246,10 +252,16 @@ public struct LibraryView: View {
                     Text("Longest").tag(LibrarySort.durationDesc)
                     Text("Recently modified").tag(LibrarySort.modifiedDesc)
                 }
+                .pickerStyle(.menu)
                 .accessibilityLabel("Sort by")
+            }
+            ToolbarSpacer(.fixed)
+            ToolbarItem {
                 Button("Delete", systemImage: "trash") { Task { await model.deleteSelected() } }  // stock-chrome: destructive action
                     .disabled(model.selection.isEmpty)
-            } else {
+            }
+        } else {
+            ToolbarItem {
                 Menu("Keep deleted items", systemImage: "clock.arrow.circlepath") {
                     Picker(
                         "Keep deleted items",
@@ -261,8 +273,13 @@ public struct LibraryView: View {
                     }
                 }
                 .accessibilityHint("How long deleted items are kept before they are removed")
+            }
+            ToolbarSpacer(.fixed)
+            ToolbarItem {
                 Button("Restore", systemImage: "arrow.uturn.backward") { Task { await model.restoreSelected() } }
                     .disabled(model.selection.isEmpty)
+            }
+            ToolbarItem {
                 Button("Delete Permanently", systemImage: "trash.slash") { confirmPurge = true }
                     .disabled(model.selection.isEmpty)
             }

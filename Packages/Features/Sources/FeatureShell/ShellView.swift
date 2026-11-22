@@ -97,8 +97,7 @@ public struct ShellView: View {
         if !model.usesLibrarySearch {
             ToolbarItem {
                 Button("Search transcripts", symbol: .search) { model.presentQuickOpen() }
-                    .labelStyle(.titleAndIcon)
-                    .controlSize(.large)
+                    .labelStyle(.iconOnly)
                     .help("Quick Open (⌘K)")
                     .accessibilityLabel("Quick Open")
                     .accessibilityHint("Search transcripts by title and text")
@@ -121,11 +120,13 @@ public struct ShellView: View {
         if model.selection == .home && model.openedTranscript == nil {
             ToolbarSpacer(.fixed)
             ToolbarItem(placement: .primaryAction) {
-                PrimaryToolbarButton(title: "Transcribe", systemImage: "plus") { model.presentImporter() }
+                // The system supplies the prominent capsule, padding and height; no custom style, font or frame.
+                Button { model.presentImporter() } label: { Label("Transcribe", systemImage: "plus") }
+                    .buttonStyle(.borderedProminent)
+                    .tint(DSColor.accent)
                     .help("Choose audio or video files to transcribe")
                     .accessibilityIdentifier("toolbar.transcribe")
             }
-            .sharedBackgroundVisibility(.hidden)
         }
     }
 
@@ -185,15 +186,3 @@ public struct ShellCommands: Commands {
 }
 
 #Preview("Shell") { ShellView(model: ShellModel(services: .preview())) }
-
-/// The one primary action of a view: a solid Ember capsule in every appearance.
-private struct PrimaryToolbarButton: View {
-    let title: LocalizedStringKey
-    let systemImage: String
-    let action: () -> Void
-    var body: some View {
-        Button(action: action) { Label(title, systemImage: systemImage) }
-            .labelStyle(.titleAndIcon)
-            .buttonStyle(EmberButtonStyle())
-    }
-}

@@ -55,7 +55,7 @@ struct BatchSettingsSheet: View {
             }
             .padding(DSSpacing.lg)
         }
-        .frame(minWidth: 460, idealWidth: 520, minHeight: 480)
+        .frame(minWidth: 460, idealWidth: 520, minHeight: 480, idealHeight: 640, maxHeight: 760)
         .task { await model.prepare() }
     }
 
@@ -219,7 +219,9 @@ private struct FileOverrideEditor: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 340)
+        .scrollContentBackground(.hidden)
+        .frame(minWidth: 340, idealWidth: 360)
+        .fixedSize(horizontal: false, vertical: true)
         .padding(DSSpacing.sm)
     }
 

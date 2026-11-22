@@ -158,7 +158,7 @@ import Testing
         #expect(AccessibilityPolicy(increaseContrast: true).usesSolidSurface)
         #expect(!AccessibilityPolicy().usesSolidSurface)
         let shell = source("FeatureShell/ShellView.swift")
-        #expect(shell.contains("EmberButtonStyle"), "primary action is always solid")
+        #expect(shell.contains(".borderedProminent"), "primary action is always solid")
     }
 
     @Test func reduceMotionReplacesSelectionGlideWithCrossfade() {  // NAV-AC-10
@@ -185,6 +185,6 @@ import Testing
 
     @Test func primaryActionIsOnePerView() {
         let shell = source("FeatureShell/ShellView.swift")
-        #expect(shell.components(separatedBy: "PrimaryToolbarButton(").count - 1 == 1)
+        #expect(shell.components(separatedBy: ".buttonStyle(.borderedProminent)").count - 1 == 1)
     }
 }

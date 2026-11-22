@@ -33,6 +33,15 @@ final class EarmarkUITests: XCTestCase {
         add(attachment)
     }
 
+    /// Full-screen capture so popovers (separate windows) are included.
+    private func captureScreen(_ name: String) {
+        Thread.sleep(forTimeInterval: 0.6)
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     func testLightScreensAndEditorExport() throws { try screens(appearance: "light") }
     func testDarkScreensAndEditorExport() throws { try screens(appearance: "dark") }
 
@@ -54,6 +63,13 @@ final class EarmarkUITests: XCTestCase {
         recent.click()
         XCTAssertTrue(app.buttons["editor.export"].waitForExistence(timeout: 10))
         capture(app, "editor-\(appearance)-1440x900")
+        app.buttons["editor.translation"].click()
+        captureScreen("translate-popover-\(appearance)")
+        app.typeKey(.escape, modifierFlags: [])
+        app.buttons["editor.speakers"].click()
+        XCTAssertTrue(app.textFields["editor.speakers.newName"].waitForExistence(timeout: 5))
+        captureScreen("speakers-popover-\(appearance)")
+        app.typeKey(.escape, modifierFlags: [])
         app.menuButtons["editor.more"].click()
         app.menuItems["Bookmarks and highlights"].click()
         XCTAssertTrue(app.staticTexts["Bookmarks & Highlights"].waitForExistence(timeout: 5))
@@ -67,6 +83,11 @@ final class EarmarkUITests: XCTestCase {
         XCTAssertTrue(srt.waitForExistence(timeout: 5))
         srt.click()
         XCTAssertTrue(app.buttons["export.save"].exists)
+        let presetName = app.textFields["export.presetName"]
+        if presetName.waitForExistence(timeout: 3) {
+            presetName.click()
+            presetName.typeText("Weekly review")
+        }
         capture(app, "export-\(appearance)")
         app.typeKey(.escape, modifierFlags: [])
         app.typeKey("k", modifierFlags: .command)

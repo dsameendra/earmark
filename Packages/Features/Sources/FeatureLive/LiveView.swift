@@ -20,7 +20,6 @@ enum LiveSymbol {
 /// speaker chips) with a level meter, overlay controls and "Save as transcript" alongside it.
 public struct LiveView: View {
     @Bindable private var model: LiveModel
-    @Environment(\.shellLayout) private var layout
 
     public init(model: LiveModel) { self.model = model }
 
@@ -74,66 +73,65 @@ public struct LiveView: View {
 
     // MARK: Controls
 
+    /// Functional groups: [Source] | [status] | [Pause, Stop or Start]. System glass supplies padding and height.
     @ToolbarContentBuilder private var toolbarControls: some ToolbarContent {
-        ToolbarItem {
-            sourcePicker
-        }
+        ToolbarItem { sourcePicker }
         if model.isRunning {
+            ToolbarSpacer(.fixed)
             ToolbarItem {
-                if model.isPaused {
-                    StatusPill("Paused", systemImage: LiveSymbol.pause, tone: .warning)
-                } else {
-                    RecordingIndicator(label: "Live")
+                Group {
+                    if model.isPaused {
+                        StatusPill("Paused", systemImage: LiveSymbol.pause, tone: .warning)
+                    } else {
+                        RecordingIndicator(label: "Live")
+                    }
                 }
+                .padding(.horizontal, DSSpacing.xs)
             }
         }
-        ToolbarItemGroup(placement: .primaryAction) {
-            if model.isRunning {
-                if model.hasExtras {
+        ToolbarSpacer(.fixed)
+        if model.isRunning {
+            if model.hasExtras {
+                ToolbarItem(placement: .primaryAction) {
                     Button(model.isPaused ? "Resume" : "Pause", systemImage: model.isPaused ? LiveSymbol.resume : LiveSymbol.pause) {
                         Task { await model.togglePause() }
                     }
                     .help(model.isPaused ? "Resume live captions" : "Pause live captions")
                     .accessibilityIdentifier("live.pause")
                 }
+            }
+            ToolbarItem(placement: .primaryAction) {
                 Button("Stop", systemImage: LiveSymbol.stop) { Task { await model.stop() } }
-                    .labelStyle(.titleAndIcon)
                     .keyboardShortcut(.return, modifiers: [.command])
+                    .help("Stop live captions")
                     .accessibilityIdentifier("live.stop")
-            } else {
-                Button("Start", systemImage: LiveSymbol.start) { Task { await model.start() } }
-                    .labelStyle(.titleAndIcon)
-                    .buttonStyle(EmberButtonStyle())
+            }
+        } else {
+            ToolbarItem(placement: .primaryAction) {
+                Button { Task { await model.start() } } label: { Label("Start", systemImage: LiveSymbol.start) }
+                    .buttonStyle(.borderedProminent)
+                    .tint(DSColor.accent)
                     .keyboardShortcut(.return, modifiers: [.command])
                     .disabled(model.startDisabledReason != nil)
                     .help(model.startDisabledReason ?? "Start live captions")
                     .accessibilityIdentifier("live.start")
             }
         }
-        .sharedBackgroundVisibility(.hidden)
     }
 
-    @ViewBuilder private var sourcePicker: some View {
-        if layout.width < 1250 {
-            Picker("Source", selection: $model.source) {
-                ForEach(LiveSourceChoice.allCases) { Label($0.title, symbol: $0.symbol).tag($0) }
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .disabled(model.isRunning)
-            .accessibilityIdentifier("live.source")
-        } else {
-            Picker("Source", selection: $model.source) {
-                Text("Mic").tag(LiveSourceChoice.mic)
-                Text("System").tag(LiveSourceChoice.system)
-                Text("Mic + system").tag(LiveSourceChoice.micAndSystem)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(width: 260)
-            .disabled(model.isRunning)
-            .accessibilityIdentifier("live.source")
+    /// Short labels let the toolbar size the segmented control itself, at any window width.
+    private var sourcePicker: some View {
+        Picker("Source", selection: $model.source) {
+            Text("Mic").tag(LiveSourceChoice.mic)
+            Text("System").tag(LiveSourceChoice.system)
+            Text("Both").tag(LiveSourceChoice.micAndSystem)
         }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .help("Caption source: microphone, system audio or both")
+        .disabled(model.isRunning)
+        .accessibilityLabel("Source")
+        .accessibilityIdentifier("live.source")
     }
 
     private func noticeBanner(_ notice: LiveNotice) -> some View {

@@ -122,14 +122,18 @@ struct TranslatePanel: View {
     }
 
     var body: some View {
-        Form {
-            Section("View") {
+        // A plain stack (not a grouped Form) so the popover sizes to its full content instead of a scroll-backed height.
+        VStack(alignment: .leading, spacing: DSSpacing.lg) {
+            VStack(alignment: .leading, spacing: DSSpacing.sm) {
+                SectionCaption("View")
                 Picker(
                     "Show", selection: Binding(get: { model.translationChoice.mode }, set: { model.setTranslationMode($0) })
                 ) {
                     ForEach(TranslationDisplayMode.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
+                .labelsHidden()
+                .accessibilityLabel("Show")
                 .accessibilityIdentifier("editor.translation.mode")
                 if model.translationLanguages.count > 1 {
                     Picker(
@@ -140,21 +144,27 @@ struct TranslatePanel: View {
                     ) {
                         ForEach(model.translationLanguages, id: \.self) { Text(TranscriptEditorModel.name(of: $0)).tag($0) }
                     }
+                    .pickerStyle(.menu)
                 }
                 if model.translationLanguages.isEmpty {
                     Text("This transcript has no translations yet.").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                 }
             }
-            if model.canTranslate { translateSection }
+            if model.canTranslate {
+                Divider()
+                translateSection
+            }
         }
-        .formStyle(.grouped)
-        .frame(width: 380)
+        .padding(DSSpacing.lg)
+        .frame(minWidth: 340, idealWidth: 380)
+        .fixedSize(horizontal: false, vertical: true)
         .task { await panel.load() }
     }
 
     @ViewBuilder
     private var translateSection: some View {
-        Section("Translate") {
+        VStack(alignment: .leading, spacing: DSSpacing.md) {
+            SectionCaption("Translate")
             if model.translationSource == nil {
                 Label("The language of this transcript is unknown. Set it on a segment first.", systemImage: "questionmark.circle")
                     .font(DSTypography.caption)
@@ -166,12 +176,19 @@ struct TranslatePanel: View {
                         Text(label(for: target)).tag(Optional(target.language)).disabled(!isEnabled(target))
                     }
                 }
+                .pickerStyle(.menu)
                 .accessibilityIdentifier("editor.translation.target")
                 readinessView
             }
             if let job = model.translationJob, model.isTranslating {
-                ProgressRow(title: "Translating", detail: "\(Int(job.progress * 100))%", fraction: job.progress)
-                Button("Cancel translation") { Task { await model.cancelTranslation() } }
+                HStack(alignment: .center, spacing: DSSpacing.md) {
+                    ProgressRow(title: "Translating", detail: "\(Int(job.progress * 100))%", fraction: job.progress)
+                    Button("Cancel") { Task { await model.cancelTranslation() } }
+                        .buttonStyle(.bordered).controlSize(.small)
+                        .accessibilityLabel("Cancel translation")
+                        .accessibilityIdentifier("editor.translation.cancel")
+                }
+                .padding(.top, DSSpacing.sm)
             }
             if let status = model.translationStatus ?? panel.error {
                 Label(status, systemImage: "exclamationmark.triangle").font(DSTypography.caption).foregroundStyle(DSColor.danger)
@@ -201,8 +218,12 @@ struct TranslatePanel: View {
     private var readinessView: some View {
         switch panel.selectedReadiness {
         case .ready:
-            Button("Translate", symbol: .translate) { Task { await panel.translate() } }
-                .disabled(model.isTranslating).accessibilityIdentifier("editor.translation.start")
+            Button { Task { await panel.translate() } } label: {
+                Label("Translate", symbol: .translate).frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent).tint(DSColor.accent).controlSize(.large)
+            .keyboardShortcut(.defaultAction)
+            .disabled(model.isTranslating).accessibilityIdentifier("editor.translation.start")
         case .needsModel:
             if let descriptor = panel.pendingModel {
                 Text("\(descriptor.displayName): \(ByteCountFormatter.string(fromByteCount: descriptor.sizeBytes, countStyle: .file)), licence \(descriptor.license.spdx).")
@@ -215,12 +236,18 @@ struct TranslatePanel: View {
             if let fraction = panel.downloadFraction {
                 ProgressRow(title: panel.downloadMessage ?? "Downloading", detail: "\(Int(fraction * 100))%", fraction: fraction)
             } else {
-                Button("Download model", symbol: .download) { Task { await panel.downloadModel() } }
+                Button { Task { await panel.downloadModel() } } label: {
+                    Label("Download model", symbol: .download).frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent).tint(DSColor.accent).controlSize(.large)
             }
         case .needsApplePack:
             Text("Apple's on-device language pack for this pair is not installed yet.").font(DSTypography.caption)
-            Button("Install language pack…", symbol: .download) { Task { await panel.installApplePack() } }
-                .disabled(panel.isPreparingPack)
+            Button { Task { await panel.installApplePack() } } label: {
+                Label("Install language pack…", symbol: .download).frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent).tint(DSColor.accent).controlSize(.large)
+            .disabled(panel.isPreparingPack)
         case .unavailable(let reason):
             Label(reason, systemImage: "exclamationmark.circle").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
         case nil:

@@ -69,7 +69,7 @@ public struct SettingsRootView: View {
     public var body: some View {
         NavigationSplitView {
             List(SettingsSection.allCases, selection: sidebarSelection) { section in
-                Label(section.title, systemImage: section.systemImage).tag(section)
+                Label(section.title, symbol: section.symbol, orStock: section.systemImage).tag(section)
             }
             .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 260)
             .accessibilityLabel("Settings sections")

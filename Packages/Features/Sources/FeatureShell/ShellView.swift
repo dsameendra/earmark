@@ -22,7 +22,7 @@ public struct ShellView: View {
                 AppSection.allCases,
                 selection: Binding<AppSection?>(get: { model.selection }, set: { if let section = $0 { model.select(section) } })
             ) { section in
-                Label(section.title, systemImage: section.systemImage)
+                Label(section.title, symbol: section.symbol)
                     .tag(section)
                     .accessibilityLabel(section.title)
                     .accessibilityHint("Command \(section.shortcutNumber)")
@@ -43,7 +43,7 @@ public struct ShellView: View {
             }
             .toolbar {
                 ToolbarItem {
-                    Button("Quick Open", systemImage: "magnifyingglass") { model.presentQuickOpen() }
+                    Button("Quick Open", symbol: .find) { model.presentQuickOpen() }
                         .help("Quick Open (⌘K)")
                         .accessibilityHint("Search transcripts by title and text")
                 }

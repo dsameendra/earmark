@@ -86,19 +86,19 @@ struct ModelRowView: View {
     @ViewBuilder private var actions: some View {
         switch row.state {
         case .notInstalled:
-            Button("Download", systemImage: "arrow.down.circle", action: onDownload).accessibilityLabel(
+            Button("Download", symbol: .download, action: onDownload).accessibilityLabel(
                 "Download \(row.descriptor.displayName)")
         case .downloading:
             Button("Pause", systemImage: "pause.circle", action: onPause).labelStyle(.iconOnly).accessibilityLabel("Pause download")
             Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download")
         case .paused:
-            Button("Resume", systemImage: "play.circle", action: onResume).labelStyle(.iconOnly).accessibilityLabel("Resume download")
+            Button("Resume", symbol: .play, action: onResume).labelStyle(.iconOnly).accessibilityLabel("Resume download")
             Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download")
         case .installed:
-            Button("Delete", systemImage: "trash", role: .destructive, action: onDelete).labelStyle(.iconOnly)
+            Button("Delete", systemImage: "trash", role: .destructive, action: onDelete).labelStyle(.iconOnly) // stock-chrome: destructive action
                 .accessibilityLabel("Delete \(row.descriptor.displayName)")
         case .failed:
-            Button("Retry", systemImage: "arrow.clockwise", action: onDownload)
+            Button("Retry", symbol: .retry, action: onDownload)
         }
     }
 

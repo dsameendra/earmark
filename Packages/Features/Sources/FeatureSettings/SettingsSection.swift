@@ -1,4 +1,5 @@
 import Foundation
+import DesignSystem
 
 /// Sections of the Settings window (SET-AC-01). Only General is functional in the shell task.
 public enum SettingsSection: String, CaseIterable, Identifiable, Sendable {
@@ -27,20 +28,37 @@ public enum SettingsSection: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// Duotone symbol where the `Icons` board covers the section; nil sections keep their stock `systemImage`.
+    public var symbol: DSSymbol? {
+        switch self {
+        case .general: .settings
+        case .models: .models
+        case .languages: .language
+        case .audio: .systemAudio
+        case .meetings: .meetings
+        case .liveCaptions: .liveCaptions
+        case .dictation: .dictation
+        case .ignoredSegments: .hidden
+        case .translation: .translate
+        case .exportDefaults: .export
+        case .transcriptAppearance, .replacements, .storage, .keyboardShortcuts, .privacyPermissions: nil
+        }
+    }
+
     public var systemImage: String {
         switch self {
-        case .general: "gearshape"
-        case .models: "cpu"
-        case .languages: "globe"
-        case .audio: "speaker.wave.2"
-        case .meetings: "person.2.wave.2"
-        case .liveCaptions: "captions.bubble"
-        case .dictation: "mic"
+        case .general: DSSymbol.settings.systemImageName
+        case .models: DSSymbol.models.systemImageName
+        case .languages: DSSymbol.language.systemImageName
+        case .audio: DSSymbol.systemAudio.systemImageName
+        case .meetings: DSSymbol.meetings.systemImageName
+        case .liveCaptions: DSSymbol.liveCaptions.systemImageName
+        case .dictation: DSSymbol.dictation.systemImageName
         case .transcriptAppearance: "textformat"
-        case .ignoredSegments: "eye.slash"
+        case .ignoredSegments: DSSymbol.hidden.systemImageName
         case .replacements: "arrow.left.arrow.right"
-        case .translation: "character.bubble"
-        case .exportDefaults: "square.and.arrow.up"
+        case .translation: DSSymbol.translate.systemImageName
+        case .exportDefaults: DSSymbol.export.systemImageName
         case .storage: "internaldrive"
         case .keyboardShortcuts: "keyboard"
         case .privacyPermissions: "hand.raised"

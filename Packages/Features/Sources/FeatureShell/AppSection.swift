@@ -1,4 +1,5 @@
 import AppCore
+import DesignSystem
 import FeatureSupport
 import Foundation
 
@@ -19,16 +20,20 @@ public enum AppSection: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    public var systemImage: String {
+    /// Duotone symbol for the sidebar row (rule A3; the seam T34 renders).
+    public var symbol: DSSymbol {
         switch self {
-        case .home: "house"
-        case .queue: "tray.full"
-        case .meetings: "person.2.wave.2"
-        case .live: "captions.bubble"
-        case .library: "books.vertical"
-        case .recentlyDeleted: "trash"
+        case .home: .home
+        case .queue: .queue
+        case .meetings: .meetings
+        case .live: .liveCaptions
+        case .library: .library
+        case .recentlyDeleted: .recentlyDeleted
         }
     }
+
+    /// Stock SF Symbol fallback of `symbol`, kept for existing call sites.
+    public var systemImage: String { symbol.systemImageName }
 
     /// 1-based keyboard shortcut digit.
     public var shortcutNumber: Int { (Self.allCases.firstIndex(of: self) ?? 0) + 1 }

@@ -51,11 +51,11 @@ public enum MenuBarStatus: Sendable, Equatable {
     /// SF Symbol for the menu bar icon.
     public var systemImage: String {
         switch self {
-        case .idle: "waveform"
-        case .liveCaptions: "captions.bubble.fill"
-        case .meetingDetected: "person.2.wave.2"
-        case .meetingRecording: "record.circle.fill"
-        case .dictationArmed: "mic.fill"
+        case .idle: "waveform" // stock-chrome: menu bar glyph, owned by T32
+        case .liveCaptions: "captions.bubble.fill" // stock-chrome: menu bar glyph, owned by T32
+        case .meetingDetected: "person.2.wave.2" // stock-chrome: menu bar glyph, owned by T32
+        case .meetingRecording: "record.circle.fill" // stock-chrome: menu bar glyph, owned by T32
+        case .dictationArmed: "mic.fill" // stock-chrome: menu bar glyph, owned by T32
         case .queueRunning: "waveform.badge.magnifyingglass"
         }
     }

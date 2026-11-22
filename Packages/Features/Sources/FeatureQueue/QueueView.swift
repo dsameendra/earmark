@@ -45,7 +45,7 @@ public struct QueueView: View {
             .accessibilityLabel("Loading queue")
         } else if model.jobs.isEmpty {
             EmptyState(
-                systemImage: "tray.full", title: "Queue is empty",
+                systemImage: DSSymbol.queue.systemImageName, title: "Queue is empty",
                 message: "Files you add are processed one after another. Drop files or folders here, or add them.",
                 actionTitle: "Add Files…"
             ) { isImporterPresented = true }
@@ -87,7 +87,7 @@ public struct QueueView: View {
             Menu("Queue Actions", systemImage: "ellipsis.circle") {
                 Button("Pause All", systemImage: "pause.fill") { Task { await model.pauseAll() } }
                 Button("Resume All", systemImage: "play.fill") { Task { await model.resumeAll() } }
-                Button("Retry Failed", systemImage: "arrow.clockwise") { Task { await model.retryAllFailed() } }
+                Button("Retry Failed", symbol: .retry) { Task { await model.retryAllFailed() } }
             }
             Stepper(
                 "Parallel jobs: \(model.maxConcurrency)",
@@ -139,7 +139,7 @@ private struct QueueRow: View {
             Button("Resume", systemImage: "play.fill") { Task { await model.resume(job.id) } }.labelStyle(.iconOnly)
             Button("Cancel", systemImage: "xmark") { Task { await model.cancel(job.id) } }.labelStyle(.iconOnly)
         case .failed, .cancelled:
-            Button("Retry", systemImage: "arrow.clockwise") { Task { await model.retry(job.id) } }.labelStyle(.iconOnly)
+            Button("Retry", symbol: .retry) { Task { await model.retry(job.id) } }.labelStyle(.iconOnly)
         case .completed:
             if let id = job.transcriptID { Button("Open Transcript") { onOpenTranscript(id) } }
         }

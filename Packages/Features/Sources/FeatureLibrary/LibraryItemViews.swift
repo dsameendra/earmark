@@ -15,7 +15,7 @@ private struct ItemBadges: View {
         HStack(spacing: DSSpacing.xs) {
             ForEach(item.languages.sorted(), id: \.self) { LanguageBadge($0) }
             if !item.speakers.isEmpty {
-                Label("\(item.speakers.count)", systemImage: "person.2").font(DSTypography.caption)
+                Label("\(item.speakers.count)", symbol: .speaker).font(DSTypography.caption)
                     .foregroundStyle(DSColor.secondaryText)
                     .accessibilityLabel("\(item.speakers.count) speakers")
             }
@@ -30,12 +30,12 @@ private struct ItemBadges: View {
     }
 }
 
-private func sourceSymbol(_ source: TranscriptSource) -> String {
+private func sourceSymbol(_ source: TranscriptSource) -> DSSymbol {
     switch source {
-    case .file: "doc.waveform"
-    case .meeting: "person.2.wave.2"
-    case .liveCaptions: "captions.bubble"
-    case .dictation: "mic"
+    case .file: .library
+    case .meeting: .meetings
+    case .liveCaptions: .liveCaptions
+    case .dictation: .dictation
     }
 }
 
@@ -55,7 +55,7 @@ struct LibraryRow: View {
 
     var body: some View {
         HStack(spacing: DSSpacing.md) {
-            Image(systemName: sourceSymbol(item.source)).foregroundStyle(DSColor.secondaryText).frame(width: 22)
+            DSIcon(sourceSymbol(item.source)).dsSymbolStyle(.monochrome).foregroundStyle(DSColor.secondaryText).frame(width: 22)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: DSSpacing.xxs) {
                 Text(item.title).lineLimit(1)
@@ -95,7 +95,7 @@ struct LibraryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpacing.sm) {
             HStack {
-                Image(systemName: sourceSymbol(item.source)).foregroundStyle(DSColor.secondaryText).accessibilityHidden(true)
+                DSIcon(sourceSymbol(item.source)).dsSymbolStyle(.monochrome).foregroundStyle(DSColor.secondaryText)
                 Spacer()
                 Text(durationText(item.duration)).font(DSTypography.timestamp).foregroundStyle(DSColor.secondaryText)
             }

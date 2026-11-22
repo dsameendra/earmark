@@ -42,7 +42,7 @@ struct PlayerPanelView: View {
                         if model.showWaveform {
                             WaveformScrubber(model: model).frame(minHeight: 70)
                         } else {
-                            Image(systemName: "waveform").font(.largeTitle).foregroundStyle(DSColor.secondaryText)
+                            DSIcon(.waveform).font(.largeTitle).foregroundStyle(DSColor.secondaryText)
                         }
                     }
                     .padding(DSSpacing.md)
@@ -217,7 +217,7 @@ struct TransportBar: View {
             .menuStyle(.borderlessButton).fixedSize()
             .help("Playback speed")
             Toggle(isOn: Binding(get: { model.showWaveform }, set: { model.setShowWaveform($0) })) {
-                Image(systemName: "waveform")
+                DSIcon(.waveform)
             }
             .toggleStyle(.button).help("Show waveform")
             Button {

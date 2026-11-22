@@ -201,7 +201,7 @@ struct TranslatePanel: View {
     private var readinessView: some View {
         switch panel.selectedReadiness {
         case .ready:
-            Button("Translate", systemImage: "translate") { Task { await panel.translate() } }
+            Button("Translate", symbol: .translate) { Task { await panel.translate() } }
                 .disabled(model.isTranslating).accessibilityIdentifier("editor.translation.start")
         case .needsModel:
             if let descriptor = panel.pendingModel {
@@ -215,11 +215,11 @@ struct TranslatePanel: View {
             if let fraction = panel.downloadFraction {
                 ProgressRow(title: panel.downloadMessage ?? "Downloading", detail: "\(Int(fraction * 100))%", fraction: fraction)
             } else {
-                Button("Download model", systemImage: "arrow.down.circle") { Task { await panel.downloadModel() } }
+                Button("Download model", symbol: .download) { Task { await panel.downloadModel() } }
             }
         case .needsApplePack:
             Text("Apple's on-device language pack for this pair is not installed yet.").font(DSTypography.caption)
-            Button("Install language pack…", systemImage: "arrow.down.circle") { Task { await panel.installApplePack() } }
+            Button("Install language pack…", symbol: .download) { Task { await panel.installApplePack() } }
                 .disabled(panel.isPreparingPack)
         case .unavailable(let reason):
             Label(reason, systemImage: "exclamationmark.circle").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)

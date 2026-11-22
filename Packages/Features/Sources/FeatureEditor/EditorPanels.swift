@@ -106,7 +106,7 @@ struct BookmarksPanel: View {
                 Button {
                     model.addBookmark()
                 } label: {
-                    Label("Bookmark Playhead", systemImage: "bookmark")
+                    Label("Bookmark Playhead", symbol: .earmark)
                 }
             }
             if model.bookmarks.isEmpty && model.highlights.isEmpty {
@@ -152,7 +152,7 @@ struct NoteRow: View {
             }
             .buttonStyle(.borderless)
             TextField("Note", text: $text).textFieldStyle(.plain).onSubmit { onNote(text) }
-            Button(role: .destructive, action: onDelete) { Image(systemName: "trash") }.buttonStyle(.borderless)
+            Button(role: .destructive, action: onDelete) { Image(systemName: "trash") }.buttonStyle(.borderless) // stock-chrome: destructive action
                 .accessibilityLabel("Delete")
         }
         .onAppear { text = note }
@@ -259,12 +259,12 @@ struct ExportSheet: View {
                 Button("Copy as Text") { Task { await export.copy(markdown: false) } }
                 Button("Copy as Markdown") { Task { await export.copy(markdown: true) } }
                 if let shareURL {
-                    ShareLink(item: shareURL) { Label("Share", systemImage: "square.and.arrow.up") }
+                    ShareLink(item: shareURL) { Label("Share", systemImage: "square.and.arrow.up") } // stock-chrome: system share glyph
                 } else {
                     Button {
                         Task { shareURL = await export.prepareShareFile() }
                     } label: {
-                        Label("Prepare to Share", systemImage: "square.and.arrow.up")
+                        Label("Prepare to Share", systemImage: "square.and.arrow.up") // stock-chrome: system share glyph
                     }
                 }
                 Spacer()

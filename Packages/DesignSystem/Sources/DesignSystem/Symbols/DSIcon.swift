@@ -81,13 +81,23 @@ extension DSSymbol {
 /// Decorative by default (hidden from VoiceOver, because it normally sits inside a `Label` or next to text); pass
 /// `decorative: false` for a standalone symbol and VoiceOver reads `DSSymbol.accessibilityLabel`.
 public struct DSIcon: View {
-    private let symbol: DSSymbol
+    private let symbol: DSSymbol?
+    private let stockName: String
     private let decorative: Bool
     private let styleOverride: DSSymbolStyle?
     @Environment(\.dsSymbolStyle) private var environmentStyle
 
     nonisolated public init(_ symbol: DSSymbol, style: DSSymbolStyle? = nil, decorative: Bool = true) {
         self.symbol = symbol
+        self.stockName = symbol.systemImageName
+        self.styleOverride = style
+        self.decorative = decorative
+    }
+
+    /// Mixed models (a section list where only some entries are covered by `DSSymbol`): custom symbol when present, otherwise the stock name.
+    nonisolated public init(_ symbol: DSSymbol?, orStock stockName: String, style: DSSymbolStyle? = nil, decorative: Bool = true) {
+        self.symbol = symbol
+        self.stockName = stockName
         self.styleOverride = style
         self.decorative = decorative
     }
@@ -96,12 +106,12 @@ public struct DSIcon: View {
         if decorative {
             rendered.accessibilityHidden(true)
         } else {
-            rendered.accessibilityLabel(symbol.accessibilityLabel)
+            rendered.accessibilityLabel(symbol?.accessibilityLabel ?? "")
         }
     }
 
     @ViewBuilder private var rendered: some View {
-        switch symbol.resolution {
+        switch symbol?.resolution ?? .stock(stockName) {
         case .stock(let name):
             Image(systemName: name)
         case .custom(let name):
@@ -120,27 +130,36 @@ public struct DSIcon: View {
 // MARK: - Call-site initialisers (the codemod target: `Button("Retry", symbol: .retry)`)
 
 extension Label where Title == Text, Icon == DSIcon {
-    public init(_ title: LocalizedStringKey, symbol: DSSymbol) {
+    nonisolated public init(_ title: LocalizedStringKey, symbol: DSSymbol) {
         self.init { Text(title) } icon: { DSIcon(symbol) }
     }
 
-    public init<S: StringProtocol>(_ title: S, symbol: DSSymbol) {
+    nonisolated public init<S: StringProtocol>(_ title: S, symbol: DSSymbol) {
         self.init { Text(title) } icon: { DSIcon(symbol) }
+    }
+
+    /// For models that cover only some entries with `DSSymbol` (`symbol` nil falls back to the stock name).
+    nonisolated public init<S: StringProtocol>(_ title: S, symbol: DSSymbol?, orStock stockName: String) {
+        self.init { Text(title) } icon: { DSIcon(symbol, orStock: stockName) }
     }
 }
 
 extension Button where Label == SwiftUI.Label<Text, DSIcon> {
-    public init(_ title: LocalizedStringKey, symbol: DSSymbol, role: ButtonRole? = nil, action: @escaping @MainActor () -> Void) {
-        self.init(role: role, action: action) { SwiftUI.Label(title, symbol: symbol) }
+    nonisolated public init(_ title: LocalizedStringKey, symbol: DSSymbol, role: ButtonRole? = nil, action: @escaping () -> Void) {
+        // Same call-site contract as the SDK initialisers (non-Sendable closures from main-actor views are accepted).
+        nonisolated(unsafe) let run = action
+        self.init(role: role, action: { run() }) { SwiftUI.Label(title, symbol: symbol) }
     }
 
-    public init<S: StringProtocol>(_ title: S, symbol: DSSymbol, role: ButtonRole? = nil, action: @escaping @MainActor () -> Void) {
-        self.init(role: role, action: action) { SwiftUI.Label(title, symbol: symbol) }
+    nonisolated public init<S: StringProtocol>(_ title: S, symbol: DSSymbol, role: ButtonRole? = nil, action: @escaping () -> Void) {
+        // Same call-site contract as the SDK initialisers (non-Sendable closures from main-actor views are accepted).
+        nonisolated(unsafe) let run = action
+        self.init(role: role, action: { run() }) { SwiftUI.Label(title, symbol: symbol) }
     }
 }
 
 extension Menu where Label == SwiftUI.Label<Text, DSIcon> {
-    public init(_ title: LocalizedStringKey, symbol: DSSymbol, @ViewBuilder content: () -> Content) {
+    nonisolated public init(_ title: LocalizedStringKey, symbol: DSSymbol, @ViewBuilder content: () -> Content) {
         self.init(content: content) { SwiftUI.Label(title, symbol: symbol) }
     }
 }

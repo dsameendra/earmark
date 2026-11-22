@@ -33,9 +33,8 @@ public struct OnboardingView: View {
 
     private var brandPanel: some View {
         VStack(alignment: .leading, spacing: DSSpacing.lg) {
-            Image(systemName: model.step.systemImage)
+            DSIcon(model.step.symbol, orStock: model.step.systemImage)
                 .font(.system(size: 44, weight: .regular))
-                .accessibilityHidden(true)
             Text("Earmark").font(DSTypography.title)
             Text("Listen once. Keep what matters.").font(DSTypography.body).opacity(0.85)
             Spacer()
@@ -156,7 +155,7 @@ private struct HighlightList: View {
         VStack(alignment: .leading, spacing: DSSpacing.lg) {
             ForEach(items) { item in
                 HStack(alignment: .top, spacing: DSSpacing.md) {
-                    Image(systemName: item.systemImage).frame(width: 24).foregroundStyle(DSColor.accent).accessibilityHidden(true)
+                    DSIcon(item.symbol, orStock: item.systemImage).dsSymbolStyle(.monochrome).frame(width: 24).foregroundStyle(DSColor.accent)
                     VStack(alignment: .leading, spacing: DSSpacing.xxs) {
                         Text(item.title).font(DSTypography.headline)
                         Text(item.detail).font(DSTypography.body).foregroundStyle(DSColor.secondaryText)

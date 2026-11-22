@@ -6,12 +6,12 @@ import SwiftUI
 /// Symbol names for the Meetings screen, reached by the view through this seam (rule A3).
 enum MeetingsSymbol {
     static let transcriptOnly = "text.bubble"
-    static let recorded = "record.circle"
+    static let recorded = DSSymbol.record
     static let stop = "stop.fill"
-    static let openTranscript = "doc.text"
-    static let policy = "slider.horizontal.3"
+    static let openTranscript = DSSymbol.library
+    static let policy = DSSymbol.settings
     static let error = "exclamationmark.triangle"
-    static let emptyState = "person.2.wave.2"
+    static let emptyState = DSSymbol.meetings
 }
 
 /// Meetings: inline detection banner, current-meeting card with live transcript, and the stored meetings list.
@@ -73,7 +73,7 @@ public struct MeetingsView: View {
             ErrorState(message: message) { Task { await model.load() } }
         } else if model.rows.isEmpty {
             EmptyState(
-                systemImage: MeetingsSymbol.emptyState, title: "No meetings yet",
+                systemImage: MeetingsSymbol.emptyState.systemImageName, title: "No meetings yet",
                 message: "Zoom and Microsoft Teams meetings that Earmark transcribes or records appear here. You choose what happens.")
         } else {
             List(model.rows) { row in
@@ -100,7 +100,7 @@ public struct MeetingsView: View {
                         .accessibilityIdentifier("meetings.policy.\(app.rawValue).\(behavior.rawValue)")
                     }
                 } label: {
-                    Label("\(app.badgeTitle) · \(model.policy(for: app).behavior.title)", systemImage: MeetingsSymbol.policy)
+                    Label("\(app.badgeTitle) · \(model.policy(for: app).behavior.title)", symbol: MeetingsSymbol.policy)
                 }
                 .accessibilityIdentifier("meetings.policy.\(app.rawValue)")
                 .help("What Earmark does when a \(app.title) meeting starts")
@@ -118,7 +118,7 @@ struct DetectionBanner: View {
     var body: some View {
         let app = detection.app
         HStack(spacing: DSSpacing.md) {
-            Image(systemName: app.systemImage).foregroundStyle(DSColor.accent).accessibilityHidden(true)
+            DSIcon(app.symbol)
             VStack(alignment: .leading, spacing: DSSpacing.xxs) {
                 Text("\(app.badgeTitle) meeting detected").font(DSTypography.headline)
                 Text("Started \(detection.startedAt, style: .relative) ago · nothing is recorded until you choose")
@@ -190,7 +190,7 @@ struct CurrentMeetingCard: View {
             header
             if case .capturing = current.phase { LiveTranscriptView(lines: model.lines) }
             if let id = model.finishedTranscriptID, current.phase == .detected {
-                Button("Open last transcript", systemImage: MeetingsSymbol.openTranscript) { onOpenTranscript(id) }
+                Button("Open last transcript", symbol: MeetingsSymbol.openTranscript) { onOpenTranscript(id) }
                     .accessibilityIdentifier("meetings.current.openTranscript")
             }
         }
@@ -204,7 +204,7 @@ struct CurrentMeetingCard: View {
 
     private var header: some View {
         HStack(spacing: DSSpacing.md) {
-            Image(systemName: current.app.systemImage).accessibilityHidden(true)
+            DSIcon(current.app.symbol)
             VStack(alignment: .leading, spacing: DSSpacing.xxs) {
                 Text("\(current.app.title) meeting").font(DSTypography.headline)
                 status
@@ -302,8 +302,8 @@ struct MeetingRow: View {
 
     var body: some View {
         HStack(spacing: DSSpacing.md) {
-            Image(systemName: row.isRecorded ? MeetingsSymbol.recorded : MeetingsSymbol.transcriptOnly)
-                .foregroundStyle(row.isRecorded ? DSColor.recording : DSColor.secondaryText).accessibilityHidden(true)
+            DSIcon(row.isRecorded ? MeetingsSymbol.recorded : nil, orStock: MeetingsSymbol.transcriptOnly).dsSymbolStyle(.monochrome)
+                .foregroundStyle(row.isRecorded ? DSColor.recording : DSColor.secondaryText)
             VStack(alignment: .leading, spacing: DSSpacing.xxs) {
                 Text(row.title).font(DSTypography.body.weight(.medium)).lineLimit(1)
                 HStack(spacing: DSSpacing.xs) {
@@ -320,7 +320,7 @@ struct MeetingRow: View {
             }
             StatusPill(LocalizedStringKey(row.meeting.app.badgeTitle))
             if row.meeting.transcriptID != nil {
-                Button("Open", systemImage: MeetingsSymbol.openTranscript, action: onOpen).labelStyle(.iconOnly)
+                Button("Open", symbol: MeetingsSymbol.openTranscript) { onOpen() }.labelStyle(.iconOnly)
                     .buttonStyle(.borderless).help("Open transcript")
                     .accessibilityIdentifier("meetings.row.\(row.id).open")
             }

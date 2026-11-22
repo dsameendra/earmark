@@ -10,7 +10,7 @@ enum LiveSymbol {
     static let stop = "stop.fill"
     static let pause = "pause.fill"
     static let resume = "play.fill"
-    static let empty = "captions.bubble"
+    static let empty = DSSymbol.liveCaptions
     static let overlay = "rectangle.bottomthird.inset.filled"
     static let notice = "exclamationmark.triangle"
     static let saved = "checkmark.circle"
@@ -102,7 +102,7 @@ public struct LiveView: View {
             ErrorState(title: "Live captions stopped", message: message) { Task { await model.start() } }
         } else if model.lines.isEmpty {
             EmptyState(
-                systemImage: LiveSymbol.empty, title: model.isRunning ? "Listening" : "No live session",
+                systemImage: LiveSymbol.empty.systemImageName, title: model.isRunning ? "Listening" : "No live session",
                 message: model.isRunning
                     ? "Captions appear here as people speak."
                     : "Choose a source and press Start. Captions appear here as people speak.")

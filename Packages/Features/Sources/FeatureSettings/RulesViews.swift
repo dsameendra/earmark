@@ -20,7 +20,7 @@ struct IgnoredSegmentsView: View {
                     .textFieldStyle(.roundedBorder).frame(maxWidth: 240)
                 Spacer()
                 Button("Import…", systemImage: "square.and.arrow.down") { showImporter = true }
-                Button("Export…", systemImage: "square.and.arrow.up") {
+                Button("Export…", symbol: .export) {
                     if let data = try? model.exportJSON() {
                         exportDocument = JSONDocument(data: data)
                         showExporter = true
@@ -220,7 +220,7 @@ struct ReplacementsView: View {
                 }
                 HStack {
                     Button("Import…", systemImage: "square.and.arrow.down") { showImporter = true }
-                    Button("Export…", systemImage: "square.and.arrow.up") {
+                    Button("Export…", symbol: .export) {
                         if let data = try? model.exportJSON() {
                             exportDocument = JSONDocument(data: data)
                             showExporter = true

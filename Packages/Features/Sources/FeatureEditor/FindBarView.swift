@@ -11,7 +11,7 @@ struct FindBarView: View {
     var body: some View {
         VStack(spacing: DSSpacing.xs) {
             HStack(spacing: DSSpacing.sm) {
-                Image(systemName: "magnifyingglass").foregroundStyle(DSColor.secondaryText)
+                DSIcon(.find).foregroundStyle(DSColor.secondaryText)
                 TextField("Find", text: $find.text)
                     .textFieldStyle(.roundedBorder)
                     .focused($fieldFocused)

@@ -34,7 +34,7 @@ let package = Package(
     targets: [
         .target(
             name: "FeatureSupport",
-            dependencies: [.product(name: "AppCore", package: "AppCore")],
+            dependencies: [.product(name: "AppCore", package: "AppCore"), .product(name: "DesignSystem", package: "DesignSystem")],
             swiftSettings: strict),
         .target(name: "FeatureHome", dependencies: base, swiftSettings: strict),
         .target(name: "FeatureQueue", dependencies: base, swiftSettings: strict),

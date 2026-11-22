@@ -1,4 +1,5 @@
 import AppCore
+import DesignSystem
 import Foundation
 
 /// The five onboarding steps (ONB non-functional: at most five screens). Copy follows the M8 Flow board.
@@ -36,11 +37,14 @@ public enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// Duotone symbol where covered by `DSSymbol`.
+    public var symbol: DSSymbol? { DSSymbol(replacingStock: systemImage) }
+
     /// Symbol shown on the brand panel.
     public var systemImage: String {
         switch self {
         case .welcome: "lock.shield"
-        case .languages: "character.bubble"
+        case .languages: DSSymbol.translate.systemImageName
         case .permissions: "hand.raised"
         case .tour: "menubar.rectangle"
         case .ready: "checkmark.seal"
@@ -65,6 +69,7 @@ public struct OnboardingHighlight: Identifiable, Equatable, Sendable {
     public let title: String
     public let detail: String
     public let systemImage: String
+    public var symbol: DSSymbol? { DSSymbol(replacingStock: systemImage) }
 }
 
 extension OnboardingHighlight {
@@ -74,7 +79,7 @@ extension OnboardingHighlight {
         .init(id: "fast", title: "Fast on Apple silicon", detail: "Transcribe files, meetings and live audio.", systemImage: "bolt"),
         .init(
             id: "languages", title: "English and Sinhala", detail: "Plus 97 more languages, mixed in one transcript.",
-            systemImage: "globe"),
+            systemImage: DSSymbol.language.systemImageName),
     ]
 
     /// Step 4: menu bar, live captions, meeting capture and dictation (ONB-AC-07). `dictationShortcut` is the user's binding.
@@ -85,21 +90,21 @@ extension OnboardingHighlight {
                 systemImage: "menubar.rectangle"),
             .init(
                 id: "liveCaptions", title: "Live captions",
-                detail: "Start or stop from the menu bar. Captions float over any app.", systemImage: "captions.bubble"),
+                detail: "Start or stop from the menu bar. Captions float over any app.", systemImage: DSSymbol.liveCaptions.systemImageName),
             .init(
                 id: "meetings", title: "Meeting capture",
-                detail: "Earmark asks before it records a detected meeting.", systemImage: "person.2.wave.2"),
+                detail: "Earmark asks before it records a detected meeting.", systemImage: DSSymbol.meetings.systemImageName),
             .init(
                 id: "dictation", title: "Dictation anywhere",
                 detail: "Press \(dictationShortcut), speak, and the text is inserted where you type. Fn works too; choose it in Settings.",
-                systemImage: "mic"),
+                systemImage: DSSymbol.dictation.systemImageName),
         ]
     }
 
     /// Step 5: where to begin.
     public static let ready: [OnboardingHighlight] = [
         .init(id: "file", title: "Transcribe a file", detail: "Drag audio or video onto Home.", systemImage: "doc.badge.plus"),
-        .init(id: "live", title: "Start live captions", detail: "Choose Live in the sidebar or the menu bar.", systemImage: "captions.bubble"),
+        .init(id: "live", title: "Start live captions", detail: "Choose Live in the sidebar or the menu bar.", systemImage: DSSymbol.liveCaptions.systemImageName),
     ]
 }
 

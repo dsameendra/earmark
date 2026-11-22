@@ -27,8 +27,8 @@ public struct MenuBarActions {
 
 /// Symbols for menu bar rows (rule A3).
 enum MenuBarSymbol {
-    static let startDictation = "mic"
-    static let stopDictation = "mic.fill"
+    static let startDictation = DSSymbol.dictation
+    static let stopDictation = DSSymbol.dictation
 }
 
 /// Menu bar icon; the recording state pulses unless Reduce Motion is on (MENU-AC-07).
@@ -98,7 +98,7 @@ public struct MenuBarContentView: View {
                 Button(choice.title) { Task { await model.startLive(choice) } }
             }
         } label: {
-            Label("Start Live Captions", systemImage: "captions.bubble")
+            Label("Start Live Captions", symbol: .liveCaptions)
         }
         .disabled(model.startDisabledReason != nil)
         .help(model.startDisabledReason ?? "Choose a source to start live captions")
@@ -126,11 +126,11 @@ public struct MenuBarContentView: View {
             if model.isDictationAvailable {
                 Button(
                     model.isDictating ? "Stop Dictation" : "Start Dictation",
-                    systemImage: model.isDictating ? MenuBarSymbol.stopDictation : MenuBarSymbol.startDictation
+                    symbol: model.isDictating ? MenuBarSymbol.stopDictation : MenuBarSymbol.startDictation
                 ) { Task { await model.toggleDictation() } }
                 .accessibilityIdentifier("menuBar.dictation")
             }
-            Button("Start Meeting Capture", systemImage: "person.2.wave.2") {}
+            Button("Start Meeting Capture", symbol: .meetings) {}
                 .disabled(true)
                 .help("Meeting capture is not available yet")
             Toggle(
@@ -160,9 +160,9 @@ public struct MenuBarContentView: View {
     private var navigation: some View {
         VStack(alignment: .leading, spacing: DSSpacing.xs) {
             Button("Open Earmark", systemImage: "macwindow", action: actions.openMainWindow)
-            Button("Open Queue", systemImage: "tray.full", action: actions.openQueue)
-            Button("Open Library", systemImage: "books.vertical", action: actions.openLibrary)
-            Button("Settings…", systemImage: "gearshape", action: actions.openSettings)
+            Button("Open Queue", symbol: .queue, action: actions.openQueue)
+            Button("Open Library", symbol: .library, action: actions.openLibrary)
+            Button("Settings…", symbol: .settings, action: actions.openSettings)
                 .keyboardShortcut(",", modifiers: [.command])
             Button("Quit Earmark", systemImage: "power", action: actions.quit)
                 .keyboardShortcut("q", modifiers: [.command])

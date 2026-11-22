@@ -133,16 +133,16 @@ public struct LibraryView: View {
     @ViewBuilder private var emptyState: some View {
         if model.isNarrowed {
             EmptyState(
-                systemImage: "magnifyingglass", title: "No results",
+                systemImage: DSSymbol.find.systemImageName, title: "No results",
                 message: "Nothing matches your search and filters.", actionTitle: "Clear Search and Filters"
             ) { model.clearFilters() }
         } else if model.mode == .library {
             EmptyState(
-                systemImage: "books.vertical", title: "Your library is empty",
+                systemImage: DSSymbol.library.systemImageName, title: "Your library is empty",
                 message: "Transcripts you create appear here, searchable by title and full text. Add files from Home or the Queue.")
         } else {
             EmptyState(
-                systemImage: "trash", title: "Nothing deleted",
+                systemImage: DSSymbol.recentlyDeleted.systemImageName, title: "Nothing deleted",
                 message: model.retentionDays == 0
                     ? "Deleted transcripts stay here until you remove them."
                     : "Deleted transcripts stay here for \(model.retentionDays) days before they are removed.")
@@ -152,13 +152,13 @@ public struct LibraryView: View {
     @ViewBuilder private func menu(for item: Transcript) -> some View {
         let ids = model.selection.contains(item.id) && model.selection.count > 1 ? Array(model.selection) : [item.id]
         if model.mode == .library {
-            Button("Open", systemImage: "doc.text") { onOpenTranscript(item.id) }
+            Button("Open", symbol: .library) { onOpenTranscript(item.id) }
             Button("Rename…", systemImage: "pencil") {
                 renameText = item.title
                 renaming = item
             }
             Button("Duplicate", systemImage: "plus.square.on.square") { Task { await model.duplicate(item.id) } }
-            Menu("Move to Folder", systemImage: "folder") {
+            Menu("Move to Folder", symbol: .folder) {
                 Button("Library Root") { Task { await model.move(ids, to: nil) } }
                 ForEach(model.folders) { folder in Button(folder.name) { Task { await model.move(ids, to: folder.id) } } }
             }
@@ -179,7 +179,7 @@ public struct LibraryView: View {
                 }
             }
             Divider()
-            Button("Delete", systemImage: "trash", role: .destructive) { Task { await model.delete(ids) } }
+            Button("Delete", systemImage: "trash", role: .destructive) { Task { await model.delete(ids) } } // stock-chrome: destructive action
         } else {
             Button("Restore", systemImage: "arrow.uturn.backward") { Task { await model.restore(ids) } }
             Button("Delete Permanently…", systemImage: "trash.slash", role: .destructive) {
@@ -206,7 +206,7 @@ public struct LibraryView: View {
                     Text("Recently modified").tag(LibrarySort.modifiedDesc)
                 }
                 .accessibilityLabel("Sort by")
-                Button("Delete", systemImage: "trash") { Task { await model.deleteSelected() } }
+                Button("Delete", systemImage: "trash") { Task { await model.deleteSelected() } } // stock-chrome: destructive action
                     .disabled(model.selection.isEmpty)
             } else {
                 Menu("Keep deleted items", systemImage: "clock.arrow.circlepath") {

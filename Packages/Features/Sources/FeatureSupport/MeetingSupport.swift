@@ -1,4 +1,5 @@
 import AppCore
+import DesignSystem
 import Foundation
 
 // Seams between the UI and the meeting runtime (T23). AppCore is frozen and the `Recorder` protocol needs raw audio
@@ -20,7 +21,8 @@ extension MeetingApp {
         }
     }
     /// Symbol name for rows and banners (rule A3).
-    public var systemImage: String { "person.2.wave.2" }
+    public var symbol: DSSymbol { .meetings }
+    public var systemImage: String { symbol.systemImageName }
 }
 
 extension MeetingBehavior {

@@ -52,8 +52,8 @@ public final class VoiceProfilesModel {
 }
 
 enum VoiceProfileSymbol {
-    static let profile = "waveform.circle"
-    static let delete = "trash"
+    static let profile = DSSymbol.speaker
+    static let delete = "trash" // stock-chrome: destructive action
 }
 
 struct VoiceProfilesSection: View {
@@ -87,7 +87,7 @@ private struct VoiceProfileRow: View {
 
     var body: some View {
         HStack {
-            Image(systemName: VoiceProfileSymbol.profile).foregroundStyle(DSColor.secondaryText).accessibilityHidden(true)
+            DSIcon(VoiceProfileSymbol.profile).dsSymbolStyle(.monochrome).foregroundStyle(DSColor.secondaryText)
             TextField("Name", text: $name).textFieldStyle(.plain)
                 .onSubmit { Task { await model.rename(profile.id, to: name) } }
                 .accessibilityIdentifier("settings.voiceProfile.\(profile.id).name")

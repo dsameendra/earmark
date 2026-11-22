@@ -1,4 +1,5 @@
 import AppCore
+import DesignSystem
 import FeatureSupport
 import Foundation
 import Observation
@@ -17,13 +18,16 @@ public enum LiveSourceChoice: String, CaseIterable, Identifiable, Sendable {
     }
 
     /// Symbol name for the picker (rule A3: symbols reach the view through the model).
-    public var systemImage: String {
+    public var symbol: DSSymbol {
         switch self {
-        case .mic: "mic"
-        case .system: "speaker.wave.2"
-        case .micAndSystem: "person.2.wave.2"
+        case .mic: .dictation
+        case .system: .systemAudio
+        case .micAndSystem: .meetings
         }
     }
+
+    /// Stock fallback name of `symbol`.
+    public var systemImage: String { symbol.systemImageName }
 
     /// The matching capture source (default device for the mic).
     public var captureSource: CaptureSource {

@@ -111,7 +111,7 @@ private struct EditorContent: View {
                 find.open()
                 findFocused = true
             } label: {
-                Image(systemName: "magnifyingglass")
+                DSIcon(.find)
             }
             .keyboardShortcut("f", modifiers: .command).help("Find (⌘F)")
             Button {
@@ -136,13 +136,13 @@ private struct EditorContent: View {
             Button {
                 showSpeakers.toggle()
             } label: {
-                Image(systemName: "person.2")
+                DSIcon(.speaker)
             }
             .help("Speakers").popover(isPresented: $showSpeakers) { SpeakersPanel(model: model) }
             Button {
                 showBookmarks.toggle()
             } label: {
-                Image(systemName: "bookmark")
+                DSIcon(.earmark)
             }
             .help("Bookmarks and highlights").popover(isPresented: $showBookmarks) { BookmarksPanel(model: model) }
             if model.uncertainLanguageCount > 0 {
@@ -155,7 +155,7 @@ private struct EditorContent: View {
             Button {
                 showTranslate.toggle()
             } label: {
-                Image(systemName: "translate")
+                DSIcon(.translate)
                     .foregroundStyle(model.translationChoice.mode == .original ? Color.primary : DSColor.accent)
             }
             .help("Translation view and Translate…").accessibilityIdentifier("editor.translation")
@@ -169,7 +169,7 @@ private struct EditorContent: View {
             Button {
                 showExport = true
             } label: {
-                Image(systemName: "square.and.arrow.up")
+                DSIcon(.export)
             }
             .help("Export")
         }

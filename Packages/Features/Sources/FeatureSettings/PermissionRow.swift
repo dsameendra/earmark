@@ -45,10 +45,19 @@ extension PermissionStatus {
 }
 
 extension PermissionKind {
+    /// Duotone symbol where covered by `DSSymbol`; other permissions keep their stock `systemImage`.
+    public var symbol: DSSymbol? {
+        switch self {
+        case .microphone: .dictation
+        case .systemAudioRecording: .systemAudio
+        case .screenRecording, .accessibility, .notifications: nil
+        }
+    }
+
     public var systemImage: String {
         switch self {
-        case .microphone: "mic"
-        case .systemAudioRecording: "speaker.wave.2"
+        case .microphone: DSSymbol.dictation.systemImageName
+        case .systemAudioRecording: DSSymbol.systemAudio.systemImageName
         case .screenRecording: "rectangle.dashed.badge.record"
         case .accessibility: "accessibility"
         case .notifications: "bell"
@@ -119,10 +128,10 @@ public struct PermissionRow: View {
 
     public var body: some View {
         HStack(alignment: .top, spacing: DSSpacing.md) {
-            Image(systemName: state.kind.systemImage)
+            DSIcon(state.kind.symbol, orStock: state.kind.systemImage)
+                .dsSymbolStyle(.monochrome)
                 .frame(width: 24)
                 .foregroundStyle(DSColor.secondaryText)
-                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: DSSpacing.xs) {
                 Text(state.kind.title)
                 Text(state.kind.purpose).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)

@@ -45,6 +45,7 @@ let package = Package(
             name: "FeatureSettings",
             dependencies: base + [
                 .product(name: "Processing", package: "Processing"), .product(name: "Export", package: "Export"),
+                .product(name: "LiveCaptions", package: "LiveCaptions"),
             ], swiftSettings: strict),
         .target(
             name: "FeatureEditor",
@@ -61,6 +62,7 @@ let package = Package(
                 .product(name: "AppCoreTesting", package: "AppCore"),
                 "FeatureShell", "FeatureHome", "FeatureQueue", "FeatureLibrary", "FeatureMeetings", "FeatureLive", "FeatureMenuBar",
                 "FeatureSettings", "FeatureEditor", .product(name: "Processing", package: "Processing"),
+                .product(name: "LiveCaptions", package: "LiveCaptions"),
             ]),
     ],
     swiftLanguageModes: [.v6]

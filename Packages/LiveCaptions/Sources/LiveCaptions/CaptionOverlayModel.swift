@@ -24,6 +24,10 @@ public final class CaptionOverlayModel {
     public var isCaptioning = false
     public var isPaused = false
     public var clickThrough = true
+    /// Option is held, which makes a click-through overlay draggable for as long as it is down.
+    public var optionHeld = false
+    /// The drag handle shows while the overlay can be dragged: click-through off, or Option held.
+    public var isDragHandleVisible: Bool { !clickThrough || optionHeld }
     /// `true` after `autoHideAfterSilence` elapsed without new speech (LIVE-AC-09); the view fades out.
     public private(set) var isFaded = false
 

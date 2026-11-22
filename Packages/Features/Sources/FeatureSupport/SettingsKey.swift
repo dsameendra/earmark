@@ -42,6 +42,18 @@ public enum SettingsKey {
     public static let liveSaveAsTranscript = "liveCaptions.saveAsTranscript"
     /// `String` raw value of the last live source (`mic`, `system`, `micAndSystem`).
     public static let liveSource = "liveCaptions.source"
+    /// `Bool`; caption overlay ignores the mouse (click-through, default `true`).
+    public static let liveClickThrough = "liveCaptions.clickThrough"
+    /// `String` (`main`, `follow` or `display:<id>`); which display the caption overlay appears on (default `main`).
+    public static let liveOverlayDisplayChoice = "liveCaptions.overlayDisplayChoice"
+    /// `String` raw `OverlayPosition` for "Main display" and "Follow the active window" (default `bottomCenter`).
+    public static let liveOverlayPosition = "liveCaptions.overlayPosition"
+    /// `String` raw `OverlayPosition` for one specific display.
+    public static func liveOverlayPosition(display id: UInt32) -> String { "liveCaptions.overlayPosition.\(id)" }
+    /// `StoredOverlayFrame`; dragged (Custom) frame for one display and caption preset, relative to the display origin.
+    public static func liveOverlayCustomFrame(display id: UInt32, preset presetID: String) -> String {
+        "liveCaptions.overlayCustomFrame.\(id).\(presetID)"
+    }
     /// Dictation: `HotkeyMode`, `TextInsertionMethod`, `Bool`s and `Int`.
     public static let dictationMode = "dictation.mode"
     public static let dictationInsertion = "dictation.insertionMethod"

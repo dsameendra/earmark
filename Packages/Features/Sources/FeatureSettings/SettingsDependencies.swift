@@ -1,6 +1,7 @@
 import AppCore
 import FeatureSupport
 import Foundation
+import LiveCaptions
 import ServiceManagement
 import os
 
@@ -47,6 +48,10 @@ public struct SettingsDependencies: Sendable {
     /// Retries a failed global hotkey registration (after the user grants access).
     public var retryHotkeys: (@Sendable () async -> Void)?
     public var launchAtLogin: any LaunchAtLoginControlling
+    /// Connected displays for the caption overlay picker (nil means the system's).
+    public var displays: (any DisplayProviding)?
+    /// Moves the live caption overlay and shows the test caption (nil disables the preview).
+    public var overlayPlacement: (any OverlayPlacementControlling)?
     /// Removes regenerable caches and returns the bytes freed.
     public var clearCaches: @Sendable () async -> Int64
 
@@ -56,6 +61,7 @@ public struct SettingsDependencies: Sendable {
         presets: any PresetRepository, hotkeys: (any HotkeyServicing)? = nil, transcripts: (any TranscriptRepository)? = nil,
         hotkeyDiagnostics: (any HotkeyDiagnosing)? = nil, retryHotkeys: (@Sendable () async -> Void)? = nil,
         launchAtLogin: any LaunchAtLoginControlling = SMAppServiceLaunchAtLogin(),
+        displays: (any DisplayProviding)? = nil, overlayPlacement: (any OverlayPlacementControlling)? = nil,
         clearCaches: @escaping @Sendable () async -> Int64 = { SettingsDependencies.clearDefaultCaches() }
     ) {
         self.store = store
@@ -70,6 +76,8 @@ public struct SettingsDependencies: Sendable {
         self.hotkeyDiagnostics = hotkeyDiagnostics
         self.retryHotkeys = retryHotkeys
         self.launchAtLogin = launchAtLogin
+        self.displays = displays
+        self.overlayPlacement = overlayPlacement
         self.clearCaches = clearCaches
     }
 

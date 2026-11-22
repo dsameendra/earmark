@@ -250,10 +250,12 @@ extension Font.Weight {
 
 struct LiveCaptionsSettingsView: View {
     let model: CaptionPresetsModel
+    let placement: OverlayPlacementSettingsModel
 
     var body: some View {
         @Bindable var model = model
         Form {
+            OverlayPlacementSection(model: placement)
             Section("Presets") {
                 Picker("Preset", selection: Binding(get: { model.draft.id }, set: { id in Task { await model.select(id) } })) {
                     ForEach(model.presets) { Text($0.isBuiltIn ? "\($0.name) (built in)" : $0.name).tag($0.id) }
@@ -293,7 +295,11 @@ struct LiveCaptionsSettingsView: View {
             .onChange(of: model.draft) { _, _ in Task { await model.saveDraft() } }
         }
         .formStyle(.grouped)
-        .task { await model.load() }
+        .task {
+            await model.load()
+            await placement.load()
+        }
+        .onDisappear { Task { await placement.hideTestCaption() } }
     }
 }
 

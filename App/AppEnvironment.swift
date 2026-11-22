@@ -128,7 +128,8 @@ final class AppEnvironment {
         let settingsDependencies = SettingsDependencies(
             store: settings, models: models, hardware: hardware, audioDevices: audioDevices, permissions: permissions,
             rules: database.rules, presets: database.presets, transcripts: database.transcripts,
-            hotkeyDiagnostics: dictation.hotkeys, retryHotkeys: { [controller = dictation.controller] in await controller.retryHotkeyRegistration() })
+            hotkeyDiagnostics: dictation.hotkeys, retryHotkeys: { [controller = dictation.controller] in await controller.retryHotkeyRegistration() },
+            overlayPlacement: live.overlay)
         return Composition(services: services, settingsDependencies: settingsDependencies, live: live, dictation: dictation)
     }
 

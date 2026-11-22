@@ -45,10 +45,23 @@ public struct CaptionOverlayView: View {
             .animation(policy.animation(.easeOut(duration: 0.15)), value: model.visibleLines.map(\.id))
         }
         .overlay(alignment: .topTrailing) { indicator }
+        .overlay(alignment: .top) { dragHandle }
         // Captions are always dark-styled: light text on a dark surface regardless of the system appearance.
         .environment(\.colorScheme, .dark)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("liveCaptions.overlay")
+    }
+
+    /// Grip shown while the overlay is draggable (click-through off, or Option held).
+    @ViewBuilder private var dragHandle: some View {
+        if model.isDragHandleVisible {
+            Capsule()
+                .fill(DSColor.secondaryText)
+                .frame(width: DSSpacing.xxl, height: DSSpacing.xs)
+                .padding(.top, DSSpacing.xs)
+                .accessibilityLabel(Text("Drag to move captions"))
+                .accessibilityIdentifier("liveCaptions.overlay.dragHandle")
+        }
     }
 
     @ViewBuilder private var indicator: some View {

@@ -34,7 +34,7 @@ scripts/check.sh build  # dependency direction and Debug app build
 scripts/check.sh ui     # deterministic mock-service XCUITests, DebugUI configuration
 ```
 
-Reports go to `~/Library/Caches/EarmarkBuild/reports` unless `EARMARK_REPORT_ROOT` is set. UI tests use mock services and a separate QA bundle identity; they do not prove real recording, transcription quality or permission behaviour. Light/dark screenshots are attached to the Xcode test results for review against [the final local design boards](specs/design/m8-mockups/index.html). All 18 package suites passed during completion validation; real-model parity and native cancellation/restart were also run explicitly. Consult the execution record and saved reports for final UI results and the remaining manual gates.
+Reports go to `~/Library/Caches/EarmarkBuild/reports` unless `EARMARK_REPORT_ROOT` is set. UI tests use mock services and a separate QA bundle identity; they do not prove real recording, transcription quality or permission behaviour. Light/dark screenshots are attached to the Xcode test results for review against [the final local design boards](specs/design/m8-mockups/index.html). All 18 package suites passed during completion validation; real-model parity and native cancellation/restart were also run explicitly. All four final mock UI tests passed. See [completion validation](specs/qa/completion-2026-11-22.md), [window screenshots](specs/design/m8-shots/completion/README.md) and the manual gates.
 
 ## Models and translation
 

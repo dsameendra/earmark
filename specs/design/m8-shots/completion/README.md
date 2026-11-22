@@ -1,0 +1,35 @@
+# M8 completion screenshots
+
+Captured from implementation commit `c2f0792` by the four passing mock-service XCUITests on macOS 27.2.1 / Xcode 27.2. Main sections, Editor and Export have light/dark captures; Settings, narrow inspector and onboarding have light captures. Actual screenshot dimensions include native window chrome.
+
+These show demo content and missing demo media. They do not establish real capture, permission, accessibility or hardware acceptance. Compare against the [final boards](../../m8-mockups/README.md). The outer `T34-*` images preserve the earlier shell baseline.
+
+- [editor-dark-1440x900.png](editor-dark-1440x900.png)
+- [editor-light-1440x900.png](editor-light-1440x900.png)
+- [editor-narrow-inspector.png](editor-narrow-inspector.png)
+- [export-dark.png](export-dark.png)
+- [export-light.png](export-light.png)
+- [home-dark-1440x900.png](home-dark-1440x900.png)
+- [home-light-1440x900.png](home-light-1440x900.png)
+- [library-dark-1440x900.png](library-dark-1440x900.png)
+- [library-light-1440x900.png](library-light-1440x900.png)
+- [live-dark-1440x900.png](live-dark-1440x900.png)
+- [live-light-1440x900.png](live-light-1440x900.png)
+- [meetings-dark-1440x900.png](meetings-dark-1440x900.png)
+- [meetings-light-1440x900.png](meetings-light-1440x900.png)
+- [onboarding-step-1.png](onboarding-step-1.png)
+- [onboarding-step-2.png](onboarding-step-2.png)
+- [onboarding-step-3.png](onboarding-step-3.png)
+- [onboarding-step-4.png](onboarding-step-4.png)
+- [onboarding-step-5.png](onboarding-step-5.png)
+- [queue-dark-1440x900.png](queue-dark-1440x900.png)
+- [queue-light-1440x900.png](queue-light-1440x900.png)
+- [recentlyDeleted-dark-1440x900.png](recentlyDeleted-dark-1440x900.png)
+- [recentlyDeleted-light-1440x900.png](recentlyDeleted-light-1440x900.png)
+- [settings-audio.png](settings-audio.png)
+- [settings-exportDefaults.png](settings-exportDefaults.png)
+- [settings-general.png](settings-general.png)
+- [settings-languages.png](settings-languages.png)
+- [settings-meetings.png](settings-meetings.png)
+- [settings-models.png](settings-models.png)
+- [settings-privacyPermissions.png](settings-privacyPermissions.png)

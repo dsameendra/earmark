@@ -1,6 +1,6 @@
 # Manual QA: visual, permission and hardware gates
 
-Status (2026-11-22): **pending execution**. M8 implementation and M7 preparation tooling are present. The final serial package recheck and mock UI runner were pending at this documentation update. A running development app or a passing mock test does not establish the real behaviours below. Record the tested commit, app build/configuration, signing identity, macOS/hardware, relevant model versions, result and evidence for each check; mark unavailable environments as blocked rather than passed.
+Status (2026-11-22): **pending execution**. M8 implementation and M7 preparation tooling are present. All 18 package suites and the four final mock UI tests passed; see [completion validation](completion-2026-11-22.md). A running development app or a passing mock test does not establish the real behaviours below. Record the tested commit, app build/configuration, signing identity, macOS/hardware, relevant model versions, result and evidence for each check; mark unavailable environments as blocked rather than passed.
 
 Use the real-service Debug app for capture/insertion checks. The `DebugUI` configuration and `-UseMocks` launch argument are for deterministic screen tests only. They must not be used as real capture evidence. Keep test recordings/transcripts separate from valuable data, especially for explicit deletion and crash-recovery checks.
 

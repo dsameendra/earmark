@@ -34,6 +34,7 @@ struct TranscriptListView: View {
                     }
                 }
                 .padding(.vertical, DSSpacing.sm)
+                .dsAnimation(.glide, value: model.visibleSegments.count)
             }
             .background(DSColor.contentBackground)
             .onScrollPhaseChange { _, phase in
@@ -56,9 +57,10 @@ struct TranscriptListView: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.regular)
                     .padding(DSSpacing.md)
-                    .transition(.opacity)
+                    .dsTransition(.glide)
                 }
             }
+            .dsAnimation(.glide, value: model.playback.showsReturnToPlayhead)
         }
     }
 

@@ -80,7 +80,9 @@ private struct EditorContent: View {
                 if inspectorPresented { activeTool = .inspector } else if activeTool == .inspector { activeTool = nil }
             }
             .onChange(of: showExport) { if !showExport { listFocused = true } }
+            .onAppear { PlayerZoomRegistry.shared.activate(model.playback.zoom) }
             .onDisappear {
+                PlayerZoomRegistry.shared.deactivate(model.playback.zoom)
                 model.acknowledgeReconciliation()
                 playerWindow?.close()
                 playerWindow = nil

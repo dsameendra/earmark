@@ -207,6 +207,7 @@ private struct QueueRow: View {
             if QueueFormatting.showsProgress(for: job.state) {
                 ProgressView(value: QueueFormatting.fraction(job.progress))
                     .tint(job.state == .paused ? DSColor.secondaryText : DSColor.accent)
+                    .dsAnimation(.glide, value: QueueFormatting.fraction(job.progress))
                     .accessibilityLabel(job.state == .paused ? "Paused progress" : "Progress")
                     .accessibilityIdentifier("queue.progress.\(job.id)")
                 Text(QueueFormatting.fraction(job.progress), format: .percent.precision(.fractionLength(0)))

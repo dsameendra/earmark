@@ -1,3 +1,4 @@
+import DesignSystem
 import AppCore
 import FeatureSupport
 import Foundation
@@ -104,6 +105,13 @@ public final class TranscriptEditorModel {
     public private(set) var editingSegmentID: SegmentID?
     public private(set) var revealRequest: RevealRequest?
     public private(set) var waveform: WaveformPeaks?
+    /// What the scrubber shows: decoding, ready, or no audio to draw (flat line).
+    public private(set) var waveformState: WaveformLoadState = .loading
+    public private(set) var waveformPyramid: PeakPyramid?
+    @ObservationIgnored var waveformTask: Task<Void, Never>?
+    @ObservationIgnored public var waveformService = WaveformService()
+
+    isolated deinit { waveformTask?.cancel() }
 
     public private(set) var showIgnored = false { didSet { rebuildDerived() } }
     public private(set) var options = ViewOptions() { didSet { if oldValue.layout != options.layout { rebuildDerived() } } }
@@ -258,9 +266,14 @@ public final class TranscriptEditorModel {
             resolved = MediaLocator.url(for: asset, roots: await mediaRoots())
         }
         mediaURL = resolved
+        waveformTask?.cancel()
+        waveformTask = nil
+        waveform = nil
+        waveformPyramid = nil
         guard let url = resolved else {
             playbackCenter?.stop(transcriptID: transcriptID)
             playback.markMissing()
+            waveformState = .unavailable
             return
         }
         if let playbackCenter {
@@ -286,7 +299,21 @@ public final class TranscriptEditorModel {
             playback.attach(made.engine, isVideo: made.isVideo)
         }
         playback.setTimeline(WordTimeline(segments: segments))
-        if let peaks = await WaveformPeaks.compute(url: url) { waveform = peaks }
+        startWaveformLoad(url: url, assetID: transcript.mediaAssetID.map { "\($0)" })
+    }
+
+    /// Decodes (or reads from the cache) the peaks without blocking the editor; a newer load or `deinit` cancels it.
+    private func startWaveformLoad(url: URL, assetID: String?) {
+        waveformState = .loading
+        let service = waveformService
+        waveformTask = Task { [weak self] in
+            let result = await service.peaks(for: url, assetID: assetID)
+            let pyramid = await Task.detached { result.peaks?.pyramid }.value
+            guard !Task.isCancelled, let self else { return }
+            waveform = result.peaks
+            waveformPyramid = pyramid
+            waveformState = result.peaks == nil ? .unavailable : .ready
+        }
     }
 
     /// The editor is going away. Edits are flushed by the caller; the shared player keeps playing (the mini-player owns it),

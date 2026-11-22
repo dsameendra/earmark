@@ -43,8 +43,8 @@ public struct CaptionOverlayView: View {
             .background { CaptionBackground(preset: preset, policy: policy) }
             // Only the captions fade after silence; the recording dot below always stays visible (LIVE-AC-18).
             .opacity(model.isFaded ? 0 : 1)
-            .animation(policy.animation(.easeInOut(duration: 0.4)), value: model.isFaded)
-            .animation(policy.animation(.easeOut(duration: 0.15)), value: model.visibleLines.map(\.id))
+            .animation(DSMotion.glide.animation(policy, duration: 0.28), value: model.isFaded)
+            .animation(DSMotion.exit.animation(policy), value: model.visibleLines.map(\.id))
         }
         .overlay(alignment: .topTrailing) { indicator }
         .overlay(alignment: .top) { dragHandle }

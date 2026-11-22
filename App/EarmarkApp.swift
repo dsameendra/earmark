@@ -1,5 +1,6 @@
 import AppKit
 import DesignSystem
+import FeatureEditor
 import FeatureMenuBar
 import FeatureSettings
 import FeatureShell
@@ -37,6 +38,7 @@ struct EarmarkApp: App {
         .windowResizability(.contentMinSize)
         .commands {
             ShellCommands(model: environment.shell)
+            PlayerZoomCommands()
             OnboardingCommands(settings: environment.services.settings)
             UpdateCommands(updates: environment.updates)
             AboutCommands()
@@ -158,7 +160,7 @@ private struct MenuBarGlyphView: View {
             }
         }
         .opacity(pulsing && dimmed ? 0.55 : 1)
-        .animation(pulsing ? .easeInOut(duration: 0.9).repeatForever(autoreverses: true) : .default, value: dimmed)
+        .animation(DSMotion.pulse(AccessibilityPolicy(reduceMotion: !pulsing)) ?? DSMotion.exit.animation(), value: dimmed)
         .onChange(of: pulsing, initial: true) { _, isPulsing in dimmed = isPulsing }
         .accessibilityLabel("Earmark")
         .accessibilityValue(model.status.text)

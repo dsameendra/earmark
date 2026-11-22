@@ -85,6 +85,8 @@ public final class PlaybackModel {
     /// When false the user scrolled away; auto-scroll is paused until "Return to playhead" (EDIT-AC-04).
     public private(set) var autoFollow = true
     public var isDetached = false
+    /// Waveform zoom and detached-video scale; shared by every surface that shows this player.
+    public let zoom = PlayerZoomModel()
     /// Bumps each time the view should scroll to `scrollTargetID`.
     public private(set) var scrollRequest = 0
 

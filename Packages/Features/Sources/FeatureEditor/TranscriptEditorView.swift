@@ -173,6 +173,7 @@ private struct EditorContent: View {
         ToolbarItem(placement: .primaryAction) {
             // System prominent capsule: padding, height and pressed/disabled behaviour come from the toolbar.
             Button { showExport = true } label: { Label("Export", symbol: .export) }
+                .labelStyle(.titleAndIcon)
                 .buttonStyle(.borderedProminent).tint(DSColor.accent)
                 .accessibilityIdentifier("editor.export")
         }

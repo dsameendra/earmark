@@ -122,6 +122,7 @@ public struct ShellView: View {
             ToolbarItem(placement: .primaryAction) {
                 // The system supplies the prominent capsule, padding and height; no custom style, font or frame.
                 Button { model.presentImporter() } label: { Label("Transcribe", systemImage: "plus") }
+                    .labelStyle(.titleAndIcon)
                     .buttonStyle(.borderedProminent)
                     .tint(DSColor.accent)
                     .help("Choose audio or video files to transcribe")

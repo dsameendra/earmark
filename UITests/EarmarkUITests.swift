@@ -86,7 +86,6 @@ final class EarmarkUITests: XCTestCase {
         let presetName = app.textFields["export.presetName"]
         if presetName.waitForExistence(timeout: 3) {
             presetName.click()
-            presetName.typeText("Weekly review")
         }
         capture(app, "export-\(appearance)")
         app.typeKey(.escape, modifierFlags: [])

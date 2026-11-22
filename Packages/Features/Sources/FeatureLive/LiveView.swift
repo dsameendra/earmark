@@ -109,6 +109,7 @@ public struct LiveView: View {
         } else {
             ToolbarItem(placement: .primaryAction) {
                 Button { Task { await model.start() } } label: { Label("Start", systemImage: LiveSymbol.start) }
+                    .labelStyle(.titleAndIcon)
                     .buttonStyle(.borderedProminent)
                     .tint(DSColor.accent)
                     .keyboardShortcut(.return, modifiers: [.command])

@@ -15,9 +15,10 @@ struct SpeakersPanel: View {
             if model.speakers.isEmpty {
                 Text("No speakers yet.").foregroundStyle(DSColor.secondaryText)
             }
-            ViewThatFits(in: .vertical) {
+            if model.speakers.count > 4 {
+                ScrollView { speakerRows.padding(.vertical, 2) }.frame(height: 320)  // long lists scroll instead of growing
+            } else {
                 speakerRows
-                ScrollView { speakerRows.padding(.vertical, 2) }.frame(height: 320)
             }
             if let message = model.voiceProfileError {
                 Text(message).font(DSTypography.caption).foregroundStyle(DSColor.danger).accessibilityIdentifier(
@@ -33,7 +34,6 @@ struct SpeakersPanel: View {
         }
         .padding(DSSpacing.lg)
         .frame(minWidth: 340, idealWidth: 360)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var speakerRows: some View {

@@ -24,8 +24,9 @@ struct DecodedWindow: Sendable {
 /// - Models are loaded from the folder the ``ModelManaging`` actor reports (`location(of:)`); the engine never downloads.
 ///   Custom imported WhisperKit folders therefore work like built-in ones.
 /// - File transcription runs through ``FileTranscriptionPipeline`` (bounded memory, VAD-aligned chunks). Streaming
-///   re-decodes the unconfirmed tail of the buffer about once per second of new audio, emitting `.partial` for the tail
-///   and `.final` for segments that have settled.
+///   segments the live audio into utterances with an energy VAD (``StreamSegmenter``): the open utterance is re-decoded
+///   about once per second and emitted as `.partial`; when a pause (or the 12 s length cap) ends it, it is decoded once more
+///   and emitted as `.final`, then dropped, so buffered audio and decode cost stay bounded.
 /// - Word timestamps, `skipSpecialTokens`, single/auto-detect/multilingual language handling and a vocabulary prompt
 ///   (`TranscriptionOptions.vocabulary`, encoded to Whisper prompt tokens) are supported.
 /// - Cancelling the consuming task stops decoding at the next Core ML prediction.
@@ -49,8 +50,8 @@ public actor WhisperKitEngine: TranscriptionEngine {
 
     /// Seconds of new audio that trigger a re-decode while streaming.
     static let streamStepSeconds: TimeInterval = 1.0
-    /// Buffered audio beyond which settled segments are confirmed and trimmed.
-    static let streamMaxBufferSeconds: TimeInterval = 24.0
+    /// Partial decodes are skipped while the stream lags real time by more than this.
+    static let streamMaxPartialLagSeconds: TimeInterval = 1.0
 
     /// Creates an engine that locates models through a closure (handy for tests and previews).
     public init(
@@ -244,52 +245,51 @@ public actor WhisperKitEngine: TranscriptionEngine {
 
     private struct StreamState {
         var language: StreamLanguage
-        var buffer: [Float] = []
-        var bufferStart: TimeInterval?
+        var segmenter = StreamSegmenter()
+        /// Buffered samples already covered by the last partial decode.
         var decodedCount = 0
-        var lastWindow: [Segment] = []
-
-        var bufferSeconds: TimeInterval { Double(buffer.count) / AppCore.AudioChunk.sampleRate }
-        var endTime: TimeInterval { (bufferStart ?? 0) + bufferSeconds }
+        /// Wall-clock cost of the last partial decode; the next partial waits for proportionally more audio so decoding keeps up with real time.
+        var lastPartialCost: TimeInterval = 0
     }
 
+    /// Decodes `samples` (starting at media time `offset`), detecting the language first when it is still unknown.
     private func decode(
-        _ state: inout StreamState, options: TranscriptionOptions, model: ModelID, handle: WhisperHandle,
-        continuation: AsyncThrowingStream<TranscriptionEvent, any Error>.Continuation
-    ) async throws {
+        _ samples: ArraySlice<Float>, offset: TimeInterval, state: inout StreamState, options: TranscriptionOptions, model: ModelID,
+        handle: WhisperHandle, continuation: AsyncThrowingStream<TranscriptionEvent, any Error>.Continuation
+    ) async throws -> [Segment] {
         try Task.checkCancellation()
+        let audio = Array(samples)
         if state.language.needsDetection {
             state.language.needsDetection = false
-            let scores = try? await detectLanguage(samples: state.buffer, candidates: state.language.candidates, model: model)
+            let scores = try? await detectLanguage(samples: audio, candidates: state.language.candidates, model: model)
             if let scores, let top = scores.first {
                 state.language.fixed = top.language
                 continuation.yield(.languageDetected(scores))
             }
         }
         let decoding = decodingOptions(options, language: state.language.fixed, handle: handle)
-        let window = try await decodeWindow(state.buffer, offset: state.bufferStart ?? 0, decoding: decoding, handle: handle)
-        state.decodedCount = state.buffer.count
-        state.lastWindow = window.segments
+        let window = try await decodeWindow(audio, offset: offset, decoding: decoding, handle: handle)
         if state.language.fixed == nil, let detected = window.language {
             state.language.fixed = LanguageCode(detected)
             continuation.yield(.languageDetected([LanguageScore(language: LanguageCode(detected), probability: 1)]))
         }
+        return window.segments
     }
 
-    /// Emits `.final` for the first `count` segments of the last window and trims the buffer to the end of the last one.
-    private func confirm(
-        _ count: Int, state: inout StreamState, continuation: AsyncThrowingStream<TranscriptionEvent, any Error>.Continuation
-    ) {
-        guard count > 0 else { return }
-        let confirmed = Array(state.lastWindow.prefix(count))
-        for segment in confirmed { continuation.yield(.final(segment)) }
-        state.lastWindow.removeFirst(min(count, state.lastWindow.count))
-        if let end = confirmed.last?.end, let start = state.bufferStart {
-            let drop = min(state.buffer.count, max(0, Int((end - start) * AppCore.AudioChunk.sampleRate)))
-            state.buffer.removeFirst(drop)
-            state.bufferStart = start + Double(drop) / AppCore.AudioChunk.sampleRate
-            state.decodedCount = max(0, state.decodedCount - drop)
+    /// Decodes the pending utterance through buffer index `end`, emits its segments as `.final` and drops the audio.
+    private func finalizeUtterance(
+        through end: Int, state: inout StreamState, options: TranscriptionOptions, model: ModelID, handle: WhisperHandle,
+        continuation: AsyncThrowingStream<TranscriptionEvent, any Error>.Continuation
+    ) async throws {
+        if state.segmenter.hasSpeech, state.segmenter.speechSeconds >= state.segmenter.config.minSpeech {
+            let start = state.segmenter.utteranceStart
+            let segments = try await decode(
+                state.segmenter.samples(upTo: end), offset: state.segmenter.time(at: start), state: &state, options: options,
+                model: model, handle: handle, continuation: continuation)
+            for segment in segments { continuation.yield(.final(segment)) }
         }
+        state.segmenter.consume(upTo: end)
+        state.decodedCount = 0
     }
 
     private func runStream(
@@ -299,29 +299,46 @@ public actor WhisperKitEngine: TranscriptionEngine {
         let model = options.modelID ?? handle?.model ?? defaultModel
         let handle = try await loadedHandle(for: model)
         var state = StreamState(language: StreamLanguage(mode: options.languageMode))
-        let step = Int(Self.streamStepSeconds * AppCore.AudioChunk.sampleRate)
+        let clock = ContinuousClock()
+        let origin = clock.now
+        var firstMedia = 0.0
+        var sawChunk = false
 
         for await chunk in audio {
             try Task.checkCancellation()
-            if state.bufferStart == nil { state.bufferStart = chunk.startSeconds }
-            state.buffer.append(contentsOf: chunk.samples)
-            guard state.buffer.count - state.decodedCount >= step else { continue }
-            try await decode(&state, options: options, model: model, handle: handle, continuation: continuation)
-            if state.bufferSeconds >= Self.streamMaxBufferSeconds + 4 {
-                confirm(state.lastWindow.count, state: &state, continuation: continuation)
-            } else if state.bufferSeconds >= Self.streamMaxBufferSeconds, state.lastWindow.count > 1 {
-                confirm(state.lastWindow.count - 1, state: &state, continuation: continuation)
+            if !sawChunk {
+                sawChunk = true
+                firstMedia = chunk.startSeconds
             }
-            if let tail = state.lastWindow.last {
-                continuation.yield(.partial(PartialSegment(text: tail.text, start: tail.start, languageCode: state.language.fixed)))
+            state.segmenter.append(chunk)
+            // Finalise as soon as the utterance ends (pause or length cap); a forced cut can leave another one pending.
+            while let end = state.segmenter.finalizationPoint() {
+                try await finalizeUtterance(
+                    through: end, state: &state, options: options, model: model, handle: handle, continuation: continuation)
+            }
+            // Partials are best effort: when decoding has fallen behind the audio, skip them so finals stay timely.
+            let mediaElapsed = chunk.startSeconds + Double(chunk.samples.count) / AppCore.AudioChunk.sampleRate - firstMedia
+            let lag = (clock.now - origin).secondsValue - mediaElapsed
+            let step = Int(max(Self.streamStepSeconds, 1.5 * state.lastPartialCost) * AppCore.AudioChunk.sampleRate)
+            guard lag < Self.streamMaxPartialLagSeconds, state.segmenter.hasSpeech,
+                state.segmenter.buffer.count - state.decodedCount >= step
+            else { continue }
+            let began = clock.now
+            let segments = try await decode(
+                state.segmenter.samples(upTo: state.segmenter.buffer.count), offset: state.segmenter.time(at: state.segmenter.utteranceStart),
+                state: &state, options: options, model: model, handle: handle, continuation: continuation)
+            state.decodedCount = state.segmenter.buffer.count
+            state.lastPartialCost = (clock.now - began).secondsValue
+            if let first = segments.first {
+                let text = segments.map(\.text).joined(separator: " ")
+                continuation.yield(.partial(PartialSegment(text: text, start: first.start, languageCode: state.language.fixed)))
             }
         }
         try Task.checkCancellation()
-        let endTime = state.endTime
-        if state.buffer.count - state.decodedCount >= step / 5 {
-            try await decode(&state, options: options, model: model, handle: handle, continuation: continuation)
-        }
-        confirm(state.lastWindow.count, state: &state, continuation: continuation)
+        let endTime = state.segmenter.endTime
+        try await finalizeUtterance(
+            through: state.segmenter.buffer.count, state: &state, options: options, model: model, handle: handle,
+            continuation: continuation)
         continuation.yield(.progress(fraction: 1, mediaTime: endTime))
     }
 }

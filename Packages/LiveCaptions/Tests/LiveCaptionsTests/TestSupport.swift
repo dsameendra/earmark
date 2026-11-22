@@ -219,6 +219,8 @@ final class InMemoryTranscriptRepository: TranscriptRepository {
         try state.withLock { s in
             s.upsertCalls += 1
             if s.failUpserts { throw AppError.persistence(reason: "disk full") }
+            // Like a cancellation-aware database driver: a cancelled caller must not lose the write silently.
+            if Task.isCancelled { throw CancellationError() }
             for seg in segments {
                 if s.segments[id]?[seg.id] == nil { s.order[id, default: []].append(seg.id) }
                 s.segments[id, default: [:]][seg.id] = seg

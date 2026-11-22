@@ -268,8 +268,9 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         ctx.phase = .stopping
         setState(.stopping)
         await stopSources(ctx)
-        for t in ctx.engineTasks { t.cancel() }
+        // Flush first: this runs inside an engine task, which must not be cancelled before the final checkpoint.
         let id = await finish(ctx, graceful: true)
+        for t in ctx.engineTasks { t.cancel() }
         completedTranscriptID = id
         setState(.failed(Self.describe(error)))
     }
@@ -307,7 +308,8 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         await ctx.checkpointTask?.value
         if graceful { await promoteVolatile(ctx) }
         linesBus.send(ctx.store.lines)
-        _ = await checkpoint(ctx)
+        // Unstructured on purpose: a cancelled caller (view teardown, app quit) must not drop the last flush.
+        _ = await Task { await self.checkpoint(ctx) }.value
         lastTurns = ctx.timeline.turns
         ctx.phase = .finished
         if session === ctx { session = nil }
@@ -341,7 +343,9 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
             let id = ctx.store.setVolatile(
                 lane: lane, text: text, start: p.start, language: p.languageCode ?? ctx.detectedLanguage ?? ctx.fixedLanguage,
                 laneLabel: ctx.laneLabel(lane))
-            if ctx.diarizedLanes.contains(lane) { relabel(ctx, lane: lane) }
+            if ctx.diarizedLanes.contains(lane) {
+                relabel(ctx, lane: lane, touching: TimeRange(start: p.start, end: max(p.start, ctx.clock.now)))
+            }
             queueTranslation(ctx, lineID: id, segmentID: nil, text: text, language: p.languageCode, volatile: true)
             linesBus.send(ctx.store.lines)
         case .final(let segment):
@@ -399,9 +403,10 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         }
     }
 
-    private var limitNotified: Set<ObjectIdentifier> = []
     private func notifyLimitOnce(_ ctx: SessionContext) {
-        if limitNotified.insert(ObjectIdentifier(ctx)).inserted { eventBus.send(.speakerLimitReached) }
+        guard !ctx.limitNotified else { return }
+        ctx.limitNotified = true
+        eventBus.send(.speakerLimitReached)
     }
 
     /// Re-labels lines (and persisted segments) of a diarized lane that overlap `range` (or all when nil).

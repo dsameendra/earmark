@@ -26,6 +26,7 @@ final class SessionContext {
     var postContext = PostProcessingContext()
     var detectedLanguage: LanguageCode?
     var sourcesStopped = false
+    var limitNotified = false
 
     // Persistence
     var transcriptID: TranscriptID?

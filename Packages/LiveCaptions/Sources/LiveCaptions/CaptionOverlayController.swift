@@ -19,6 +19,8 @@ final class CaptionPanel: NSPanel {
         isMovableByWindowBackground = true
         animationBehavior = .none
         isReleasedWhenClosed = false
+        // Captions are dark-styled so appearance tokens resolve to dark and light text stays legible.
+        appearance = NSAppearance(named: .darkAqua)
         contentMinSize = OverlayPlacement.minimumSize
         titleVisibility = .hidden
     }

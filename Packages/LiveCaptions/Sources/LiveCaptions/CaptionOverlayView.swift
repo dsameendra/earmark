@@ -26,22 +26,27 @@ public struct CaptionOverlayView: View {
         let preset = model.preset
         let policy = policy
         let alignment = Self.horizontalAlignment(preset.alignment)
-        VStack(alignment: alignment, spacing: DSSpacing.xs) {
-            ForEach(model.visibleLines) { line in
-                CaptionLineView(line: line, preset: preset, highContrast: policy.usesHighContrast, alignment: alignment)
-                    .transition(DSTransition.appear(policy))
+        ZStack {
+            VStack(alignment: alignment, spacing: DSSpacing.xs) {
+                ForEach(model.visibleLines) { line in
+                    CaptionLineView(line: line, preset: preset, highContrast: policy.usesHighContrast, alignment: alignment)
+                        .transition(DSTransition.appear(policy))
+                }
             }
+            .frame(maxWidth: .infinity, alignment: Self.frameAlignment(preset.alignment))
+            .padding(.horizontal, DSSpacing.lg)
+            .padding(.vertical, DSSpacing.md)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .clipped()
+            .background { CaptionBackground(preset: preset, policy: policy) }
+            // Only the captions fade after silence; the recording dot below always stays visible (LIVE-AC-18).
+            .opacity(model.isFaded ? 0 : 1)
+            .animation(policy.animation(.easeInOut(duration: 0.4)), value: model.isFaded)
+            .animation(policy.animation(.easeOut(duration: 0.15)), value: model.visibleLines.map(\.id))
         }
-        .frame(maxWidth: .infinity, alignment: Self.frameAlignment(preset.alignment))
-        .padding(.horizontal, DSSpacing.lg)
-        .padding(.vertical, DSSpacing.md)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .clipped()
-        .background { CaptionBackground(preset: preset, policy: policy) }
         .overlay(alignment: .topTrailing) { indicator }
-        .opacity(model.isFaded ? 0 : 1)
-        .animation(policy.animation(.easeInOut(duration: 0.4)), value: model.isFaded)
-        .animation(policy.animation(.easeOut(duration: 0.15)), value: model.visibleLines.map(\.id))
+        // Captions are always dark-styled: light text on a dark surface regardless of the system appearance.
+        .environment(\.colorScheme, .dark)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("liveCaptions.overlay")
     }
@@ -125,7 +130,7 @@ struct CaptionLineView: View {
                 .italic(line.isVolatile)
                 .foregroundStyle(textColor.opacity(line.isVolatile ? 0.65 : 1))
                 .multilineTextAlignment(textAlignment)
-                .shadow(color: preset.textOutline ? Color(nsColor: .shadowColor).opacity(0.9) : .clear, radius: 1.5)
+                .shadow(color: preset.textOutline ? DSColor.solidChrome.opacity(0.9) : .clear, radius: 1.5)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

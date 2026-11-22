@@ -319,6 +319,19 @@ struct CaptionOverlayTests {
         await controller.hide()
     }
 
+    @Test("Holding Option makes a click-through overlay temporarily interactive (LIVE-AC-02)")
+    func modifierHover() async {
+        let display = DisplayInfo(id: 1, frame: CGRect(x: 0, y: 0, width: 1_000, height: 700), isPrimary: true)
+        let controller = CaptionOverlayController(settings: InMemorySettings(), displays: FixedDisplays(list: [display]))
+        await controller.show(preset: CaptionPresetCatalog.subtle)
+        #expect(controller.panel?.ignoresMouseEvents == true)
+        controller.setModifierOverride(true)
+        #expect(controller.panel?.ignoresMouseEvents == false)
+        controller.setModifierOverride(false)
+        #expect(controller.panel?.ignoresMouseEvents == true)
+        await controller.hide()
+    }
+
     @Test("A saved display that is no longer attached falls back to the primary")
     func controllerHotPlug() async {
         let settings = InMemorySettings()

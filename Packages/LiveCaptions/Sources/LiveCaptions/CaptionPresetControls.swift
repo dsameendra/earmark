@@ -3,7 +3,8 @@ import DesignSystem
 import SwiftUI
 
 /// Preset controls from the Components board: size step, 1-3 lines, background opacity, plus label toggles.
-/// Solid surface (no glass), so it can sit in Settings or the Live view. M8 restyles it.
+/// Solid surface (no glass), so it can sit in Settings or the Live view. Built-in presets are protected by
+/// `CaptionPresetStore` (edits must go through Save As), not by this view. M8 restyles it.
 public struct CaptionPresetControls: View {
     @Binding private var preset: CaptionPreset
     public init(preset: Binding<CaptionPreset>) { _preset = preset }
@@ -44,7 +45,6 @@ public struct CaptionPresetControls: View {
         }
         .padding(DSSpacing.lg)
         .background(DSColor.contentBackground, in: RoundedRectangle(cornerRadius: DSRadius.medium, style: .continuous))
-        .disabled(preset.isBuiltIn)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("liveCaptions.preset.controls")
     }

@@ -17,6 +17,7 @@ struct EarmarkApp: App {
     var body: some Scene {
         Window("Earmark", id: MainWindow.id) {
             ShellView(model: environment.shell)
+                .background { if let packs = environment.translationPacks { TranslationPackHost(installer: packs) } }
         }
         .defaultSize(width: 1000, height: 640)
         .commands { ShellCommands(model: environment.shell) }

@@ -115,6 +115,8 @@ public final class TranscriptEditorModel {
     @ObservationIgnored let repository: any TranscriptRepository
     @ObservationIgnored let settings: any SettingsStore
     @ObservationIgnored let media: (any MediaRepository)?
+    /// Roots that library-relative media paths resolve against; the composition root supplies the real ones.
+    @ObservationIgnored var mediaRoots: @Sendable () async -> [URL] = { MediaFiles.defaultRoots }
     @ObservationIgnored let presets: (any PresetRepository)?
     @ObservationIgnored private let engineFactory: @MainActor @Sendable (URL) async -> (engine: any PlayerControlling, isVideo: Bool)?
     @ObservationIgnored private var indexByID: [SegmentID: Int] = [:]
@@ -155,6 +157,7 @@ public final class TranscriptEditorModel {
         retranscriber = services.segmentRetranscriber
         translationService = services.translation
         jobQueue = services.jobQueue
+        mediaRoots = services.mediaRoots
         models = services.models
     }
 
@@ -226,7 +229,7 @@ public final class TranscriptEditorModel {
         if resolved == nil, let assetID = transcript.mediaAssetID, let media, let asset = try? await media.asset(assetID),
             asset.deletedAt == nil
         {
-            resolved = MediaLocator.url(for: asset)
+            resolved = MediaLocator.url(for: asset, roots: await mediaRoots())
         }
         mediaURL = resolved
         guard let url = resolved, let made = await engineFactory(url) else {

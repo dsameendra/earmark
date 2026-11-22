@@ -65,8 +65,19 @@ enum MeetingRuntimeFactory {
 
     /// MTG-AC-12: finishes recordings a crash or quit left half-written, then queues one finalization job for each (unless
     /// the queue already holds one for that folder).
-    static func recover(root: URL, meetings: any MeetingRepository, jobs: any JobQueue) async {
-        let recovered = await RecordingRecovery.recover(in: root, meetings: meetings)
+    ///
+    /// Folders of the active (or starting) session and folders a pending or running finalization job already owns are
+    /// skipped, so recovery cannot repair files a live recorder is writing or race `MeetingFinalizer` on `mix.m4a`.
+    static func recover(root: URL, meetings: any MeetingRepository, jobs: any JobQueue, controller: MeetingSessionController) async {
+        let recovered = await RecordingRecovery.recover(
+            in: root, meetings: meetings,
+            skipping: { directory in
+                let target = directory.standardizedFileURL
+                if await controller.activeRecordingDirectories.contains(where: { $0.standardizedFileURL == target }) { return true }
+                return await jobs.jobs().contains {
+                    $0.kind == .finalizeMeeting && [.pending, .running, .paused].contains($0.state) && $0.input?.standardizedFileURL == target
+                }
+            })
         guard !recovered.isEmpty else { return }
         let existing = await jobs.jobs().filter { $0.kind == .finalizeMeeting && $0.state != .cancelled }.compactMap(\.input)
         for item in recovered where !existing.contains(item.directory) {

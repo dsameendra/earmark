@@ -187,6 +187,18 @@ struct ControllerTests {
         #expect(second.count == 1)
     }
 
+    @Test("two concurrent starts open exactly one recording")
+    func concurrentStartsAreRejected() async {
+        let rig = Rig()
+        async let first: Void = rig.controller.startSession(app: .zoom, transcribe: true, record: true)
+        async let second: Void = rig.controller.startSession(app: .zoom, transcribe: true, record: true)
+        _ = await (first, second)
+        let log = await rig.logRef.entries
+        #expect(log.filter { $0 == "mic.start" }.count == 1)
+        #expect(log.filter { $0.hasPrefix("recorder.start:") }.count == 1)
+        #expect(await rig.controller.currentSession != nil)
+    }
+
     // MTG-AC-06
     @Test("quiet hours and exclusions fall back to asking")
     func quietHoursPrompt() async {

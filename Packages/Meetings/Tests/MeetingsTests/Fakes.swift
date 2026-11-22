@@ -180,6 +180,14 @@ actor InMemoryTranscripts: TranscriptRepository {
 
 // MARK: - Engines and diarization
 
+/// Repository whose `save` always throws, like a failing database.
+actor FailingMeetings: MeetingRepository {
+    struct Failure: Error {}
+    func meetings() async throws -> [Meeting] { [] }
+    func save(_ meeting: Meeting) async throws { throw Failure() }
+    func softDelete(_ id: MeetingID) async throws {}
+}
+
 actor CallLog {
     private(set) var entries: [String] = []
     func add(_ entry: String) { entries.append(entry) }

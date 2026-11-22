@@ -1,5 +1,6 @@
 import AVFoundation
 import AppCore
+import FeatureSupport
 import Foundation
 import Observation
 import SwiftUI
@@ -287,17 +288,10 @@ public final class AVPlayerEngine: PlayerControlling {
 
 /// Resolves a transcript's media asset to a readable file URL.
 public enum MediaLocator {
-    /// Default library root used for assets stored relative to it.
-    public static var defaultLibraryRoot: URL {
-        URL.applicationSupportDirectory.appending(path: "Earmark/Library", directoryHint: .isDirectory)
-    }
-
-    /// The URL for `asset`, or nil when the file is gone.
-    public static func url(for asset: MediaAsset, libraryRoot: URL = defaultLibraryRoot) -> URL? {
-        if let relative = asset.libraryRelativePath {
-            let url = libraryRoot.appending(path: relative)
-            if FileManager.default.isReadableFile(atPath: url.path) { return url }
-        }
+    /// The URL for `asset`, or nil when the file is gone. Library-relative paths resolve against `roots` in order
+    /// (meeting recordings are relative to the meetings root, see ``MediaFiles``).
+    public static func url(for asset: MediaAsset, roots: [URL] = MediaFiles.defaultRoots) -> URL? {
+        if let relative = asset.libraryRelativePath, let url = MediaFiles.resolve(relative, roots: roots) { return url }
         if let bookmark = asset.bookmark {
             var stale = false
             let resolved = try? URL(

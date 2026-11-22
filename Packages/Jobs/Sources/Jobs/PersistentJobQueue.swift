@@ -75,13 +75,36 @@ public actor PersistentJobQueue: JobQueue {
             created.append(
                 Job(kind: .transcribeFile, input: url, settings: settings, createdAt: base.addingTimeInterval(Double(index) * 0.001)))
         }
+        var batch: UUID?
         if created.count > 1 {
-            let batch = UUID()
+            let key = UUID()
+            batch = key
             let ids = created.map(\.id)
-            batches[batch] = BatchState(jobIDs: ids, remaining: Set(ids))
-            for id in ids { batchOf[id] = batch }
+            batches[key] = BatchState(jobIDs: ids, remaining: Set(ids))
+            for id in ids { batchOf[id] = key }
         }
-        for job in created { try await insert(job) }
+        var inserted: [JobID] = []
+        do {
+            for job in created {
+                try await insert(job)
+                inserted.append(job.id)
+            }
+        } catch {
+            // The batch must only describe jobs that exist, or `batchFinished` would wait for ids that were never stored.
+            if let batch {
+                for job in created where !inserted.contains(job.id) { batchOf[job.id] = nil }
+                if inserted.count > 1, var state = batches[batch] {
+                    state.jobIDs = inserted
+                    state.remaining.formIntersection(inserted)
+                    batches[batch] = state
+                } else {
+                    batches[batch] = nil
+                    for id in inserted { batchOf[id] = nil }
+                }
+            }
+            await schedule()
+            throw error
+        }
         await schedule()
         return created.map(\.id)
     }

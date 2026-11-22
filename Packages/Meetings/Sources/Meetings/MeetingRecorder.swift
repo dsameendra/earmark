@@ -1,3 +1,4 @@
+import AVFoundation
 import AppCore
 import Darwin
 import Foundation
@@ -128,6 +129,7 @@ public actor MeetingRecorder: BookmarkingRecorder {
         }
         guard state == .recording || state == .halted, var manifest else {
             try? await video.stop()  // stopped while the video was starting
+            try? FileManager.default.removeItem(at: dir.appendingPathComponent(Self.videoFile))  // not in any manifest
             return
         }
         videoRunning = true
@@ -139,7 +141,7 @@ public actor MeetingRecorder: BookmarkingRecorder {
 
     public func stop() async throws -> Recording {
         if let result { return result }
-        guard state == .recording || state == .halted, let directory, var manifest else { throw RecorderError.notRecording }
+        guard state == .recording || state == .halted, let directory, manifest != nil else { throw RecorderError.notRecording }
         await drainConsumers()
         for writer in writers.values { try? writer.close() }
         writers = [:]
@@ -147,6 +149,8 @@ public actor MeetingRecorder: BookmarkingRecorder {
             videoRunning = false
             do { try await video.stop() } catch { broadcaster.send(.videoFailed(reason: String(describing: error))) }
         }
+        // Re-read after the awaits above: `startVideo` may have added the video track while this actor was suspended.
+        guard var manifest else { throw RecorderError.notRecording }
         manifest.state = .stopped
         try? manifest.write(to: directory)
         let outcome = await Task.detached(priority: .utility) { RecordingFinisher.finish(directory: directory, manifest: manifest) }.value
@@ -274,7 +278,9 @@ enum RecordingFinisher {
         var mixError: String?
     }
 
-    static func finish(directory: URL, manifest input: RecordingManifest) -> Outcome {
+    /// `finalize: false` leaves the manifest `.stopped` even when everything worked; the caller marks it `.finalized`
+    /// once the meeting is saved (so a failed save is retried at the next launch).
+    static func finish(directory: URL, manifest input: RecordingManifest, finalize: Bool = true) -> Outcome {
         var manifest = input
         let fm = FileManager.default
         var kept: [RecordingTrack] = []
@@ -294,7 +300,7 @@ enum RecordingFinisher {
             case .video:
                 let size = (try? fm.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
                 if size > 0 { kept.append(track) }
-            case .mix: break
+            case .mix: break  // rebuilt below, or kept when a previous (partial) recovery already produced it
             }
         }
         var mixError: String?
@@ -312,11 +318,19 @@ enum RecordingFinisher {
                 mixError = String(describing: error)
             }
         }
+        if !kept.contains(where: { $0.role == .mix }) {
+            let mixURL = directory.appendingPathComponent(MeetingRecorder.mixFile)
+            let size = (try? fm.attributesOfItem(atPath: mixURL.path)[.size] as? Int) ?? 0
+            if size > 0, mixError == nil {
+                kept.append(RecordingTrack(role: .mix, relativePath: MeetingRecorder.mixFile))
+                if longestFrames == 0, let file = try? AVAudioFile(forReading: mixURL) { longestFrames = Int(Double(file.length) / file.processingFormat.sampleRate * AudioChunk.sampleRate) }
+            }
+        }
         let duration = Double(longestFrames) / AudioChunk.sampleRate
         manifest.tracks = kept
         manifest.duration = duration
         // A failed mix leaves the manifest in `.stopped` so recovery retries it; otherwise the recording is complete.
-        manifest.state = mixError == nil ? .finalized : .stopped
+        manifest.state = mixError == nil && finalize ? .finalized : .stopped
         try? manifest.write(to: directory)
         let prefix = manifest.relativeDirectory.map { $0.hasSuffix("/") ? $0 : $0 + "/" } ?? ""
         let published = kept.map { RecordingTrack(role: $0.role, relativePath: prefix + $0.relativePath) }
@@ -344,19 +358,38 @@ public enum RecordingRecovery {
         }
     }
 
+    /// `skipping` is asked (right before each directory is touched) whether the directory belongs to a recording or
+    /// finalization that is still running in this process, e.g. the active session; such directories are left alone.
+    /// The manifest is marked `.finalized` only after the meeting row is saved: a failed save leaves it unfinished so the
+    /// next launch retries instead of losing the recording.
     @discardableResult
-    public static func recover(in root: URL, meetings: (any MeetingRepository)? = nil) async -> [RecoveredRecording] {
+    public static func recover(
+        in root: URL, meetings: (any MeetingRepository)? = nil, skipping: @Sendable (URL) async -> Bool = { _ in false }
+    ) async -> [RecoveredRecording] {
         var out: [RecoveredRecording] = []
         for dir in interruptedDirectories(in: root) {
+            if await skipping(dir) { continue }
             guard let manifest = try? RecordingManifest.read(from: dir) else { continue }
-            let outcome = await Task.detached(priority: .utility) { RecordingFinisher.finish(directory: dir, manifest: manifest) }.value
+            let outcome = await Task.detached(priority: .utility) {
+                RecordingFinisher.finish(directory: dir, manifest: manifest, finalize: false)
+            }.value
             let existing = try? await meetings?.meetings().first { $0.id == manifest.meetingID }
             var meeting = existing ?? Meeting(id: manifest.meetingID, app: manifest.app, startedAt: manifest.startedAt)
             meeting.endedAt = meeting.endedAt ?? manifest.startedAt.addingTimeInterval(outcome.recording.duration)
             meeting.recording = outcome.recording
-            try? await meetings?.save(meeting)
-            out.append(RecoveredRecording(directory: dir, meeting: meeting, manifest: outcome.manifest))
+            do { try await meetings?.save(meeting) } catch {
+                log.error("recovery could not save the meeting; will retry at next launch: \(String(describing: error), privacy: .public)")
+                continue
+            }
+            var finished = outcome.manifest
+            if outcome.mixError == nil {
+                finished.state = .finalized
+                try? finished.write(to: dir)
+            }
+            out.append(RecoveredRecording(directory: dir, meeting: meeting, manifest: finished))
         }
         return out
     }
+
+    private static let log = AppLog.logger("meetings.recovery")
 }

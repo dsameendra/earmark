@@ -34,6 +34,8 @@ public final class InMemoryLaunchAtLogin: LaunchAtLoginControlling {
 
 /// Everything the Settings scene needs, expressed as AppCore protocols (built by the composition root).
 public struct SettingsDependencies: Sendable {
+    /// Removes expired Recently Deleted items together with their library-owned media files; nil removes rows only.
+    public var mediaPurger: MediaPurger?
     public var store: any SettingsStore
     public var models: any ModelManaging
     public var hardware: any HardwareTierProviding

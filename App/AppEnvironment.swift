@@ -95,9 +95,12 @@ final class AppEnvironment {
         let settings = services.settings
         let queue = services.jobQueue
         let repository = services.meetings
+        let controller = meetings.controller
         Task {
+            // Recovery finishes before detection starts, so an auto-started recording can never be mistaken for a leftover.
+            await MeetingRuntimeFactory.recover(
+                root: await meetings.recordingsRoot(), meetings: repository, jobs: queue, controller: controller)
             await meetings.detector.start()
-            await MeetingRuntimeFactory.recover(root: await meetings.recordingsRoot(), meetings: repository, jobs: queue)
         }
         MeetingRuntimeFactory.followConsent(settings: settings)
         if let hotkeys = composition.dictation?.hotkeys {
@@ -228,14 +231,17 @@ final class AppEnvironment {
             speakerEmbeddings: embeddings,
             segmentRetranscriber: SegmentRetranscriptionAdapter(
                 router: DefaultEngineRouter(), hardware: hardware, models: models, engines: engines, explicitModel: explicitModel),
-            translation: translation.service)
-        let settingsDependencies = SettingsDependencies(
+            translation: translation.service,
+            mediaRoots: { [recordings = meetings.recordingsRoot] in [await recordings()] + MediaFiles.defaultRoots })
+        var settingsDependencies = SettingsDependencies(
             store: settings, models: models, hardware: hardware, audioDevices: audioDevices, permissions: permissions,
             rules: database.rules, presets: database.presets, transcripts: database.transcripts,
             hotkeyDiagnostics: dictation.hotkeys,
             retryHotkeys: { [controller = dictation.controller] in await controller.retryHotkeyRegistration() },
             overlayPlacement: live.overlay, voiceProfiles: database.voiceProfiles,
             microphonePreview: { uid in MicrophoneSource(deviceUID: uid, permissions: permissions, deviceProvider: audioDevices) })
+        settingsDependencies.mediaPurger = MediaPurger(
+            transcripts: database.transcripts, media: database.media, meetings: database.meetings, roots: services.mediaRoots)
         return Composition(
             services: services, settingsDependencies: settingsDependencies, live: live, dictation: dictation, meetings: meetings,
             translationPacks: translation.packs, engineRouter: router)

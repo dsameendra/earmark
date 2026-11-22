@@ -51,7 +51,7 @@ public final class SettingsEnvironment {
         translation = TranslationSettingsModel(store: deps.store)
         exportDefaults = ExportDefaultsModel(repository: deps.presets, store: deps.store)
         storage = StorageSettingsModel(
-            store: deps.store, models: deps.models, transcripts: deps.transcripts, clearCaches: deps.clearCaches)
+            store: deps.store, models: deps.models, transcripts: deps.transcripts, purger: deps.mediaPurger, clearCaches: deps.clearCaches)
         shortcuts = ShortcutsModel(
             store: deps.store, hotkeys: deps.hotkeys, diagnostics: deps.hotkeyDiagnostics, retryRegistration: deps.retryHotkeys)
         permissions = PermissionsSettingsModel(service: deps.permissions)

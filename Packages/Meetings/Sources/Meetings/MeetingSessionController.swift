@@ -73,6 +73,10 @@ public actor MeetingSessionController {
     private let calendar: Calendar
     private let broadcaster = Broadcaster<MeetingSessionEvent>()
     private var active: Active?
+    /// Set synchronously when `startSession` begins, because it suspends many times before `active` exists.
+    private var starting = false
+    /// The folder a session that is still starting is about to write, so crash recovery never mistakes it for a leftover.
+    private var startingDirectory: URL?
     private var pendingPrompts: [MeetingApp: Date] = [:]
     private var listener: Task<Void, Never>?
     private let log = AppLog.logger("meetings.session")
@@ -101,6 +105,8 @@ public actor MeetingSessionController {
 
     public nonisolated func events() -> AsyncStream<MeetingSessionEvent> { broadcaster.stream() }
     public var currentSession: MeetingSessionInfo? { active?.info }
+    /// Recording folders owned by this controller right now (running, or about to be created); crash recovery skips them.
+    public var activeRecordingDirectories: [URL] { [active?.directory, startingDirectory].compactMap { $0 } }
 
     /// Starts reacting to detector events. Idempotent.
     public func start() {
@@ -125,7 +131,7 @@ public actor MeetingSessionController {
     public func handle(_ event: MeetingEvent) async {
         switch event {
         case .started(let app, let at):
-            guard active == nil else { return }
+            guard active == nil, !starting else { return }
             let decision = await policies.decide(for: app, now: clock.now())
             switch decision.action {
             case .ignore: break
@@ -145,7 +151,12 @@ public actor MeetingSessionController {
 
     /// The user answered the prompt (or chose to start manually from the menu bar).
     public func startSession(app: MeetingApp, startedAt: Date? = nil, transcribe: Bool, record: Bool, video: Bool = false) async {
-        guard active == nil, transcribe || record else { return }
+        guard active == nil, !starting, transcribe || record else { return }
+        starting = true
+        defer {
+            starting = false
+            startingDirectory = nil
+        }
         pendingPrompts[app] = nil
         let started = startedAt ?? clock.now()
         var meeting = Meeting(app: app, startedAt: started)
@@ -190,6 +201,7 @@ public actor MeetingSessionController {
         let folder =
             "\(stamp.string(from: state.info.startedAt)) \(app == .zoom ? "Zoom" : "Teams") \(state.info.meetingID.rawValue.uuidString.prefix(8))"
         let directory = root.appendingPathComponent(folder, isDirectory: true)
+        startingDirectory = directory
         let recorder = makeRecorder(
             RecordingSession(meetingID: state.info.meetingID, app: app, startedAt: state.info.startedAt, relativeDirectory: folder))
 

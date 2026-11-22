@@ -92,6 +92,7 @@ public final class StorageSettingsModel {
     public private(set) var modelUsage = DiskUsage(totalBytes: 0, perModel: [:])
     public private(set) var lastFreedBytes: Int64?
     public private(set) var lastPurged: Int?
+    @ObservationIgnored private let purger: MediaPurger?
 
     @ObservationIgnored private let models: any ModelManaging
     @ObservationIgnored private let transcripts: (any TranscriptRepository)?
@@ -99,8 +100,9 @@ public final class StorageSettingsModel {
 
     public init(
         store: any SettingsStore, models: any ModelManaging, transcripts: (any TranscriptRepository)?,
-        clearCaches: @escaping @Sendable () async -> Int64
+        purger: MediaPurger? = nil, clearCaches: @escaping @Sendable () async -> Int64
     ) {
+        self.purger = purger
         self.models = models
         self.transcripts = transcripts
         clearCachesAction = clearCaches
@@ -120,7 +122,9 @@ public final class StorageSettingsModel {
     public func purgeExpiredNow(now: Date = Date()) async {
         guard let transcripts else { return }
         let cutoff = now.addingTimeInterval(-Double(retentionDays.value) * 86_400)
-        lastPurged = try? await transcripts.purgeDeleted(before: cutoff)
+        if let purger { lastPurged = try? await purger.purgeDeleted(before: cutoff) } else {
+            lastPurged = try? await transcripts.purgeDeleted(before: cutoff)
+        }
     }
 }
 

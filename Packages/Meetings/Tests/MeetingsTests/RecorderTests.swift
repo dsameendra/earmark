@@ -310,6 +310,67 @@ struct RecorderTests {
         #expect(recording.tracks.contains { $0.role == .video })
     }
 
+    @Test("stop while video is still starting keeps the video track in the manifest")
+    func stopDuringVideoStartup() async throws {
+        let dir = tempDirectory()
+        let video = GatedVideo()
+        let rec = recorder(video: video)
+        let micStream = AsyncStream<AudioChunk>(bufferingPolicy: .bufferingNewest(1)) { _ in }  // never finishes: stop waits for the grace
+        let starting = Task {
+            try await rec.start(config: RecordingConfig(directory: dir, includeVideo: true), mic: micStream, remote: stream([]))
+        }
+        try await Task.sleep(for: .milliseconds(100))
+        let stopping = Task { try await rec.stop() }
+        try await Task.sleep(for: .milliseconds(200))  // stop is now draining; the video start resumes during that await
+        await video.release()
+        try await starting.value
+        let recording = try await stopping.value
+        #expect(recording.tracks.contains { $0.role == .video })
+        #expect(try RecordingManifest.read(from: dir).includesVideo)
+        #expect(try RecordingManifest.read(from: dir).tracks.contains { $0.role == .video })
+    }
+
+    @Test("recovery leaves the manifest unfinished when the meeting cannot be saved, then retries")
+    func recoveryWaitsForSave() async throws {
+        let root = tempDirectory("root")
+        let dir = root.appendingPathComponent("m1")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let writer = try CAFTrackWriter(url: dir.appendingPathComponent("mic.caf"))
+        try writer.append(tone(seconds: 1).samples)
+        try writer.flush()
+        try RecordingManifest(
+            version: 1, meetingID: MeetingID(), app: .zoom, startedAt: Date(timeIntervalSince1970: 1_700_000_000), state: .recording,
+            tracks: [RecordingTrack(role: .mic, relativePath: "mic.caf")], includesVideo: false, wantsMix: true,
+            keepSeparateTracks: false, duration: 0, bookmarks: [], haltedReason: nil, relativeDirectory: nil
+        ).write(to: dir)
+        let failing = FailingMeetings()
+        #expect(await RecordingRecovery.recover(in: root, meetings: failing).isEmpty)
+        #expect(try RecordingManifest.read(from: dir).state != .finalized)
+        #expect(RecordingRecovery.interruptedDirectories(in: root).count == 1)
+        // The retry (mix already built, separate tracks already removed) still publishes the mix.
+        let repo = InMemoryMeetings()
+        let recovered = try #require(await RecordingRecovery.recover(in: root, meetings: repo).first)
+        #expect(recovered.meeting.recording?.tracks.map(\.role) == [.mix])
+        #expect(recovered.manifest.state == .finalized)
+        #expect(try RecordingManifest.read(from: dir).state == .finalized)
+    }
+
+    @Test("recovery skips directories that belong to a live session")
+    func recoverySkipsLiveSession() async throws {
+        let root = tempDirectory("root")
+        let dir = root.appendingPathComponent("live")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try RecordingManifest(
+            version: 1, meetingID: MeetingID(), app: .zoom, startedAt: Date(), state: .recording,
+            tracks: [RecordingTrack(role: .mic, relativePath: "mic.caf")], includesVideo: false, wantsMix: true,
+            keepSeparateTracks: true, duration: 0, bookmarks: [], haltedReason: nil, relativeDirectory: nil
+        ).write(to: dir)
+        let live = dir.standardizedFileURL
+        let skipped = await RecordingRecovery.recover(in: root, meetings: nil, skipping: { $0.standardizedFileURL == live })
+        #expect(skipped.isEmpty)
+        #expect(try RecordingManifest.read(from: dir).state == .recording)
+    }
+
     @Test("video is recorded only when requested, started before audio and stopped on stop")
     func videoRecorded() async throws {
         let dir = tempDirectory()

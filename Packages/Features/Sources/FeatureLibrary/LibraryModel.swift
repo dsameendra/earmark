@@ -55,6 +55,11 @@ public final class LibraryModel {
         self.calendar = calendar
     }
 
+    private var purger: MediaPurger {
+        MediaPurger(
+            transcripts: services.transcripts, media: services.media, meetings: services.meetings, roots: services.mediaRoots)
+    }
+
     // MARK: Query
 
     /// The repository query for the current search, filters and sort. Stable between calls (usable as a task identity).
@@ -171,7 +176,7 @@ public final class LibraryModel {
     @discardableResult
     public func purgeExpired() async -> Int {
         guard retentionDays > 0, let cutoff = calendar.date(byAdding: .day, value: -retentionDays, to: now()) else { return 0 }
-        return (try? await transcripts.purgeDeleted(before: cutoff)) ?? 0
+        return (try? await purger.purgeDeleted(before: cutoff)) ?? 0
     }
 
     /// Whole days left before `item` is purged; `nil` when retention is "forever" or the item is not deleted.
@@ -236,17 +241,10 @@ public final class LibraryModel {
 
     public func restore(_ ids: [TranscriptID]) async { await apply { try await $0.restore(ids) } }
 
-    /// Permanently removes transcripts and their library-owned media rows. Callers confirm first (LIB-AC-09).
+    /// Permanently removes transcripts and their library-owned media files and rows. Callers confirm first (LIB-AC-09).
     public func purge(_ ids: [TranscriptID]) async {
-        var owned: [MediaAssetID] = []
-        for id in ids {
-            guard let item = try? await transcripts.transcript(id), let assetID = item.mediaAssetID,
-                let asset = try? await services.media?.asset(assetID), asset.isOwnedByLibrary
-            else { continue }
-            owned.append(assetID)
-        }
-        await apply { try await $0.purge(ids) }
-        for assetID in owned { try? await services.media?.softDelete(assetID) }
+        let purger = purger
+        await apply { _ in try await purger.purge(ids) }
     }
 
     /// Permanently removes everything in Recently Deleted.

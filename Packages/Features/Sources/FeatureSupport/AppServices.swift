@@ -1,4 +1,5 @@
 import AppCore
+import Foundation
 
 /// The dependency bundle the app shell hands to feature models (built by the composition root in `App/`).
 public struct AppServices: Sendable {
@@ -14,6 +15,8 @@ public struct AppServices: Sendable {
     public var settings: any SettingsStore
     /// Media assets (relink, library-owned media). Optional until the composition root provides it.
     public var media: (any MediaRepository)?
+    /// Directories that library-relative media paths resolve against, in priority order (see ``MediaFiles``).
+    public var mediaRoots: @Sendable () async -> [URL]
     /// Export presets (batch auto-export picker). Optional until the composition root provides it.
     public var presets: (any PresetRepository)?
     /// Pause, meter, overlay and preset controls for live captions; `nil` where unavailable (previews, mocks).
@@ -41,8 +44,10 @@ public struct AppServices: Sendable {
         liveExtras: (any LiveSessionExtras)? = nil, dictation: DictationMenuControl? = nil,
         meetingCapture: (any MeetingCapturing)? = nil, meetingPrompts: (any MeetingPromptPresenting)? = nil,
         voiceProfiles: (any VoiceProfileRepository)? = nil, speakerEmbeddings: (any SpeakerEmbeddingProvider)? = nil,
-        segmentRetranscriber: (any SegmentRetranscriptionService)? = nil, translation: (any TranslationPreparing)? = nil
+        segmentRetranscriber: (any SegmentRetranscriptionService)? = nil, translation: (any TranslationPreparing)? = nil,
+        mediaRoots: @escaping @Sendable () async -> [URL] = { MediaFiles.defaultRoots }
     ) {
+        self.mediaRoots = mediaRoots
         self.segmentRetranscriber = segmentRetranscriber
         self.translation = translation
         self.meetingCapture = meetingCapture

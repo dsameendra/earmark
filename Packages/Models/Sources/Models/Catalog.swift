@@ -83,13 +83,17 @@ public enum BuiltInCatalog {
             license: LicenseInfo(spdx: "LicenseRef-Apple-System"), minTier: .tier8,
             notes: "System language packs; does not support Sinhala."),
         ModelDescriptor(
-            id: "nllb/200-distilled-600M", displayName: "NLLB-200 distilled 600M", kind: .translation, runtime: .other,
-            engine: "nllb", languages: ["si", "en", "ta", "hi"], sizeBytes: 2_460 * mb,
+            id: "nllb/200-distilled-600M", displayName: "NLLB-200 distilled 600M (CTranslate2 int8)", kind: .translation,
+            runtime: .other, engine: "nllb", languages: ["si", "en", "ta", "hi", "bn", "ur"], sizeBytes: 647 * mb,
             license: LicenseInfo(
                 spdx: "CC-BY-NC-4.0", isNonCommercial: true,
-                attribution: "NLLB-200 by Meta AI, CC BY-NC 4.0. Non-commercial use only; research model, not for production."),
-            minTier: .tier16, sourceURL: hf("facebook/nllb-200-distilled-600M"), isExperimental: true,
-            notes: "Sinhala translation for non-commercial builds. Source repo is fp32 (about 2.5 GB); int8 conversion is about 0.7 GB."),
+                attribution:
+                    "NLLB-200 by Meta AI, CC BY-NC 4.0 (int8 CTranslate2 conversion by JustFrederik). Non-commercial use only; research model, not for production."
+            ),
+            minTier: .tier16, sourceURL: hf("JustFrederik/nllb-200-distilled-600M-ct2-int8/tree/main"), isExperimental: true,
+            notes:
+                "Sinhala translation for non-commercial builds. Download is 647 MB (measured from the repo listing: model.bin 623 MB, "
+                + "SentencePiece 4.9 MB, vocab 2.6 MB, tokenizer.json 17 MB). English to Sinhala is low confidence."),
         ModelDescriptor(
             id: "madlad/400-3b-mt-q4k", displayName: "MADLAD-400 3B (q4k, optional)", kind: .translation, runtime: .gguf,
             engine: "madlad", languages: ["si", "en"], sizeBytes: 1_650 * mb,

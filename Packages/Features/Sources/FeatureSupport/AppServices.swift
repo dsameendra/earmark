@@ -28,6 +28,10 @@ public struct AppServices: Sendable {
     public var voiceProfiles: (any VoiceProfileRepository)?
     /// Embedding extraction for "Save voice profile"; `nil` disables saving from the Editor.
     public var speakerEmbeddings: (any SpeakerEmbeddingProvider)?
+    /// Segment re-transcription with a language override (EDIT-AC-09); `nil` hides the action.
+    public var segmentRetranscriber: (any SegmentRetranscriptionService)?
+    /// Translation readiness and language-pack preparation; `nil` hides the Translate controls.
+    public var translation: (any TranslationPreparing)?
 
     public init(
         jobQueue: any JobQueue, transcripts: any TranscriptRepository, meetings: any MeetingRepository, models: any ModelManaging,
@@ -36,8 +40,11 @@ public struct AppServices: Sendable {
         media: (any MediaRepository)? = nil, presets: (any PresetRepository)? = nil,
         liveExtras: (any LiveSessionExtras)? = nil, dictation: DictationMenuControl? = nil,
         meetingCapture: (any MeetingCapturing)? = nil, meetingPrompts: (any MeetingPromptPresenting)? = nil,
-        voiceProfiles: (any VoiceProfileRepository)? = nil, speakerEmbeddings: (any SpeakerEmbeddingProvider)? = nil
+        voiceProfiles: (any VoiceProfileRepository)? = nil, speakerEmbeddings: (any SpeakerEmbeddingProvider)? = nil,
+        segmentRetranscriber: (any SegmentRetranscriptionService)? = nil, translation: (any TranslationPreparing)? = nil
     ) {
+        self.segmentRetranscriber = segmentRetranscriber
+        self.translation = translation
         self.meetingCapture = meetingCapture
         self.meetingPrompts = meetingPrompts
         self.voiceProfiles = voiceProfiles

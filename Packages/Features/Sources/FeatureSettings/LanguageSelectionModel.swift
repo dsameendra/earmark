@@ -15,6 +15,19 @@ public enum LanguageModeKind: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+/// Whether a language can be used on this Mac (LANG-AC-10, LANG-AC-14).
+public enum LanguageAvailability: Equatable, Sendable {
+    case available
+    /// A model covers it but is not downloaded yet; shown with size and licence before use.
+    case needsDownload(ModelDescriptor)
+    /// No supported engine: the reason is shown instead of failing silently.
+    case unavailable(reason: String)
+
+    public var isUnavailable: Bool {
+        if case .unavailable = self { true } else { false }
+    }
+}
+
 /// Linked language ↔ model pickers (ADR-008, SET-AC-06/07/08, LANG-AC-01..03).
 /// Choosing languages filters the model list; choosing a model restricts the language list.
 @MainActor @Observable
@@ -29,6 +42,8 @@ public final class LanguageSelectionModel {
     /// A model choice waiting for the user to confirm download warnings.
     public private(set) var pendingChoice: (model: ModelID, warnings: [DownloadWarning])?
     public var errorMessage: String?
+    /// A download started from a language row, waiting for the user to confirm its warnings (size, licence).
+    public private(set) var pendingDownload: (model: ModelID, warnings: [DownloadWarning])?
 
     public let manager: ModelManagerModel
     @ObservationIgnored private let store: any SettingsStore
@@ -61,6 +76,48 @@ public final class LanguageSelectionModel {
         case .multilingual: .multilingual(languages)
         }
     }
+
+    /// LANG-AC-14: a language with no installed or supported engine here is unavailable with a reason; one whose model is
+    /// merely not downloaded offers the download with size and licence (LANG-AC-10).
+    public func availability(for code: LanguageCode) -> LanguageAvailability {
+        let covering = table.models(coveringAll: [code])
+        guard !covering.isEmpty else {
+            return .unavailable(reason: "No speech model in this build supports \(Self.displayName(code)).")
+        }
+        // System-managed (Apple) models are checked by their engine, which falls back to Whisper with a notice.
+        if covering.contains(where: { $0.runtime == .appleAsset || manager.row($0.id)?.isInstalled == true }) { return .available }
+        let supported = covering.filter { $0.minTier <= manager.tier }
+        guard let best = supported.min(by: { ($0.isExperimental ? 1 : 0, $0.sizeBytes) < ($1.isExperimental ? 1 : 0, $1.sizeBytes) })
+        else {
+            let needed = covering.map(\.minTier).min() ?? .tier8
+            return .unavailable(
+                reason: "\(Self.displayName(code)) needs a Mac with more memory (\(needed.rawValue) or higher).")
+        }
+        return .needsDownload(best)
+    }
+
+    /// Starts downloading the model for `code` (asks for confirmation first when there are warnings).
+    public func downloadModel(for code: LanguageCode) async {
+        guard case .needsDownload(let descriptor) = availability(for: code) else { return }
+        errorMessage = nil
+        downloadingModel = descriptor.id
+        defer { downloadingModel = nil }
+        switch await manager.download(descriptor.id, confirmed: false) {
+        case .completed, .cancelled: break
+        case .needsConfirmation(let warnings): pendingDownload = (descriptor.id, warnings)
+        case .failed(let reason): errorMessage = reason
+        }
+    }
+
+    public func confirmPendingDownload() async {
+        guard let pending = pendingDownload else { return }
+        pendingDownload = nil
+        downloadingModel = pending.model
+        defer { downloadingModel = nil }
+        if case .failed(let reason) = await manager.download(pending.model, confirmed: true) { errorMessage = reason }
+    }
+
+    public func dismissPendingDownload() { pendingDownload = nil }
 
     /// Sinhala is first-class but labelled experimental (SET-AC-08).
     public func isExperimental(_ language: LanguageCode) -> Bool { language.primary == .sinhala }

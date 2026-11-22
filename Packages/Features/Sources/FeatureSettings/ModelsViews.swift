@@ -295,6 +295,15 @@ struct LanguagesSettingsView: View {
         } message: {
             Text(ModelFormat.warningsMessage(model.pendingChoice?.warnings ?? []))
         }
+        .alert(
+            "Download model?",
+            isPresented: Binding(get: { model.pendingDownload != nil }, set: { if !$0 { model.dismissPendingDownload() } })
+        ) {
+            Button("Download") { Task { await model.confirmPendingDownload() } }
+            Button("Cancel", role: .cancel) { model.dismissPendingDownload() }
+        } message: {
+            Text(ModelFormat.warningsMessage(model.pendingDownload?.warnings ?? []))
+        }
     }
 
     private var modelBinding: Binding<ModelID?> {
@@ -306,7 +315,33 @@ struct LanguagesSettingsView: View {
         return installed ? descriptor.displayName : "\(descriptor.displayName) — \(ModelFormat.bytes(descriptor.sizeBytes)), not downloaded"
     }
 
+    @ViewBuilder
     private func languageRow(_ code: LanguageCode) -> some View {
+        let availability = model.availability(for: code)
+        VStack(alignment: .leading, spacing: DSSpacing.xs) {
+            languageButton(code, isUnavailable: availability.isUnavailable)
+            switch availability {
+            case .available: EmptyView()
+            case .needsDownload(let descriptor):
+                HStack {
+                    Text(
+                        "Needs \(descriptor.displayName): \(ModelFormat.bytes(descriptor.sizeBytes)), licence \(descriptor.license.spdx). Not downloaded yet."
+                    )
+                    .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    Spacer()
+                    Button(model.downloadingModel == descriptor.id ? "Downloading…" : "Download") {
+                        Task { await model.downloadModel(for: code) }
+                    }
+                    .disabled(model.downloadingModel != nil)
+                    .accessibilityIdentifier("settings.languages.download.\(code.rawValue)")
+                }
+            case .unavailable(let reason):
+                Label(reason, systemImage: "exclamationmark.circle").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+            }
+        }
+    }
+
+    private func languageButton(_ code: LanguageCode, isUnavailable: Bool) -> some View {
         let selected = model.languages.contains(code)
         return Button {
             Task { await model.selectLanguage(code) }
@@ -326,6 +361,8 @@ struct LanguagesSettingsView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(isUnavailable)
+        .opacity(isUnavailable ? 0.5 : 1)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 

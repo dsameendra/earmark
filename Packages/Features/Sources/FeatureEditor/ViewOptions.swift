@@ -102,6 +102,10 @@ public enum EditorSettingsKey {
     public static let showWaveform = "editor.showWaveform"
     public static func viewOptionsOverride(_ id: TranscriptID) -> String { "editor.viewOptions.override.\(id)" }
     public static func highlights(_ id: TranscriptID) -> String { "editor.highlights.\(id)" }
+    /// `TranslationDisplayChoice` per transcript (TRN-AC-08).
+    public static func translationView(_ id: TranscriptID) -> String { "editor.translationView.\(id)" }
+    /// `[SegmentRevision]` kept by re-transcription (LANG-AC-08).
+    public static func segmentRevisions(_ id: TranscriptID) -> String { "editor.segmentRevisions.\(id)" }
 }
 
 /// A coloured highlight over a run of words with an optional note (EDIT-AC-13). Stored in `SettingsStore` because

@@ -57,6 +57,9 @@ public final class ModelManagerModel {
         }
     }
 
+    /// This Mac's hardware tier (language availability checks).
+    public var tier: HardwareTier { hardware.profile.tier }
+
     public private(set) var rows: [Row] = []
     public private(set) var usage = DiskUsage(totalBytes: 0, perModel: [:])
     public private(set) var activeModelID: ModelID?

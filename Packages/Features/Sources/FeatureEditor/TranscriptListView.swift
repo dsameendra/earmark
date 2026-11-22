@@ -98,6 +98,8 @@ struct SegmentGutter: View {
     let language: LanguageCode?
     var isIgnored = false
     var isRelabeled = false
+    var isLanguageUncertain = false
+    var isRetranscribing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpacing.xs) {
@@ -121,6 +123,12 @@ struct SegmentGutter: View {
             }
             HStack(spacing: DSSpacing.xs) {
                 if model.options.showLanguageBadges, let language { LanguageBadge(language) }
+                if isLanguageUncertain {
+                    Image(systemName: "questionmark.circle").font(DSTypography.caption).foregroundStyle(DSColor.warning)
+                        .help("Uncertain language: the previous language was assumed. Right-click to change or re-transcribe.")
+                        .accessibilityLabel("Language uncertain")
+                }
+                if isRetranscribing { ProgressView().controlSize(.mini) }
                 if isIgnored { StatusPill("Ignored", tone: .neutral) }
             }
         }
@@ -162,13 +170,17 @@ struct SegmentRowView: View {
         HStack(alignment: .top, spacing: DSSpacing.md) {
             SegmentGutter(
                 model: model, speakerID: segment.speakerID, start: segment.start, language: segment.languageCode,
-                isIgnored: segment.isIgnored, isRelabeled: model.relabeledSegmentIDs.contains(segment.id)
+                isIgnored: segment.isIgnored, isRelabeled: model.relabeledSegmentIDs.contains(segment.id),
+                isLanguageUncertain: model.isLanguageUncertain(segment), isRetranscribing: model.retranscribing.contains(segment.id)
             )
             .contentShape(Rectangle())
             .onTapGesture { updateSelection(model: model, id: segment.id) }
             VStack(alignment: .leading, spacing: DSSpacing.xs) {
+                let translation = model.translationDisplay(for: segment)
                 if isEditing {
                     editor(typography)
+                } else if model.translationChoice.mode == .translated, let translation {
+                    TranslationLine(translation: translation, typography: typography, onRetranslate: nil)
                 } else {
                     WordFlowView(
                         items: wordItems(for: segment, model: model, find: find), typography: typography,
@@ -179,6 +191,13 @@ struct SegmentRowView: View {
                         onSplit: { model.split(segment.id, beforeWord: $0.index) },
                         onBookmark: { model.addBookmark(at: SeekTarget.time(for: segment, wordIndex: $0.index)) },
                         onHighlight: { model.addHighlight(segmentID: segment.id, wordRange: $0.index...$0.index) })
+                }
+                if !isEditing, model.translationChoice.mode == .bilingual {
+                    if let translation {
+                        TranslationLine(translation: translation, typography: typography, onRetranslate: nil)
+                    } else if model.isMissingTranslation(segment) {
+                        Text("Not translated").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    }
                 }
                 if segment.isIgnored {
                     Button("Stop ignoring") { model.setIgnored(false, for: [segment.id]) }
@@ -266,6 +285,16 @@ struct SegmentContextMenu: View {
                 }
             }
         }
+        if model.canRetranscribe {
+            Menu("Re-transcribe As") {
+                ForEach(model.languageChoices, id: \.self) { code in
+                    Button(TranscriptEditorModel.name(of: code) + " (\(code.rawValue))") {
+                        Task { await model.retranscribe(segment.id, as: code) }
+                    }
+                }
+            }
+            .disabled(model.retranscribing.contains(segment.id))
+        }
         Divider()
         Button("Add Bookmark") { model.addBookmark(at: segment.start) }
         Button("Highlight Segment") { model.addHighlight(segmentID: segment.id) }
@@ -310,5 +339,29 @@ struct ParagraphRowView: View {
         .padding(.horizontal, DSSpacing.lg)
         .padding(.vertical, model.options.density.rowPadding)
         .opacity(paragraph.segments.allSatisfy(\.isIgnored) ? 0.5 : 1)
+    }
+}
+
+/// The translation drawn under the original (bilingual) or instead of it (translated), with the low-confidence and
+/// out-of-date labels (TRN-AC-07, TRN-AC-10).
+struct TranslationLine: View {
+    let translation: SegmentTranslationDisplay
+    let typography: EditorTypography
+    let onRetranslate: (() -> Void)?
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: DSSpacing.xs) {
+            Text(translation.text)
+                .font(typography.font).lineSpacing(typography.lineSpacing)
+                .foregroundStyle(translation.isStale ? DSColor.secondaryText : DSColor.primaryText)
+                .textSelection(.enabled)
+                .accessibilityLabel("Translation: \(translation.text)")
+            if translation.isLowConfidence {
+                StatusPill("Low confidence", systemImage: "exclamationmark.triangle", tone: .warning)
+            }
+            if translation.isStale {
+                StatusPill("Out of date", systemImage: "clock.arrow.circlepath", tone: .neutral)
+            }
+        }
     }
 }

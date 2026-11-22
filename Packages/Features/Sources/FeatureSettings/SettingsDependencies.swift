@@ -52,6 +52,8 @@ public struct SettingsDependencies: Sendable {
     public var displays: (any DisplayProviding)?
     /// Moves the live caption overlay and shows the test caption (nil disables the preview).
     public var overlayPlacement: (any OverlayPlacementControlling)?
+    /// Voice profile storage for Settings > Privacy (nil hides the section).
+    public var voiceProfiles: (any VoiceProfileRepository)?
     /// Removes regenerable caches and returns the bytes freed.
     public var clearCaches: @Sendable () async -> Int64
 
@@ -62,6 +64,7 @@ public struct SettingsDependencies: Sendable {
         hotkeyDiagnostics: (any HotkeyDiagnosing)? = nil, retryHotkeys: (@Sendable () async -> Void)? = nil,
         launchAtLogin: any LaunchAtLoginControlling = SMAppServiceLaunchAtLogin(),
         displays: (any DisplayProviding)? = nil, overlayPlacement: (any OverlayPlacementControlling)? = nil,
+        voiceProfiles: (any VoiceProfileRepository)? = nil,
         clearCaches: @escaping @Sendable () async -> Int64 = { SettingsDependencies.clearDefaultCaches() }
     ) {
         self.store = store
@@ -78,6 +81,7 @@ public struct SettingsDependencies: Sendable {
         self.launchAtLogin = launchAtLogin
         self.displays = displays
         self.overlayPlacement = overlayPlacement
+        self.voiceProfiles = voiceProfiles
         self.clearCaches = clearCaches
     }
 

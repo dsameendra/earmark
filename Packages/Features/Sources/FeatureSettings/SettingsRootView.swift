@@ -23,6 +23,7 @@ public final class SettingsEnvironment {
     public let storage: StorageSettingsModel
     public let shortcuts: ShortcutsModel
     public let permissions: PermissionsSettingsModel
+    public let voiceProfiles: VoiceProfilesModel
 
     public init(_ deps: SettingsDependencies) {
         general = GeneralSettingsModel(store: deps.store, loginItem: deps.launchAtLogin)
@@ -46,6 +47,7 @@ public final class SettingsEnvironment {
         shortcuts = ShortcutsModel(
             store: deps.store, hotkeys: deps.hotkeys, diagnostics: deps.hotkeyDiagnostics, retryRegistration: deps.retryHotkeys)
         permissions = PermissionsSettingsModel(service: deps.permissions)
+        voiceProfiles = VoiceProfilesModel(repository: deps.voiceProfiles)
     }
 }
 
@@ -93,7 +95,7 @@ public struct SettingsRootView: View {
         case .exportDefaults: ExportDefaultsView(model: environment.exportDefaults)
         case .storage: StorageSettingsView(model: environment.storage)
         case .keyboardShortcuts: ShortcutsSettingsView(model: environment.shortcuts)
-        case .privacyPermissions: PrivacySettingsView(model: environment.permissions)
+        case .privacyPermissions: PrivacySettingsView(model: environment.permissions, voiceProfiles: environment.voiceProfiles)
         }
     }
 }

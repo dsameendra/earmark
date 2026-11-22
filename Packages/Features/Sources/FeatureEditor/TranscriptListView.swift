@@ -97,6 +97,7 @@ struct SegmentGutter: View {
     let start: TimeInterval
     let language: LanguageCode?
     var isIgnored = false
+    var isRelabeled = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpacing.xs) {
@@ -105,6 +106,10 @@ struct SegmentGutter: View {
                     HStack(spacing: DSSpacing.xs) {
                         Circle().fill(EditorColors.color(model.color(for: speakerID))).frame(width: 8, height: 8)
                         Text(speaker.name).font(DSTypography.caption.weight(.semibold)).lineLimit(1)
+                        if isRelabeled {
+                            Image(systemName: EditorSymbol.relabeled).font(DSTypography.caption).foregroundStyle(DSColor.accent)
+                                .help("Relabelled when the meeting was finalized").accessibilityLabel("Relabelled")
+                        }
                     }
                     .accessibilityElement(children: .combine)
                 } else {
@@ -157,7 +162,7 @@ struct SegmentRowView: View {
         HStack(alignment: .top, spacing: DSSpacing.md) {
             SegmentGutter(
                 model: model, speakerID: segment.speakerID, start: segment.start, language: segment.languageCode,
-                isIgnored: segment.isIgnored
+                isIgnored: segment.isIgnored, isRelabeled: model.relabeledSegmentIDs.contains(segment.id)
             )
             .contentShape(Rectangle())
             .onTapGesture { updateSelection(model: model, id: segment.id) }
@@ -248,6 +253,12 @@ struct SegmentContextMenu: View {
             Divider()
             Button("No Speaker") { model.setSpeaker(nil, for: targets) }
         }
+        Menu("Change Speaker From Playhead") {
+            ForEach(model.speakers) { speaker in
+                Button(speaker.name) { model.reassignWordsFromPlayhead(in: segment.id, to: speaker.id) }
+            }
+        }
+        .disabled(!model.playheadIsInside(segment.id))
         Menu("Change Language") {
             ForEach(model.languageChoices, id: \.self) { code in
                 Button(Locale.current.localizedString(forLanguageCode: code.rawValue).map { "\($0) (\(code.rawValue))" } ?? code.rawValue) {
@@ -279,7 +290,9 @@ struct ParagraphRowView: View {
         let items = paragraph.segments.flatMap { wordItems(for: $0, model: model, find: find) }
         let byID = Dictionary(paragraph.segments.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         HStack(alignment: .top, spacing: DSSpacing.md) {
-            SegmentGutter(model: model, speakerID: paragraph.speakerID, start: paragraph.start, language: paragraph.languageCode)
+            SegmentGutter(
+                model: model, speakerID: paragraph.speakerID, start: paragraph.start, language: paragraph.languageCode,
+                isRelabeled: paragraph.segments.contains { model.relabeledSegmentIDs.contains($0.id) })
             WordFlowView(
                 items: items, typography: typography,
                 onTap: { item in

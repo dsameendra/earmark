@@ -461,10 +461,12 @@ struct StorageSettingsView: View {
 
 struct PrivacySettingsView: View {
     let model: PermissionsSettingsModel
+    var voiceProfiles: VoiceProfilesModel?
     @Environment(\.openURL) private var openURL
 
     var body: some View {
         Form {
+            if let voiceProfiles, voiceProfiles.isAvailable { VoiceProfilesSection(model: voiceProfiles) }
             Section {
                 ForEach(PermissionKind.allCases, id: \.self) { kind in
                     PermissionRow(

@@ -276,3 +276,16 @@ public actor InMemoryMeetings: MeetingRepository {
         if let index = items.firstIndex(where: { $0.id == id }) { items[index].deletedAt = Date() }
     }
 }
+
+/// In-memory voice profile repository for previews and tests.
+public actor InMemoryVoiceProfiles: VoiceProfileRepository {
+    private var items: [VoiceProfile]
+    public init(items: [VoiceProfile] = []) { self.items = items }
+    public func profiles() async throws -> [VoiceProfile] { items.filter { $0.deletedAt == nil } }
+    public func save(_ profile: VoiceProfile) async throws {
+        if let index = items.firstIndex(where: { $0.id == profile.id }) { items[index] = profile } else { items.append(profile) }
+    }
+    public func softDelete(_ id: VoiceProfileID) async throws {
+        if let index = items.firstIndex(where: { $0.id == id }) { items[index].deletedAt = Date() }
+    }
+}

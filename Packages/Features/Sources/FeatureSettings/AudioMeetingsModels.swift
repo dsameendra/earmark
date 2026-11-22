@@ -113,23 +113,3 @@ public final class MeetingsSettingsModel {
         await update(app) { $0.excludedKeywords.removeAll { $0 == keyword } }
     }
 }
-
-extension MeetingBehavior {
-    public var title: String {
-        switch self {
-        case .doNothing: "Do nothing"
-        case .askFirst: "Ask first"
-        case .autoTranscribe: "Auto-transcribe"
-        case .autoTranscribeAndRecord: "Auto-transcribe + record"
-        }
-    }
-}
-
-extension MeetingApp {
-    public var title: String {
-        switch self {
-        case .zoom: "Zoom"
-        case .teams: "Microsoft Teams"
-        }
-    }
-}

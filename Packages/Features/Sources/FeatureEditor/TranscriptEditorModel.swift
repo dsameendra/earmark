@@ -71,6 +71,25 @@ public final class TranscriptEditorModel {
     /// Voice profile storage and embedding extraction; `nil` hides the voice profile controls.
     @ObservationIgnored public var voiceProfiles: (any VoiceProfileRepository)?
     @ObservationIgnored public var embeddings: (any SpeakerEmbeddingProvider)?
+    /// Re-transcription with a language override (EDIT-AC-09); `nil` hides the action.
+    @ObservationIgnored public var retranscriber: (any SegmentRetranscriptionService)?
+    /// Translation readiness and pack preparation; `nil` hides the Translate controls.
+    @ObservationIgnored public var translationService: (any TranslationPreparing)?
+    @ObservationIgnored public var jobQueue: (any JobQueue)?
+    @ObservationIgnored public var models: (any ModelManaging)?
+    /// How translations are shown (TRN-AC-08) and the language of the shown track.
+    public internal(set) var translationChoice = TranslationDisplayChoice()
+    /// Segments edited after their translation was made (TRN-AC-10).
+    public internal(set) var staleTranslations: Set<SegmentID> = []
+    /// Segments being re-transcribed right now.
+    public internal(set) var retranscribing: Set<SegmentID> = []
+    /// Replaced content kept by re-transcription (LANG-AC-08).
+    public internal(set) var revisions: [SegmentRevision] = []
+    public internal(set) var languageError: String?
+    /// State of the running translate job, shown in the toolbar popover.
+    public internal(set) var translationJob: Job?
+    public internal(set) var translationStatus: String?
+    @ObservationIgnored var translationWatcher: Task<Void, Never>?
 
     public var selection: Set<SegmentID> = []
     public private(set) var editingSegmentID: SegmentID?
@@ -133,6 +152,10 @@ public final class TranscriptEditorModel {
             presets: services.presets)
         voiceProfiles = services.voiceProfiles
         embeddings = services.speakerEmbeddings
+        retranscriber = services.segmentRetranscriber
+        translationService = services.translation
+        jobQueue = services.jobQueue
+        models = services.models
     }
 
     /// Default player factory: `AVPlayer` for any playable file.
@@ -173,11 +196,19 @@ public final class TranscriptEditorModel {
             highlights = await settings.value(for: EditorSettingsKey.highlights(transcriptID), as: [TextHighlight].self) ?? []
             await loadOptions()
             await loadReconciliation()
+            await loadLanguageState()
             loadState = .loaded
             await loadMedia(for: transcript)
         } catch {
             loadState = .failed(error.localizedDescription)
         }
+    }
+
+    /// Re-reads the segments after something outside the editor changed them (a translate job, re-transcription).
+    func reloadSegmentsFromRepository() async {
+        guard let loaded = try? await repository.segments(for: transcriptID) else { return }
+        segments = loaded.enumerated().sorted { ($0.element.start, $0.offset) < ($1.element.start, $1.offset) }.map(\.element)
+        revision += 1
     }
 
     private func loadOptions() async {
@@ -386,6 +417,7 @@ public final class TranscriptEditorModel {
         guard let old = segment(id) else { return }
         let new = SegmentOps.editText(old, to: text)
         guard new != old else { return }
+        if old.text != new.text, !old.translations.isEmpty { staleTranslations.insert(id) }  // TRN-AC-10
         perform(EditDelta(name: "Edit Text", replaced: [.init(before: old, after: new)]))
     }
 
@@ -399,10 +431,14 @@ public final class TranscriptEditorModel {
     }
 
     public func setLanguage(_ code: LanguageCode?, for ids: Set<SegmentID>) {
-        let changes = segments.filter { ids.contains($0.id) && $0.languageCode != code }.map { old -> EditDelta.Replacement in
+        // Confirming the guessed language also changes the segment: the user's choice is certain.
+        let changes = segments.filter {
+            ids.contains($0.id) && ($0.languageCode != code || (code != nil && $0.languageConfidence != 1))
+        }.map { old -> EditDelta.Replacement in
             var new = old
             new.languageCode = code
-            new.languageConfidence = nil
+            // The user chose it, so it is certain (LANG-AC-06 flags only guessed languages).
+            new.languageConfidence = code == nil ? nil : 1
             return .init(before: old, after: new)
         }
         perform(EditDelta(name: "Change Language", replaced: changes))

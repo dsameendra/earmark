@@ -28,6 +28,7 @@ private struct EditorContent: View {
     @State private var showSpeakers = false
     @State private var showBookmarks = false
     @State private var showOptions = false
+    @State private var showTranslate = false
     @State private var showExport = false
     @State private var playerWindow: PlayerWindowController?
     @FocusState private var findFocused: Bool
@@ -44,6 +45,14 @@ private struct EditorContent: View {
         VStack(spacing: 0) {
             header
             if find.isVisible { FindBarView(model: model, find: find, fieldFocused: $findFocused) }
+            if let message = model.languageError {
+                HStack {
+                    Label(message, systemImage: "exclamationmark.triangle").font(DSTypography.caption).foregroundStyle(DSColor.danger)
+                    Spacer()
+                    Button("Dismiss") { model.dismissLanguageError() }.buttonStyle(.link)
+                }
+                .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.xs).background(DSColor.solidChrome)
+            }
             if let report = model.reconciliation { ReconciliationBanner(report: report) { model.acknowledgeReconciliation() } }
             content
             TransportBar(model: model)
@@ -60,6 +69,7 @@ private struct EditorContent: View {
         .onChange(of: showSpeakers) { if !showSpeakers { listFocused = true } }
         .onChange(of: showBookmarks) { if !showBookmarks { listFocused = true } }
         .onChange(of: showOptions) { if !showOptions { listFocused = true } }
+        .onChange(of: showTranslate) { if !showTranslate { listFocused = true } }
         .onChange(of: showExport) { if !showExport { listFocused = true } }
         .onDisappear {
             model.acknowledgeReconciliation()
@@ -135,6 +145,21 @@ private struct EditorContent: View {
                 Image(systemName: "bookmark")
             }
             .help("Bookmarks and highlights").popover(isPresented: $showBookmarks) { BookmarksPanel(model: model) }
+            if model.uncertainLanguageCount > 0 {
+                Label("\(model.uncertainLanguageCount)", systemImage: "questionmark.circle")
+                    .font(DSTypography.caption).foregroundStyle(DSColor.warning)
+                    .help("\(model.uncertainLanguageCount) segments have an uncertain language. Right-click a segment to change it or re-transcribe.")
+                    .accessibilityLabel("\(model.uncertainLanguageCount) segments with uncertain language")
+                    .accessibilityIdentifier("editor.uncertainLanguages")
+            }
+            Button {
+                showTranslate.toggle()
+            } label: {
+                Image(systemName: "translate")
+                    .foregroundStyle(model.translationChoice.mode == .original ? Color.primary : DSColor.accent)
+            }
+            .help("Translation view and Translate…").accessibilityIdentifier("editor.translation")
+            .popover(isPresented: $showTranslate) { TranslatePanel(model: model) }
             Button {
                 showOptions.toggle()
             } label: {

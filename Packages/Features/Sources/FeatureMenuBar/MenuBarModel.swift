@@ -115,7 +115,7 @@ public final class MenuBarModel {
     }
 
     private func loadPreferences() async {
-        autoRecord = await services.settings.value(for: SettingsKey.autoRecord, as: Bool.self) ?? false
+        autoRecord = await Self.loadAutoRecord(from: services.settings)
         if let mode = await services.settings.value(for: SettingsKey.languageMode, as: LanguageMode.self) {
             language = MenuLanguageChoice(mode: mode)
         }
@@ -153,8 +153,31 @@ public final class MenuBarModel {
 
     public func stopLive() async { _ = await services.live.stop() }
 
+    /// MTG-AC-17: "Auto-record meetings" is on when any app's policy is auto-transcribe + record. A policy stored by the
+    /// Meetings screen wins over the legacy flag, which only applies to apps without one.
+    static func loadAutoRecord(from settings: any SettingsStore) async -> Bool {
+        let legacy = await settings.value(for: SettingsKey.autoRecord, as: Bool.self) ?? false
+        for app in MeetingApp.allCases {
+            let policy = await settings.value(for: SettingsKey.meetingPolicy(app.rawValue), as: MeetingPolicy.self)
+            if (policy?.behavior ?? (legacy ? .autoTranscribeAndRecord : .askFirst)) == .autoTranscribeAndRecord { return true }
+        }
+        return false
+    }
+
+    /// Toggles auto-record for every supported meeting app by changing its stored policy (the same policy the Meetings
+    /// screen edits and the meeting runtime reads); turning it off returns the apps to "Ask first".
     public func setAutoRecord(_ value: Bool) async {
         autoRecord = value
+        for app in MeetingApp.allCases {
+            var policy =
+                await services.settings.value(for: SettingsKey.meetingPolicy(app.rawValue), as: MeetingPolicy.self) ?? MeetingPolicy(app: app)
+            if value {
+                policy.behavior = .autoTranscribeAndRecord
+            } else if policy.behavior == .autoTranscribeAndRecord {
+                policy.behavior = .askFirst
+            }
+            await services.settings.set(policy, for: SettingsKey.meetingPolicy(app.rawValue))
+        }
         await services.settings.set(value, for: SettingsKey.autoRecord)
     }
 

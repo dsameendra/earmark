@@ -35,7 +35,8 @@ extension PersistentJobQueue {
         setNote(id, nil)
         failures[id] = nil
         guard queued.kind == .transcribeFile else {
-            throw AppError.unsupportedFormat("The queue cannot run \(queued.kind.rawValue) jobs yet.")
+            try await runHandled(id, queued)
+            return
         }
         guard let declaredInput = queued.input else { throw AppError.other("The job has no input file.") }
 
@@ -73,7 +74,7 @@ extension PersistentJobQueue {
         try await services.transcripts.save(header)
         try await services.transcripts.replaceSegments(segments, for: header.id)
 
-        if settings.translateTo != nil { setNote(id, "Translation was skipped: it is not available yet.") }
+        if let target = settings.translateTo { await translateAfterTranscription(id, transcriptID: header.id, target: target) }
         await mutate(id) {
             $0.state = .completed
             $0.progress = 1
@@ -82,6 +83,49 @@ extension PersistentJobQueue {
         detected[id] = nil
         let exported = await autoExport(id, document: TranscriptDocument(transcript: header, segments: segments))
         await jobReachedFinalState(id, title: header.title, exportedTo: exported)
+    }
+
+    /// Runs the injected handler of a non-file job (meeting finalization, translation) to a final state.
+    private func runHandled(_ id: JobID, _ queued: Job) async throws {
+        guard let handler = services.handlers[queued.kind] else {
+            throw AppError.unsupportedFormat("The queue cannot run \(queued.kind.rawValue) jobs in this build.")
+        }
+        await mutate(id, persist: false) { $0.progress = 0 }
+        let context = JobHandlerContext(
+            job: queued,
+            progress: { [weak self] fraction in
+                await self?.mutate(id, persist: false) { $0.progress = max($0.progress, min(1, max(0, fraction))) }
+            },
+            note: { [weak self] text in await self?.setNote(id, text) })
+        let result = try await handler(context)
+        try Task.checkCancellation()
+        await mutate(id) {
+            if let transcriptID = result.transcriptID { $0.transcriptID = transcriptID }
+            $0.state = .completed
+            $0.progress = 1
+            $0.etaSeconds = nil
+        }
+        setNote(id, nil)
+        await jobReachedFinalState(id, title: result.title)
+    }
+
+    /// `JobSettings.translateTo`: after a transcription job saved its segments, runs the `.translate` handler on them.
+    /// A failure never fails the transcription (the transcript is complete); it is reported as a note instead.
+    private func translateAfterTranscription(_ id: JobID, transcriptID: TranscriptID, target: LanguageCode) async {
+        guard let handler = services.handlers[.translate], let queued = store[id] else {
+            setNote(id, "Translation was skipped: it is not available in this build.")
+            return
+        }
+        var translate = Job(kind: .translate, transcriptID: transcriptID, settings: queued.settings)
+        translate.settings.translateTo = target
+        setNote(id, "Translating")
+        let context = JobHandlerContext(job: translate, progress: { _ in }, note: { _ in })
+        do {
+            _ = try await handler(context)
+            setNote(id, nil)
+        } catch {
+            setNote(id, "Translation failed: \(String(describing: error))")
+        }
     }
 
     private func existingTranscript(for job: Job) async throws -> Transcript? {
@@ -174,7 +218,7 @@ extension PersistentJobQueue {
         await mutate(id, persist: false) { $0.progress = startFraction }
         let estimator = ETAEstimator(startedAt: configuration.now(), startFraction: startFraction)
         var lastBroadcast = Date.distantPast
-        let resolver = EngineBinding.resolver(plan: plan, engines: services.engines)
+        let resolver = services.engineResolver?(plan, job.settings) ?? EngineBinding.resolver(plan: plan, engines: services.engines)
 
         do {
             for try await event in services.pipeline(plan).run(file: input, options: options, resumeFrom: checkpoint, engines: resolver) {

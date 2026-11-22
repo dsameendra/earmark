@@ -16,8 +16,8 @@ struct OnboardingWindowRoot: View {
     @State private var model: OnboardingModel
     @Environment(\.dismissWindow) private var dismissWindow
 
-    init(services: AppServices) {
-        _model = State(initialValue: OnboardingModel(services: services, router: DefaultEngineRouter()))
+    init(services: AppServices, router: any EngineRouter) {
+        _model = State(initialValue: OnboardingModel(services: services, router: router))
     }
 
     var body: some View {

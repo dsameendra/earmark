@@ -11,6 +11,43 @@ public typealias AutoExportProvider = @Sendable () async -> AutoExportWriter?
 /// Creates the file pipeline for one job given its engine plan.
 public typealias PipelineFactory = @Sendable (EnginePlan) -> FileTranscriptionPipeline
 
+/// What a non-file job handler (meeting finalization, translation) needs from the queue while it runs.
+public struct JobHandlerContext: Sendable {
+    public var job: Job
+    /// Reports overall progress in 0...1 (throttled and broadcast by the queue).
+    public var progress: @Sendable (Double) async -> Void
+    /// Sets or clears the one-line status note shown with the job.
+    public var note: @Sendable (String?) async -> Void
+    public init(
+        job: Job, progress: @escaping @Sendable (Double) async -> Void = { _ in },
+        note: @escaping @Sendable (String?) async -> Void = { _ in }
+    ) {
+        self.job = job
+        self.progress = progress
+        self.note = note
+    }
+}
+
+/// The result of a handled job: the transcript it produced or changed and the title used in the completion notification.
+public struct JobHandlerResult: Sendable {
+    public var transcriptID: TranscriptID?
+    public var title: String?
+    public init(transcriptID: TranscriptID? = nil, title: String? = nil) {
+        self.transcriptID = transcriptID
+        self.title = title
+    }
+}
+
+/// Runs a job kind the queue does not implement itself. Jobs depends only on AppCore for these: the app injects handlers
+/// (for example `.finalizeMeeting` backed by `MeetingFinalizer`, `.translate` backed by the translation coordinator).
+/// Throw to fail the job (`AppError`s are described to the user, a cancelled task pauses/cancels as usual).
+public typealias JobHandler = @Sendable (JobHandlerContext) async throws -> JobHandlerResult
+
+/// Chooses the engine and model per language for a file job, given the router's plan for the job's language mode. The
+/// default resolves from the plan only; the app supplies one that asks the router per detected language so auto-detect and
+/// multilingual jobs can reach engines the plan did not name (Sinhala).
+public typealias FileEngineResolver = @Sendable (EnginePlan, JobSettings) -> EngineResolver
+
 /// Everything the queue needs, injected so tests can run it without AVFoundation, WhisperKit or FluidAudio.
 public struct JobQueueServices: Sendable {
     public var jobs: any JobRepository
@@ -32,6 +69,10 @@ public struct JobQueueServices: Sendable {
     public var postProcessor: any TranscriptPostProcessor
     public var autoExport: AutoExportProvider?
     public var notifier: (any JobNotifier)?
+    /// Handlers for job kinds other than `.transcribeFile`.
+    public var handlers: [JobKind: JobHandler]
+    /// Per-language engine resolution for file jobs; `nil` resolves from the plan alone.
+    public var engineResolver: FileEngineResolver?
 
     public init(
         jobs: any JobRepository, transcripts: any TranscriptRepository, media: any MediaRepository, rules: any RuleRepository,
@@ -39,7 +80,7 @@ public struct JobQueueServices: Sendable {
         engines: [EngineID: any TranscriptionEngine], pipeline: @escaping PipelineFactory = { _ in FileTranscriptionPipeline() },
         decoder: any AudioFileDecoder = AVFileDecoder(), diarizer: (any Diarizer)? = nil,
         postProcessor: any TranscriptPostProcessor = PostProcessingChain(), autoExport: AutoExportProvider? = nil,
-        notifier: (any JobNotifier)? = nil
+        notifier: (any JobNotifier)? = nil, handlers: [JobKind: JobHandler] = [:], engineResolver: FileEngineResolver? = nil
     ) {
         self.jobs = jobs
         self.transcripts = transcripts
@@ -55,6 +96,8 @@ public struct JobQueueServices: Sendable {
         self.postProcessor = postProcessor
         self.autoExport = autoExport
         self.notifier = notifier
+        self.handlers = handlers
+        self.engineResolver = engineResolver
     }
 }
 

@@ -206,9 +206,16 @@ public final class LiveModel {
     public func start() async {
         notice = nil
         savedTranscriptID = nil
+        // Live translation (LIVE-AC-13): lines are translated into the default target when the preset shows translations.
+        var target: LanguageCode?
+        if preset.showTranslation || preset.translatedOnly,
+            let raw = await settings.value(for: SettingsKey.translationTarget, as: String.self), !raw.isEmpty
+        {
+            target = LanguageCode(raw)
+        }
         let config = LiveSessionConfig(
-            source: source.captureSource(deviceUID: deviceUID), languageMode: language.mode,
-            diarize: source != .mic, saveAsTranscript: saveAsTranscript, presetID: preset.id)
+            source: source.captureSource(deviceUID: deviceUID), languageMode: language.mode, diarize: source != .mic,
+            translateTo: target, saveAsTranscript: saveAsTranscript, presetID: preset.id)
         do {
             try await live.start(config)
         } catch {

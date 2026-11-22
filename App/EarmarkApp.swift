@@ -18,6 +18,7 @@ struct EarmarkApp: App {
         Window("Earmark", id: MainWindow.id) {
             ShellView(model: environment.shell)
                 .onboardingLauncher(settings: environment.services.settings)
+                .background { if let packs = environment.translationPacks { TranslationPackHost(installer: packs) } }
         }
         .defaultSize(width: 1000, height: 640)
         .commands {
@@ -26,7 +27,7 @@ struct EarmarkApp: App {
         }
 
         Window("Welcome to Earmark", id: OnboardingWindow.id) {
-            OnboardingWindowRoot(services: environment.services)
+            OnboardingWindowRoot(services: environment.services, router: environment.engineRouter)
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)

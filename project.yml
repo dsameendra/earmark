@@ -28,6 +28,9 @@ packages:
   Permissions: { path: Packages/Permissions }
   LiveCaptions: { path: Packages/LiveCaptions }
   Dictation: { path: Packages/Dictation }
+  Meetings: { path: Packages/Meetings }
+  Translation: { path: Packages/Translation }
+  QwenASR: { path: Packages/QwenASR }
 targets:
   Earmark:
     type: application
@@ -57,6 +60,10 @@ targets:
       - package: Permissions
       - package: LiveCaptions
       - package: Dictation
+      - package: Meetings
+      - package: Translation
+        product: EarmarkTranslation
+      - package: QwenASR
       - package: AppCore
         product: AppCoreTesting   # debug `-UseMocks` composition only
       - package: Features

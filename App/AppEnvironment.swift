@@ -3,6 +3,7 @@ import AppKit
 import AudioCapture
 import Dictation
 import Diarization
+import EarmarkTranslation
 import FeatureMenuBar
 import FeatureSettings
 import FeatureShell
@@ -10,10 +11,12 @@ import FeatureSupport
 import Foundation
 import Jobs
 import LiveCaptions
+import Meetings
 import ModelStore
 import Permissions
 import Persistence
 import Processing
+import QwenASR
 import Transcription
 
 #if DEBUG
@@ -38,6 +41,11 @@ final class AppEnvironment {
     /// Live captions and dictation runtime (nil under `-UseMocks`); held here so they live as long as the app.
     private let live: LiveRuntime?
     private let dictation: DictationRuntime?
+    private let meetings: MeetingRuntime?
+    /// Host state for Apple language-pack installs (nil under `-UseMocks`); `TranslationPackHost` attaches it to a window.
+    let translationPacks: ApplePackInstaller?
+    /// The Apple-aware router, shared with onboarding so its model recommendations match what live and dictation will use.
+    let engineRouter: any EngineRouter
 
     init() {
         let composition = Self.makeServices()
@@ -46,6 +54,9 @@ final class AppEnvironment {
         settingsDependencies = composition.settingsDependencies
         live = composition.live
         dictation = composition.dictation
+        meetings = composition.meetings
+        translationPacks = composition.translationPacks
+        engineRouter = composition.engineRouter ?? DefaultEngineRouter()
         shell = ShellModel(services: services)
         menuBar = MenuBarModel(services: services)
         activation = ActivationPolicyController(settings: services.settings)
@@ -61,6 +72,25 @@ final class AppEnvironment {
         // FILE-AC-08: jobs left running by a crash or quit continue from their last checkpoint.
         let queue = services.jobQueue
         Task { await queue.resumeInterrupted() }
+        startMeetings(composition)
+    }
+
+    /// Starts the meeting detector, recovers interrupted recordings, follows the consent switch and registers the bookmark
+    /// hotkey (MTG-AC-01, -12, -11, -14).
+    private func startMeetings(_ composition: Composition) {
+        guard let meetings = composition.meetings else { return }
+        let settings = services.settings
+        let queue = services.jobQueue
+        let repository = services.meetings
+        Task {
+            await meetings.detector.start()
+            await MeetingRuntimeFactory.recover(root: await meetings.recordingsRoot(), meetings: repository, jobs: queue)
+        }
+        MeetingRuntimeFactory.followConsent(settings: settings)
+        if let hotkeys = composition.dictation?.hotkeys {
+            let capture = meetings.capture
+            Task { await BookmarkHotkey.run(hotkeys: hotkeys, settings: settings) { await capture.addBookmark() } }
+        }
     }
 
     /// `true` when the debug mock flag is set.
@@ -78,6 +108,9 @@ final class AppEnvironment {
         var settingsDependencies: SettingsDependencies
         var live: LiveRuntime?
         var dictation: DictationRuntime?
+        var meetings: MeetingRuntime?
+        var translationPacks: ApplePackInstaller?
+        var engineRouter: (any EngineRouter)?
     }
 
     struct LiveRuntime {
@@ -114,35 +147,69 @@ final class AppEnvironment {
         let audioDevices = AudioDeviceProvider()
         // One engine instance each, shared by file jobs, live captions and dictation: WhisperKit holds a single resident model.
         let whisper = WhisperKitEngine(models: models, tokenizerFolder: models.tokenizerFolder)
-        let engines: [EngineID: any TranscriptionEngine] = [whisper.id: whisper, apple.id: apple]
+        // Sinhala goes to Qwen3-ASR (MLX), never to stock Whisper (ADR-004). The model loads lazily on first use.
+        let qwen = QwenSinhalaEngine(models: models)
+        let engines: [EngineID: any TranscriptionEngine] = [whisper.id: whisper, apple.id: apple, qwen.id: qwen]
+        let translation = TranslationRuntime.make(models: models, nllbPython: nil)
         // Live and dictation leave Apple Speech for Whisper (with a notice) when it cannot be used on this Mac.
         let router = AppleAwareEngineRouter(readiness: appleReadiness)
 
         let live = makeLive(
             database: database, models: models, hardware: hardware, settings: settings, permissions: permissions,
-            audioDevices: audioDevices, engines: engines, router: router)
+            audioDevices: audioDevices, engines: engines, router: router, whisper: whisper, translation: translation.router)
         let dictation = makeDictation(
             database: database, models: models, hardware: hardware, settings: settings, permissions: permissions,
-            engines: engines, router: router)
+            engines: engines, router: router, translation: translation.router)
         let dictationControl = DictationMenuControl.make(controller: dictation.controller, settings: settings)
 
-        // Meeting detection prompts (notification actions). T23 supplies `meetingCapture` and the real detector here.
+        // Meeting detection prompts (notification actions).
         let meetingPrompter = SystemMeetingPrompter()
         meetingPrompter.install()
+        let diarizer = FluidAudioDiarizer(models: models)
+        let embeddings = FluidSpeakerEmbeddingProvider(models: models)
+        let finalization = MeetingFinalization(
+            database: database, models: models, hardware: hardware, settings: settings, whisper: whisper, engines: engines,
+            diarizer: diarizer, embeddings: embeddings, router: DefaultEngineRouter())
+        let translationJob = TranslationJob(transcripts: database.transcripts, router: translation.router)
+        let queue = makeJobQueue(
+            database: database, models: models, hardware: hardware, settings: settings, whisper: whisper, engines: engines,
+            diarizer: diarizer,
+            handlers: [
+                .finalizeMeeting: finalization.handler,
+                .translate: { context in
+                    guard let id = context.job.transcriptID, let target = context.job.settings.translateTo else {
+                        throw AppError.other("The translation job has no transcript or target language.")
+                    }
+                    let outcome = try await translationJob.run(
+                        transcriptID: id, target: target, progress: { await context.progress($0) })
+                    if let message = outcome.skippedMessage { throw AppError.other(message) }
+                    return JobHandlerResult(transcriptID: id, title: outcome.title)
+                },
+            ])
+        let meetings = MeetingRuntimeFactory.make(
+            database: database, settings: settings, permissions: permissions, jobs: queue, live: live.session, prompts: meetingPrompter)
+        let explicitModel: @Sendable () async -> ModelID? = {
+            let raw = await settings.value(for: SettingsKey.preferredModel, as: String.self)
+            guard let raw, !raw.isEmpty else { return nil }
+            return ModelID(raw)
+        }
         let services = AppServices(
-            jobQueue: makeJobQueue(
-                database: database, models: models, hardware: hardware, settings: settings, whisper: whisper, apple: apple),
-            transcripts: database.transcripts, meetings: database.meetings, models: models, live: live.session,
-            meetingDetector: PlaceholderMeetingDetector(), hardware: hardware, permissions: permissions,
-            audioDevices: audioDevices, settings: settings, media: database.media, presets: database.presets,
-            liveExtras: live.extras, dictation: dictationControl, meetingPrompts: meetingPrompter,
-            voiceProfiles: database.voiceProfiles)
+            jobQueue: queue, transcripts: database.transcripts, meetings: database.meetings, models: models, live: live.session,
+            meetingDetector: meetings.detector, hardware: hardware, permissions: permissions, audioDevices: audioDevices,
+            settings: settings, media: database.media, presets: database.presets, liveExtras: live.extras, dictation: dictationControl,
+            meetingCapture: meetings.capture, meetingPrompts: meetingPrompter, voiceProfiles: database.voiceProfiles,
+            speakerEmbeddings: embeddings,
+            segmentRetranscriber: SegmentRetranscriptionAdapter(
+                router: DefaultEngineRouter(), hardware: hardware, models: models, engines: engines, explicitModel: explicitModel),
+            translation: translation.service)
         let settingsDependencies = SettingsDependencies(
             store: settings, models: models, hardware: hardware, audioDevices: audioDevices, permissions: permissions,
             rules: database.rules, presets: database.presets, transcripts: database.transcripts,
             hotkeyDiagnostics: dictation.hotkeys, retryHotkeys: { [controller = dictation.controller] in await controller.retryHotkeyRegistration() },
             overlayPlacement: live.overlay, voiceProfiles: database.voiceProfiles)
-        return Composition(services: services, settingsDependencies: settingsDependencies, live: live, dictation: dictation)
+        return Composition(
+            services: services, settingsDependencies: settingsDependencies, live: live, dictation: dictation, meetings: meetings,
+            translationPacks: translation.packs, engineRouter: router)
     }
 
     /// Live captions: the orchestrator over the `AudioCapture` sources, the router-chosen engine, LS-EEND streaming
@@ -150,16 +217,21 @@ final class AppEnvironment {
     private static func makeLive(
         database: AppDatabase, models: ModelManager, hardware: any HardwareTierProviding, settings: any SettingsStore,
         permissions: any PermissionsServicing, audioDevices: AudioDeviceProvider, engines: [EngineID: any TranscriptionEngine],
-        router: any EngineRouter
+        router: any EngineRouter, whisper: WhisperKitEngine, translation: any TranslationRouter
     ) -> LiveRuntime {
         let audio = LiveAudioProvider(permissions: permissions, settings: settings, deviceProvider: audioDevices)
-        let provider = RouterEngineProvider(
-            router: router, hardware: hardware, models: models, engine: { engines[$0] },
-            explicitModel: {
-                let raw = await settings.value(for: SettingsKey.preferredModel, as: String.self)
-                guard let raw, !raw.isEmpty else { return nil }
-                return ModelID(raw)
-            })
+        let explicitModel: @Sendable () async -> ModelID? = {
+            let raw = await settings.value(for: SettingsKey.preferredModel, as: String.self)
+            guard let raw, !raw.isEmpty else { return nil }
+            return ModelID(raw)
+        }
+        // Single languages and auto-detect use the router; a multilingual set of several languages code-switches through
+        // `MultilingualEngine` (language ID on Whisper small, one engine per language).
+        let provider = LiveLanguageEngineProvider(
+            base: RouterEngineProvider(
+                router: router, hardware: hardware, models: models, engine: { engines[$0] }, explicitModel: explicitModel),
+            router: router, hardware: hardware, models: models, engines: engines,
+            identifier: WhisperLanguageIdentifier(engine: whisper, model: RoutingTargets.whisperSmall), explicitModel: explicitModel)
         let rules = database.rules
         let session = LiveSessionOrchestrator(
             audio: audio, engines: provider, transcripts: database.transcripts, postProcessor: PostProcessingChain(),
@@ -171,7 +243,7 @@ final class AppEnvironment {
                     applyReplacements: await settings.value(for: SettingsKey.applyReplacementsByDefault, as: Bool.self) ?? true,
                     enableHallucinationFilter: await settings.value(for: SettingsKey.hallucinationFilterEnabled, as: Bool.self) ?? true)
             },
-            diarizer: LSEENDStreamingDiarizer(models: models))
+            diarizer: LSEENDStreamingDiarizer(models: models), translation: translation)
         let overlay = CaptionOverlayController(settings: settings)
         let extras = LiveExtrasService(
             session: session, audio: audio, overlay: overlay,
@@ -183,7 +255,8 @@ final class AppEnvironment {
     /// text insertion, HUD and history. The controller is started at launch; a missing permission only disables the hotkey.
     private static func makeDictation(
         database: AppDatabase, models: ModelManager, hardware: any HardwareTierProviding, settings: any SettingsStore,
-        permissions: any PermissionsServicing, engines: [EngineID: any TranscriptionEngine], router: any EngineRouter
+        permissions: any PermissionsServicing, engines: [EngineID: any TranscriptionEngine], router: any EngineRouter,
+        translation: any TranslationRouter
     ) -> DictationRuntime {
         let hud = DictationHUDController()
         let routed = RoutedEngineProvider(
@@ -195,7 +268,10 @@ final class AppEnvironment {
                 hotkeys: hotkeys,
                 makeAudioSource: { uid in MicrophoneSource(deviceUID: uid, permissions: permissions) },
                 engineProvider: routed.provider,
-                pipeline: DictationPipeline(postProcessor: PostProcessingChain(), rules: database.rules),
+                pipeline: DictationPipeline(
+                    postProcessor: PostProcessingChain(), rules: database.rules,
+                    // Translate before insert (TRN-AC-12): a slow or failing translation inserts the original text.
+                    translation: TimeLimitedTranslationRouter(base: translation)),
                 inserter: TextInserter.system(), history: DictationHistory(repository: database.dictationHistory),
                 settings: settings, permissions: permissions, hud: hud, notifier: SystemDictationNotifier(),
                 onboarding: AccessibilityOnboardingPresenter()))
@@ -206,23 +282,40 @@ final class AppEnvironment {
     /// ENG-AC-14) and Apple Speech engines behind the router, offline diarization, auto-export and notifications.
     private static func makeJobQueue(
         database: AppDatabase, models: ModelManager, hardware: any HardwareTierProviding, settings: any SettingsStore,
-        whisper: WhisperKitEngine, apple: AppleSpeechEngine
+        whisper: WhisperKitEngine, engines: [EngineID: any TranscriptionEngine], diarizer: any Diarizer,
+        handlers: [JobKind: JobHandler]
     ) -> any JobQueue {
         let decoder = AVFileDecoder()
+        // Auto-detect may pick any language a catalogued ASR model covers, so Sinhala can be detected and routed to Qwen.
+        var chunking = FileTranscriptionPipeline.Configuration()
+        chunking.autoDetectCandidates = LanguageCapabilityTable(models: BuiltInCatalog.models).languages()
+        let configuration = chunking
+        let router = DefaultEngineRouter(catalog: BuiltInCatalog.models)
         // Language ID must use the model the plan routed to; a fixed model would swap WhisperKit's single resident model.
         let whisperID = whisper.id
         let pipeline: PipelineFactory = { plan in
             let model = plan.assignments.first { $0.engine == whisperID }?.model
             return FileTranscriptionPipeline(
-                decoder: decoder, identifier: model.map { WhisperLanguageIdentifier(engine: whisper, model: $0) })
+                decoder: decoder, identifier: model.map { WhisperLanguageIdentifier(engine: whisper, model: $0) },
+                configuration: configuration)
+        }
+        // Auto-detect and multilingual jobs resolve each detected language through the router; a single language keeps the plan.
+        let resolver: FileEngineResolver = { plan, settings in
+            switch settings.languageMode {
+            case .single: return EngineBinding.resolver(plan: plan, engines: engines)
+            case .autoDetect, .multilingual:
+                return LanguageEngineResolver.make(
+                    router: router, basePlan: plan, useCase: .file, tier: hardware.profile.tier, explicitModel: settings.modelID,
+                    installed: { await models.installedModels() }, engines: engines)
+            }
         }
         return PersistentJobQueue(
             services: JobQueueServices(
                 jobs: database.jobs, transcripts: database.transcripts, media: database.media, rules: database.rules,
-                settings: settings, models: models, hardware: hardware, engines: [whisper.id: whisper, apple.id: apple],
-                pipeline: pipeline, decoder: decoder, diarizer: FluidAudioDiarizer(models: models),
+                settings: settings, models: models, hardware: hardware, engines: engines,
+                pipeline: pipeline, decoder: decoder, diarizer: diarizer,
                 autoExport: WatchFolderExport.provider(settings: settings, presets: database.presets),
-                notifier: SystemJobNotifier()))
+                notifier: SystemJobNotifier(), handlers: handlers, engineResolver: resolver))
     }
 
     private static func openDatabase() -> AppDatabase {

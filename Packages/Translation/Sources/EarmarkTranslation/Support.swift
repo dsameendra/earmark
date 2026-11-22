@@ -19,7 +19,10 @@ public enum TranslationFailure: Error, Sendable, Equatable, CustomStringConverti
         switch self {
         case .sameLanguage(let l): "Source and target language are both \(l.rawValue); nothing to translate."
         case .unknownSource: "The source language is unknown; choose it before translating."
-        case .noEngine(let p): "No translation engine supports \(p.source.rawValue) to \(p.target.rawValue)."
+        case .noEngine(let p):
+            p.source == .sinhala || p.target == .sinhala
+                ? "Sinhala translation unavailable in this build (it needs the NLLB runtime, see ADR-009)."
+                : "No translation engine supports \(p.source.rawValue) to \(p.target.rawValue)."
         }
     }
 }

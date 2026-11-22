@@ -257,6 +257,7 @@ final class PlayerWindowController: NSObject, NSWindowDelegate {
         window.delegate = nil
         window.close()
         self.window = nil
+        model.playback.isDetached = false
     }
 
     func windowWillClose(_ notification: Notification) {

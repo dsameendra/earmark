@@ -21,6 +21,12 @@ public protocol PlayerControlling: AnyObject {
     func pause()
     /// Playback rate for when playing (0.5...3).
     func setSpeed(_ speed: Double)
+    /// Stops audio and frees the underlying player; the controller is unusable afterwards.
+    func release()
+}
+
+extension PlayerControlling {
+    public func release() {}
 }
 
 /// Whether the media for a transcript can be played.
@@ -100,9 +106,39 @@ public final class PlaybackModel {
     }
 
     public func markMissing() {
+        if let engine { Self.tearDown(engine) }
         engine = nil
         mediaState = .missing
         isPlaying = false
+    }
+
+    /// Pauses, detaches the callbacks and releases the player; the model stays usable only as a "no media" shell.
+    public func stop() {
+        if let engine { Self.tearDown(engine) }
+        engine = nil
+        mediaState = .missing
+        isPlaying = false
+        isDetached = false
+        timeline = WordTimeline(segments: [])
+        activeRef = nil
+        scrollTargetID = nil
+    }
+
+    /// Pauses without releasing (capture started, or the shell asks for silence).
+    public func pause() { engine?.pause() }
+
+    /// Drops the transcript timeline so karaoke state does not reference an editor that is gone.
+    public func detachTimeline() {
+        timeline = WordTimeline(segments: [])
+        activeRef = nil
+        scrollTargetID = nil
+    }
+
+    private static func tearDown(_ engine: any PlayerControlling) {
+        engine.pause()
+        engine.onTick = nil
+        engine.onPlayingChanged = nil
+        engine.release()
     }
 
     public func setTimeline(_ timeline: WordTimeline) {
@@ -218,6 +254,17 @@ public final class AVPlayerEngine: PlayerControlling {
 
     isolated deinit {
         if let timeObserver { player.removeTimeObserver(timeObserver) }
+    }
+
+    public func release() {
+        player.pause()
+        if let timeObserver { player.removeTimeObserver(timeObserver) }
+        timeObserver = nil
+        statusObservation?.invalidate()
+        statusObservation = nil
+        onTick = nil
+        onPlayingChanged = nil
+        player.replaceCurrentItem(with: nil)
     }
 
     private var isSeeking = false

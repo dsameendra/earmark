@@ -145,6 +145,10 @@ public final class AudioSettingsModel {
         }
     }
 
+    isolated deinit {
+        for task in meterTasks { task.cancel() }
+    }
+
     public func stopMicrophoneTest() async {
         meterGeneration += 1
         for task in meterTasks { task.cancel() }

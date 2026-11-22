@@ -11,13 +11,16 @@ public struct TranscriptEditorView: View {
     private let transcriptID: TranscriptID
     private let services: AppServices
 
-    public init(transcriptID: TranscriptID, services: AppServices) {
+    private let playbackCenter: PlaybackCenter?
+
+    public init(transcriptID: TranscriptID, services: AppServices, playbackCenter: PlaybackCenter? = nil) {
         self.transcriptID = transcriptID
         self.services = services
+        self.playbackCenter = playbackCenter
     }
 
     public var body: some View {
-        EditorContent(transcriptID: transcriptID, services: services).id(transcriptID)
+        EditorContent(transcriptID: transcriptID, services: services, playbackCenter: playbackCenter).id(transcriptID)
     }
 }
 
@@ -39,8 +42,8 @@ private struct EditorContent: View {
     @FocusState private var findFocused: Bool
     @FocusState private var listFocused: Bool
 
-    init(transcriptID: TranscriptID, services: AppServices) {
-        let model = TranscriptEditorModel(transcriptID: transcriptID, services: services)
+    init(transcriptID: TranscriptID, services: AppServices, playbackCenter: PlaybackCenter?) {
+        let model = TranscriptEditorModel(transcriptID: transcriptID, services: services, playbackCenter: playbackCenter)
         _model = State(initialValue: model)
         _find = State(initialValue: FindReplaceModel(editor: model))
         _export = State(initialValue: EditorExportModel(editor: model))
@@ -80,6 +83,8 @@ private struct EditorContent: View {
             .onDisappear {
                 model.acknowledgeReconciliation()
                 playerWindow?.close()
+                playerWindow = nil
+                model.leaveEditor()
                 Task { await model.flush() }
             }
             .sheet(isPresented: $showExport) { ExportSheet(export: export) { showExport = false }.dsEntrance() }

@@ -119,6 +119,13 @@ struct AudioSettingsView: View {
             await model.observe()
         }
         .onDisappear { Task { await model.stopMicrophoneTest() } }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+            Task { await model.stopMicrophoneTest() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { note in
+            // The Settings window closing does not always remove the pane; release the capture in that case too.
+            if (note.object as? NSWindow)?.isKeyWindow == true { Task { await model.stopMicrophoneTest() } }
+        }
     }
 
     private func devicePicker(_ title: LocalizedStringKey, pref: Pref<String>, allowGlobal: Bool) -> some View {

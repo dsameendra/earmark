@@ -34,6 +34,16 @@ public struct ShellView: View {
                     if let message = model.errorMessage { errorBanner(message) }
                     detail
                 }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if model.showsMiniPlayer {
+                        MiniPlayerView(center: model.playback) { model.openTranscript($0) }
+                            .padding(DSSpacing.md)
+                            .transition(.opacity)
+                    }
+                }
+                .background(
+                    SharedPlaybackShortcuts(center: model.playback) { model.showsMiniPlayer }
+                )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(DSColor.paper)
             }
@@ -57,6 +67,7 @@ public struct ShellView: View {
         }
         .task { await model.restore() }
         .task { await model.sidebar.run() }
+        .task { await model.watchCaptureForPlayback() }
     }
 
     /// Inline error banner on a danger tint (never a blocking modal).
@@ -120,7 +131,7 @@ public struct ShellView: View {
 
     @ViewBuilder private var detail: some View {
         if let id = model.openedTranscript {
-            TranscriptEditorView(transcriptID: id, services: model.services)
+            TranscriptEditorView(transcriptID: id, services: model.services, playbackCenter: model.playback)
                 .id(id)
         } else {
             sectionDetail

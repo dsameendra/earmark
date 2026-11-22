@@ -53,6 +53,8 @@ final class FakePlayer: PlayerControlling {
     var onPlayingChanged: (@MainActor (Bool) -> Void)?
     private(set) var seeks: [TimeInterval] = []
     private(set) var speed = 1.0
+    private(set) var pauseCount = 0
+    private(set) var releaseCount = 0
 
     func seek(to time: TimeInterval) async {
         seeks.append(time)
@@ -64,10 +66,14 @@ final class FakePlayer: PlayerControlling {
         onPlayingChanged?(true)
     }
     func pause() {
+        pauseCount += 1
         isPlaying = false
         onPlayingChanged?(false)
     }
     func setSpeed(_ speed: Double) { self.speed = speed }
+    func release() {
+        releaseCount += 1
+    }
 }
 
 enum Fixtures {

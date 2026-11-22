@@ -103,7 +103,9 @@ public final class TranscriptEditorModel {
     public private(set) var isReadOnly = false
     public func setReadOnly(_ value: Bool) { isReadOnly = value }
 
-    public let playback = PlaybackModel()
+    /// The playback state shown by this editor. With a ``PlaybackCenter`` this is the shared session's model (so it survives
+    /// leaving the editor); without one it is private to this editor and released with it.
+    public private(set) var playback = PlaybackModel()
     @ObservationIgnored public private(set) var undoManager: UndoManager
     public private(set) var canUndo = false
     public private(set) var canRedo = false
@@ -118,6 +120,7 @@ public final class TranscriptEditorModel {
     /// Roots that library-relative media paths resolve against; the composition root supplies the real ones.
     @ObservationIgnored var mediaRoots: @Sendable () async -> [URL] = { MediaFiles.defaultRoots }
     @ObservationIgnored let presets: (any PresetRepository)?
+    @ObservationIgnored public let playbackCenter: PlaybackCenter?
     @ObservationIgnored private let engineFactory: @MainActor @Sendable (URL) async -> (engine: any PlayerControlling, isVideo: Bool)?
     @ObservationIgnored private var indexByID: [SegmentID: Int] = [:]
     @ObservationIgnored private var dirtyIDs: Set<SegmentID> = []
@@ -131,7 +134,7 @@ public final class TranscriptEditorModel {
     public init(
         transcriptID: TranscriptID, repository: any TranscriptRepository, settings: any SettingsStore,
         media: (any MediaRepository)? = nil, presets: (any PresetRepository)? = nil, persistDelay: Duration = .milliseconds(250),
-        undoManager: UndoManager? = nil,
+        undoManager: UndoManager? = nil, playbackCenter: PlaybackCenter? = nil,
         engineFactory: @escaping @MainActor @Sendable (URL) async -> (engine: any PlayerControlling, isVideo: Bool)? =
             TranscriptEditorModel.avEngine
     ) {
@@ -142,16 +145,17 @@ public final class TranscriptEditorModel {
         self.presets = presets
         self.persistDelay = persistDelay
         self.engineFactory = engineFactory
+        self.playbackCenter = playbackCenter
         let manager = undoManager ?? UndoManager()
         manager.groupsByEvent = false
         manager.levelsOfUndo = 200
         self.undoManager = manager
     }
 
-    public convenience init(transcriptID: TranscriptID, services: AppServices) {
+    public convenience init(transcriptID: TranscriptID, services: AppServices, playbackCenter: PlaybackCenter? = nil) {
         self.init(
             transcriptID: transcriptID, repository: services.transcripts, settings: services.settings, media: services.media,
-            presets: services.presets)
+            presets: services.presets, playbackCenter: playbackCenter)
         voiceProfiles = services.voiceProfiles
         embeddings = services.speakerEmbeddings
         retranscriber = services.segmentRetranscriber
@@ -232,13 +236,50 @@ public final class TranscriptEditorModel {
             resolved = MediaLocator.url(for: asset, roots: await mediaRoots())
         }
         mediaURL = resolved
-        guard let url = resolved, let made = await engineFactory(url) else {
+        guard let url = resolved else {
+            playbackCenter?.stop(transcriptID: transcriptID)
             playback.markMissing()
             return
         }
-        playback.attach(made.engine, isVideo: made.isVideo)
+        if let playbackCenter {
+            let reusing = playbackCenter.session(for: transcriptID)?.mediaURL == url
+            let session = await playbackCenter.open(
+                transcriptID: transcriptID, title: transcript.title, mediaURL: url, speed: playback.speed, factory: engineFactory)
+            guard let session else {
+                playback.markMissing()
+                return
+            }
+            if Task.isCancelled && !reusing {
+                // The editor was dismissed while the player loaded: do not leave an orphan session behind.
+                playbackCenter.stop(transcriptID: transcriptID)
+                return
+            }
+            session.playback.isDetached = false
+            playback = session.playback
+        } else {
+            guard let made = await engineFactory(url) else {
+                playback.markMissing()
+                return
+            }
+            playback.attach(made.engine, isVideo: made.isVideo)
+        }
         playback.setTimeline(WordTimeline(segments: segments))
         if let peaks = await WaveformPeaks.compute(url: url) { waveform = peaks }
+    }
+
+    /// The editor is going away. Edits are flushed by the caller; the shared player keeps playing (the mini-player owns it),
+    /// a private one stops. Either way the karaoke timeline no longer points at this model.
+    public func leaveEditor() {
+        playback.isDetached = false
+        playback.detachTimeline()
+        if playbackCenter == nil { playback.stop() }
+        translationWatcher?.cancel()
+    }
+
+    isolated deinit {
+        debounce?.cancel()
+        translationWatcher?.cancel()
+        if playbackCenter == nil { playback.stop() }
     }
 
     // MARK: Derived state

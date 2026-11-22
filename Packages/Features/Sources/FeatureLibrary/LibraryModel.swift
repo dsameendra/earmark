@@ -36,6 +36,8 @@ public final class LibraryModel {
     public static let defaultRetentionDays = 30
     public static let retentionOptions = [7, 14, 30, 60, 90, 0]
 
+    /// Called before transcripts are deleted or purged, so dependents (the shared player) can let go of them.
+    @ObservationIgnored public var onTranscriptsRemoved: (@MainActor ([TranscriptID]) -> Void)?
     @ObservationIgnored private let services: AppServices
     @ObservationIgnored private let transcripts: any TranscriptRepository
     @ObservationIgnored private let access: any MediaAccessing
@@ -237,12 +239,16 @@ public final class LibraryModel {
     }
 
     /// Soft-deletes (sets `deletedAt`); items then appear only in Recently Deleted.
-    public func delete(_ ids: [TranscriptID]) async { await apply { try await $0.softDelete(ids, at: self.now()) } }
+    public func delete(_ ids: [TranscriptID]) async {
+        onTranscriptsRemoved?(ids)
+        await apply { try await $0.softDelete(ids, at: self.now()) }
+    }
 
     public func restore(_ ids: [TranscriptID]) async { await apply { try await $0.restore(ids) } }
 
     /// Permanently removes transcripts and their library-owned media files and rows. Callers confirm first (LIB-AC-09).
     public func purge(_ ids: [TranscriptID]) async {
+        onTranscriptsRemoved?(ids)
         let purger = purger
         await apply { _ in try await purger.purge(ids) }
     }

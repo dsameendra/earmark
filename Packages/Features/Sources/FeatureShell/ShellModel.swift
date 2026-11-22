@@ -1,4 +1,5 @@
 import AppCore
+import FeatureEditor
 import FeatureHome
 import FeatureLibrary
 import FeatureLive
@@ -29,6 +30,8 @@ public final class ShellModel {
     public let recentlyDeleted: LibraryModel
     public let quickOpen: QuickOpenModel
     public let sidebar: SidebarModel
+    /// The one app-wide playback session (editor player and mini-player).
+    public let playback = PlaybackCenter()
 
     /// Window width as last measured; drives ``layout``.
     public private(set) var windowWidth: CGFloat = 1440
@@ -52,6 +55,9 @@ public final class ShellModel {
         quickOpen = QuickOpenModel(transcripts: services.transcripts)
         sidebar = SidebarModel(services: services)
         meetings.navigate = { [weak self] in self?.select(.meetings) }
+        let playback = playback
+        library.onTranscriptsRemoved = { ids in for id in ids { playback.stop(transcriptID: id) } }
+        recentlyDeleted.onTranscriptsRemoved = { ids in for id in ids { playback.stop(transcriptID: id) } }
     }
 
     /// Responsive layout for the current window width.
@@ -123,7 +129,34 @@ public final class ShellModel {
     /// Opens a transcript in the editor (from quick open, Library, Queue or Home).
     public func openTranscript(_ id: TranscriptID) {
         isQuickOpenPresented = false
+        playback.replace(keeping: id)  // a different transcript replaces the session; the same one resumes
         openedTranscript = id
+    }
+
+    /// The mini-player is on screen: a session exists and the editor for that transcript is not showing.
+    public var showsMiniPlayer: Bool {
+        guard let session = playback.session else { return false }
+        return openedTranscript != session.transcriptID
+    }
+
+    /// Live captions, a meeting recording or dictation began: pause playback so it cannot feed the microphone.
+    public func captureStateChanged(recording: Bool, dictating: Bool) {
+        if recording || dictating { playback.captureDidStart() }
+    }
+
+    /// Follows capture state for the app's lifetime (start from a `.task`).
+    public func watchCaptureForPlayback() async {
+        let dictation = services.dictation
+        let dictationTask = Task { [weak self] in
+            guard let dictation else { return }
+            for await listening in dictation.isListening() where listening {
+                self?.captureStateChanged(recording: false, dictating: true)
+            }
+        }
+        defer { dictationTask.cancel() }
+        for await active in Observations({ [self] in isRecordingActive }) where active {
+            captureStateChanged(recording: true, dictating: false)
+        }
     }
 
     /// Closes the editor and returns to the selected section.

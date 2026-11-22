@@ -88,6 +88,7 @@ final class AppEnvironment {
     struct DictationRuntime {
         let controller: DictationController
         let hud: DictationHUDController
+        let hotkeys: GlobalHotkeyService
     }
 
     private static func makeServices() -> Composition {
@@ -126,7 +127,8 @@ final class AppEnvironment {
             liveExtras: live.extras, dictation: dictationControl)
         let settingsDependencies = SettingsDependencies(
             store: settings, models: models, hardware: hardware, audioDevices: audioDevices, permissions: permissions,
-            rules: database.rules, presets: database.presets, transcripts: database.transcripts)
+            rules: database.rules, presets: database.presets, transcripts: database.transcripts,
+            hotkeyDiagnostics: dictation.hotkeys, retryHotkeys: { [controller = dictation.controller] in await controller.retryHotkeyRegistration() })
         return Composition(services: services, settingsDependencies: settingsDependencies, live: live, dictation: dictation)
     }
 
@@ -173,16 +175,17 @@ final class AppEnvironment {
         let routed = RoutedEngineProvider(
             router: DefaultEngineRouter(), tier: { hardware.profile.tier }, installedModels: { await models.installedModels() },
             engines: engines)
+        let hotkeys = GlobalHotkeyService(source: FallbackHotkeySource())
         let controller = DictationController(
             dependencies: DictationDependencies(
-                hotkeys: GlobalHotkeyService(source: FallbackHotkeySource()),
+                hotkeys: hotkeys,
                 makeAudioSource: { uid in MicrophoneSource(deviceUID: uid, permissions: permissions) },
                 engineProvider: routed.provider,
                 pipeline: DictationPipeline(postProcessor: PostProcessingChain(), rules: database.rules),
                 inserter: TextInserter.system(), history: DictationHistory(repository: database.dictationHistory),
                 settings: settings, permissions: permissions, hud: hud, notifier: SystemDictationNotifier(),
                 onboarding: AccessibilityOnboardingPresenter()))
-        return DictationRuntime(controller: controller, hud: hud)
+        return DictationRuntime(controller: controller, hud: hud, hotkeys: hotkeys)
     }
 
     /// The real file-transcription queue: WhisperKit (tokenizer provisioned by the model manager, so no implicit network,

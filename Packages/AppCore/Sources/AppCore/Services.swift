@@ -28,6 +28,14 @@ public struct KeyCombo: Hashable, Codable, Sendable {
     }
 }
 
+extension KeyCombo {
+    /// Default dictation shortcut, Control-Option-D: needs no Fn/Globe configuration, produces no character in a text
+    /// field and is not a system shortcut (unlike Option-Space, which types a non-breaking space).
+    public static let defaultDictation = KeyCombo(keyCode: 2, modifiers: 0x40000 | 0x80000)
+    /// The Fn / Globe key on its own (modifier-only, reported through `flagsChanged`).
+    public static let functionKey = KeyCombo(keyCode: 63, modifiers: 0x800000)
+}
+
 public enum HotkeyMode: String, Codable, Sendable { case pushToTalk, toggle }
 public enum HotkeyEvent: Sendable, Equatable { case pressed, released }
 
@@ -38,6 +46,75 @@ public enum HotkeyAction: String, Codable, Sendable, CaseIterable {
 public protocol HotkeyServicing: Sendable {
     func register(_ action: HotkeyAction, combo: KeyCombo) async throws -> AsyncStream<HotkeyEvent>
     func unregister(_ action: HotkeyAction) async
+}
+
+/// How the global hotkey source can see (and consume) key events right now.
+public enum HotkeyCapture: String, Sendable, Equatable {
+    /// Active event tap: matched shortcut keys are swallowed so they never reach the focused app.
+    case swallowing
+    /// Listen-only: the shortcut works but the key press still reaches the focused app (Accessibility not granted).
+    case listenOnly
+    /// No event source could be started.
+    case unavailable
+}
+
+/// What the Globe/Fn key does system-wide (System Settings > Keyboard > "Press Globe key to").
+public enum GlobeKeyAction: Sendable, Equatable {
+    case doNothing, changeInputSource, showEmojiAndSymbols, startDictation
+    /// The preference is absent, so macOS uses its default (Show Emoji & Symbols on current Macs).
+    case systemDefault
+
+    /// Decodes `AppleFnUsageType` from `com.apple.HIToolbox` (0 Do Nothing, 1 Change Input Source, 2 Emoji, 3 Dictation).
+    public init(appleFnUsageType: Int?) {
+        switch appleFnUsageType {
+        case 0: self = .doNothing
+        case 1: self = .changeInputSource
+        case 2: self = .showEmojiAndSymbols
+        case 3: self = .startDictation
+        default: self = .systemDefault
+        }
+    }
+
+    /// True when macOS will also act on the Globe key, so Earmark cannot rely on it.
+    public var competesWithEarmark: Bool { self != .doNothing }
+
+    public var summary: String {
+        switch self {
+        case .doNothing: "Do Nothing"
+        case .changeInputSource: "Change Input Source"
+        case .showEmojiAndSymbols: "Show Emoji & Symbols"
+        case .startDictation: "Start Dictation"
+        case .systemDefault: "the macOS default (Show Emoji & Symbols)"
+        }
+    }
+}
+
+/// A snapshot of global hotkey health, surfaced in Settings > Shortcuts.
+public struct HotkeyDiagnostics: Sendable, Equatable {
+    public var capture: HotkeyCapture
+    public var accessibilityTrusted: Bool
+    public var inputMonitoringGranted: Bool
+    public var globeKeyAction: GlobeKeyAction
+    /// Actions whose registration failed, with a user-facing reason.
+    public var failures: [HotkeyAction: String]
+
+    public init(
+        capture: HotkeyCapture, accessibilityTrusted: Bool, inputMonitoringGranted: Bool, globeKeyAction: GlobeKeyAction,
+        failures: [HotkeyAction: String] = [:]
+    ) {
+        self.capture = capture
+        self.accessibilityTrusted = accessibilityTrusted
+        self.inputMonitoringGranted = inputMonitoringGranted
+        self.globeKeyAction = globeKeyAction
+        self.failures = failures
+    }
+}
+
+/// Reports (and re-checks) global hotkey health. Implemented by the hotkey service.
+public protocol HotkeyDiagnosing: Sendable {
+    /// Re-checks permissions, upgrades a listen-only source to a swallowing one when Accessibility was just granted,
+    /// and returns the current state.
+    func refreshDiagnostics() async -> HotkeyDiagnostics
 }
 
 public enum TextInsertionMethod: String, Codable, Sendable { case pasteboardPaste, accessibility }

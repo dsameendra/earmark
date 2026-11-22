@@ -212,6 +212,8 @@ public actor DictationController {
         guard kind == .accessibility, status == .granted else { return }
         await deps.onboarding.dismissAccessibilityOnboarding()
         if hub.current == .needsAccessibility { hub.publish(.idle) }
+        // Upgrade a listen-only key source to the swallowing one now that Accessibility is available.
+        if let diagnosing = deps.hotkeys as? any HotkeyDiagnosing { _ = await diagnosing.refreshDiagnostics() }
         if registeredCombo == nil { await registerHotkey() }
     }
 

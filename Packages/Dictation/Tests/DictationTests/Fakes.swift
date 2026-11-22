@@ -8,10 +8,16 @@ import Synchronization
 // MARK: Event source
 
 final class FakeEventSource: HotkeyEventSource, @unchecked Sendable {
-    private let state = Mutex<(handler: (@Sendable (RawKeyEvent) -> Void)?, starts: Int, stops: Int)>((nil, 0, 0))
-    let failStart: Bool
-    init(failStart: Bool = false) { self.failStart = failStart }
-    func start(handler: @escaping @Sendable (RawKeyEvent) -> Void) throws {
+    private let state = Mutex<(handler: (@Sendable (RawKeyEvent) -> Bool)?, starts: Int, stops: Int)>((nil, 0, 0))
+    private let failing: Mutex<Bool>
+    let capture: HotkeyCapture
+    init(failStart: Bool = false, capture: HotkeyCapture = .swallowing) {
+        failing = Mutex(failStart)
+        self.capture = capture
+    }
+    func setFailStart(_ value: Bool) { failing.withLock { $0 = value } }
+    func start(handler: @escaping @Sendable (RawKeyEvent) -> Bool) throws {
+        let failStart = failing.withLock { $0 }
         if failStart { throw HotkeyError.eventSourceUnavailable }
         state.withLock {
             $0.handler = handler
@@ -24,7 +30,7 @@ final class FakeEventSource: HotkeyEventSource, @unchecked Sendable {
             $0.stops += 1
         }
     }
-    func emit(_ event: RawKeyEvent) { state.withLock { $0.handler }?(event) }
+    @discardableResult func emit(_ event: RawKeyEvent) -> Bool { state.withLock { $0.handler }?(event) ?? false }
     var starts: Int { state.withLock { $0.starts } }
     var stops: Int { state.withLock { $0.stops } }
 }

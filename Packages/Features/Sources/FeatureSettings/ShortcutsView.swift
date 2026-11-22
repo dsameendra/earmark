@@ -69,17 +69,32 @@ struct KeyRecorderField: NSViewRepresentable {
 
 struct ShortcutsSettingsView: View {
     let model: ShortcutsModel
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         Form {
             section("Global", actions: ShortcutAction.allCases.filter(\.isGlobal))
             section("In the app", actions: ShortcutAction.allCases.filter { !$0.isGlobal })
+            ForEach(model.issues) { issue in
+                Section {
+                    Label(issue.message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(DSColor.danger)
+                    if let title = issue.fixTitle, let url = issue.fixURL {
+                        Button(title) { openURL(url) }
+                    }
+                }
+            }
             if let message = model.errorMessage {
                 Section { Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(DSColor.danger) }
             }
         }
         .formStyle(.grouped)
-        .task { await model.load() }
+        .task {
+            await model.load()
+            await model.refreshHotkeyStatus()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await model.refreshHotkeyStatus() }
+        }
         .alert(
             "Shortcut already in use",
             isPresented: Binding(get: { model.pendingConflict != nil }, set: { if !$0 { model.cancelConflict() } })
@@ -107,6 +122,11 @@ struct ShortcutsSettingsView: View {
                     HStack {
                         KeyRecorderField(combo: model.combo(for: action)) { combo in Task { await model.record(combo, for: action) } }
                             .frame(width: 130, height: 24)
+                        if action == .dictation {
+                            Button("Fn") { Task { await model.useFunctionKey(for: action) } }
+                                .buttonStyle(.borderless).help("Use the Fn / Globe key on its own (hold to talk)")
+                                .accessibilityLabel("Use the Fn Globe key for dictation")
+                        }
                         Button("Clear", systemImage: "xmark.circle") { Task { await model.clear(action) } }
                             .labelStyle(.iconOnly).buttonStyle(.borderless).disabled(model.combo(for: action) == nil)
                             .accessibilityLabel("Clear \(action.title) shortcut")

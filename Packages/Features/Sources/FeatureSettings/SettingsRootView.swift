@@ -37,7 +37,8 @@ public final class SettingsEnvironment {
         exportDefaults = ExportDefaultsModel(repository: deps.presets, store: deps.store)
         storage = StorageSettingsModel(
             store: deps.store, models: deps.models, transcripts: deps.transcripts, clearCaches: deps.clearCaches)
-        shortcuts = ShortcutsModel(store: deps.store, hotkeys: deps.hotkeys)
+        shortcuts = ShortcutsModel(
+            store: deps.store, hotkeys: deps.hotkeys, diagnostics: deps.hotkeyDiagnostics, retryRegistration: deps.retryHotkeys)
         permissions = PermissionsSettingsModel(service: deps.permissions)
     }
 }

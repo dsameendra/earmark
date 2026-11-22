@@ -35,7 +35,35 @@ public enum ModifierMask {
     public static let control = 1 << 18
     public static let option = 1 << 19
     public static let command = 1 << 20
+    /// Fn / Globe (`NSEvent.ModifierFlags.function`); not part of ``all`` because recorded shortcuts need a real modifier.
+    public static let function = 1 << 23
     public static let all = shift | control | option | command
+}
+
+/// A problem with global shortcut delivery, with the user's way out.
+public struct ShortcutIssue: Identifiable, Equatable, Sendable {
+    public enum Fix: Equatable, Sendable {
+        case openAccessibilitySettings, openKeyboardSettings
+    }
+    public var id: String
+    public var message: String
+    public var fix: Fix?
+
+    public var fixTitle: String? {
+        switch fix {
+        case .openAccessibilitySettings: "Open Accessibility Settings"
+        case .openKeyboardSettings: "Open Keyboard Settings"
+        case nil: nil
+        }
+    }
+
+    public var fixURL: URL? {
+        switch fix {
+        case .openAccessibilitySettings: URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+        case .openKeyboardSettings: URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
+        case nil: nil
+        }
+    }
 }
 
 /// Settings → Keyboard Shortcuts: record, change, clear, and warn on conflicts (SET-AC-16).
@@ -45,20 +73,76 @@ public final class ShortcutsModel {
     /// A recording that conflicts with another action and awaits confirmation.
     public private(set) var pendingConflict: (action: ShortcutAction, combo: KeyCombo, conflictsWith: ShortcutAction?, reserved: Bool)?
     public var errorMessage: String?
+    /// Latest global hotkey health (nil until the first refresh, or when no hotkey service is wired).
+    public private(set) var hotkeyStatus: HotkeyDiagnostics?
 
     @ObservationIgnored private let store: any SettingsStore
     @ObservationIgnored private let hotkeys: (any HotkeyServicing)?
+    @ObservationIgnored private let diagnostics: (any HotkeyDiagnosing)?
+    @ObservationIgnored private let retryRegistration: (@Sendable () async -> Void)?
     @ObservationIgnored private var cleared: Set<ShortcutAction> = []
 
-    public init(store: any SettingsStore, hotkeys: (any HotkeyServicing)?) {
+    public init(
+        store: any SettingsStore, hotkeys: (any HotkeyServicing)?, diagnostics: (any HotkeyDiagnosing)? = nil,
+        retryRegistration: (@Sendable () async -> Void)? = nil
+    ) {
         self.store = store
         self.hotkeys = hotkeys
+        self.diagnostics = diagnostics
+        self.retryRegistration = retryRegistration
+    }
+
+    /// Re-checks permissions and the Globe key setting; retries a failed dictation registration once access is available.
+    public func refreshHotkeyStatus() async {
+        guard let diagnostics else { return }
+        var status = await diagnostics.refreshDiagnostics()
+        if status.failures[.dictation] != nil, status.accessibilityTrusted || status.inputMonitoringGranted, let retryRegistration {
+            await retryRegistration()
+            status = await diagnostics.refreshDiagnostics()
+        }
+        hotkeyStatus = status
+    }
+
+    /// Problems to show above the shortcut list; empty when everything is delivered and swallowed correctly.
+    public var issues: [ShortcutIssue] {
+        guard let status = hotkeyStatus else { return [] }
+        var out: [ShortcutIssue] = []
+        if let failure = status.failures[.dictation] {
+            out.append(
+                ShortcutIssue(
+                    id: "dictation-registration", message: "The dictation shortcut is not active. \(failure)",
+                    fix: status.accessibilityTrusted ? nil : .openAccessibilitySettings))
+        } else if status.capture == .listenOnly {
+            out.append(
+                ShortcutIssue(
+                    id: "listen-only",
+                    message: "Accessibility access is off, so shortcuts still reach the app you are typing in "
+                        + "(for example a shortcut may insert characters). Allow Earmark under Accessibility to fix this.",
+                    fix: .openAccessibilitySettings))
+        }
+        if combos[.dictation]?.keyCode == KeyCombo.functionKey.keyCode, status.globeKeyAction.competesWithEarmark {
+            out.append(
+                ShortcutIssue(
+                    id: "globe-key",
+                    message: "The Globe key is set to \(status.globeKeyAction.summary) in Keyboard settings, so macOS acts on it "
+                        + "too. Change “Press 🌐 key to” to Do Nothing for push-to-talk with Fn.",
+                    fix: .openKeyboardSettings))
+        }
+        return out
+    }
+
+    /// Uses the Fn / Globe key on its own for `action` (push-to-talk friendly; cannot be typed into the recorder).
+    public func useFunctionKey(for action: ShortcutAction) async {
+        errorMessage = nil
+        guard action == .dictation else { return }
+        if let other = conflict(for: .functionKey, excluding: action) { await clear(other) }
+        await apply(.functionKey, for: action)
     }
 
     public static func defaultCombo(for action: ShortcutAction) -> KeyCombo? {
         let hyper = ModifierMask.control | ModifierMask.option
         switch action {
-        case .dictation: return KeyCombo(keyCode: 49, modifiers: ModifierMask.option)  // ⌥Space
+        case .dictation: return .defaultDictation  // ⌃⌥D
         case .toggleLiveCaptions: return KeyCombo(keyCode: 37, modifiers: hyper)  // ⌃⌥L
         case .toggleMeetingCapture: return KeyCombo(keyCode: 46, modifiers: hyper)  // ⌃⌥M
         case .bookmarkMoment: return KeyCombo(keyCode: 11, modifiers: hyper)  // ⌃⌥B
@@ -145,6 +229,7 @@ public final class ShortcutsModel {
         cleared.remove(action)
         await store.set(combo, for: SettingsKey.shortcut(action.rawValue))
         await store.set(false, for: SettingsKey.shortcut(action.rawValue) + ".cleared")
+        await refreshHotkeyStatus()
     }
 
     static func isFunctionKey(_ keyCode: UInt16) -> Bool {
@@ -153,6 +238,7 @@ public final class ShortcutsModel {
 
     /// Human-readable form such as `⌃⌥L`.
     public static func display(_ combo: KeyCombo) -> String {
+        if combo.keyCode == KeyCombo.functionKey.keyCode, combo.modifiers & ModifierMask.function != 0 { return "Fn" }
         var text = ""
         if combo.modifiers & ModifierMask.control != 0 { text += "⌃" }
         if combo.modifiers & ModifierMask.option != 0 { text += "⌥" }

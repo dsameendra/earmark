@@ -1,20 +1,19 @@
 import AppCore
-import Dictation
 import FeatureSupport
 import Foundation
 
 /// Mirrors the Settings scene's separate dictation keys, the Shortcuts pane's combo and the global defaults into the single
 /// `DictationSettings` value the controller reads, and reloads the controller when any of them changes. Without this the
 /// Settings UI and the controller would hold two disconnected copies (a changed hotkey or mode would never apply).
-enum DictationSettingsBridge {
-    static let observedKeys = [
+public enum DictationSettingsBridge {
+    public static let observedKeys = [
         SettingsKey.dictationMode, SettingsKey.dictationInsertion, SettingsKey.dictationAutoPunctuate, SettingsKey.dictationHistorySize,
         SettingsKey.dictationInputDeviceUID, SettingsKey.inputDeviceUID, SettingsKey.shortcut(HotkeyAction.dictation.rawValue),
         SettingsKey.languageMode, SettingsKey.preferredModel, SettingsKey.customVocabulary, SettingsKey.translationTarget,
     ]
 
     /// Rebuilds the controller's settings from the Settings-scene keys (keeps fields the UI does not edit, such as the HUD position).
-    static func sync(store: any SettingsStore) async {
+    public static func sync(store: any SettingsStore) async {
         var settings = await DictationSettings.load(from: store)
         if let mode = await store.value(for: SettingsKey.dictationMode, as: HotkeyMode.self) { settings.mode = mode }
         if let method = await store.value(for: SettingsKey.dictationInsertion, as: TextInsertionMethod.self) {
@@ -33,7 +32,7 @@ enum DictationSettingsBridge {
         if let combo = await store.value(for: comboKey, as: KeyCombo.self) {
             settings.combo = combo
         } else if await store.value(for: comboKey + ".cleared", as: Bool.self) != true {
-            settings.combo = KeyCombo(keyCode: 49, modifiers: ModifierMask.option)  // the Shortcuts pane default, Option-Space
+            settings.combo = .defaultDictation  // the Shortcuts pane default, Control-Option-D
         }
         if let mode = await store.value(for: SettingsKey.languageMode, as: LanguageMode.self) { settings.languageMode = mode }
         let model = await store.value(for: SettingsKey.preferredModel, as: String.self)
@@ -45,7 +44,7 @@ enum DictationSettingsBridge {
     }
 
     /// Syncs once, starts the controller, then follows the observed keys.
-    static func run(store: any SettingsStore, controller: DictationController) async {
+    public static func run(store: any SettingsStore, controller: DictationController) async {
         await sync(store: store)
         await controller.start()
         await withTaskGroup(of: Void.self) { group in

@@ -8,6 +8,7 @@ let package = Package(
     dependencies: [
         .package(path: "../AppCore"),
         .package(path: "../DesignSystem"),
+        .package(path: "../Features"),
     ],
     targets: [
         .target(
@@ -15,6 +16,7 @@ let package = Package(
             dependencies: [
                 .product(name: "AppCore", package: "AppCore"),
                 .product(name: "DesignSystem", package: "DesignSystem"),
+                .product(name: "FeatureSupport", package: "Features"),
             ],
             swiftSettings: [.treatAllWarnings(as: .error)]),
         .testTarget(

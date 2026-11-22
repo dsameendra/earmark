@@ -1,4 +1,6 @@
 import AppCore
+import ApplicationServices
+import CoreGraphics
 import Foundation
 import Synchronization
 
@@ -74,7 +76,11 @@ public enum KeyComboFormatter {
 
 /// A keyboard event as seen by the event source, decoupled from CGEvent so the matcher is unit-testable.
 public struct RawKeyEvent: Sendable, Equatable {
-    public enum Kind: Sendable, Equatable { case keyDown, keyUp, flagsChanged }
+    public enum Kind: Sendable, Equatable {
+        case keyDown, keyUp, flagsChanged
+        /// The source lost events (event tap disabled by timeout or user input): drop any held state.
+        case reset
+    }
     public var kind: Kind
     public var keyCode: UInt16
     /// Raw modifier flags at the time of the event (masked with ``ModifierMask/all`` by the matcher).
@@ -92,33 +98,55 @@ public struct RawKeyEvent: Sendable, Equatable {
 public struct HotkeyMatcher: Sendable {
     public let combo: KeyCombo
     public private(set) var isDown = false
+    /// True between a consumed key-down and its key-up, so the matching key-up and auto-repeats are consumed too.
+    private var swallowing = false
     public init(combo: KeyCombo) { self.combo = combo }
 
-    public mutating func handle(_ event: RawKeyEvent) -> HotkeyEvent? {
+    /// Press/release transition only (see ``process(_:)`` for the swallow decision).
+    public mutating func handle(_ event: RawKeyEvent) -> HotkeyEvent? { process(event).event }
+
+    /// Transition plus whether an active event tap should swallow this event so the focused app never sees it.
+    ///
+    /// Key-down, auto-repeat and key-up of the combo's key are consumed together. Modifier-only combos are consumed
+    /// only for Fn / Globe (so the emoji picker does not open); swallowing Command, Option, Shift or Control changes
+    /// would leave other apps with a stuck modifier.
+    public mutating func process(_ event: RawKeyEvent) -> (event: HotkeyEvent?, consume: Bool) {
         let mods = event.modifiers & ModifierMask.all
+        if event.kind == .reset {
+            swallowing = false
+            guard isDown else { return (nil, false) }
+            isDown = false
+            return (.released, false)
+        }
         if combo.isModifierOnly {
-            guard event.kind == .flagsChanged, event.keyCode == combo.keyCode else { return nil }
+            guard event.kind == .flagsChanged, event.keyCode == combo.keyCode else { return (nil, false) }
+            let consume = combo.keyCode == KeyCombo.functionKeyCode
             let nowDown = mods & combo.ownModifierBit != 0
-            guard nowDown != isDown else { return nil }
+            guard nowDown != isDown else { return (nil, consume) }
             isDown = nowDown
-            return nowDown ? .pressed : .released
+            return (nowDown ? .pressed : .released, consume)
         }
         switch event.kind {
         case .keyDown:
-            guard event.keyCode == combo.keyCode, mods == (combo.modifiers & ModifierMask.all),
-                !event.isAutorepeat, !isDown
-            else { return nil }
+            guard event.keyCode == combo.keyCode, mods == (combo.modifiers & ModifierMask.all) else { return (nil, false) }
+            swallowing = true
+            guard !event.isAutorepeat, !isDown else { return (nil, true) }
             isDown = true
-            return .pressed
+            return (.pressed, true)
         case .keyUp:
-            guard event.keyCode == combo.keyCode, isDown else { return nil }
+            guard event.keyCode == combo.keyCode else { return (nil, false) }
+            let consume = swallowing
+            swallowing = false
+            guard isDown else { return (nil, consume) }
             isDown = false
-            return .released
+            return (.released, consume)
         case .flagsChanged:
             // Letting go of a modifier before the key still ends a push-to-talk hold.
-            guard isDown, mods != (combo.modifiers & ModifierMask.all) else { return nil }
+            guard isDown, mods != (combo.modifiers & ModifierMask.all) else { return (nil, false) }
             isDown = false
-            return .released
+            return (.released, false)
+        case .reset:
+            return (nil, false)
         }
     }
 }
@@ -188,33 +216,86 @@ public enum HotkeyError: Error, Sendable, Equatable {
 
 /// A source of raw global key events. The production implementation wraps a CGEventTap; tests inject a fake.
 public protocol HotkeyEventSource: Sendable {
-    /// Starts delivering events to `handler` (called on an arbitrary thread). Throws ``HotkeyError/eventSourceUnavailable``.
-    func start(handler: @escaping @Sendable (RawKeyEvent) -> Void) throws
+    /// Starts delivering events to `handler` (called on an arbitrary thread). The handler returns `true` when the event
+    /// belongs to a registered shortcut and should be swallowed; sources that cannot swallow ignore the result.
+    /// Throws ``HotkeyError/eventSourceUnavailable``.
+    func start(handler: @escaping @Sendable (RawKeyEvent) -> Bool) throws
     func stop()
+    /// What the started source can do (valid after a successful `start`).
+    var capture: HotkeyCapture { get }
+}
+
+extension HotkeyEventSource {
+    public var capture: HotkeyCapture { .listenOnly }
 }
 
 // MARK: - Service
 
-/// Global hotkey service (`HotkeyServicing`). One shared event source; idle cost is the listen-only tap.
-public final class GlobalHotkeyService: HotkeyServicing {
+/// Permission and system-setting probes behind the hotkey diagnostics, injectable for tests.
+public struct HotkeySystemState: Sendable {
+    public var accessibilityTrusted: @Sendable () -> Bool
+    public var inputMonitoringGranted: @Sendable () -> Bool
+    /// Raw `AppleFnUsageType` from `com.apple.HIToolbox`, `nil` when never set.
+    public var fnUsageType: @Sendable () -> Int?
+
+    public init(
+        accessibilityTrusted: @escaping @Sendable () -> Bool, inputMonitoringGranted: @escaping @Sendable () -> Bool,
+        fnUsageType: @escaping @Sendable () -> Int?
+    ) {
+        self.accessibilityTrusted = accessibilityTrusted
+        self.inputMonitoringGranted = inputMonitoringGranted
+        self.fnUsageType = fnUsageType
+    }
+
+    public static let system = HotkeySystemState(
+        accessibilityTrusted: { AXIsProcessTrusted() },
+        inputMonitoringGranted: { CGPreflightListenEventAccess() },
+        fnUsageType: {
+            (CFPreferencesCopyAppValue("AppleFnUsageType" as CFString, "com.apple.HIToolbox" as CFString) as? NSNumber)?.intValue
+        })
+}
+
+/// User-facing registration failure copy.
+enum HotkeyFailureMessage {
+    static let unavailable =
+        "Earmark could not start global key monitoring. Allow Earmark under Privacy & Security > Accessibility "
+        + "(and Input Monitoring), then reopen this pane."
+    static func conflict(_ other: HotkeyAction) -> String { "This shortcut is already used by another Earmark action (\(other.rawValue))." }
+}
+
+/// Global hotkey service (`HotkeyServicing`). One shared event source; idle cost is one event tap.
+public final class GlobalHotkeyService: HotkeyServicing, HotkeyDiagnosing {
     private struct Registration {
         var matcher: HotkeyMatcher
         var continuation: AsyncStream<HotkeyEvent>.Continuation
     }
     private let source: any HotkeyEventSource
+    private let system: HotkeySystemState
     private let registrations = Mutex<[HotkeyAction: Registration]>([:])
     private let running = Mutex(false)
+    private let failures = Mutex<[HotkeyAction: String]>([:])
 
-    public init(source: any HotkeyEventSource) { self.source = source }
+    public init(source: any HotkeyEventSource, system: HotkeySystemState = .system) {
+        self.source = source
+        self.system = system
+    }
 
     /// Registers `combo` for `action`. Throws ``HotkeyError/conflict(_:)`` if another Earmark action uses it and
     /// ``HotkeyError/eventSourceUnavailable`` if the OS refuses global monitoring (callers degrade gracefully).
+    /// Failures are remembered for ``refreshDiagnostics()`` so Settings can explain them.
     public func register(_ action: HotkeyAction, combo: KeyCombo) async throws -> AsyncStream<HotkeyEvent> {
         let existing = registrations.withLock { $0.mapValues { $0.matcher.combo } }
         if case .earmarkAction(let other) = ShortcutConflictChecker.check(combo, for: action, existing: existing) {
+            failures.withLock { $0[action] = HotkeyFailureMessage.conflict(other) }
             throw HotkeyError.conflict(other)
         }
-        try startSourceIfNeeded()
+        do {
+            try startSourceIfNeeded()
+        } catch {
+            failures.withLock { $0[action] = HotkeyFailureMessage.unavailable }
+            throw error
+        }
+        failures.withLock { $0[action] = nil }
         let (stream, continuation) = AsyncStream<HotkeyEvent>.makeStream(bufferingPolicy: .unbounded)
         let old = registrations.withLock { regs -> AsyncStream<HotkeyEvent>.Continuation? in
             let old = regs[action]?.continuation
@@ -226,6 +307,7 @@ public final class GlobalHotkeyService: HotkeyServicing {
     }
 
     public func unregister(_ action: HotkeyAction) async {
+        failures.withLock { $0[action] = nil }
         let (old, empty) = registrations.withLock { regs -> (AsyncStream<HotkeyEvent>.Continuation?, Bool) in
             let old = regs.removeValue(forKey: action)?.continuation
             return (old, regs.isEmpty)
@@ -240,17 +322,37 @@ public final class GlobalHotkeyService: HotkeyServicing {
         }
     }
 
+    public func refreshDiagnostics() async -> HotkeyDiagnostics {
+        let trusted = system.accessibilityTrusted()
+        // Accessibility was granted after a listen-only start: restart so the active (swallowing) tap is used.
+        if running.withLock({ $0 }), source.capture != .swallowing, trusted {
+            source.stop()
+            running.withLock { $0 = false }
+            try? startSourceIfNeeded()
+        }
+        let isRunning = running.withLock { $0 }
+        return HotkeyDiagnostics(
+            capture: isRunning ? source.capture : .unavailable, accessibilityTrusted: trusted,
+            inputMonitoringGranted: system.inputMonitoringGranted(), globeKeyAction: GlobeKeyAction(appleFnUsageType: system.fnUsageType()),
+            failures: failures.withLock { $0 })
+    }
+
     private func startSourceIfNeeded() throws {
         guard !running.withLock({ $0 }) else { return }
-        try source.start { [weak self] event in self?.dispatch(event) }
+        try source.start { [weak self] event in self?.dispatch(event) ?? false }
         running.withLock { $0 = true }
     }
 
-    func dispatch(_ event: RawKeyEvent) {
+    @discardableResult
+    func dispatch(_ event: RawKeyEvent) -> Bool {
         registrations.withLock { regs in
+            var consume = false
             for key in Array(regs.keys) {
-                if let out = regs[key]?.matcher.handle(event) { regs[key]?.continuation.yield(out) }
+                guard let result = regs[key]?.matcher.process(event) else { continue }
+                if let out = result.event { regs[key]?.continuation.yield(out) }
+                consume = consume || result.consume
             }
+            return consume
         }
     }
 }

@@ -42,6 +42,10 @@ public struct SettingsDependencies: Sendable {
     public var presets: any PresetRepository
     public var hotkeys: (any HotkeyServicing)?
     public var transcripts: (any TranscriptRepository)?
+    /// Global hotkey health for Settings > Shortcuts (nil when no hotkey service is wired).
+    public var hotkeyDiagnostics: (any HotkeyDiagnosing)?
+    /// Retries a failed global hotkey registration (after the user grants access).
+    public var retryHotkeys: (@Sendable () async -> Void)?
     public var launchAtLogin: any LaunchAtLoginControlling
     /// Removes regenerable caches and returns the bytes freed.
     public var clearCaches: @Sendable () async -> Int64
@@ -50,6 +54,7 @@ public struct SettingsDependencies: Sendable {
         store: any SettingsStore, models: any ModelManaging, hardware: any HardwareTierProviding,
         audioDevices: any AudioDeviceProviding, permissions: any PermissionsServicing, rules: any RuleRepository,
         presets: any PresetRepository, hotkeys: (any HotkeyServicing)? = nil, transcripts: (any TranscriptRepository)? = nil,
+        hotkeyDiagnostics: (any HotkeyDiagnosing)? = nil, retryHotkeys: (@Sendable () async -> Void)? = nil,
         launchAtLogin: any LaunchAtLoginControlling = SMAppServiceLaunchAtLogin(),
         clearCaches: @escaping @Sendable () async -> Int64 = { SettingsDependencies.clearDefaultCaches() }
     ) {
@@ -62,6 +67,8 @@ public struct SettingsDependencies: Sendable {
         self.presets = presets
         self.hotkeys = hotkeys
         self.transcripts = transcripts
+        self.hotkeyDiagnostics = hotkeyDiagnostics
+        self.retryHotkeys = retryHotkeys
         self.launchAtLogin = launchAtLogin
         self.clearCaches = clearCaches
     }

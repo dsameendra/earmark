@@ -70,6 +70,76 @@ enum TranscriptText {
     }
 }
 
+/// Raised by ``withDeadline(_:operation:)`` when the operation did not finish in time.
+struct DeadlineExceeded: Error, Equatable { var seconds: Double }
+
+/// One-shot rendezvous between an operation, its timer and the caller's cancellation. The first result wins, whether it
+/// arrives before or after the continuation is installed.
+private final class DeadlineRace<T: Sendable>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<T, any Error>?
+    private var tasks: [Task<Void, Never>] = []
+    private var result: Result<T, any Error>?
+    private var delivered = false
+
+    func install(_ continuation: CheckedContinuation<T, any Error>, tasks: [Task<Void, Never>]) {
+        lock.lock()
+        self.tasks = tasks
+        if let result, !delivered {
+            delivered = true
+            lock.unlock()
+            continuation.resume(with: result)
+            tasks.forEach { $0.cancel() }
+            return
+        }
+        self.continuation = continuation
+        lock.unlock()
+    }
+
+    func finish(_ outcome: Result<T, any Error>) {
+        lock.lock()
+        guard result == nil else {
+            lock.unlock()
+            return
+        }
+        result = outcome
+        guard let continuation, !delivered else {
+            lock.unlock()
+            return
+        }
+        delivered = true
+        self.continuation = nil
+        let current = tasks
+        lock.unlock()
+        continuation.resume(with: outcome)
+        current.forEach { $0.cancel() }
+    }
+}
+
+/// Runs `operation` and returns its result, or throws ``DeadlineExceeded`` after `timeout`, or `CancellationError` when the
+/// caller is cancelled, whichever comes first.
+///
+/// Unlike a task group, this does **not** wait for `operation` once the deadline passed: Core ML predictions cannot be
+/// interrupted, so a wedged call would otherwise hang its caller forever. The abandoned task is cancelled (best effort) and
+/// left to finish on its own; callers that share state with it must discard that state (see ``WhisperKitEngine``).
+func withDeadline<T: Sendable>(_ timeout: Duration, operation: @escaping @Sendable () async throws -> T) async throws -> T {
+    let race = DeadlineRace<T>()
+    return try await withTaskCancellationHandler {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<T, any Error>) in
+            let worker = Task {
+                do { race.finish(.success(try await operation())) } catch { race.finish(.failure(error)) }
+            }
+            let timer = Task {
+                try? await Task.sleep(for: timeout)
+                race.finish(.failure(DeadlineExceeded(seconds: timeout.secondsValue)))
+            }
+            race.install(continuation, tasks: [worker, timer])
+        }
+    } onCancel: {
+        race.finish(.failure(CancellationError()))
+    }
+}
+
 extension AsyncThrowingStream where Failure == any Error {
     /// Builds a stream that runs `body` in a task, maps thrown errors through ``AppError/mapping(_:engine:)`` and
     /// cancels the task when the consumer stops listening.

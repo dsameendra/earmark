@@ -126,7 +126,8 @@ final class AppEnvironment {
             liveExtras: live.extras, dictation: dictationControl)
         let settingsDependencies = SettingsDependencies(
             store: settings, models: models, hardware: hardware, audioDevices: audioDevices, permissions: permissions,
-            rules: database.rules, presets: database.presets, transcripts: database.transcripts)
+            rules: database.rules, presets: database.presets, transcripts: database.transcripts,
+            overlayPlacement: live.overlay)
         return Composition(services: services, settingsDependencies: settingsDependencies, live: live, dictation: dictation)
     }
 

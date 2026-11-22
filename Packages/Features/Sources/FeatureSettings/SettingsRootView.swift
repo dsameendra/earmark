@@ -1,6 +1,7 @@
 import AppCore
 import DesignSystem
 import FeatureSupport
+import LiveCaptions
 import SwiftUI
 
 /// All Settings models, built from the dependency bundle. Models load lazily when their section appears (SET open < 200 ms).
@@ -12,6 +13,7 @@ public final class SettingsEnvironment {
     public let audio: AudioSettingsModel
     public let meetings: MeetingsSettingsModel
     public let captions: CaptionPresetsModel
+    public let overlayPlacement: OverlayPlacementSettingsModel
     public let dictation: DictationSettingsModel
     public let appearance: AppearanceSettingsModel
     public let ignored: IgnoredSegmentsModel
@@ -29,6 +31,10 @@ public final class SettingsEnvironment {
         audio = AudioSettingsModel(provider: deps.audioDevices, store: deps.store)
         meetings = MeetingsSettingsModel(store: deps.store)
         captions = CaptionPresetsModel(repository: deps.presets, store: deps.store)
+        let captionModel = captions
+        overlayPlacement = OverlayPlacementSettingsModel(
+            store: deps.store, displays: deps.displays ?? SystemDisplayProvider(), controller: deps.overlayPlacement,
+            previewPreset: { captionModel.draft }, knownPresetIDs: { captionModel.presets.map(\.id) })
         dictation = DictationSettingsModel(store: deps.store)
         appearance = AppearanceSettingsModel(store: deps.store)
         ignored = IgnoredSegmentsModel(repository: deps.rules, store: deps.store)
@@ -77,7 +83,7 @@ public struct SettingsRootView: View {
         case .languages: LanguagesSettingsView(model: environment.languages)
         case .audio: AudioSettingsView(model: environment.audio)
         case .meetings: MeetingsSettingsView(model: environment.meetings)
-        case .liveCaptions: LiveCaptionsSettingsView(model: environment.captions)
+        case .liveCaptions: LiveCaptionsSettingsView(model: environment.captions, placement: environment.overlayPlacement)
         case .dictation: DictationSettingsView(model: environment.dictation)
         case .transcriptAppearance: AppearanceSettingsView(model: environment.appearance)
         case .ignoredSegments: IgnoredSegmentsView(model: environment.ignored)

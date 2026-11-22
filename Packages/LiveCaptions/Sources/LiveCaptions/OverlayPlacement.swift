@@ -9,8 +9,11 @@ public struct DisplayInfo: Sendable, Hashable {
     /// Frame minus menu bar / notch safe area and Dock.
     public var visibleFrame: CGRect
     public var isPrimary: Bool
-    public init(id: UInt32, frame: CGRect, visibleFrame: CGRect? = nil, isPrimary: Bool = false) {
+    /// Localised display name (for example "Studio Display"), shown in Settings.
+    public var name: String
+    public init(id: UInt32, frame: CGRect, visibleFrame: CGRect? = nil, isPrimary: Bool = false, name: String = "Display") {
         self.id = id
+        self.name = name
         self.frame = frame
         self.visibleFrame = visibleFrame ?? frame
         self.isPrimary = isPrimary
@@ -19,8 +22,14 @@ public struct DisplayInfo: Sendable, Hashable {
 
 /// Supplies the current displays; the system implementation reads `NSScreen`, tests pass fixed lists.
 @MainActor
-public protocol DisplayProviding {
+public protocol DisplayProviding: Sendable {
     func displays() -> [DisplayInfo]
+    /// The display holding the frontmost other app's window, else the mouse (nil when unknown).
+    func activeDisplayID() -> UInt32?
+}
+
+extension DisplayProviding {
+    public func activeDisplayID() -> UInt32? { nil }
 }
 
 @MainActor
@@ -30,8 +39,34 @@ public struct SystemDisplayProvider: DisplayProviding {
         NSScreen.screens.enumerated().compactMap { index, screen in
             guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { return nil }
             return DisplayInfo(
-                id: number.uint32Value, frame: screen.frame, visibleFrame: screen.visibleFrame, isPrimary: index == 0)
+                id: number.uint32Value, frame: screen.frame, visibleFrame: screen.visibleFrame, isPrimary: index == 0,
+                name: screen.localizedName)
         }
+    }
+
+    public func activeDisplayID() -> UInt32? {
+        let list = displays()
+        if let rect = Self.frontmostWindowRect(), let id = OverlayPlacement.displayID(containing: CGPoint(x: rect.midX, y: rect.midY), in: list) {
+            return id
+        }
+        return OverlayPlacement.displayID(containing: NSEvent.mouseLocation, in: list)
+    }
+
+    /// Frame (AppKit coordinates) of the front-most on-screen window of the frontmost app, unless that app is this one.
+    private static func frontmostWindowRect() -> CGRect? {
+        guard let app = NSWorkspace.shared.frontmostApplication, app.processIdentifier != ProcessInfo.processInfo.processIdentifier,
+            let primaryHeight = NSScreen.screens.first?.frame.height,
+            let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]
+        else { return nil }
+        for window in info {
+            guard (window[kCGWindowOwnerPID as String] as? Int32) == app.processIdentifier,
+                (window[kCGWindowLayer as String] as? Int) == 0,
+                let boundsDict = window[kCGWindowBounds as String] as? NSDictionary,
+                let bounds = CGRect(dictionaryRepresentation: boundsDict), bounds.width > 40, bounds.height > 40
+            else { continue }
+            return OverlayPlacement.appKitRect(fromGlobalDisplayRect: bounds, primaryHeight: primaryHeight)
+        }
+        return nil
     }
 }
 
@@ -119,6 +154,16 @@ public enum OverlayPlacement {
     }
 
     /// Chooses the display to show on: the preferred one if still attached, else the primary (hot-plug safe).
+    /// The display whose frame contains `point` (AppKit coordinates).
+    public static func displayID(containing point: CGPoint, in displays: [DisplayInfo]) -> UInt32? {
+        displays.first { $0.frame.contains(point) }?.id
+    }
+
+    /// Converts a Core Graphics global display rect (origin top-left of the primary display, y down) to AppKit coordinates.
+    public static func appKitRect(fromGlobalDisplayRect r: CGRect, primaryHeight: CGFloat) -> CGRect {
+        CGRect(x: r.minX, y: primaryHeight - r.maxY, width: r.width, height: r.height)
+    }
+
     public static func resolveDisplay(preferred id: UInt32?, in displays: [DisplayInfo]) -> DisplayInfo? {
         if let id, let match = displays.first(where: { $0.id == id }) { return match }
         return displays.first(where: \.isPrimary) ?? displays.first
@@ -130,11 +175,15 @@ public struct OverlayFrameStore: Sendable {
     public static let lastDisplayKey = "liveCaptions.overlayDisplay"
     public static func frameKey(display id: UInt32) -> String { "liveCaptions.overlayFrame.\(id)" }
 
-    private let settings: any SettingsStore
+    let settings: any SettingsStore
     public init(settings: any SettingsStore) { self.settings = settings }
 
+    /// A cleared frame is stored with zero size (the store has no delete) and reads back as nil.
     public func frame(for displayID: UInt32) async -> StoredOverlayFrame? {
-        await settings.value(for: Self.frameKey(display: displayID), as: StoredOverlayFrame.self)
+        guard let f = await settings.value(for: Self.frameKey(display: displayID), as: StoredOverlayFrame.self), f.width > 0,
+            f.height > 0
+        else { return nil }
+        return f
     }
 
     public func save(_ frame: StoredOverlayFrame, for displayID: UInt32) async {

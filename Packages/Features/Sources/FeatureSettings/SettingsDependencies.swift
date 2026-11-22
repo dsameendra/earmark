@@ -1,6 +1,7 @@
 import AppCore
 import FeatureSupport
 import Foundation
+import LiveCaptions
 import ServiceManagement
 import os
 
@@ -43,6 +44,10 @@ public struct SettingsDependencies: Sendable {
     public var hotkeys: (any HotkeyServicing)?
     public var transcripts: (any TranscriptRepository)?
     public var launchAtLogin: any LaunchAtLoginControlling
+    /// Connected displays for the caption overlay picker (nil means the system's).
+    public var displays: (any DisplayProviding)?
+    /// Moves the live caption overlay and shows the test caption (nil disables the preview).
+    public var overlayPlacement: (any OverlayPlacementControlling)?
     /// Removes regenerable caches and returns the bytes freed.
     public var clearCaches: @Sendable () async -> Int64
 
@@ -51,6 +56,7 @@ public struct SettingsDependencies: Sendable {
         audioDevices: any AudioDeviceProviding, permissions: any PermissionsServicing, rules: any RuleRepository,
         presets: any PresetRepository, hotkeys: (any HotkeyServicing)? = nil, transcripts: (any TranscriptRepository)? = nil,
         launchAtLogin: any LaunchAtLoginControlling = SMAppServiceLaunchAtLogin(),
+        displays: (any DisplayProviding)? = nil, overlayPlacement: (any OverlayPlacementControlling)? = nil,
         clearCaches: @escaping @Sendable () async -> Int64 = { SettingsDependencies.clearDefaultCaches() }
     ) {
         self.store = store
@@ -63,6 +69,8 @@ public struct SettingsDependencies: Sendable {
         self.hotkeys = hotkeys
         self.transcripts = transcripts
         self.launchAtLogin = launchAtLogin
+        self.displays = displays
+        self.overlayPlacement = overlayPlacement
         self.clearCaches = clearCaches
     }
 

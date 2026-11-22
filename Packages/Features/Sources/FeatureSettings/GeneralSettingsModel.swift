@@ -79,6 +79,12 @@ public final class GeneralSettingsModel {
         }
     }
 
+    /// Re-arms the welcome flow; the app presents it when it sees the completion flag cleared (ONB-AC-01).
+    public func showWelcomeAgain() async {
+        await store.set(0, for: SettingsKey.onboardingStep)
+        await store.set(false, for: SettingsKey.onboardingCompleted)
+    }
+
     /// Reads the persisted Dock-icon preference (default `true`).
     public static func loadShowDockIcon(from store: any SettingsStore) async -> Bool {
         await store.value(for: SettingsKey.showDockIcon, as: Bool.self) ?? true

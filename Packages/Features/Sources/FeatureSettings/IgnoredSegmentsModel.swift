@@ -4,6 +4,18 @@ import Foundation
 import Observation
 import Processing
 
+/// The global (non-rule) ignore settings a re-derive must use.
+public struct IgnoreFilterSettings: Sendable, Equatable {
+    public var hallucinationFilter: Bool
+    public var lowConfidence: Double
+    public var noSpeech: Double
+    public init(hallucinationFilter: Bool, lowConfidence: Double, noSpeech: Double) {
+        self.hallucinationFilter = hallucinationFilter
+        self.lowConfidence = lowConfidence
+        self.noSpeech = noSpeech
+    }
+}
+
 /// The shipped ignore lists (IGN default rules). Hallucination rules are stored disabled and governed by the global toggle.
 public enum IgnoreRuleDefaults {
     public static let patterns: [String] = [
@@ -83,19 +95,48 @@ public final class IgnoredSegmentsModel {
     public let lowConfidence: Pref<Double>
     public let noSpeech: Pref<Double>
 
+    /// Result of the most recent re-derive, shown under the rule list (IGN-AC-05).
+    public private(set) var lastRederive: IgnoreRederiver.Summary?
+    public private(set) var isRederiving = false
+
     @ObservationIgnored private let repository: any RuleRepository
     @ObservationIgnored private let store: any SettingsStore
+    @ObservationIgnored private let rederive: (@Sendable (IgnoreFilterSettings) async throws -> IgnoreRederiver.Summary)?
+    @ObservationIgnored private var rederiveQueued = false
     @ObservationIgnored private var undoSnapshot: [IgnoreRule]?
 
-    public init(repository: any RuleRepository, store: any SettingsStore) {
+    /// - Parameter rederive: Re-processes stored transcripts after the rule set changed (IGN-AC-05); `nil` skips it.
+    public init(
+        repository: any RuleRepository, store: any SettingsStore,
+        rederive: (@Sendable (IgnoreFilterSettings) async throws -> IgnoreRederiver.Summary)? = nil
+    ) {
         self.repository = repository
         self.store = store
+        self.rederive = rederive
         hallucinationFilter = Pref(SettingsKey.hallucinationFilterEnabled, default: false, store: store)
         lowConfidence = Pref(SettingsKey.lowConfidenceThreshold, default: 0.5, store: store)
         noSpeech = Pref(SettingsKey.noSpeechThreshold, default: 0.6, store: store)
     }
 
     public var canUndoImport: Bool { undoSnapshot != nil }
+
+    /// Re-derives ignore flags on existing transcripts so disabled or deleted rules stop hiding segments (IGN-AC-05). Changes
+    /// made while a pass runs queue exactly one more pass, so the stored flags always end up matching the final rules.
+    public func rulesChanged() async {
+        guard let rederive else { return }
+        if isRederiving {
+            rederiveQueued = true
+            return
+        }
+        isRederiving = true
+        repeat {
+            rederiveQueued = false
+            let current = IgnoreFilterSettings(
+                hallucinationFilter: hallucinationFilter.value, lowConfidence: lowConfidence.value, noSpeech: noSpeech.value)
+            do { lastRederive = try await rederive(current) } catch { errorMessage = "Could not update existing transcripts: \(error)" }
+        } while rederiveQueued
+        isRederiving = false
+    }
 
     // MARK: Loading and seeding
 
@@ -165,6 +206,7 @@ public final class IgnoredSegmentsModel {
         do {
             try await repository.saveIgnoreRule(rule)
             rules.append(rule)
+            await rulesChanged()
             return .success(rule)
         } catch {
             errorMessage = "Could not save the rule: \(error)"
@@ -180,6 +222,7 @@ public final class IgnoredSegmentsModel {
         do {
             try await repository.saveIgnoreRule(rule)
             rules.remove(at: index)
+            await rulesChanged()
         } catch {
             errorMessage = "Could not remove the rule: \(error)"
         }
@@ -217,6 +260,7 @@ public final class IgnoredSegmentsModel {
         do {
             try await repository.saveIgnoreRule(rule)
             rules[index] = rule
+            await rulesChanged()
         } catch {
             errorMessage = "Could not save the rule: \(error)"
         }
@@ -247,6 +291,7 @@ public final class IgnoredSegmentsModel {
         do {
             try await repository.replaceAllIgnoreRules(newRules)
             await reload()
+            await rulesChanged()
         } catch {
             errorMessage = "Could not restore defaults: \(error)"
         }
@@ -312,6 +357,7 @@ public final class IgnoredSegmentsModel {
         lastImport = summary
         errorMessage = nil
         await reload()
+        await rulesChanged()
         return summary
     }
 

@@ -48,18 +48,30 @@ struct IgnoredSegmentsView: View {
                 Text("Imported \(summary.added), skipped \(summary.skipped) duplicates, \(summary.invalid) invalid.")
                     .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
             }
+            if let update = model.lastRederive, update.segments > 0 {
+                Text("Updated \(update.segments) segments in \(update.transcripts) transcripts to match the current rules.")
+                    .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    .accessibilityIdentifier("settings.ignored.rederiveSummary")
+            }
             table(model.visibleRules(hallucination: false))
             GroupBox {
                 VStack(alignment: .leading, spacing: DSSpacing.sm) {
                     Toggle("Filter likely hallucinations (off by default)", isOn: model.hallucinationFilter.binding)
+                        .onChange(of: model.hallucinationFilter.value) { Task { await model.rulesChanged() } }
                     Text("Phrases like “Thank you for watching.” are only hidden when the engine was unsure about them.")
                         .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                     if model.hallucinationFilter.value {
                         LabeledContent("Low confidence below") {
-                            Slider(value: model.lowConfidence.binding, in: 0...1).frame(width: 160)
+                            Slider(value: model.lowConfidence.binding, in: 0...1) { editing in
+                                if !editing { Task { await model.rulesChanged() } }
+                            }
+                            .frame(width: 160)
                         }
                         LabeledContent("No-speech at or above") {
-                            Slider(value: model.noSpeech.binding, in: 0...1).frame(width: 160)
+                            Slider(value: model.noSpeech.binding, in: 0...1) { editing in
+                                if !editing { Task { await model.rulesChanged() } }
+                            }
+                            .frame(width: 160)
                         }
                     }
                     table(model.visibleRules(hallucination: true), minHeight: 70)

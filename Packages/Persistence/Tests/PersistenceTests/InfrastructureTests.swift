@@ -41,7 +41,7 @@ struct InfrastructureTests {
         let reopened = try AppDatabase.open(at: url)
         #expect(try await reopened.transcripts.transcript(t.id)?.title == "persisted")
         #expect(try await reopened.transcripts.search("durable", limit: 5).count == 1)
-        #expect(AppDatabase.migrationIdentifiers == ["v1-initial"])
+        #expect(AppDatabase.migrationIdentifiers == ["v1-initial", "v2-segment-manual-ignore"])
         // No backup is taken when nothing is pending.
         #expect(!FileManager.default.fileExists(atPath: url.appendingPathExtension("premigration.bak").path))
     }
@@ -70,6 +70,27 @@ struct InfrastructureTests {
         #expect(FileManager.default.fileExists(atPath: url.appendingPathExtension("premigration.bak").path))
         let backup = try AppDatabase.open(at: url.appendingPathExtension("premigration.bak"))
         #expect(try await backup.transcripts.transcript(t.id)?.title == "before")
+    }
+
+    @Test func manualIgnoreMigrationKeepsExistingSegments() async throws {  // SCR-010, IGN-AC-05
+        let url = tempDBURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let t = makeTranscript("legacy")
+        do {
+            let db = try AppDatabase.open(at: url)
+            try await db.transcripts.save(t)
+            try await db.transcripts.upsertSegments([makeSegment("old row", ignored: true)], for: t.id)
+        }
+        // Rewind the file to the v1 shape.
+        let raw = try DatabaseQueue(path: url.path)
+        try await raw.write { db in
+            try db.execute(sql: "ALTER TABLE segment DROP COLUMN ignoreFlagIsManual")
+            try db.execute(sql: "DELETE FROM grdb_migrations WHERE identifier = 'v2-segment-manual-ignore'")
+        }
+        let upgraded = try AppDatabase.open(at: url)
+        let rows = try await upgraded.transcripts.segments(for: t.id)
+        #expect(rows.count == 1 && rows[0].isIgnored && !rows[0].ignoreFlagIsManual)
+        #expect(FileManager.default.fileExists(atPath: url.appendingPathExtension("premigration.bak").path))
     }
 
     @Test func failedMigrationThrowsAndLeavesDataIntact() async throws {

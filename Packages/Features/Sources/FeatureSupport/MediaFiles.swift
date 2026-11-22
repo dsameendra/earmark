@@ -11,10 +11,16 @@ public enum MediaFiles {
     /// Default roots when the composition root supplies none: the meetings folder, then the legacy library folder.
     public static var defaultRoots: [URL] {
         let base = URL.applicationSupportDirectory.appending(path: "Earmark", directoryHint: .isDirectory)
-        return [
+        let library = LibraryLocation.currentLibraryRoot
+        var roots = [
+            library.deletingLastPathComponent().appending(path: "Meetings", directoryHint: .isDirectory),
+            library,
             base.appending(path: "Meetings", directoryHint: .isDirectory),
             base.appending(path: "Library", directoryHint: .isDirectory),
         ]
+        var seen = Set<String>()
+        roots.removeAll { !seen.insert($0.standardizedFileURL.path).inserted }
+        return roots
     }
 
     /// `relative` is a plain relative path: not empty, not absolute and without `..` components.

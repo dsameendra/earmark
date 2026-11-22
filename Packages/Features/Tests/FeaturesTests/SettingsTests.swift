@@ -3,6 +3,7 @@ import AppCoreTesting
 import FeatureSettings
 import FeatureSupport
 import Foundation
+import Processing
 import Testing
 
 private func descriptor(
@@ -186,6 +187,49 @@ private func descriptor(
         #expect(model.visibleRules(hallucination: true).allSatisfy { !$0.isEnabled })
         #expect(model.hallucinationFilter.value == false)  // off by default
         #expect(IgnoreRuleDefaults.patterns.count == 30)
+    }
+
+    private final class RederiveLog: @unchecked Sendable {
+        private let lock = NSLock()
+        private var items: [IgnoreFilterSettings] = []
+        func record(_ settings: IgnoreFilterSettings) { lock.withLock { items.append(settings) } }
+        var all: [IgnoreFilterSettings] { lock.withLock { items } }
+    }
+
+    @Test func ruleChangesTriggerARederiveWithTheCurrentFilterSettings() async {  // IGN-AC-05
+        let log = RederiveLog()
+        let repo = InMemoryRuleRepository()
+        let model = IgnoredSegmentsModel(
+            repository: repo, store: InMemorySettingsStore(),
+            rederive: { settings in
+                log.record(settings)
+                return IgnoreRederiver.Summary(transcripts: 1, segments: 3)
+            })
+        await model.load()
+        #expect(log.all.isEmpty, "loading and seeding must not touch transcripts")
+        let victim = model.rules[0].id
+        await model.setEnabled(victim, false)
+        await model.remove(model.rules[1].id)
+        _ = await model.add(pattern: "[Applause!]")
+        await model.resetAll()
+        #expect(log.all.count == 4)
+        #expect(log.all.allSatisfy { $0 == IgnoreFilterSettings(hallucinationFilter: false, lowConfidence: 0.5, noSpeech: 0.6) })
+        #expect(model.lastRederive == IgnoreRederiver.Summary(transcripts: 1, segments: 3))
+        #expect(!model.isRederiving)
+    }
+
+    @Test func failedOrInvalidEditsDoNotRederive() async {  // IGN-AC-03
+        let log = RederiveLog()
+        let model = IgnoredSegmentsModel(
+            repository: InMemoryRuleRepository(), store: InMemorySettingsStore(),
+            rederive: { settings in
+                log.record(settings)
+                return IgnoreRederiver.Summary(transcripts: 0, segments: 0)
+            })
+        await model.load()
+        _ = await model.add(pattern: "   ")
+        _ = await model.add(pattern: "(", match: .regex)
+        #expect(log.all.isEmpty)
     }
 
     @Test func seedingHappensOnlyOnce() async {

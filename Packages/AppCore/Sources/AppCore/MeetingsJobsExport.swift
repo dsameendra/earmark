@@ -133,10 +133,12 @@ public struct JobSettings: Codable, Sendable, Hashable {
     public var translateTo: LanguageCode?
     public var applyReplacements: Bool
     public var autoExportPresetID: PresetID?
+    /// FILE-AC-16: copy the media into the library (library-owned asset) instead of referencing it with a bookmark.
+    public var copyIntoLibrary: Bool
     public init(
         languageMode: LanguageMode = .default, modelID: ModelID? = nil, diarize: Bool = false,
         diarization: [String: Int] = [:], translateTo: LanguageCode? = nil, applyReplacements: Bool = true,
-        autoExportPresetID: PresetID? = nil
+        autoExportPresetID: PresetID? = nil, copyIntoLibrary: Bool = false
     ) {
         self.languageMode = languageMode
         self.modelID = modelID
@@ -145,6 +147,30 @@ public struct JobSettings: Codable, Sendable, Hashable {
         self.translateTo = translateTo
         self.applyReplacements = applyReplacements
         self.autoExportPresetID = autoExportPresetID
+        self.copyIntoLibrary = copyIntoLibrary
+    }
+
+    /// Decodes jobs journaled before `copyIntoLibrary` existed (it defaults to `false`).
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            languageMode: try c.decode(LanguageMode.self, forKey: .languageMode),
+            modelID: try c.decodeIfPresent(ModelID.self, forKey: .modelID), diarize: try c.decode(Bool.self, forKey: .diarize),
+            diarization: try c.decode([String: Int].self, forKey: .diarization),
+            translateTo: try c.decodeIfPresent(LanguageCode.self, forKey: .translateTo),
+            applyReplacements: try c.decode(Bool.self, forKey: .applyReplacements),
+            autoExportPresetID: try c.decodeIfPresent(PresetID.self, forKey: .autoExportPresetID),
+            copyIntoLibrary: try c.decodeIfPresent(Bool.self, forKey: .copyIntoLibrary) ?? false)
+    }
+}
+
+/// One file or folder to enqueue with its own settings (FILE-AC-04 per-file overrides).
+public struct FileJobRequest: Sendable, Hashable {
+    public var url: URL
+    public var settings: JobSettings
+    public init(url: URL, settings: JobSettings) {
+        self.url = url
+        self.settings = settings
     }
 }
 
@@ -194,6 +220,8 @@ public enum JobEvent: Sendable {
 public protocol JobQueue: Sendable {
     func enqueue(_ job: Job) async throws -> JobID
     func enqueue(files: [URL], settings: JobSettings, recursive: Bool) async throws -> [JobID]
+    /// Enqueues files or folders that may each carry their own settings as one batch (FILE-AC-04).
+    func enqueue(requests: [FileJobRequest], recursive: Bool) async throws -> [JobID]
     func prioritize(_ id: JobID, to index: Int) async
     func pause(_ id: JobID) async
     func resume(_ id: JobID) async
@@ -209,6 +237,20 @@ public protocol JobQueue: Sendable {
 }
 
 extension JobQueue {
+    /// Fallback for adapters without batch support: groups consecutive requests that share settings.
+    public func enqueue(requests: [FileJobRequest], recursive: Bool) async throws -> [JobID] {
+        var ids: [JobID] = []
+        var index = 0
+        while index < requests.count {
+            let settings = requests[index].settings
+            var end = index
+            while end < requests.count, requests[end].settings == settings { end += 1 }
+            ids += try await enqueue(files: requests[index..<end].map(\.url), settings: settings, recursive: recursive)
+            index = end
+        }
+        return ids
+    }
+
     /// Adapters without persistent queue editing report the unsupported action instead of hiding an item locally.
     public func remove(_ id: JobID) async throws {
         throw AppError.other("Removing queue items is unavailable for this queue.")

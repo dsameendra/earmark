@@ -146,9 +146,21 @@ extension PersistentJobQueue {
 
     private func createTranscript(for job: Job, input: URL, assetID: MediaAssetID, duration: TimeInterval) async throws -> Transcript {
         let video = ["mp4", "mov", "m4v"].contains(input.pathExtension.lowercased())
-        let asset = MediaAsset(
+        var asset = MediaAsset(
             id: assetID, kind: video ? .video : .audio, bookmark: try? input.bookmarkData(options: [.withSecurityScope]),
             duration: duration)
+        if job.settings.copyIntoLibrary {
+            // FILE-AC-16: an owned copy replaces the bookmark. A failed copy falls back to referencing the original.
+            do {
+                guard let root = await services.libraryRoot?() else { throw AppError.other("No library folder is configured.") }
+                asset.libraryRelativePath = try LibraryMediaCopy.copy(input, assetID: assetID, libraryRoot: root)
+                asset.isOwnedByLibrary = true
+                asset.bookmark = nil
+            } catch {
+                log.error("Copy into library failed: \(String(describing: error), privacy: .public)")
+                setNote(job.id, "Could not copy into the library; the original file is referenced instead.")
+            }
+        }
         try await services.media.save(asset)
         let transcript = Transcript(
             title: input.deletingPathExtension().lastPathComponent, source: .file, duration: duration, mediaAssetID: assetID,
@@ -298,9 +310,14 @@ extension PersistentJobQueue {
     }
 
     private func postProcess(_ segments: [Segment], settings: JobSettings) async throws -> [Segment] {
+        // The hallucination filter follows the Settings toggle (off by default, IGN) so re-deriving flags later agrees with it.
+        let hallucination = await services.settings.value(for: "ignore.hallucinationFilter", as: Bool.self) ?? false
+        let lowConfidence = await services.settings.value(for: "ignore.lowConfidenceThreshold", as: Double.self) ?? 0.5
+        let noSpeech = await services.settings.value(for: "ignore.noSpeechThreshold", as: Double.self) ?? 0.6
         let context = PostProcessingContext(
             ignoreRules: try await services.rules.ignoreRules(), replacementRules: try await services.rules.replacementRules(),
-            applyReplacements: settings.applyReplacements, enableHallucinationFilter: true)
+            applyReplacements: settings.applyReplacements, enableHallucinationFilter: hallucination,
+            lowConfidenceThreshold: lowConfidence, noSpeechThreshold: noSpeech)
         return await services.postProcessor.process(segments, context: context)
     }
 

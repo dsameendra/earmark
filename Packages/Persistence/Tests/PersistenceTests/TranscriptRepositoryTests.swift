@@ -87,7 +87,7 @@ struct TranscriptRepositoryTests {
         ]
         var s = Segment(
             start: 0, end: 2, text: "Hello ලෝකය", speakerID: SpeakerID(), languageCode: "en", languageConfidence: 0.8,
-            confidence: 0.7, noSpeechProbability: 0.01, isIgnored: true, words: words,
+            confidence: 0.7, noSpeechProbability: 0.01, isIgnored: true, ignoreFlagIsManual: true, words: words,
             translations: [SegmentTranslation(language: "si", text: "ආයුබෝවන්", engine: "apple.translate")])
         s.speakerID = SpeakerID()
         try await repo.upsertSegments([s], for: t.id)

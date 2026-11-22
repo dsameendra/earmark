@@ -2,6 +2,7 @@ import AppCore
 import AppKit
 import DesignSystem
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct GeneralSettingsView: View {
     let model: GeneralSettingsModel
@@ -466,15 +467,52 @@ struct ExportDefaultsView: View {
 
 struct StorageSettingsView: View {
     let model: StorageSettingsModel
+    @State private var choosingFolder = false
 
     var body: some View {
         Form {
+            Section("Storage used") {
+                if let usage = model.breakdown {
+                    LabeledContent("Library", value: ModelFormat.bytes(usage.library))
+                        .accessibilityIdentifier("settings.storage.library")
+                    LabeledContent("Models", value: ModelFormat.bytes(usage.models))
+                        .accessibilityIdentifier("settings.storage.models")
+                    LabeledContent("Recordings", value: ModelFormat.bytes(usage.recordings))
+                        .accessibilityIdentifier("settings.storage.recordings")
+                    LabeledContent("Caches", value: ModelFormat.bytes(usage.caches))
+                        .accessibilityIdentifier("settings.storage.caches")
+                    LabeledContent("Total") { Text(ModelFormat.bytes(usage.total)).fontWeight(.semibold) }
+                        .accessibilityIdentifier("settings.storage.total")
+                } else {
+                    LabeledContent("Measuring") { ProgressView().controlSize(.small) }
+                }
+            }
             Section("Library") {
                 LabeledContent("Location") {
-                    Text(model.libraryLocation.value.isEmpty ? "Default (Application Support)" : model.libraryLocation.value)
+                    Text(model.isDefaultLocation ? "Default (Application Support)" : model.libraryLocation.value)
                         .foregroundStyle(DSColor.secondaryText).lineLimit(1).truncationMode(.middle)
+                        .accessibilityIdentifier("settings.storage.location")
                 }
-                LabeledContent("Models on disk", value: ModelFormat.bytes(model.modelUsage.totalBytes))
+                HStack {
+                    Button("Change…") { choosingFolder = true }
+                        .disabled(model.isMoving)
+                        .accessibilityIdentifier("settings.storage.change")
+                    if !model.isDefaultLocation {
+                        Button("Use Default Location") { Task { await model.proposeDefaultLocation() } }
+                            .disabled(model.isMoving)
+                            .accessibilityIdentifier("settings.storage.useDefault")
+                    }
+                    if model.isMoving { ProgressView().controlSize(.small) }
+                }
+                Text("Copied media and meeting recordings move with the library. The transcript database stays in Application Support.")
+                    .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                if let message = model.errorMessage {
+                    Label(message, systemImage: "exclamationmark.triangle").font(DSTypography.caption).foregroundStyle(DSColor.danger)
+                        .accessibilityIdentifier("settings.storage.error")
+                }
+                if let notice = model.movedNotice {
+                    Text(notice).font(DSTypography.caption).accessibilityIdentifier("settings.storage.movedNotice")
+                }
             }
             Section("Recently Deleted") {
                 Picker("Keep deleted items for", selection: model.retentionDays.binding) {
@@ -490,6 +528,23 @@ struct StorageSettingsView: View {
         }
         .formStyle(.grouped)
         .task { await model.load() }
+        .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in
+            guard case .success(let url) = result else { return }
+            Task { await model.proposeLocation(url) }
+        }
+        .confirmationDialog(
+            "Move the library?",
+            isPresented: Binding(get: { model.pendingMove != nil }, set: { if !$0 { model.cancelMove() } }),
+            presenting: model.pendingMove
+        ) { pending in
+            Button("Move Library") { Task { await model.confirmMove(pending) } }
+                .accessibilityIdentifier("settings.storage.confirmMove")
+            Button("Cancel", role: .cancel) {}
+        } message: { pending in
+            Text(
+                "Earmark will move \(ModelFormat.bytes(pending.plan.bytes)) to \(pending.plan.destination.path). Don't quit Earmark or record a meeting until it finishes."
+            )
+        }
     }
 }
 

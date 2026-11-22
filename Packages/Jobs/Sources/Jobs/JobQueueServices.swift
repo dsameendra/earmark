@@ -73,6 +73,8 @@ public struct JobQueueServices: Sendable {
     public var handlers: [JobKind: JobHandler]
     /// Per-language engine resolution for file jobs; `nil` resolves from the plan alone.
     public var engineResolver: FileEngineResolver?
+    /// Library folder that owns copied media (FILE-AC-16); `nil` disables "copy into library" (jobs keep a bookmark instead).
+    public var libraryRoot: (@Sendable () async -> URL)?
 
     public init(
         jobs: any JobRepository, transcripts: any TranscriptRepository, media: any MediaRepository, rules: any RuleRepository,
@@ -80,7 +82,8 @@ public struct JobQueueServices: Sendable {
         engines: [EngineID: any TranscriptionEngine], pipeline: @escaping PipelineFactory = { _ in FileTranscriptionPipeline() },
         decoder: any AudioFileDecoder = AVFileDecoder(), diarizer: (any Diarizer)? = nil,
         postProcessor: any TranscriptPostProcessor = PostProcessingChain(), autoExport: AutoExportProvider? = nil,
-        notifier: (any JobNotifier)? = nil, handlers: [JobKind: JobHandler] = [:], engineResolver: FileEngineResolver? = nil
+        notifier: (any JobNotifier)? = nil, handlers: [JobKind: JobHandler] = [:], engineResolver: FileEngineResolver? = nil,
+        libraryRoot: (@Sendable () async -> URL)? = nil
     ) {
         self.jobs = jobs
         self.transcripts = transcripts
@@ -98,6 +101,7 @@ public struct JobQueueServices: Sendable {
         self.notifier = notifier
         self.handlers = handlers
         self.engineResolver = engineResolver
+        self.libraryRoot = libraryRoot
     }
 }
 

@@ -28,6 +28,10 @@ enum Schema {
             try createAuxiliaryTables(db)
             try createSearchIndex(db)
         }
+        // SCR-010: IGN-AC-05 needs to know which ignore flags the user set by hand.
+        migrator.registerMigration("v2-segment-manual-ignore") { db in
+            try db.execute(sql: "ALTER TABLE segment ADD COLUMN ignoreFlagIsManual INTEGER NOT NULL DEFAULT 0")
+        }
         return migrator
     }
 

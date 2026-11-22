@@ -247,6 +247,72 @@ private func job(_ name: String, _ state: JobState, progress: Double = 0) -> Job
         #expect(jobs.allSatisfy { $0.settings.translateTo == .english && $0.settings.autoExportPresetID == preset })
     }
 
+    @Test func perFileOverridesApplyOnTopOfBatchSettings() async {  // FILE-AC-04
+        let queue = PlaceholderJobQueue()
+        let first = URL(fileURLWithPath: "/tmp/a.m4a")
+        let second = URL(fileURLWithPath: "/tmp/b.m4a")
+        let preset = PresetID()
+        let batch = BatchSettingsModel(urls: [first, second], services: services(queue: queue))
+        await batch.prepare()
+        batch.diarize = false
+        batch.updateOverride(for: second) {
+            $0.languageMode = .single(.sinhala)
+            $0.diarize = true
+            $0.translateTo = .init(.english)
+            $0.autoExportPresetID = .init(preset)
+            $0.model = .init("si-only")
+        }
+        #expect(batch.hasOverride(second) && !batch.hasOverride(first))
+        #expect(await batch.submit())
+        let jobs = await queue.jobs()
+        let a = jobs.first { $0.input == first }?.settings
+        let b = jobs.first { $0.input == second }?.settings
+        #expect(a?.languageMode == .single(.english) && a?.diarize == false && a?.translateTo == nil && a?.modelID == nil)
+        #expect(b?.languageMode == .single(.sinhala) && b?.diarize == true && b?.translateTo == .english)
+        #expect(b?.autoExportPresetID == preset && b?.modelID == "si-only")
+    }
+
+    @Test func overridingAFieldBackToNothingDropsTheOverride() async {  // FILE-AC-04
+        let url = URL(fileURLWithPath: "/tmp/a.m4a")
+        let batch = BatchSettingsModel(urls: [url], services: services())
+        await batch.prepare()
+        batch.updateOverride(for: url) { $0.diarize = true }
+        #expect(batch.hasOverride(url))
+        batch.updateOverride(for: url) { $0.diarize = nil }
+        #expect(!batch.hasOverride(url) && batch.settings(for: url) == batch.jobSettings)
+    }
+
+    @Test func overrideKeepsModelsCompatibleWithTheFilesLanguage() async {  // FILE-AC-04, ADR-008
+        let url = URL(fileURLWithPath: "/tmp/a.m4a")
+        let batch = BatchSettingsModel(urls: [url], services: services(installed: ["en-only"]))
+        await batch.prepare()
+        await batch.selectModel("en-only")
+        // The batch model cannot transcribe Sinhala, so the file falls back to Auto instead of failing routing.
+        batch.updateOverride(for: url) { $0.languageMode = .single(.sinhala) }
+        #expect(batch.settings(for: url).modelID == nil)
+        #expect(Set(batch.availableModels(for: url).map(\.id)) == ["si-only", "multi"])
+        // An explicitly chosen override model that stops covering the language resets to Auto.
+        batch.updateOverride(for: url) {
+            $0.languageMode = .single(.english)
+            $0.model = .init("en-only")
+        }
+        batch.updateOverride(for: url) { $0.languageMode = .single(.sinhala) }
+        #expect(batch.override(for: url).model == .init(nil))
+        batch.clearAllOverrides()
+        #expect(batch.overrides.isEmpty && batch.settings(for: url).modelID == "en-only")
+    }
+
+    @Test func copyIntoLibraryTravelsWithEveryFile() async {  // FILE-AC-16
+        let queue = PlaceholderJobQueue()
+        let batch = BatchSettingsModel(
+            urls: [URL(fileURLWithPath: "/tmp/a.m4a"), URL(fileURLWithPath: "/tmp/b.m4a")], services: services(queue: queue))
+        await batch.prepare()
+        #expect(!batch.jobSettings.copyIntoLibrary)
+        batch.copyIntoLibrary = true
+        #expect(await batch.submit())
+        #expect(await queue.jobs().allSatisfy { $0.settings.copyIntoLibrary })
+    }
+
     @Test func duplicatesAreSkippedByDefault() async {  // edge case: duplicate detection
         let url = URL(fileURLWithPath: "/tmp/a.m4a")
         let queue = PlaceholderJobQueue(seed: [Job(kind: .transcribeFile, state: .pending, input: url)])

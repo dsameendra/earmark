@@ -452,6 +452,7 @@ public final class TranscriptEditorModel {
         let changes = segments.filter { ids.contains($0.id) && $0.isIgnored != ignored }.map { old -> EditDelta.Replacement in
             var new = old
             new.isIgnored = ignored
+            new.ignoreFlagIsManual = true  // IGN-AC-05: a re-derive after a rule change must keep the user's choice
             return .init(before: old, after: new)
         }
         perform(EditDelta(name: ignored ? "Ignore Segment" : "Stop Ignoring", replaced: changes))

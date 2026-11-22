@@ -2,6 +2,7 @@ import AppCore
 import DesignSystem
 import FeatureSupport
 import LiveCaptions
+import Processing
 import SwiftUI
 
 /// All Settings models, built from the dependency bundle. Models load lazily when their section appears (SET open < 200 ms).
@@ -28,6 +29,19 @@ public final class SettingsEnvironment {
     public let permissions: PermissionsSettingsModel
     public let voiceProfiles: VoiceProfilesModel
 
+    /// IGN-AC-05: re-derives stored ignore flags with the current rules; absent without a transcript repository.
+    static func rederiveAction(_ deps: SettingsDependencies) -> (@Sendable (IgnoreFilterSettings) async throws -> IgnoreRederiver.Summary)? {
+        guard let transcripts = deps.transcripts else { return nil }
+        let rules = deps.rules
+        return { settings in
+            let context = PostProcessingContext(
+                ignoreRules: try await rules.ignoreRules(), applyReplacements: false,
+                enableHallucinationFilter: settings.hallucinationFilter, lowConfidenceThreshold: settings.lowConfidence,
+                noSpeechThreshold: settings.noSpeech)
+            return try await IgnoreRederiver(transcripts: transcripts) { context }.run()
+        }
+    }
+
     public init(_ deps: SettingsDependencies) {
         checkForUpdates = deps.checkForUpdates
         automaticUpdateChecks = deps.automaticUpdateChecks
@@ -46,7 +60,8 @@ public final class SettingsEnvironment {
             previewPreset: { captionModel.draft }, knownPresetIDs: { captionModel.presets.map(\.id) })
         dictation = DictationSettingsModel(store: deps.store)
         appearance = AppearanceSettingsModel(store: deps.store)
-        ignored = IgnoredSegmentsModel(repository: deps.rules, store: deps.store)
+        ignored = IgnoredSegmentsModel(
+            repository: deps.rules, store: deps.store, rederive: Self.rederiveAction(deps))
         replacements = ReplacementsModel(repository: deps.rules, store: deps.store)
         translation = TranslationSettingsModel(store: deps.store)
         exportDefaults = ExportDefaultsModel(repository: deps.presets, store: deps.store)

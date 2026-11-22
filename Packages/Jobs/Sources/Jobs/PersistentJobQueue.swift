@@ -66,14 +66,22 @@ public actor PersistentJobQueue: JobQueue {
     }
 
     public func enqueue(files: [URL], settings: JobSettings, recursive: Bool) async throws -> [JobID] {
+        try await enqueue(requests: files.map { FileJobRequest(url: $0, settings: settings) }, recursive: recursive)
+    }
+
+    /// One batch; each request's folder expansion inherits that request's settings (FILE-AC-04 per-file overrides).
+    public func enqueue(requests: [FileJobRequest], recursive: Bool) async throws -> [JobID] {
         await loadIfNeeded()
-        let urls = MediaFileScanner.expand(files, recursive: recursive)
         let base = configuration.now()
         var created: [Job] = []
-        for (index, url) in urls.enumerated() {
-            // Distinct creation times keep a batch in drop order (ties would fall back to ids).
-            created.append(
-                Job(kind: .transcribeFile, input: url, settings: settings, createdAt: base.addingTimeInterval(Double(index) * 0.001)))
+        for request in requests {
+            for url in MediaFileScanner.expand([request.url], recursive: recursive) {
+                // Distinct creation times keep a batch in drop order (ties would fall back to ids).
+                created.append(
+                    Job(
+                        kind: .transcribeFile, input: url, settings: request.settings,
+                        createdAt: base.addingTimeInterval(Double(created.count) * 0.001)))
+            }
         }
         var batch: UUID?
         if created.count > 1 {

@@ -41,6 +41,9 @@ public struct Segment: Hashable, Codable, Sendable, Identifiable {
     /// Whisper-style no-speech probability, used by the hallucination filter.
     public var noSpeechProbability: Double?
     public var isIgnored: Bool
+    /// `true` when the user set `isIgnored` by hand (either way). Re-deriving ignore flags after a rule change keeps such
+    /// segments exactly as the user left them (IGN-AC-05).
+    public var ignoreFlagIsManual: Bool
     public var words: [Word]
     public var translations: [SegmentTranslation]
 
@@ -48,7 +51,7 @@ public struct Segment: Hashable, Codable, Sendable, Identifiable {
         id: SegmentID = SegmentID(), start: TimeInterval, end: TimeInterval, text: String,
         speakerID: SpeakerID? = nil, languageCode: LanguageCode? = nil, languageConfidence: Double? = nil,
         confidence: Double? = nil, noSpeechProbability: Double? = nil, isIgnored: Bool = false,
-        words: [Word] = [], translations: [SegmentTranslation] = []
+        ignoreFlagIsManual: Bool = false, words: [Word] = [], translations: [SegmentTranslation] = []
     ) {
         self.id = id
         self.start = start
@@ -60,8 +63,26 @@ public struct Segment: Hashable, Codable, Sendable, Identifiable {
         self.confidence = confidence
         self.noSpeechProbability = noSpeechProbability
         self.isIgnored = isIgnored
+        self.ignoreFlagIsManual = ignoreFlagIsManual
         self.words = words
         self.translations = translations
+    }
+
+    /// Decodes data written before `ignoreFlagIsManual` existed (it defaults to `false`).
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try c.decode(SegmentID.self, forKey: .id), start: try c.decode(TimeInterval.self, forKey: .start),
+            end: try c.decode(TimeInterval.self, forKey: .end), text: try c.decode(String.self, forKey: .text),
+            speakerID: try c.decodeIfPresent(SpeakerID.self, forKey: .speakerID),
+            languageCode: try c.decodeIfPresent(LanguageCode.self, forKey: .languageCode),
+            languageConfidence: try c.decodeIfPresent(Double.self, forKey: .languageConfidence),
+            confidence: try c.decodeIfPresent(Double.self, forKey: .confidence),
+            noSpeechProbability: try c.decodeIfPresent(Double.self, forKey: .noSpeechProbability),
+            isIgnored: try c.decode(Bool.self, forKey: .isIgnored),
+            ignoreFlagIsManual: try c.decodeIfPresent(Bool.self, forKey: .ignoreFlagIsManual) ?? false,
+            words: try c.decode([Word].self, forKey: .words),
+            translations: try c.decode([SegmentTranslation].self, forKey: .translations))
     }
     public var range: TimeRange { TimeRange(start: start, end: end) }
 }

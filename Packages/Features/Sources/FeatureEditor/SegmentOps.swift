@@ -100,6 +100,7 @@ public enum SegmentOps {
         let confidences = [first.confidence, second.confidence].compactMap { $0 }
         merged.confidence = confidences.isEmpty ? nil : confidences.reduce(0, +) / Double(confidences.count)
         merged.isIgnored = first.isIgnored && second.isIgnored
+        merged.ignoreFlagIsManual = first.ignoreFlagIsManual || second.ignoreFlagIsManual
         merged.translations = []
         return merged
     }

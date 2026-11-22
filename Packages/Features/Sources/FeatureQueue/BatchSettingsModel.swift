@@ -23,6 +23,36 @@ public enum BatchModelDownload: Sendable, Equatable {
     case failed(model: ModelID, reason: String)
 }
 
+/// A per-file deviation from the batch settings (FILE-AC-04). Every field is `nil` to inherit the batch value; a non-nil
+/// ``Choice`` wraps the overriding value, which can itself be `nil` (model "Auto", translation "None", export "Off").
+public struct FileOverride: Equatable, Sendable {
+    /// Wraps an overriding value so an overriding `nil` differs from "inherit".
+    public struct Choice<Value: Equatable & Sendable>: Equatable, Sendable {
+        public var value: Value
+        public init(_ value: Value) { self.value = value }
+    }
+
+    public var languageMode: LanguageMode?
+    public var model: Choice<ModelID?>?
+    public var diarize: Bool?
+    public var translateTo: Choice<LanguageCode?>?
+    public var autoExportPresetID: Choice<PresetID?>?
+
+    public init(
+        languageMode: LanguageMode? = nil, model: Choice<ModelID?>? = nil, diarize: Bool? = nil,
+        translateTo: Choice<LanguageCode?>? = nil, autoExportPresetID: Choice<PresetID?>? = nil
+    ) {
+        self.languageMode = languageMode
+        self.model = model
+        self.diarize = diarize
+        self.translateTo = translateTo
+        self.autoExportPresetID = autoExportPresetID
+    }
+
+    /// `true` when nothing is overridden.
+    public var isEmpty: Bool { self == FileOverride() }
+}
+
 /// Settings for one batch of files and folders. Language mode defaults to English; the model list is filtered by the chosen
 /// languages through `LanguageCapabilityTable`; picking an undownloaded model downloads it inline via `ensureAvailable`.
 @MainActor @Observable
@@ -37,6 +67,10 @@ public final class BatchSettingsModel {
     public var translateTo: LanguageCode?
     public var autoExportPresetID: PresetID?
     public var skipDuplicates = true
+    /// FILE-AC-16: copy the media into the library (library-owned) instead of referencing it with a bookmark.
+    public var copyIntoLibrary = false
+    /// Per-file overrides keyed by the dropped file or folder (FILE-AC-04).
+    public private(set) var overrides: [URL: FileOverride] = [:]
 
     public private(set) var catalog: [ModelDescriptor] = []
     public private(set) var installed: Set<ModelID> = []
@@ -106,15 +140,17 @@ public final class BatchSettingsModel {
     }
 
     /// ASR models usable with the chosen language mode, sorted by name.
-    public var availableModels: [ModelDescriptor] {
+    public var availableModels: [ModelDescriptor] { models(covering: languageMode) }
+
+    func models(covering mode: LanguageMode) -> [ModelDescriptor] {
         let required: Set<LanguageCode>
-        switch languageMode {
+        switch mode {
         case .single(let code): required = [code]
         case .multilingual(let codes): required = codes
         case .autoDetect: required = []
         }
         var models = table.models(coveringAll: required)
-        if kind == .autoDetect { models = models.filter { $0.languages.count > 1 } }
+        if case .autoDetect = mode { models = models.filter { $0.languages.count > 1 } }
         return models.sorted { $0.displayName < $1.displayName }
     }
 
@@ -181,7 +217,52 @@ public final class BatchSettingsModel {
     public var jobSettings: JobSettings {
         JobSettings(
             languageMode: languageMode, modelID: modelID, diarize: diarize, translateTo: translateTo,
-            autoExportPresetID: autoExportPresetID)
+            autoExportPresetID: autoExportPresetID, copyIntoLibrary: copyIntoLibrary)
+    }
+
+    // MARK: Per-file overrides (FILE-AC-04)
+
+    public func override(for url: URL) -> FileOverride { overrides[url] ?? FileOverride() }
+
+    public func hasOverride(_ url: URL) -> Bool { overrides[url] != nil }
+
+    /// Edits one file's override. An override whose fields are all inherited is dropped, and a model override that no longer
+    /// covers the file's language falls back to Auto (the same rule the batch applies).
+    public func updateOverride(for url: URL, _ change: (inout FileOverride) -> Void) {
+        var edited = override(for: url)
+        change(&edited)
+        if let mode = edited.languageMode, let choice = edited.model, let id = choice.value,
+            !models(covering: mode).contains(where: { $0.id == id })
+        {
+            edited.model = .init(nil)
+        }
+        overrides[url] = edited.isEmpty ? nil : edited
+    }
+
+    public func clearOverride(for url: URL) { overrides[url] = nil }
+
+    public func clearAllOverrides() { overrides = [:] }
+
+    /// The language mode that applies to `url`.
+    public func effectiveLanguageMode(for url: URL) -> LanguageMode { overrides[url]?.languageMode ?? languageMode }
+
+    /// ASR models usable with the language mode that applies to `url`.
+    public func availableModels(for url: URL) -> [ModelDescriptor] { models(covering: effectiveLanguageMode(for: url)) }
+
+    /// The final settings of one file: the batch settings with its overrides on top. A batch-level model that cannot handle
+    /// a file's overridden language is replaced by Auto so the file never fails routing.
+    public func settings(for url: URL) -> JobSettings {
+        var settings = jobSettings
+        guard let item = overrides[url] else { return settings }
+        if let mode = item.languageMode { settings.languageMode = mode }
+        if let choice = item.model { settings.modelID = choice.value }
+        if let id = settings.modelID, !models(covering: settings.languageMode).contains(where: { $0.id == id }) {
+            settings.modelID = nil
+        }
+        if let value = item.diarize { settings.diarize = value }
+        if let choice = item.translateTo { settings.translateTo = choice.value }
+        if let choice = item.autoExportPresetID { settings.autoExportPresetID = choice.value }
+        return settings
     }
 
     /// Inputs that will be enqueued (folders are expanded by the queue, which honours the media type filter).
@@ -197,7 +278,8 @@ public final class BatchSettingsModel {
         isSubmitting = true
         defer { isSubmitting = false }
         do {
-            _ = try await services.jobQueue.enqueue(files: urlsToEnqueue, settings: jobSettings, recursive: true)
+            let requests = urlsToEnqueue.map { FileJobRequest(url: $0, settings: settings(for: $0)) }
+            _ = try await services.jobQueue.enqueue(requests: requests, recursive: true)
             errorMessage = nil
             return true
         } catch {

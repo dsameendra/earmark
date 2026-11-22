@@ -173,6 +173,9 @@ final class AppEnvironment {
         Task { await appleReadiness.refresh(engine: apple, languages: [systemLanguage, .english]) }
         // One settings store instance: its change streams are tied to it, and the queue observes the same one.
         let settings = database.makeSettingsStore()
+        Task {  // LIB-AC-13: playback resolves library-owned media against the chosen location.
+            LibraryLocation.use(base: LibraryLocation.base(custom: await settings.value(for: SettingsKey.libraryLocation, as: String.self)))
+        }
         let permissions = PermissionsService()
         let audioDevices = AudioDeviceProvider()
         // One engine instance each, shared by file jobs, live captions and dictation: WhisperKit holds a single resident model.
@@ -350,7 +353,11 @@ final class AppEnvironment {
                 settings: settings, models: models, hardware: hardware, engines: engines,
                 pipeline: pipeline, decoder: decoder, diarizer: diarizer,
                 autoExport: WatchFolderExport.provider(settings: settings, presets: database.presets),
-                notifier: SystemJobNotifier(), handlers: handlers, engineResolver: resolver))
+                notifier: SystemJobNotifier(), handlers: handlers, engineResolver: resolver,
+                libraryRoot: {
+                    LibraryLocation.libraryRoot(
+                        base: LibraryLocation.base(custom: await settings.value(for: SettingsKey.libraryLocation, as: String.self)))
+                }))
     }
 
     private static func openDatabase() throws -> AppDatabase {

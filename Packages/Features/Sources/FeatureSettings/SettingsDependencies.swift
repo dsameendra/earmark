@@ -104,10 +104,15 @@ public struct SettingsDependencies: Sendable {
             permissions: PlaceholderPermissions(), rules: InMemoryRuleRepository(), presets: InMemoryPresetRepository())
     }
 
+    /// This app's folder in the user caches directory.
+    public static var defaultCachesDirectory: URL? {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent(AppLog.subsystem)
+    }
+
     /// Deletes the contents of this app's folder in the user caches directory.
     public static func clearDefaultCaches() -> Int64 {
         let fm = FileManager.default
-        guard let base = fm.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent(AppLog.subsystem),
+        guard let base = defaultCachesDirectory,
             let items = try? fm.contentsOfDirectory(at: base, includingPropertiesForKeys: [.totalFileAllocatedSizeKey])
         else { return 0 }
         var freed: Int64 = 0

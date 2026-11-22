@@ -312,6 +312,16 @@ import Testing
         #expect(!model.segment(segments[1].id)!.isIgnored)
     }
 
+    @MainActor @Test func handIgnoringMarksTheFlagManualSoRulesNeverOverrideIt() async {  // IGN-AC-05, IGN-AC-07
+        let segments = Fixtures.segments()
+        let (model, _) = await Fixtures.model(segments: segments)
+        #expect(!model.segment(segments[0].id)!.ignoreFlagIsManual)
+        model.setIgnored(true, for: [segments[0].id])
+        #expect(model.segment(segments[0].id)!.isIgnored && model.segment(segments[0].id)!.ignoreFlagIsManual)
+        model.undo()
+        #expect(!model.segment(segments[0].id)!.isIgnored && !model.segment(segments[0].id)!.ignoreFlagIsManual)
+    }
+
     // MARK: Paragraphs
 
     @Test func paragraphsGroupConsecutiveSameSpeakerWithinGap() {

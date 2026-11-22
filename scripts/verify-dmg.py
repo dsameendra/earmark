@@ -129,7 +129,13 @@ def compare_payload(mount: Path, source_app: Path, developer_id: bool, layout_as
     source = verification.tree_manifest(source_app)
     actual = verification.tree_manifest(mounted_app)
     verification.require(actual == source, "DMG app differs from the staged source in bytes, modes or symlink targets")
-    report = verification.verify_app(mounted_app, developer_id, self_signed)
+    # Image creation can stamp Finder metadata (com.apple.FinderInfo / provenance) on the bundle, which codesign rejects as
+    # detritus. Finder strips it when the user drags the app out, so verify the signature on an attribute-free copy; the
+    # byte/mode/symlink comparison above already proves the copy matches the staged app.
+    with tempfile.TemporaryDirectory(prefix="earmark-dmg-app-") as scratch:
+        clean = Path(scratch) / "Earmark.app"
+        subprocess.run(["/usr/bin/ditto", "--norsrc", "--noextattr", "--noqtn", str(mounted_app), str(clean)], check=True)
+        report = verification.verify_app(clean, developer_id, self_signed)
     result = {"payload": ["Earmark.app", "Applications -> /Applications"], "matchesStagedApp": True,
               "entriesCompared": len(actual), "version": report["version"], "build": report["build"]}
     if layout is not None:

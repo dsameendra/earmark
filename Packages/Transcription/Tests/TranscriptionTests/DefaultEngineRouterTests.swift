@@ -1,6 +1,6 @@
 import AppCore
 import Foundation
-import Models
+import ModelStore
 import Testing
 
 @testable import Transcription

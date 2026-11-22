@@ -8,7 +8,7 @@ let package = Package(
     dependencies: [
         .package(path: "../AppCore"),
         .package(path: "../Persistence"),
-        .package(path: "../Models"),
+        .package(path: "../ModelStore"),
         .package(path: "../AudioCapture"),
         .package(path: "../Transcription"),
         .package(path: "../Processing"),
@@ -21,7 +21,7 @@ let package = Package(
             dependencies: [
                 .product(name: "AppCore", package: "AppCore"),
                 .product(name: "Persistence", package: "Persistence"),
-                .product(name: "Models", package: "Models"),
+                .product(name: "ModelStore", package: "ModelStore"),
                 .product(name: "AudioCapture", package: "AudioCapture"),
                 .product(name: "Transcription", package: "Transcription"),
                 .product(name: "Processing", package: "Processing"),
@@ -35,7 +35,7 @@ let package = Package(
                 "Jobs",
                 .product(name: "AppCoreTesting", package: "AppCore"),
                 .product(name: "Persistence", package: "Persistence"),
-                .product(name: "Models", package: "Models"),
+                .product(name: "ModelStore", package: "ModelStore"),
                 .product(name: "Transcription", package: "Transcription"),
                 .product(name: "AudioCapture", package: "AudioCapture"),
                 .product(name: "Export", package: "Export"),

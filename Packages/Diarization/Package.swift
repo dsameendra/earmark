@@ -14,7 +14,7 @@ let package = Package(
     dependencies: [
         .package(path: "../AppCore"),
         .package(path: "../AudioCapture"),
-        .package(path: "../Models"),
+        .package(path: "../ModelStore"),
         .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.18.4", traits: ["Diarizer"]),
         .package(url: "https://github.com/argmaxinc/argmax-oss-swift.git", exact: "1.1.1"),
     ],
@@ -24,7 +24,7 @@ let package = Package(
             dependencies: [
                 .product(name: "AppCore", package: "AppCore"),
                 .product(name: "AudioCapture", package: "AudioCapture"),
-                .product(name: "Models", package: "Models"),
+                .product(name: "ModelStore", package: "ModelStore"),
                 .product(name: "FluidAudio", package: "FluidAudio"),
             ],
             swiftSettings: [.treatAllWarnings(as: .error)]),
@@ -41,7 +41,7 @@ let package = Package(
             dependencies: [
                 "Diarization", "DiarizationSpeakerKit",
                 .product(name: "AppCoreTesting", package: "AppCore"),
-                .product(name: "Models", package: "Models"),
+                .product(name: "ModelStore", package: "ModelStore"),
             ]),
     ],
     swiftLanguageModes: [.v6]

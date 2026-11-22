@@ -1,6 +1,6 @@
 import AppCore
 import Foundation
-import Models
+import ModelStore
 import WhisperKit
 
 /// Owns the non-`Sendable` WhisperKit pipeline. All access is serialised by ``WhisperKitEngine``'s gate.

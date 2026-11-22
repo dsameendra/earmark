@@ -3,7 +3,7 @@ import CryptoKit
 import Foundation
 import Testing
 
-@testable import Models
+@testable import ModelStore
 
 private let small: ModelID = "whisperkit/small"
 

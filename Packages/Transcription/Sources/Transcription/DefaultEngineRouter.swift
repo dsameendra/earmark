@@ -1,6 +1,6 @@
 import AppCore
 import Foundation
-import Models
+import ModelStore
 
 /// Well-known engine and model identifiers used by routing (ADR-004). They match `BuiltInCatalog` in the Models package.
 public enum RoutingTargets {

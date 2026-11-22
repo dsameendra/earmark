@@ -8,7 +8,7 @@ let package = Package(
     dependencies: [
         .package(path: "../AppCore"),
         .package(path: "../AudioCapture"),
-        .package(path: "../Models"),
+        .package(path: "../ModelStore"),
         .package(url: "https://github.com/argmaxinc/argmax-oss-swift.git", from: "1.1.1"),
     ],
     targets: [
@@ -17,7 +17,7 @@ let package = Package(
             dependencies: [
                 .product(name: "AppCore", package: "AppCore"),
                 .product(name: "AudioCapture", package: "AudioCapture"),
-                .product(name: "Models", package: "Models"),
+                .product(name: "ModelStore", package: "ModelStore"),
                 .product(name: "WhisperKit", package: "argmax-oss-swift"),
             ],
             swiftSettings: [.treatAllWarnings(as: .error)]),

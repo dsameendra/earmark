@@ -2,7 +2,7 @@ import AppCore
 import Foundation
 import os
 
-@testable import Models
+@testable import ModelStore
 
 /// Scripted downloader: serves in-memory payloads, optionally stalling mid-transfer until the task is cancelled.
 final class FakeDownloader: Downloading, Sendable {

@@ -1,6 +1,6 @@
 import AppCore
 import Foundation
-import Models
+import ModelStore
 import Speech
 
 /// Raw system view of the on-device speech assets, as reported by `AssetInventory` (before any Earmark-specific mapping).

@@ -2,7 +2,7 @@ import AppCore
 import AppCoreTesting
 import AudioCapture
 import Foundation
-import Models
+import ModelStore
 import Persistence
 import Testing
 import Transcription

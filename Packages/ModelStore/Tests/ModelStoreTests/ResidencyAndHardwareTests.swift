@@ -2,7 +2,7 @@ import AppCore
 import Foundation
 import Testing
 
-@testable import Models
+@testable import ModelStore
 
 private let gib: UInt64 = 1_073_741_824
 

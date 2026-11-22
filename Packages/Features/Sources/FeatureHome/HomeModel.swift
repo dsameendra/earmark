@@ -58,6 +58,8 @@ public final class HomeModel {
     public private(set) var modelStatus: ModelStatusSummary?
     public let hardwareDescription: String
 
+    /// Set by the shell so a drop on Home goes through the same Transcribe sheet as every other way of adding files (SCR-013).
+    @ObservationIgnored public var requestAdd: (([URL]) async -> Void)?
     @ObservationIgnored private var jobsByID: [JobID: Job] = [:]
     @ObservationIgnored private let services: AppServices
 
@@ -104,6 +106,11 @@ public final class HomeModel {
     public func enqueue(_ urls: [URL]) async -> Bool {
         let files = urls.filter(\.isFileURL)
         guard !files.isEmpty else { return false }
+        // SCR-013: the shell routes every add through the Transcribe sheet (and navigates itself after it is confirmed).
+        if let requestAdd {
+            await requestAdd(files)
+            return false
+        }
         do {
             let defaults = await FileJobSettings.load(from: services.settings, catalog: services.models.catalog())
             _ = try await services.jobQueue.enqueue(files: files, settings: defaults, recursive: true)

@@ -26,16 +26,13 @@ public struct QueueView: View {
             .navigationTitle("Queue")
             .toolbar { toolbarContent }
             .dropDestination(for: URL.self) { urls, _ in
-                model.presentBatch(urls: urls)
+                Task { await model.requestAdd(urls) }
                 return !urls.isEmpty
             }
             .fileImporter(
                 isPresented: $isImporterPresented, allowedContentTypes: [.audiovisualContent, .folder], allowsMultipleSelection: true
             ) { result in
-                if case .success(let urls) = result { model.presentBatch(urls: urls) }
-            }
-            .sheet(item: $model.batch) { batch in
-                BatchSettingsSheet(model: batch, onCancel: { model.batch = nil }, onAdd: { Task { await model.submitBatch() } })
+                if case .success(let urls) = result { Task { await model.requestAdd(urls) } }
             }
             .task { await model.run() }
             .dsAnimation(.settle, value: model.jobs.map { "\($0.id):\($0.state.rawValue)" })

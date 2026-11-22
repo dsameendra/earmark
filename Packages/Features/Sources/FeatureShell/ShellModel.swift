@@ -55,6 +55,7 @@ public final class ShellModel {
         quickOpen = QuickOpenModel(transcripts: services.transcripts)
         sidebar = SidebarModel(services: services)
         meetings.navigate = { [weak self] in self?.select(.meetings) }
+        home.requestAdd = { [weak self] urls in await self?.requestAdd(urls) }
         let playback = playback
         library.onTranscriptsRemoved = { ids in for id in ids { playback.stop(transcriptID: id) } }
         recentlyDeleted.onTranscriptsRemoved = { ids in for id in ids { playback.stop(transcriptID: id) } }
@@ -173,9 +174,29 @@ public final class ShellModel {
     public func handleDrop(_ urls: [URL]) -> Bool {
         let files = urls.filter(\.isFileURL)
         guard !files.isEmpty else { return false }
-        Task { await enqueue(files) }
+        Task { await requestAdd(files) }
         return true
     }
+
+    /// The one entry point for adding files (SCR-013): shows the Transcribe sheet (hosted by the shell) or, with "Ask before adding
+    /// files" off, enqueues with the saved choices and opens the Queue.
+    public func requestAdd(_ urls: [URL]) async {
+        switch await queue.requestAdd(urls) {
+        case .enqueued:
+            errorMessage = nil
+            select(.queue)
+        case .failed(let message): errorMessage = message
+        case .presented, .ignored: break
+        }
+    }
+
+    /// Confirms the Transcribe sheet: enqueues the batch and opens the Queue.
+    public func confirmAdd() async {
+        await queue.submitBatch()
+        if queue.batch == nil { select(.queue) }
+    }
+
+    public func cancelAdd() { queue.batch = nil }
 
     /// Enqueues files/folders and navigates to Queue.
     public func enqueue(_ urls: [URL]) async {

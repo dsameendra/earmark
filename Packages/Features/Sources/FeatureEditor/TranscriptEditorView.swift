@@ -25,7 +25,7 @@ public struct TranscriptEditorView: View {
 }
 
 private enum EditorTool: String, Identifiable {
-    case inspector, speakers, bookmarks, options, translation
+    case inspector, speakers, bookmarks, options, translation, retranscribe
     var id: String { rawValue }
 }
 
@@ -144,6 +144,9 @@ private struct EditorContent: View {
                 .accessibilityIdentifier("editor.speakers")
             Button("Translate", symbol: .translate) { presentTool(.translation) }
                 .accessibilityIdentifier("editor.translation")
+            Button("Re-transcribe", symbol: .retry) { presentTool(.retranscribe) }
+                .help("Re-transcribe, identify speakers again, or set the transcript language")
+                .accessibilityIdentifier("editor.retranscribe")
         }
         ToolbarSpacer(.fixed)
         ToolbarItem {
@@ -195,6 +198,7 @@ private struct EditorContent: View {
         case .bookmarks: BookmarksPanel(model: model)
         case .options: ViewOptionsPanel(model: model)
         case .translation: TranslatePanel(model: model)
+        case .retranscribe: RerunPanel(model: model)
         }
     }
 

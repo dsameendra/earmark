@@ -44,6 +44,9 @@ public struct Segment: Hashable, Codable, Sendable, Identifiable {
     /// `true` when the user set `isIgnored` by hand (either way). Re-deriving ignore flags after a rule change keeps such
     /// segments exactly as the user left them (IGN-AC-05).
     public var ignoreFlagIsManual: Bool
+    /// SCR-013: `true` once the user edited the text (or corrected language/speaker by hand). A non-destructive re-transcribe
+    /// keeps such segments exactly as the user left them.
+    public var isUserEdited: Bool
     public var words: [Word]
     public var translations: [SegmentTranslation]
 
@@ -51,7 +54,8 @@ public struct Segment: Hashable, Codable, Sendable, Identifiable {
         id: SegmentID = SegmentID(), start: TimeInterval, end: TimeInterval, text: String,
         speakerID: SpeakerID? = nil, languageCode: LanguageCode? = nil, languageConfidence: Double? = nil,
         confidence: Double? = nil, noSpeechProbability: Double? = nil, isIgnored: Bool = false,
-        ignoreFlagIsManual: Bool = false, words: [Word] = [], translations: [SegmentTranslation] = []
+        ignoreFlagIsManual: Bool = false, isUserEdited: Bool = false, words: [Word] = [],
+        translations: [SegmentTranslation] = []
     ) {
         self.id = id
         self.start = start
@@ -64,6 +68,7 @@ public struct Segment: Hashable, Codable, Sendable, Identifiable {
         self.noSpeechProbability = noSpeechProbability
         self.isIgnored = isIgnored
         self.ignoreFlagIsManual = ignoreFlagIsManual
+        self.isUserEdited = isUserEdited
         self.words = words
         self.translations = translations
     }
@@ -81,6 +86,7 @@ public struct Segment: Hashable, Codable, Sendable, Identifiable {
             noSpeechProbability: try c.decodeIfPresent(Double.self, forKey: .noSpeechProbability),
             isIgnored: try c.decode(Bool.self, forKey: .isIgnored),
             ignoreFlagIsManual: try c.decodeIfPresent(Bool.self, forKey: .ignoreFlagIsManual) ?? false,
+            isUserEdited: try c.decodeIfPresent(Bool.self, forKey: .isUserEdited) ?? false,
             words: try c.decode([Word].self, forKey: .words),
             translations: try c.decode([SegmentTranslation].self, forKey: .translations))
     }

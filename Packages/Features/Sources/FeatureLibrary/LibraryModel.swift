@@ -279,7 +279,12 @@ public final class LibraryModel {
                 item.languages.isEmpty
                 ? nil
                 : item.languages.count == 1 ? .single(item.languages.first ?? .english) : .multilingual(item.languages)
-            let defaults = await FileJobSettings.load(from: services.settings, catalog: services.models.catalog(), languageOverride: mode)
+            var defaults = await FileJobSettings.load(from: services.settings, catalog: services.models.catalog(), languageOverride: mode)
+            // SCR-013: merge by time range. Edits, manual ignore flags, speaker names and segment ids survive; the saved
+            // "identify speakers" choice is not applied to an existing transcript.
+            defaults.diarize = false
+            defaults.diarization = [:]
+            defaults.rerun = RerunOptions()
             _ = try await services.jobQueue.enqueue(
                 Job(kind: .transcribeFile, input: url, transcriptID: id, settings: defaults))
             errorMessage = nil

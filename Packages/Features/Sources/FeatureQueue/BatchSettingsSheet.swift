@@ -1,16 +1,24 @@
 import AppCore
 import DesignSystem
+import FeatureSupport
 import SwiftUI
 
-/// Per-batch settings: language mode, model (filtered by language, inline download), diarization, translation, auto-export.
-struct BatchSettingsSheet: View {
+/// The compact "Transcribe" sheet shown before files are enqueued (SCR-013): language(s), model (unsupported ones greyed out with
+/// a reason), speaker identification with an expected count, translation and auto-export.
+public struct BatchSettingsSheet: View {
     @Bindable var model: BatchSettingsModel
     let onCancel: () -> Void
     let onAdd: () -> Void
 
-    var body: some View {
+    public init(model: BatchSettingsModel, onCancel: @escaping () -> Void, onAdd: @escaping () -> Void) {
+        self.model = model
+        self.onCancel = onCancel
+        self.onAdd = onAdd
+    }
+
+    public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Add to Queue").font(DSTypography.title).padding(DSSpacing.lg).accessibilityAddTraits(.isHeader)
+            Text("Transcribe").font(DSTypography.title).padding(DSSpacing.lg).accessibilityAddTraits(.isHeader)
             Form {
                 Section("Files") {
                     Text(summary)
@@ -20,8 +28,8 @@ struct BatchSettingsSheet: View {
                 }
                 languageSection
                 modelSection
+                speakersSection
                 Section("Options") {
-                    Toggle("Identify speakers", isOn: $model.diarize)
                     Picker("Translate to", selection: $model.translateTo) {
                         Text("None").tag(LanguageCode?.none)
                         ForEach(model.translationOptions, id: \.self) { Text(Self.name(of: $0)).tag(LanguageCode?.some($0)) }
@@ -46,12 +54,18 @@ struct BatchSettingsSheet: View {
             }
             .formStyle(.grouped)
             HStack {
+                Toggle("Don't ask again, use these settings", isOn: $model.dontAskAgain)
+                    .toggleStyle(.checkbox)
+                    .help("Add files straight away next time. Turn this back on in Settings > General.")
+                    .accessibilityIdentifier("batch.dontAskAgain")
                 Spacer()
                 Button("Cancel", role: .cancel, action: onCancel).keyboardShortcut(.cancelAction)
-                Button("Add to Queue", action: onAdd)
+                    .accessibilityIdentifier("batch.cancel")
+                Button("Transcribe", action: onAdd)
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
                     .disabled(!model.canSubmit)
+                    .accessibilityIdentifier("batch.add")
             }
             .padding(DSSpacing.lg)
         }
@@ -94,14 +108,16 @@ struct BatchSettingsSheet: View {
             ) {
                 ForEach(LanguageModeKind.allCases) { Text($0.title).tag($0) }
             }
+            .accessibilityIdentifier("batch.languageMode")
             switch model.kind {
             case .single:
                 Picker(
                     "Language",
                     selection: Binding(get: { model.singleLanguage }, set: { model.setSingleLanguage($0) })
                 ) {
-                    ForEach(model.languageOptions, id: \.self) { Text(Self.name(of: $0)).tag($0) }
+                    ForEach(model.recentFirstLanguageOptions, id: \.self) { Text(Self.name(of: $0)).tag($0) }
                 }
+                .accessibilityIdentifier("batch.language")
             case .autoDetect:
                 Text("The language is detected from the first 30 seconds.").font(DSTypography.caption).foregroundStyle(
                     DSColor.secondaryText)
@@ -115,18 +131,34 @@ struct BatchSettingsSheet: View {
         }
     }
 
+    /// Every runnable model; the ones that cannot handle the chosen language(s) are greyed out and say why.
     private var modelSection: some View {
         Section("Model") {
-            Picker(
-                "Model",
-                selection: Binding<ModelID?>(
-                    get: { model.modelID }, set: { newValue in Task { await model.selectModel(newValue) } })
-            ) {
-                Text("Auto").tag(ModelID?.none)
-                ForEach(model.availableModels) { descriptor in
-                    Text(model.isInstalled(descriptor.id) ? descriptor.displayName : "\(descriptor.displayName) (download)")
-                        .tag(ModelID?.some(descriptor.id))
+            LabeledContent("Model") {
+                Menu {
+                    Button { Task { await model.selectModel(nil) } } label: {
+                        Label(automaticTitle, systemImage: model.modelID == nil ? "checkmark" : "sparkles")
+                    }
+                    Divider()
+                    ForEach(model.modelRows) { row in
+                        Button { Task { await model.selectModel(row.id) } } label: {
+                            if model.modelID == row.id {
+                                Label(Self.title(of: row), systemImage: "checkmark")
+                            } else {
+                                Text(Self.title(of: row))
+                            }
+                        }
+                        .disabled(!row.isEnabled)
+                    }
+                } label: {
+                    Text(currentModelTitle)
                 }
+                .menuStyle(.button)
+                .fixedSize()
+                .accessibilityIdentifier("batch.model")
+            }
+            if let reason = selectedRowReason {
+                Text(reason).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
             }
             switch model.download {
             case .idle: EmptyView()
@@ -136,6 +168,63 @@ struct BatchSettingsSheet: View {
                     detail: verifying ? "Verifying" : nil, fraction: fraction)
             case .failed(_, let reason):
                 Label(reason, systemImage: "exclamationmark.triangle").foregroundStyle(DSColor.danger)
+            }
+        }
+    }
+
+    private var automaticTitle: String {
+        model.recommendedModel.map { "Automatic (Recommended: \($0.displayName))" } ?? "Automatic"
+    }
+
+    private var currentModelTitle: String {
+        guard let id = model.modelID else { return automaticTitle }
+        return model.catalog.first { $0.id == id }?.displayName ?? id.rawValue
+    }
+
+    private var selectedRowReason: String? { model.modelRows.first { $0.id == model.modelID }?.disabledReason }
+
+    /// "Whisper small, 216 MB (download)", "Qwen3 ASR, Recommended", or "Whisper small: No Sinhala support" when greyed out.
+    static func title(of row: ModelChoiceRow) -> String {
+        var title = row.descriptor.displayName
+        if let reason = row.disabledReason { return "\(title): \(reason)" }
+        if row.isRecommended { title += " (Recommended)" }
+        if !row.isInstalled { title += ", \(ByteCountFormatter.string(fromByteCount: row.descriptor.sizeBytes, countStyle: .file)) download" }
+        return title
+    }
+
+    /// "Identify speakers" with an expected count; offers to download the speaker model when it is missing.
+    private var speakersSection: some View {
+        Section("Speakers") {
+            Toggle("Identify speakers", isOn: $model.diarize)
+                .accessibilityIdentifier("batch.diarize")
+            if model.diarize {
+                Picker("Expected speakers", selection: $model.speakerCount) {
+                    ForEach(SpeakerCount.choices, id: \.self) { Text($0.title).tag($0) }
+                }
+                .accessibilityIdentifier("batch.speakerCount")
+                if model.needsSpeakerModel { speakerModelRow }
+            }
+        }
+    }
+
+    @ViewBuilder private var speakerModelRow: some View {
+        switch model.speakerDownload {
+        case .downloading(_, let fraction, let verifying):
+            ProgressRow(title: "Downloading the speaker model", detail: verifying ? "Verifying" : nil, fraction: fraction)
+        case .failed(_, let reason):
+            Label(reason, systemImage: "exclamationmark.triangle").foregroundStyle(DSColor.danger)
+            Button("Try Again") { Task { await model.downloadSpeakerModel() } }
+        case .idle:
+            VStack(alignment: .leading, spacing: DSSpacing.xs) {
+                Text("Identifying speakers needs a \(model.speakerModelSizeText) model that is not downloaded yet.")
+                    .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                if let preflight = model.speakerModelPreflight, !preflight.issues.isEmpty {
+                    ForEach(Array(preflight.issues.enumerated()), id: \.offset) { _, issue in
+                        Text(issue.message).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    }
+                }
+                Button("Download Speaker Model") { Task { await model.downloadSpeakerModel() } }
+                    .accessibilityIdentifier("batch.speakerModel.download")
             }
         }
     }

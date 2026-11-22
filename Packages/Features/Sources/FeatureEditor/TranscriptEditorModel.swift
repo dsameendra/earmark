@@ -90,6 +90,15 @@ public final class TranscriptEditorModel {
     public internal(set) var translationJob: Job?
     public internal(set) var translationStatus: String?
     @ObservationIgnored var translationWatcher: Task<Void, Never>?
+    /// The running (or last) re-transcribe / identify-speakers-again job and its outcome message (SCR-013).
+    public internal(set) var rerunJob: Job?
+    public internal(set) var rerunStatus: String?
+    @ObservationIgnored var rerunWatcher: Task<Void, Never>?
+    @ObservationIgnored var rerunRestoreReadOnly = false
+    /// Set once the user states the transcript language: saving the header then stops adding segment languages back.
+    @ObservationIgnored var languagesPinned = false
+    /// This Mac's memory tier, for greying out models in the Re-transcribe popover.
+    @ObservationIgnored public var hardware: (any HardwareTierProviding)?
 
     public var selection: Set<SegmentID> = []
     public private(set) var editingSegmentID: SegmentID?
@@ -163,6 +172,7 @@ public final class TranscriptEditorModel {
         jobQueue = services.jobQueue
         mediaRoots = services.mediaRoots
         models = services.models
+        hardware = services.hardware
     }
 
     /// Default player factory: `AVPlayer` for any playable file.
@@ -187,6 +197,18 @@ public final class TranscriptEditorModel {
     }
 
     func setPersistenceError(_ message: String) { persistenceError = message }
+
+    /// Replaces the in-memory header with one re-read from storage (after a re-run job changed it).
+    func adoptHeader(_ header: Transcript) { transcript = header }
+
+    /// Changes the transcript header and schedules it to be saved.
+    func updateHeader(_ change: (inout Transcript) -> Void) {
+        guard var current = transcript else { return }
+        change(&current)
+        transcript = current
+        needsHeaderWrite = true
+        schedulePersist()
+    }
 
     // MARK: Loading
 
@@ -419,7 +441,7 @@ public final class TranscriptEditorModel {
         schedulePersist()
     }
 
-    private func refreshUndoState() {
+    func refreshUndoState() {
         canUndo = undoManager.canUndo
         canRedo = undoManager.canRedo
         undoActionName = undoManager.undoActionName
@@ -459,8 +481,9 @@ public final class TranscriptEditorModel {
 
     public func editText(_ id: SegmentID, to text: String) {
         guard let old = segment(id) else { return }
-        let new = SegmentOps.editText(old, to: text)
+        var new = SegmentOps.editText(old, to: text)
         guard new != old else { return }
+        if old.text != new.text { new.isUserEdited = true }  // SCR-013: a re-transcribe keeps this segment
         if old.text != new.text, !old.translations.isEmpty { staleTranslations.insert(id) }  // TRN-AC-10
         perform(EditDelta(name: "Edit Text", replaced: [.init(before: old, after: new)]))
     }
@@ -469,6 +492,7 @@ public final class TranscriptEditorModel {
         let changes = segments.filter { ids.contains($0.id) && $0.speakerID != speakerID }.map { old -> EditDelta.Replacement in
             var new = old
             new.speakerID = speakerID
+            new.isUserEdited = true
             return .init(before: old, after: new)
         }
         perform(EditDelta(name: "Change Speaker", replaced: changes))
@@ -483,6 +507,7 @@ public final class TranscriptEditorModel {
             new.languageCode = code
             // The user chose it, so it is certain (LANG-AC-06 flags only guessed languages).
             new.languageConfidence = code == nil ? nil : 1
+            new.isUserEdited = true
             return .init(before: old, after: new)
         }
         perform(EditDelta(name: "Change Language", replaced: changes))
@@ -563,7 +588,7 @@ public final class TranscriptEditorModel {
         var header: Transcript?
         if needsHeaderWrite, var current = transcript {
             current.modifiedAt = Date()
-            current.languages.formUnion(Set(segments.compactMap(\.languageCode)))
+            if !languagesPinned { current.languages.formUnion(Set(segments.compactMap(\.languageCode))) }
             transcript = current
             header = current
         }

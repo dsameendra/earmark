@@ -219,6 +219,31 @@ public final class QueueModel {
         batch = BatchSettingsModel(urls: files, services: services)
     }
 
+    /// What ``requestAdd(_:)`` did with the files.
+    public enum AddOutcome: Sendable, Equatable { case ignored, presented, enqueued, failed(String) }
+
+    /// The one entry point for adding files (window drop, Home drop, Transcribe File, Queue add, folders). With "Ask before
+    /// adding files" on (the default) it shows the Transcribe sheet and enqueues nothing yet; with it off it enqueues straight
+    /// away using the saved choices, which now include the speaker settings (SCR-013).
+    @discardableResult
+    public func requestAdd(_ urls: [URL]) async -> AddOutcome {
+        let files = urls.filter(\.isFileURL)
+        guard !files.isEmpty else { return .ignored }
+        if await FileJobSettings.asksBeforeAdding(in: services.settings) {
+            batch = BatchSettingsModel(urls: files, services: services)
+            return .presented
+        }
+        do {
+            let defaults = await FileJobSettings.load(from: services.settings, catalog: services.models.catalog())
+            _ = try await queue.enqueue(files: files, settings: defaults, recursive: true)
+            errorMessage = nil
+            return .enqueued
+        } catch {
+            errorMessage = String(describing: error)
+            return .failed(String(describing: error))
+        }
+    }
+
     /// Enqueues the batch with its settings and closes the sheet.
     public func submitBatch() async {
         guard let batch else { return }

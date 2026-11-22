@@ -8,6 +8,7 @@
       "id" : "10000000-0000-4000-8000-000000000001",
       "ignoreFlagIsManual" : false,
       "isIgnored" : false,
+      "isUserEdited" : false,
       "languageCode" : {
         "rawValue" : "en"
       },
@@ -84,6 +85,7 @@
       "id" : "10000000-0000-4000-8000-000000000002",
       "ignoreFlagIsManual" : false,
       "isIgnored" : false,
+      "isUserEdited" : false,
       "languageCode" : {
         "rawValue" : "si"
       },
@@ -148,6 +150,7 @@
       "id" : "10000000-0000-4000-8000-000000000003",
       "ignoreFlagIsManual" : false,
       "isIgnored" : false,
+      "isUserEdited" : false,
       "languageCode" : {
         "rawValue" : "si"
       },
@@ -194,6 +197,7 @@
       "id" : "10000000-0000-4000-8000-000000000005",
       "ignoreFlagIsManual" : false,
       "isIgnored" : false,
+      "isUserEdited" : false,
       "languageCode" : {
         "rawValue" : "en"
       },
@@ -316,6 +320,7 @@
       "id" : "10000000-0000-4000-8000-000000000006",
       "ignoreFlagIsManual" : false,
       "isIgnored" : false,
+      "isUserEdited" : false,
       "languageCode" : {
         "rawValue" : "en"
       },
@@ -337,6 +342,7 @@
       "id" : "10000000-0000-4000-8000-000000000007",
       "ignoreFlagIsManual" : false,
       "isIgnored" : false,
+      "isUserEdited" : false,
       "languageCode" : {
         "rawValue" : "en"
       },

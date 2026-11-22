@@ -44,6 +44,14 @@ struct GeneralSettingsView: View {
             } footer: {
                 Text("Choose specific languages and models in Languages.")
             }
+            Section {
+                Toggle("Ask before adding files", isOn: model.askBeforeAdding.binding)
+                    .accessibilityIdentifier("settings.general.askBeforeAdding")
+            } header: {
+                Text("Adding files")
+            } footer: {
+                Text("Choose the language, model and speaker options each time you add files. When off, the last choices are used.")
+            }
             Section("Welcome") {
                 Button("Show Welcome Again") { Task { await model.showWelcomeAgain() } }
                     .accessibilityIdentifier("settings.general.showWelcome")

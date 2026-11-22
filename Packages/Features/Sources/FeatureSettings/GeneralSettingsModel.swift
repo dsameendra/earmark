@@ -14,6 +14,8 @@ public final class GeneralSettingsModel {
     public let notificationsEnabled: Pref<Bool>
     public let notifyJobCompleted: Pref<Bool>
     public let languageMode: Pref<LanguageMode>
+    /// Show the Transcribe sheet before adding files (default on, SCR-013).
+    public let askBeforeAdding: Pref<Bool>
 
     @ObservationIgnored private let store: any SettingsStore
     @ObservationIgnored private let loginItem: any LaunchAtLoginControlling
@@ -25,6 +27,7 @@ public final class GeneralSettingsModel {
         notificationsEnabled = Pref(SettingsKey.notificationsEnabled, default: true, store: store)
         notifyJobCompleted = Pref(SettingsKey.notifyJobCompleted, default: true, store: store)
         languageMode = Pref(SettingsKey.languageMode, default: .default, store: store)
+        askBeforeAdding = Pref(SettingsKey.askBeforeAdding, default: true, store: store)
     }
 
     public func load() async {
@@ -35,6 +38,7 @@ public final class GeneralSettingsModel {
         await notificationsEnabled.load()
         await notifyJobCompleted.load()
         await languageMode.load()
+        await askBeforeAdding.load()
     }
 
     public func setShowDockIcon(_ value: Bool) async {

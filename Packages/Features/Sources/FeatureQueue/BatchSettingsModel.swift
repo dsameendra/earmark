@@ -64,6 +64,10 @@ public final class BatchSettingsModel {
     /// `nil` is "Auto".
     public private(set) var modelID: ModelID?
     public var diarize = false
+    /// Expected speaker count when `diarize` is on (SCR-013); automatic by default.
+    public var speakerCount: SpeakerCount = .auto
+    /// "Dont ask again, use these settings": turns `files.askBeforeAdding` off when the batch is added.
+    public var dontAskAgain = false
     public var translateTo: LanguageCode?
     public var autoExportPresetID: PresetID?
     public var skipDuplicates = true
@@ -77,6 +81,13 @@ public final class BatchSettingsModel {
     public private(set) var presets: [ExportPreset] = []
     public private(set) var duplicates: [URL] = []
     public private(set) var download: BatchModelDownload = .idle
+    /// Languages used recently for files, most recent first (offered at the top of the language menu).
+    public private(set) var recentLanguages: [LanguageCode] = []
+    /// The offline speaker model and its install/download state (SCR-013: the sheet offers it instead of silently skipping).
+    public private(set) var speakerModel: ModelDescriptor?
+    public private(set) var speakerModelInstalled = false
+    public private(set) var speakerModelPreflight: ModelPreflightResult?
+    public private(set) var speakerDownload: BatchModelDownload = .idle
     public private(set) var isSubmitting = false
     public private(set) var errorMessage: String?
 
@@ -108,8 +119,22 @@ public final class BatchSettingsModel {
                 }
                 modelID = defaults.modelID
             }
+            diarize = defaults.diarize
+            speakerCount = SpeakerCount(diarization: defaults.diarization)
+            recentLanguages = await FileJobSettings.recentLanguages(in: services.settings)
+            installed = await services.models.installedModels()
+            // Nothing saved yet: preselect the recommended model for this language and Mac (never starts a download).
+            let saved = await services.settings.value(for: SettingsKey.filesLastModel, as: String.self)
+            let preferred = await services.settings.value(for: SettingsKey.preferredModel, as: String.self)
+            if !hasEditedConfiguration, saved == nil, preferred == nil {
+                // Only a model with an explicit recommendation rule is preselected; otherwise it stays Automatic.
+                modelID = ModelChoices.recommended(for: languageMode, tier: tier, catalog: catalog, allowFallback: false)?.id
+            }
         }
         installed = await services.models.installedModels()
+        speakerModel = catalog.first { $0.kind == .diarization && $0.capabilities.speakerLabels == .offline }
+        speakerModelInstalled = speakerModel.map { installed.contains($0.id) } ?? false
+        if let speakerModel, !speakerModelInstalled { speakerModelPreflight = await services.models.preflight(speakerModel.id) }
         presets = (try? await services.presets?.exportPresets())?.filter { $0.deletedAt == nil } ?? []
         let queued = Set(await services.jobQueue.jobs().filter { $0.state != .completed && $0.state != .cancelled }.compactMap(\.input))
         duplicates = urls.filter { queued.contains($0) }
@@ -123,6 +148,13 @@ public final class BatchSettingsModel {
     public var languageOptions: [LanguageCode] {
         let all = table.languages()
         return Set(all).union(multiLanguages).union([singleLanguage]).sorted()
+    }
+
+    /// ``languageOptions`` with the recently used languages first (SCR-013).
+    public var recentFirstLanguageOptions: [LanguageCode] {
+        let all = languageOptions
+        let recent = recentLanguages.filter { all.contains($0) }
+        return recent + all.filter { !recent.contains($0) }
     }
 
     /// Languages offered as translation targets.
@@ -156,11 +188,57 @@ public final class BatchSettingsModel {
 
     public func isInstalled(_ id: ModelID) -> Bool { installed.contains(id) }
 
+    /// This Mac's memory tier, for model compatibility.
+    public var tier: HardwareTier { services.hardware.profile.tier }
+
+    /// Every runnable ASR model with whether it suits the chosen language(s); unsupported rows are greyed out with a reason.
+    public var modelRows: [ModelChoiceRow] {
+        ModelChoices.rows(catalog: catalog, installed: installed, mode: languageMode, tier: tier)
+    }
+
+    /// The model the router would pick on its own for the chosen language(s): shown as "Automatic (Recommended: ...)".
+    public var recommendedModel: ModelDescriptor? {
+        ModelChoices.recommended(for: languageMode, tier: tier, catalog: catalog)
+    }
+
+    // MARK: Speakers (SCR-013)
+
+    /// `true` when "Identify speakers" is on but the speaker model is missing, so the sheet offers to download it.
+    public var needsSpeakerModel: Bool { diarize && speakerModel != nil && !speakerModelInstalled }
+
+    public var speakerModelSizeText: String {
+        ByteCountFormatter.string(fromByteCount: speakerModel?.sizeBytes ?? 0, countStyle: .file)
+    }
+
+    /// Downloads the speaker model with inline progress (the model manager runs its preflight and consent first).
+    public func downloadSpeakerModel() async {
+        guard let id = speakerModel?.id, !speakerModelInstalled else { return }
+        if case .downloading = speakerDownload { return }
+        speakerDownload = .downloading(model: id, fraction: 0, verifying: false)
+        do {
+            for try await event in services.models.ensureAvailable(id) {
+                switch event {
+                case .progress(let fraction, _, _): speakerDownload = .downloading(model: id, fraction: fraction, verifying: false)
+                case .verifying: speakerDownload = .downloading(model: id, fraction: 1, verifying: true)
+                case .completed: break
+                }
+            }
+            speakerModelInstalled = true
+            installed.insert(id)
+            speakerDownload = .idle
+        } catch {
+            speakerDownload = .failed(model: id, reason: String(describing: error))
+        }
+    }
+
     public func setKind(_ newKind: LanguageModeKind) {
         hasEditedConfiguration = true
         kind = newKind
         reconcileModel()
     }
+
+    /// Marks the model/language configuration as edited by the user (it is then saved on submit).
+    public func markEdited() { hasEditedConfiguration = true }
 
     public func setSingleLanguage(_ code: LanguageCode) {
         hasEditedConfiguration = true
@@ -216,8 +294,8 @@ public final class BatchSettingsModel {
 
     public var jobSettings: JobSettings {
         JobSettings(
-            languageMode: languageMode, modelID: modelID, diarize: diarize, translateTo: translateTo,
-            autoExportPresetID: autoExportPresetID, copyIntoLibrary: copyIntoLibrary)
+            languageMode: languageMode, modelID: modelID, diarize: diarize, diarization: diarize ? speakerCount.diarization : [:],
+            translateTo: translateTo, autoExportPresetID: autoExportPresetID, copyIntoLibrary: copyIntoLibrary)
     }
 
     // MARK: Per-file overrides (FILE-AC-04)
@@ -272,6 +350,14 @@ public final class BatchSettingsModel {
         !isDownloading && !isSubmitting && !urlsToEnqueue.isEmpty && (kind != .multilingual || !multiLanguages.isEmpty)
     }
 
+    /// Saves what was chosen so the next add starts from it (SCR-013), and honours the "Dont ask again" checkbox.
+    func rememberChoices() async {
+        let choices = FileJobSettings.Choices(
+            languageMode: languageMode, modelID: modelID, diarize: diarize, speakerCount: speakerCount)
+        await FileJobSettings.save(choices, persistLanguageAndModel: hasEditedConfiguration, to: services.settings)
+        if dontAskAgain { await services.settings.set(false, for: SettingsKey.askBeforeAdding) }
+    }
+
     /// Enqueues the batch. Returns `true` on success.
     public func submit() async -> Bool {
         guard canSubmit else { return false }
@@ -281,6 +367,7 @@ public final class BatchSettingsModel {
             let requests = urlsToEnqueue.map { FileJobRequest(url: $0, settings: settings(for: $0)) }
             _ = try await services.jobQueue.enqueue(requests: requests, recursive: true)
             errorMessage = nil
+            await rememberChoices()
             return true
         } catch {
             errorMessage = String(describing: error)

@@ -65,6 +65,9 @@ public struct ShellView: View {
         ) { result in
             if case .success(let urls) = result { model.handleDrop(urls) }
         }
+        .sheet(item: Bindable(model.queue).batch) { batch in
+            BatchSettingsSheet(model: batch, onCancel: { model.cancelAdd() }, onAdd: { Task { await model.confirmAdd() } })
+        }
         .task { await model.restore() }
         .task { await model.sidebar.run() }
         .task { await model.watchCaptureForPlayback() }

@@ -101,6 +101,7 @@ public enum SegmentOps {
         merged.confidence = confidences.isEmpty ? nil : confidences.reduce(0, +) / Double(confidences.count)
         merged.isIgnored = first.isIgnored && second.isIgnored
         merged.ignoreFlagIsManual = first.ignoreFlagIsManual || second.ignoreFlagIsManual
+        merged.isUserEdited = first.isUserEdited || second.isUserEdited
         merged.translations = []
         return merged
     }

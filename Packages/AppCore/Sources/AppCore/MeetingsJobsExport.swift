@@ -126,6 +126,29 @@ public struct JobCheckpoint: Codable, Sendable, Hashable {
     }
 }
 
+/// SCR-013: how a `transcribeFile` job that targets an EXISTING transcript re-runs it.
+public struct RerunOptions: Codable, Sendable, Hashable {
+    /// Media time ranges to redo. Empty means the whole transcript.
+    public var ranges: [TimeRange]
+    /// `false` (default): merge by time range, keeping edited segments, manual ignore flags, speaker assignments and names.
+    /// `true`: wipe and rebuild everything (the old behaviour; the UI asks for confirmation first).
+    public var replaceEverything: Bool
+    /// Only identify speakers again; no speech recognition runs (requires `JobSettings.diarize`).
+    public var speakersOnly: Bool
+    public init(ranges: [TimeRange] = [], replaceEverything: Bool = false, speakersOnly: Bool = false) {
+        self.ranges = ranges
+        self.replaceEverything = replaceEverything
+        self.speakersOnly = speakersOnly
+    }
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            ranges: try c.decodeIfPresent([TimeRange].self, forKey: .ranges) ?? [],
+            replaceEverything: try c.decodeIfPresent(Bool.self, forKey: .replaceEverything) ?? false,
+            speakersOnly: try c.decodeIfPresent(Bool.self, forKey: .speakersOnly) ?? false)
+    }
+}
+
 public struct JobSettings: Codable, Sendable, Hashable {
     public var languageMode: LanguageMode
     public var modelID: ModelID?
@@ -136,10 +159,13 @@ public struct JobSettings: Codable, Sendable, Hashable {
     public var autoExportPresetID: PresetID?
     /// FILE-AC-16: copy the media into the library (library-owned asset) instead of referencing it with a bookmark.
     public var copyIntoLibrary: Bool
+    /// SCR-013: non-`nil` marks a re-run of an existing transcript (see ``RerunOptions``).
+    public var rerun: RerunOptions?
     public init(
         languageMode: LanguageMode = .default, modelID: ModelID? = nil, diarize: Bool = false,
         diarization: [String: Int] = [:], translateTo: LanguageCode? = nil, applyReplacements: Bool = true,
-        autoExportPresetID: PresetID? = nil, copyIntoLibrary: Bool = false
+        autoExportPresetID: PresetID? = nil, copyIntoLibrary: Bool = false,
+        rerun: RerunOptions? = nil
     ) {
         self.languageMode = languageMode
         self.modelID = modelID
@@ -149,6 +175,7 @@ public struct JobSettings: Codable, Sendable, Hashable {
         self.applyReplacements = applyReplacements
         self.autoExportPresetID = autoExportPresetID
         self.copyIntoLibrary = copyIntoLibrary
+        self.rerun = rerun
     }
 
     /// Decodes jobs journaled before `copyIntoLibrary` existed (it defaults to `false`).
@@ -161,7 +188,8 @@ public struct JobSettings: Codable, Sendable, Hashable {
             translateTo: try c.decodeIfPresent(LanguageCode.self, forKey: .translateTo),
             applyReplacements: try c.decode(Bool.self, forKey: .applyReplacements),
             autoExportPresetID: try c.decodeIfPresent(PresetID.self, forKey: .autoExportPresetID),
-            copyIntoLibrary: try c.decodeIfPresent(Bool.self, forKey: .copyIntoLibrary) ?? false)
+            copyIntoLibrary: try c.decodeIfPresent(Bool.self, forKey: .copyIntoLibrary) ?? false,
+            rerun: try c.decodeIfPresent(RerunOptions.self, forKey: .rerun))
     }
 }
 
@@ -187,13 +215,16 @@ public struct Job: Codable, Sendable, Hashable, Identifiable {
     public var engine: EngineID?
     public var checkpoint: JobCheckpoint?
     public var failureReason: String?
+    /// SCR-013: a completed job's warning that survives completion (e.g. "Speaker identification failed; no speaker labels").
+    public var warning: String?
     public var priority: Int
     public var createdAt: Date
     public var deletedAt: Date?
     public init(
         id: JobID = JobID(), kind: JobKind, state: JobState = .pending, input: URL? = nil, transcriptID: TranscriptID? = nil,
         settings: JobSettings = JobSettings(), progress: Double = 0, etaSeconds: TimeInterval? = nil, engine: EngineID? = nil,
-        checkpoint: JobCheckpoint? = nil, failureReason: String? = nil, priority: Int = 0, createdAt: Date = Date(), deletedAt: Date? = nil
+        checkpoint: JobCheckpoint? = nil, failureReason: String? = nil, warning: String? = nil, priority: Int = 0,
+        createdAt: Date = Date(), deletedAt: Date? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -206,9 +237,26 @@ public struct Job: Codable, Sendable, Hashable, Identifiable {
         self.engine = engine
         self.checkpoint = checkpoint
         self.failureReason = failureReason
+        self.warning = warning
         self.priority = priority
         self.createdAt = createdAt
         self.deletedAt = deletedAt
+    }
+
+    /// Decodes jobs journaled before `warning` existed.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try c.decode(JobID.self, forKey: .id), kind: try c.decode(JobKind.self, forKey: .kind),
+            state: try c.decode(JobState.self, forKey: .state), input: try c.decodeIfPresent(URL.self, forKey: .input),
+            transcriptID: try c.decodeIfPresent(TranscriptID.self, forKey: .transcriptID),
+            settings: try c.decode(JobSettings.self, forKey: .settings), progress: try c.decode(Double.self, forKey: .progress),
+            etaSeconds: try c.decodeIfPresent(TimeInterval.self, forKey: .etaSeconds),
+            engine: try c.decodeIfPresent(EngineID.self, forKey: .engine),
+            checkpoint: try c.decodeIfPresent(JobCheckpoint.self, forKey: .checkpoint),
+            failureReason: try c.decodeIfPresent(String.self, forKey: .failureReason),
+            warning: try c.decodeIfPresent(String.self, forKey: .warning), priority: try c.decode(Int.self, forKey: .priority),
+            createdAt: try c.decode(Date.self, forKey: .createdAt), deletedAt: try c.decodeIfPresent(Date.self, forKey: .deletedAt))
     }
 }
 

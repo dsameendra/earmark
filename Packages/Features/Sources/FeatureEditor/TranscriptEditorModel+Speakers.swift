@@ -38,6 +38,7 @@ extension TranscriptEditorModel {
             middle = second
         }
         middle.speakerID = speakerID
+        middle.isUserEdited = true
 
         let pieces = [pre, middle, tail].compactMap { $0 }
         let inserted = pieces.dropFirst().enumerated().map { EditDelta.Placed(index: position + 1 + $0.offset, segment: $0.element) }

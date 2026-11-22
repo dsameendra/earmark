@@ -32,6 +32,10 @@ enum Schema {
         migrator.registerMigration("v2-segment-manual-ignore") { db in
             try db.execute(sql: "ALTER TABLE segment ADD COLUMN ignoreFlagIsManual INTEGER NOT NULL DEFAULT 0")
         }
+        // SCR-013: a non-destructive re-transcribe keeps segments the user edited.
+        migrator.registerMigration("v3-segment-user-edited") { db in
+            try db.execute(sql: "ALTER TABLE segment ADD COLUMN isUserEdited INTEGER NOT NULL DEFAULT 0")
+        }
         return migrator
     }
 

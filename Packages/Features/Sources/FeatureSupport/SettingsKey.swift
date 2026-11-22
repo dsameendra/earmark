@@ -35,6 +35,16 @@ public enum SettingsKey {
         case .dictation: preferredModelDictation
         }
     }
+    /// `Bool`; show the Transcribe sheet before adding files (default `true`, SCR-013).
+    public static let askBeforeAdding = "files.askBeforeAdding"
+    /// `Bool`; "Identify speakers" as last chosen when adding files.
+    public static let filesDiarize = "files.diarize"
+    /// `Int`; expected speaker count as last chosen (0 or absent is automatic).
+    public static let filesSpeakerCount = "files.speakerCount"
+    /// `String`; model last picked in the add sheet (empty is Automatic). File-scoped: live captions never read it.
+    public static let filesLastModel = "files.lastModel"
+    /// `[String]`; recently used languages for files, most recent first (at most 5).
+    public static let filesRecentLanguages = "files.recentLanguages"
     /// `String`; chosen input device UID (absent means system default).
     public static let inputDeviceUID = "audio.inputDeviceUID"
     /// `String`; per-feature input device overrides (empty means "use global").

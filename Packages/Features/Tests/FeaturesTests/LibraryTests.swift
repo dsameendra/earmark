@@ -243,6 +243,26 @@ private func item(
         #expect(jobs.count == 1 && jobs[0].transcriptID == transcript.id && jobs[0].settings.languageMode == .single(.sinhala))
     }
 
+    @Test func libraryRetranscribeMergesInsteadOfWipingAndDoesNotAddSpeakerWork() async {
+        let assetID = MediaAssetID()
+        let transcript = Transcript(title: "Talk", source: .file, languages: [.english], mediaAssetID: assetID)
+        let media = InMemoryMedia(items: [MediaAsset(id: assetID, kind: .audio, bookmark: Data("ok".utf8))])
+        let queue = PlaceholderJobQueue()
+        let store = InMemorySettingsStore()
+        await store.set(true, for: SettingsKey.filesDiarize)
+        var services = AppServices.preview()
+        services.transcripts = InMemoryTranscripts(items: [transcript])
+        services.media = media
+        services.jobQueue = queue
+        services.settings = store
+        let library = LibraryModel(services: services, mode: .library, mediaAccess: FakeMediaAccess(resolvable: [Data("ok".utf8)]))
+        await library.retranscribe(transcript.id)
+        let job = await queue.jobs().first
+        #expect(job?.settings.rerun == RerunOptions())
+        #expect(job?.settings.rerun?.replaceEverything == false)
+        #expect(job?.settings.diarize == false)
+    }
+
     @Test func emptyAndErrorStatesDriveFromModel() async {
         let (empty, _) = makeModel([])
         #expect(empty.isLoading)

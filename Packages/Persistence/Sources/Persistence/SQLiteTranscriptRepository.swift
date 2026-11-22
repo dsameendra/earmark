@@ -319,18 +319,18 @@ public struct SQLiteTranscriptRepository: TranscriptRepository {
         try db.execute(
             sql: """
                 INSERT INTO segment (id, transcriptID, start, "end", text, speakerID, languageCode, languageConfidence,
-                  confidence, noSpeechProbability, isIgnored, ignoreFlagIsManual, words, translations)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  confidence, noSpeechProbability, isIgnored, ignoreFlagIsManual, isUserEdited, words, translations)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET transcriptID = excluded.transcriptID, start = excluded.start,
                   "end" = excluded."end", text = excluded.text, speakerID = excluded.speakerID,
                   languageCode = excluded.languageCode, languageConfidence = excluded.languageConfidence,
                   confidence = excluded.confidence, noSpeechProbability = excluded.noSpeechProbability,
-                  isIgnored = excluded.isIgnored, ignoreFlagIsManual = excluded.ignoreFlagIsManual,
+                  isIgnored = excluded.isIgnored, ignoreFlagIsManual = excluded.ignoreFlagIsManual, isUserEdited = excluded.isUserEdited,
                   words = excluded.words, translations = excluded.translations
                 """,
             arguments: [
                 s.id.key, transcriptKey, s.start, s.end, s.text, s.speakerID.idKey(), s.languageCode?.rawValue,
-                s.languageConfidence, s.confidence, s.noSpeechProbability, s.isIgnored, s.ignoreFlagIsManual, encoded.words, encoded.translations,
+                s.languageConfidence, s.confidence, s.noSpeechProbability, s.isIgnored, s.ignoreFlagIsManual, s.isUserEdited, encoded.words, encoded.translations,
             ])
     }
 
@@ -349,7 +349,7 @@ public struct SQLiteTranscriptRepository: TranscriptRepository {
             speakerID: row.optionalUUID("speakerID").map { SpeakerID($0) }, languageCode: language.map { LanguageCode($0) },
             languageConfidence: row["languageConfidence"], confidence: row["confidence"],
             noSpeechProbability: row["noSpeechProbability"], isIgnored: row["isIgnored"],
-            ignoreFlagIsManual: row["ignoreFlagIsManual"], words: words,
+            ignoreFlagIsManual: row["ignoreFlagIsManual"], isUserEdited: row["isUserEdited"], words: words,
             translations: translations)
     }
 }

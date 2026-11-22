@@ -52,18 +52,59 @@ extension PersistentJobQueue {
             transcript = try await createTranscript(for: queued, input: input, assetID: assetID, duration: total)
         }
         guard var header = transcript else { return }
-        let checkpoint = try await trimToCheckpoint(header.id, checkpoint: store[id]?.checkpoint)
         let settings = queued.settings
+        // SCR-013: a re-run of an existing transcript merges by time range instead of wiping it, unless asked to replace everything.
+        let rerun = (queued.transcriptID != nil && !(settings.rerun?.replaceEverything ?? false)) ? settings.rerun : nil
+        var warning: String?
+        var segments: [Segment]
 
-        let plan = try await planEngines(for: settings)
-        await mutate(id) { $0.engine = plan.assignments.first?.engine }
-        try await ensureModels(of: plan, for: id)
+        if let rerun {
+            let existing = try await services.transcripts.segments(for: header.id)
+            let existingSpeakers = header.speakers
+            if rerun.speakersOnly {
+                segments = existing
+            } else {
+                let plan = try await planEngines(for: settings)
+                await mutate(id) { $0.engine = plan.assignments.first?.engine }
+                try await ensureModels(of: plan, for: id)
+                var fresh: [Segment] = []
+                try await transcribe(
+                    id, input: input, transcriptID: header.id, plan: plan, checkpoint: nil, total: total, collect: { fresh += $0 })
+                fresh = try await postProcess(fresh, settings: settings)
+                segments = RerunMerge.merge(existing: existing, fresh: fresh, ranges: rerun.ranges)
+            }
+            if settings.diarize {
+                let before = segments
+                let result = await diarizeSafely(id, input: input, settings: settings, segments: &segments)
+                warning = result.warning
+                if let speakers = result.speakers {
+                    let mapped = RerunMerge.remapSpeakers(
+                        before: before, after: segments, newSpeakers: speakers, existingSpeakers: existingSpeakers)
+                    segments = mapped.segments
+                    header.speakers = mapped.speakers
+                } else {
+                    segments = before
+                    header.speakers = existingSpeakers
+                }
+            }
+        } else {
+            let checkpoint = try await trimToCheckpoint(header.id, checkpoint: store[id]?.checkpoint)
+            let plan = try await planEngines(for: settings)
+            await mutate(id) { $0.engine = plan.assignments.first?.engine }
+            try await ensureModels(of: plan, for: id)
 
-        try await transcribe(id, input: input, transcriptID: header.id, plan: plan, checkpoint: checkpoint, total: total)
+            try await transcribe(id, input: input, transcriptID: header.id, plan: plan, checkpoint: checkpoint, total: total)
 
-        var segments = try await services.transcripts.segments(for: header.id)
-        if settings.diarize { header.speakers = try await diarize(id, input: input, settings: settings, segments: &segments) }
-        segments = try await postProcess(segments, settings: settings)
+            segments = try await services.transcripts.segments(for: header.id)
+            if settings.diarize {
+                // DIA-AC-16: a failed speaker step never fails the job; it completes without speaker labels and a warning.
+                let result = await diarizeSafely(id, input: input, settings: settings, segments: &segments)
+                header.speakers = result.speakers ?? []
+                warning = result.warning
+            }
+            segments = try await postProcess(segments, settings: settings)
+            if settings.rerun?.replaceEverything == true && !settings.diarize { header.speakers = [] }
+        }
 
         header.duration = max(total, segments.map(\.end).max() ?? 0)
         header.languages = languages(of: segments, settings: settings, detected: detected[id] ?? [])
@@ -79,6 +120,7 @@ extension PersistentJobQueue {
             $0.state = .completed
             $0.progress = 1
             $0.etaSeconds = nil
+            $0.warning = warning
         }
         detected[id] = nil
         let exported = await autoExport(id, document: TranscriptDocument(transcript: header, segments: segments))
@@ -222,7 +264,8 @@ extension PersistentJobQueue {
     // MARK: - Transcription
 
     private func transcribe(
-        _ id: JobID, input: URL, transcriptID: TranscriptID, plan: EnginePlan, checkpoint: JobCheckpoint?, total: TimeInterval
+        _ id: JobID, input: URL, transcriptID: TranscriptID, plan: EnginePlan, checkpoint: JobCheckpoint?, total: TimeInterval,
+        collect: (([Segment]) -> Void)? = nil
     ) async throws {
         guard let job = store[id] else { return }
         let options = TranscriptionOptions(languageMode: job.settings.languageMode, useCase: .file, modelID: job.settings.modelID)
@@ -241,11 +284,17 @@ extension PersistentJobQueue {
                 case .chunkCompleted(let segments, let marker):
                     // Segments first, then the checkpoint: a crash in between re-transcribes the chunk, and the
                     // trim in `trimToCheckpoint` removes its orphaned segments.
-                    if !segments.isEmpty { try await services.transcripts.upsertSegments(segments, for: transcriptID) }
+                    // SCR-013: a merge re-run collects in memory and never checkpoints (an interrupt restarts it from scratch).
+                    if let collect {
+                        collect(segments)
+                    } else if !segments.isEmpty {
+                        try await services.transcripts.upsertSegments(segments, for: transcriptID)
+                    }
                     let fraction = total > 0 ? min(1, marker.mediaTime / total) : 0
                     let eta = estimator.eta(fraction: fraction, now: configuration.now())
+                    let storesCheckpoint = collect == nil
                     await mutate(id) {
-                        $0.checkpoint = marker
+                        if storesCheckpoint { $0.checkpoint = marker }
                         $0.progress = fraction
                         $0.etaSeconds = eta
                     }
@@ -269,6 +318,24 @@ extension PersistentJobQueue {
     }
 
     // MARK: - Diarization and post-processing
+
+    /// DIA-AC-16: runs the speaker step; a failure (model download, diarizer) yields `nil` speakers and a warning instead of
+    /// failing the job. Cancellation (pause/cancel) is never swallowed: the caller's next checkpoint rethrows it.
+    private func diarizeSafely(
+        _ id: JobID, input: URL, settings: JobSettings, segments: inout [Segment]
+    ) async -> (speakers: [Speaker]?, warning: String?) {
+        var working = segments
+        do {
+            let speakers = try await diarize(id, input: input, settings: settings, segments: &working)
+            segments = working
+            return (speakers, services.diarizer == nil ? "Speaker identification is unavailable in this build." : nil)
+        } catch {
+            if error is CancellationError || (error as? AppError) == .cancelled || Task.isCancelled { return (nil, nil) }
+            log.error("Diarization failed: \(String(describing: error), privacy: .public)")
+            setNote(id, nil)
+            return (nil, "Speakers could not be identified (\(String(describing: error))). The transcript has no speaker labels.")
+        }
+    }
 
     private func diarize(_ id: JobID, input: URL, settings: JobSettings, segments: inout [Segment]) async throws -> [Speaker] {
         guard let diarizer = services.diarizer else {

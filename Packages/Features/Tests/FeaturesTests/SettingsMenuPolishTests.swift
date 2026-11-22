@@ -113,9 +113,17 @@ struct SettingsMenuPolishTests {
     }
 
     private func model(_ id: String, languages: Set<LanguageCode>) -> ModelDescriptor {
-        ModelDescriptor(
+        // Recommendation rules mirror the built-in catalog (the shared ModelRecommender is data-driven).
+        let rules: [RecommendedUse] =
+            switch id {
+            case "whisperkit/large-v3-v20240930_626MB": [RecommendedUse(.file, minTier: .tier16)]
+            case "whisperkit/small": [RecommendedUse(.file, maxTier: .tier8)]
+            default: []
+            }
+        return ModelDescriptor(
             id: ModelID(id), displayName: id, kind: .asr, runtime: .coreML, languages: languages,
-            sizeBytes: 1, license: LicenseInfo(spdx: "MIT"))
+            sizeBytes: 1, license: LicenseInfo(spdx: "MIT"),
+            capabilities: ModelCapabilities(file: true, autoDetectLanguage: true, recommendedUse: rules))
     }
 }
 

@@ -42,6 +42,23 @@ public struct DownloadInterruptedError: Error, Sendable {
     public init(resumeData: Data?) { self.resumeData = resumeData }
 }
 
+/// A non-2xx HTTP response from a download or manifest request (so retry and resume logic can tell a refusal from an outage).
+public struct DownloadHTTPError: Error, Sendable, Equatable {
+    public var status: Int
+    public init(status: Int) { self.status = status }
+}
+
+/// Thrown by a ``Downloading`` implementation when a transfer **fails** (as opposed to being cancelled). `resumeData` is
+/// present when the failure left a resumable partial (for example a dropped connection).
+public struct DownloadFailedError: Error, Sendable {
+    public var underlying: any Error
+    public var resumeData: Data?
+    public init(underlying: any Error, resumeData: Data? = nil) {
+        self.underlying = underlying
+        self.resumeData = resumeData
+    }
+}
+
 /// Transport abstraction so tests never touch the network.
 public protocol Downloading: Sendable {
     /// Downloads `url` into a temporary file owned by the caller and returns its location.
@@ -97,20 +114,33 @@ public struct HuggingFaceManifestResolver: ManifestResolving {
         var isSingleFile: Bool
     }
 
-    private let fetch: @Sendable (URL) async throws -> Data
+    /// Fetches one page of the tree listing; the second value is the next page (`Link: rel="next"`), if any.
+    private let fetch: @Sendable (URL) async throws -> (Data, URL?)
 
     public init() {
         self.fetch = { url in
             let (data, response) = try await URLSession(configuration: .ephemeral).data(from: url)
-            if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                throw URLError(.badServerResponse)
-            }
-            return data
+            guard let http = response as? HTTPURLResponse else { return (data, nil) }
+            if !(200..<300).contains(http.statusCode) { throw DownloadHTTPError(status: http.statusCode) }
+            return (data, Self.nextPage(inLinkHeader: http.value(forHTTPHeaderField: "Link")))
         }
     }
 
-    /// Test seam: supply the JSON fetch.
-    init(fetch: @escaping @Sendable (URL) async throws -> Data) { self.fetch = fetch }
+    /// Test seam: supply the JSON fetch (single page).
+    init(fetch: @escaping @Sendable (URL) async throws -> Data) { self.fetch = { (try await fetch($0), nil) } }
+
+    /// Test seam: supply paged JSON fetches.
+    init(pages: @escaping @Sendable (URL) async throws -> (Data, URL?)) { self.fetch = pages }
+
+    /// Parses `<https://...>; rel="next"` out of a `Link` header.
+    static func nextPage(inLinkHeader header: String?) -> URL? {
+        guard let header else { return nil }
+        for part in header.split(separator: ",") where part.contains("rel=\"next\"") {
+            guard let open = part.firstIndex(of: "<"), let close = part.firstIndex(of: ">"), open < close else { continue }
+            return URL(string: String(part[part.index(after: open)..<close]))
+        }
+        return nil
+    }
 
     public func files(for model: ModelDescriptor) async throws -> [RemoteFile] {
         guard let source = model.sourceURL, HostAllowList.models.permits(source), let location = Self.location(of: source) else {
@@ -126,8 +156,36 @@ public struct HuggingFaceManifestResolver: ManifestResolving {
         }
         var api = "https://huggingface.co/api/models/\(location.owner)/\(location.repo)/tree/\(location.revision)"
         if !location.subpath.isEmpty { api += "/\(location.subpath)" }
-        guard let apiURL = URL(string: api + "?recursive=true") else { throw URLError(.badURL) }
-        return try Self.files(fromTreeJSON: try await fetch(apiURL), location: location)
+        guard let first = URL(string: api + "?recursive=true") else { throw URLError(.badURL) }
+        var next: URL? = first
+        var result: [RemoteFile] = []
+        var pages = 0
+        while let url = next, pages < 50 {
+            let (data, following) = try await fetch(url)
+            result += try Self.files(fromTreeJSON: data, location: location)
+            next = following
+            pages += 1
+        }
+        let selected = Self.filter(result, include: model.downloadInclude, location: location)
+        // A catalog entry that names files must find every one of them: a renamed or truncated listing is an error, not a
+        // silently partial model.
+        let missing = model.downloadInclude.filter { include in
+            !selected.contains { $0.relativePath == include || $0.relativePath.hasPrefix(include + "/") }
+        }
+        if !missing.isEmpty {
+            throw AppError.modelDownloadFailed(model.id, reason: "The model listing is missing: \(missing.joined(separator: ", ")).")
+        }
+        return selected
+    }
+
+    /// Keeps files under one of the `include` paths (all files when `include` is empty). Paths are repo-relative.
+    static func filter(_ files: [RemoteFile], include: [String], location: Location) -> [RemoteFile] {
+        guard !include.isEmpty else { return files }
+        let prefix = location.subpath.isEmpty ? "" : location.subpath + "/"
+        return files.filter { file in
+            let path = prefix + file.relativePath
+            return include.contains { path == $0 || path.hasPrefix($0 + "/") }
+        }
     }
 
     static func location(of url: URL) -> Location? {
@@ -254,7 +312,8 @@ private final class Transfer: NSObject, URLSessionDownloadDelegate, @unchecked S
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         if let http = downloadTask.response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-            finish(.failure(URLError(.badServerResponse)))
+            // A resumed task replays the original signed CDN URL; once it expires the server answers 403.
+            finish(.failure(DownloadFailedError(underlying: DownloadHTTPError(status: http.statusCode))))
             return
         }
         let kept = FileManager.default.temporaryDirectory.appendingPathComponent("earmark-dl-\(UUID().uuidString)")
@@ -269,7 +328,13 @@ private final class Transfer: NSObject, URLSessionDownloadDelegate, @unchecked S
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
         guard let error else { return }
         let data = (error as NSError).userInfo[NSURLSessionDownloadTaskResumeData] as? Data
-        finish(.failure(DownloadInterruptedError(resumeData: data)))
+        let userCancelled = state.withLock { $0.cancelled }
+        if userCancelled || (error as? URLError)?.code == .cancelled {
+            finish(.failure(DownloadInterruptedError(resumeData: data)))
+        } else {
+            // A real failure (offline, timeout, bad resume data): report it, do not disguise it as a pause.
+            finish(.failure(DownloadFailedError(underlying: error, resumeData: data)))
+        }
     }
 
     func urlSession(

@@ -30,17 +30,15 @@ public enum PreferredModel {
             let permitsDetection = mode != .autoDetect || Set(model.languages.map(\.primary)).count > 1
             if permitsDetection && languages.allSatisfy({ covers(model, $0) }) { return [model] }
         }
-        let defaultWhisper: ModelID = tier == .tier8 ? "whisperkit/small" : "whisperkit/large-v3-v20240930_626MB"
         let requested: [LanguageCode?] = languages.isEmpty ? [nil] : languages.sorted().map(Optional.some)
         var resolved: [ModelDescriptor] = []
         for language in requested {
-            let defaultID: ModelID = language?.primary == .sinhala ? "mlx/qwen3-asr-0.6b-sinhala-8bit" : defaultWhisper
+            // The one shared tier -> default rule; the chain below only runs when the recommender finds nothing.
             let compatible = catalog.filter { model in
                 model.kind == .asr && (language.map { covers(model, $0) } ?? true)
             }
             let model =
-                compatible.first(where: { $0.id == defaultID })
-                ?? compatible.first(where: { !$0.isExperimental && $0.minTier <= tier })
+                ModelRecommender.recommendedModel(for: tier, useCase: .file, language: language, in: catalog)
                 ?? compatible.first(where: { $0.minTier <= tier }) ?? compatible.first
             if let model, !resolved.contains(where: { $0.id == model.id }) { resolved.append(model) }
         }

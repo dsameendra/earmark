@@ -38,11 +38,13 @@ public enum RoutingTargets {
 /// warning notes that Sinhala is never selected automatically.
 public struct DefaultEngineRouter: EngineRouter {
     private let descriptors: [ModelID: ModelDescriptor]
+    private let catalogOrder: [ModelDescriptor]
 
     /// Creates a router.
     /// - Parameter catalog: Model descriptors used to look up engines, languages and tiers. Defaults to the built-in
     ///   catalog; pass an extended list to include custom imported models.
     public init(catalog: [ModelDescriptor] = BuiltInCatalog.models) {
+        catalogOrder = catalog
         descriptors = Dictionary(catalog.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
@@ -102,7 +104,9 @@ public struct DefaultEngineRouter: EngineRouter {
     private func autoPlan(languages: [LanguageCode]?, request: RoutingRequest) throws -> EnginePlan {
         var warnings: [String] = []
         guard let languages else {
-            let model = request.useCase == .file ? fileWhisper(tier: request.tier) : RoutingTargets.whisperSmall
+            guard let model = recommended(for: request, language: nil)?.id else {
+                throw AppError.modelNotInstalled(request.useCase == .file ? RoutingTargets.whisperLarge : RoutingTargets.whisperSmall)
+            }
             if request.useCase != .file { warnings.append(Warnings.whisperLive) }
             warnings.append(Warnings.autoDetectNoSinhala)
             let assignment = try makeAssignment(language: nil, descriptor: descriptor(model), request: request, warnings: &warnings)
@@ -128,8 +132,10 @@ public struct DefaultEngineRouter: EngineRouter {
         return EnginePlan(assignments: assignments, warnings: warnings)
     }
 
-    private func fileWhisper(tier: HardwareTier) -> ModelID {
-        tier == .tier8 ? RoutingTargets.whisperSmall : RoutingTargets.whisperLarge
+    /// The shared recommender (``ModelRecommender``) restricted to explicit rules, so the router stays table-driven.
+    private func recommended(for request: RoutingRequest, language: LanguageCode?) -> ModelDescriptor? {
+        ModelRecommender.recommendedModel(
+            for: request.tier, useCase: request.useCase, language: language, in: catalogOrder, allowFallback: false)
     }
 
     private func route(_ language: LanguageCode, request: RoutingRequest, warnings: inout [String]) throws -> ModelID {
@@ -137,15 +143,12 @@ public struct DefaultEngineRouter: EngineRouter {
         if language.primary == .sinhala { return RoutingTargets.qwenSinhala }
         switch request.useCase {
         case .live, .dictation:
-            if let apple = descriptors[RoutingTargets.appleSpeech], covers(apple, language) { return RoutingTargets.appleSpeech }
-            let whisper = try descriptor(RoutingTargets.whisperSmall)
-            guard covers(whisper, language) else { throw AppError.unsupportedLanguage(language) }
-            if !warnings.contains(Warnings.whisperLive) { warnings.append(Warnings.whisperLive) }
-            return RoutingTargets.whisperSmall
+            guard let model = recommended(for: request, language: language) else { throw AppError.unsupportedLanguage(language) }
+            if model.runtime != .appleAsset, !warnings.contains(Warnings.whisperLive) { warnings.append(Warnings.whisperLive) }
+            return model.id
         case .file:
-            let model = fileWhisper(tier: request.tier)
-            guard covers(try descriptor(model), language) else { throw AppError.unsupportedLanguage(language) }
-            return model
+            guard let model = recommended(for: request, language: language) else { throw AppError.unsupportedLanguage(language) }
+            return model.id
         }
     }
 

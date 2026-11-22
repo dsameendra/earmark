@@ -75,10 +75,16 @@ public struct ModelDescriptor: Hashable, Codable, Sendable, Identifiable {
     public var isExperimental: Bool
     public var notes: String
     public var isCustom: Bool
+    /// Structured capabilities (SCR-011). Persisted descriptors written before SCR-011 decode to ``ModelCapabilities/standard``.
+    public var capabilities: ModelCapabilities
+    /// Repo-relative path prefixes to download when `sourceURL` points at a Hugging Face repository (or revision). Empty means
+    /// everything under `sourceURL`. A prefix matches the file or directory of that exact path (SCR-011).
+    public var downloadInclude: [String]
     public init(
         id: ModelID, displayName: String, kind: ModelKind, runtime: ModelRuntime, engine: EngineID? = nil,
         languages: Set<LanguageCode>, sizeBytes: Int64, license: LicenseInfo, minTier: HardwareTier = .tier8,
-        sourceURL: URL? = nil, sha256: String? = nil, isExperimental: Bool = false, notes: String = "", isCustom: Bool = false
+        sourceURL: URL? = nil, sha256: String? = nil, isExperimental: Bool = false, notes: String = "", isCustom: Bool = false,
+        capabilities: ModelCapabilities = .standard, downloadInclude: [String] = []
     ) {
         self.id = id
         self.displayName = displayName
@@ -94,6 +100,28 @@ public struct ModelDescriptor: Hashable, Codable, Sendable, Identifiable {
         self.isExperimental = isExperimental
         self.notes = notes
         self.isCustom = isCustom
+        self.capabilities = capabilities
+        self.downloadInclude = downloadInclude
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, displayName, kind, runtime, engine, languages, sizeBytes, license, minTier, sourceURL, sha256, isExperimental
+        case notes, isCustom, capabilities, downloadInclude
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try c.decode(ModelID.self, forKey: .id), displayName: try c.decode(String.self, forKey: .displayName),
+            kind: try c.decode(ModelKind.self, forKey: .kind), runtime: try c.decode(ModelRuntime.self, forKey: .runtime),
+            engine: try c.decodeIfPresent(EngineID.self, forKey: .engine),
+            languages: try c.decode(Set<LanguageCode>.self, forKey: .languages), sizeBytes: try c.decode(Int64.self, forKey: .sizeBytes),
+            license: try c.decode(LicenseInfo.self, forKey: .license), minTier: try c.decode(HardwareTier.self, forKey: .minTier),
+            sourceURL: try c.decodeIfPresent(URL.self, forKey: .sourceURL), sha256: try c.decodeIfPresent(String.self, forKey: .sha256),
+            isExperimental: try c.decode(Bool.self, forKey: .isExperimental), notes: try c.decode(String.self, forKey: .notes),
+            isCustom: try c.decode(Bool.self, forKey: .isCustom),
+            capabilities: try c.decodeIfPresent(ModelCapabilities.self, forKey: .capabilities) ?? .standard,
+            downloadInclude: try c.decodeIfPresent([String].self, forKey: .downloadInclude) ?? [])
     }
 }
 
@@ -138,6 +166,19 @@ public protocol ModelManaging: Sendable {
     func diskUsage() async -> DiskUsage
     /// Local path of an installed model, for engines.
     func location(of model: ModelID) async throws -> URL
+    /// Licence, hardware and disk checks to run (and show) **before** `ensureAvailable` (SCR-011). Never touches the network.
+    func preflight(_ model: ModelID) async -> ModelPreflightResult
+    /// Restarts a failed download from a clean state (stale resume data discarded). Same events as `ensureAvailable`.
+    func retryDownload(_ model: ModelID) -> AsyncThrowingStream<ModelDownloadEvent, any Error>
+}
+
+extension ModelManaging {
+    /// Default for managers without a policy: nothing to confirm.
+    public func preflight(_ model: ModelID) async -> ModelPreflightResult {
+        let descriptor = await catalog().first { $0.id == model }
+        return ModelPreflightResult(model: model, displayName: descriptor?.displayName ?? model.rawValue, downloadBytes: 0)
+    }
+    public func retryDownload(_ model: ModelID) -> AsyncThrowingStream<ModelDownloadEvent, any Error> { ensureAvailable(model) }
 }
 
 // MARK: - Language ↔ model capability (ADR-008)
@@ -149,14 +190,14 @@ public struct LanguageCapabilityTable: Sendable {
 
     /// All languages any model of `kind` supports (language picker when no model is chosen).
     public func languages(kind: ModelKind = .asr) -> Set<LanguageCode> {
-        models.filter { $0.kind == kind }.reduce(into: Set<LanguageCode>()) { $0.formUnion($1.languages) }
+        models.filter { $0.kind == kind && $0.isRunnable }.reduce(into: Set<LanguageCode>()) { $0.formUnion($1.languages) }
     }
     /// Languages a specific model supports (language picker after a model is chosen).
     public func languages(forModel id: ModelID) -> Set<LanguageCode> {
-        models.first { $0.id == id }?.languages ?? []
+        models.first { $0.id == id && $0.isRunnable }?.languages ?? []
     }
     /// Models that cover **all** the requested languages (model picker after languages are chosen).
     public func models(coveringAll languages: Set<LanguageCode>, kind: ModelKind = .asr) -> [ModelDescriptor] {
-        models.filter { $0.kind == kind && languages.isSubset(of: $0.languages) }
+        models.filter { $0.kind == kind && $0.isRunnable && languages.isSubset(of: $0.languages) }
     }
 }

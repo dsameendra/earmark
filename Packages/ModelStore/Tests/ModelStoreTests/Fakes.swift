@@ -14,6 +14,8 @@ final class FakeDownloader: Downloading, Sendable {
         var payloads: [URL: Data] = [:]
         var stallOnce: Set<URL> = []
         var calls: [Call] = []
+        var scripted: [URL: [any Error]] = [:]
+        var rejectResume: (any Error)?
     }
     private let state = OSAllocatedUnfairLock(initialState: State())
 
@@ -26,12 +28,25 @@ final class FakeDownloader: Downloading, Sendable {
 
     var calls: [Call] { state.withLock { $0.calls } }
 
+    /// The next downloads of `url` throw `errors` in order, then succeed.
+    func fail(_ url: URL, with errors: [any Error]) { state.withLock { $0.scripted[url] = errors } }
+
+    /// Any attempt that carries resume data throws `error` (an expired signed CDN URL answers 403).
+    func rejectResumeData(with error: any Error) { state.withLock { $0.rejectResume = error } }
+
     func download(from url: URL, resumeData: Data?, progress: @escaping @Sendable (Int64, Int64?) -> Void) async throws -> URL {
-        let (data, stall) = state.withLock { state -> (Data?, Bool) in
+        let (data, stall, scripted) = state.withLock { state -> (Data?, Bool, (any Error)?) in
             state.calls.append(Call(url: url, resumeData: resumeData))
+            if resumeData != nil, let reject = state.rejectResume { return (nil, false, reject) }
+            if var queue = state.scripted[url], !queue.isEmpty {
+                let next = queue.removeFirst()
+                state.scripted[url] = queue
+                return (nil, false, next)
+            }
             let stall = resumeData == nil && state.stallOnce.remove(url) != nil
-            return (state.payloads[url], stall)
+            return (state.payloads[url], stall, nil)
         }
+        if let scripted { throw scripted }
         guard let data else { throw URLError(.fileDoesNotExist) }
         let total = Int64(data.count)
         if stall {

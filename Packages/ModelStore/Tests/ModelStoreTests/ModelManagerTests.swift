@@ -5,13 +5,15 @@ import Testing
 
 @testable import ModelStore
 
-private let small: ModelID = "whisperkit/small"
+let small: ModelID = "whisperkit/small"
 
-private func sha(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
+func sha(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
 
-private func tokenizerURL(_ name: String) -> URL { URL(string: "https://huggingface.co/openai/whisper-small/resolve/main/\(name)")! }
+func tokenizerURL(_ name: String) -> URL {
+    WhisperTokenizerFiles.remoteFiles(repo: "openai/whisper-small").first { $0.relativePath == name }!.url
+}
 
-private struct Harness {
+struct Harness {
     let root = makeTempDirectory()
     let downloader = FakeDownloader()
     let apple = FakeAppleAssets()
@@ -23,13 +25,17 @@ private struct Harness {
         }
     }
 
-    func manager() -> ModelManager {
+    func manager(
+        manifests override: (any ManifestResolving)? = nil, hardware: (any HardwareTierProviding)? = nil,
+        consent: (any ModelDownloadConsenting)? = nil, freeDisk: @escaping @Sendable (URL) -> Int64? = { _ in Int64.max }
+    ) -> ModelManager {
         ModelManager(
-            rootDirectory: root, downloader: downloader, manifests: FakeManifests(files: manifests), appleAssets: apple)
+            rootDirectory: root, downloader: downloader, manifests: override ?? FakeManifests(files: manifests), appleAssets: apple,
+            hardware: hardware, consent: consent, retryPolicy: RetryPolicy(maxAttempts: 3, baseDelay: .zero), freeDiskBytes: freeDisk)
     }
 }
 
-private func twoFileHarness(serveTokenizer: Bool = true) -> (Harness, Data, Data) {
+func twoFileHarness(serveTokenizer: Bool = true) -> (Harness, Data, Data) {
     var harness = Harness(serveTokenizer: serveTokenizer)
     let a = Data(repeating: 1, count: 600)
     let b = Data(repeating: 2, count: 400)

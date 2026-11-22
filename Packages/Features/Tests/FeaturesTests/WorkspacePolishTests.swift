@@ -142,8 +142,17 @@ struct WorkspacePolishTests {
     private func descriptor(
         _ id: ModelID, languages: Set<LanguageCode>, runtime: ModelRuntime = .coreML
     ) -> ModelDescriptor {
-        ModelDescriptor(
+        // Same recommendation rules as the built-in catalog: the shared ModelRecommender is data-driven (SCR-011).
+        let rules: [RecommendedUse] =
+            switch id.rawValue {
+            case "whisperkit/large-v3-v20240930_626MB": [RecommendedUse(.file, minTier: .tier16)]
+            case "whisperkit/small": [RecommendedUse(.file, maxTier: .tier8)]
+            case "mlx/qwen3-asr-0.6b-sinhala-8bit": [RecommendedUse(.file)]
+            default: []
+            }
+        return ModelDescriptor(
             id: id, displayName: id.rawValue, kind: .asr, runtime: runtime, languages: languages, sizeBytes: 100,
-            license: LicenseInfo(spdx: "MIT"))
+            license: LicenseInfo(spdx: "MIT"),
+            capabilities: ModelCapabilities(file: true, autoDetectLanguage: true, recommendedUse: rules))
     }
 }

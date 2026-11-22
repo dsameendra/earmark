@@ -20,9 +20,16 @@ public enum WhisperTokenizerFiles {
         return nil
     }
 
+    /// Commits of the tokenizer repos, so upstream edits cannot change or break tokenizer loading (SCR-011).
+    static let pinnedRevisions: [String: String] = [
+        "openai/whisper-large-v3": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+        "openai/whisper-small": "973afd24965f72e36ca33b3055d56a652f456b4d",
+    ]
+
     static func remoteFiles(repo: String) -> [RemoteFile] {
-        fileNames.compactMap { name in
-            URL(string: "https://huggingface.co/\(repo)/resolve/main/\(name)").map { RemoteFile(relativePath: name, url: $0) }
+        let revision = pinnedRevisions[repo] ?? "main"
+        return fileNames.compactMap { name in
+            URL(string: "https://huggingface.co/\(repo)/resolve/\(revision)/\(name)").map { RemoteFile(relativePath: name, url: $0) }
         }
     }
 

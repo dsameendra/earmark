@@ -233,9 +233,9 @@ public final class OnboardingLanguageModel {
         warnings = notes.filter { seen.insert($0).inserted }
     }
 
-    /// Catalog-only choice used when no router is injected: the largest ASR model for the language that fits the tier.
+    /// Catalog-only choice used when no router is injected: the shared ``ModelRecommender`` default for file transcription.
     public static func fallbackModel(for language: LanguageCode, in table: LanguageCapabilityTable, tier: HardwareTier) -> ModelID? {
-        table.models(coveringAll: [language]).filter { $0.minTier <= tier }.max { $0.sizeBytes < $1.sizeBytes }?.id
+        ModelRecommender.recommendedModel(for: tier, useCase: .file, language: language, in: table.models)?.id
     }
 
     /// Bytes still to download for the recommended models.

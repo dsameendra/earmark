@@ -21,7 +21,7 @@ public enum QwenSinhalaTargets {
 /// - Only Sinhala is accepted: `.single(other)` throws ``AppError/unsupportedLanguage(_:)`` (route other languages to
 ///   WhisperKit/Apple through `EngineRouter`); `.autoDetect` and `.multilingual` are treated as Sinhala because the
 ///   multilingual pipeline already restricts each call to one language.
-/// - Cancelling the consumer stops generation at the next token. Failures are mapped to ``AppError``.
+/// - Cancelling the consumer takes effect between utterances (a started decode runs to its token cap so the model is never used concurrently). Failures are mapped to ``AppError``.
 public actor QwenSinhalaEngine: TranscriptionEngine {
     public typealias ModelLocator = @Sendable (ModelID) async throws -> URL
 
@@ -145,36 +145,27 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
     // MARK: - Recognition
 
     /// Recognises one utterance. Returns `nil` text for empty/rejected output.
+    ///
+    /// The gate is held until the recognizer has completely finished (it only returns once the model is idle), so a cancelled
+    /// or looping utterance can never overlap the next one on the shared model.
     private func recognize(_ utterance: Utterance, model: ModelID) async throws -> RecognizedText? {
         let recognizer = try await recognizer(for: model)
         await acquire()
         defer { release() }
         try Task.checkCancellation()
-        return try await Self.collect(recognizer.recognize(
-            samples: utterance.samples, maxTokens: SinhalaOutputGuard.maxTokens(forSeconds: utterance.duration)))
+        let raw = try await recognizer.recognize(
+            samples: utterance.samples, maxTokens: SinhalaOutputGuard.maxTokens(forSeconds: utterance.duration))
+        try Task.checkCancellation()
+        return Self.clean(raw)
     }
 
-    /// Consumes a recognizer stream, stopping early when the text degenerates into a repetition loop.
-    static func collect(_ pieces: AsyncThrowingStream<RecognitionPiece, any Error>) async throws -> RecognizedText? {
-        var streamed = ""
-        var final: String?
-        var tokenCount = 0
-        loop: for try await piece in pieces {
-            try Task.checkCancellation()
-            switch piece {
-            case .text(let text):
-                streamed += text
-                tokenCount += 1
-                if tokenCount % 16 == 0, SinhalaOutputGuard.truncateRepetition(streamed).truncated { break loop }
-            case .final(let text):
-                final = text
-            }
-        }
-        let raw = SinhalaOutputGuard.normalise(final ?? streamed)
+    /// Normalises a raw transcript, cuts repetition loops and rejects empty or wrong-script output.
+    static func clean(_ rawText: String) -> RecognizedText? {
+        let raw = SinhalaOutputGuard.normalise(rawText)
         let cleaned = SinhalaOutputGuard.truncateRepetition(raw)
         let text = SinhalaOutputGuard.normalise(cleaned.text)
         guard !text.isEmpty, !SinhalaOutputGuard.isWrongScript(text) else { return nil }
-        return RecognizedText(text: text, hitLoopGuard: cleaned.truncated || final == nil)
+        return RecognizedText(text: text, hitLoopGuard: cleaned.truncated)
     }
 
     struct RecognizedText: Sendable, Equatable {

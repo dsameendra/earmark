@@ -109,6 +109,9 @@ public enum LiveSessionEvent: Sendable, Equatable {
     /// More than `maxLiveSpeakers` speakers; extras are labelled "More speakers".
     case speakerLimitReached
     case checkpointFailed(String)
+    /// The engine router chose a fallback or has another note for the user (`EnginePlan.warnings`), for example that Apple
+    /// Speech is unavailable and Whisper is used instead.
+    case engineNotice(String)
 }
 
 /// Shown on the translation line when the engine flags a weak direction (LIVE-AC-13). The contract's `CaptionLine`

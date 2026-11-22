@@ -1,60 +1,42 @@
+import Dispatch
 import Foundation
 import MLX
 import MLXAudioSTT
 
-/// A piece of recognizer output.
-enum RecognitionPiece: Sendable, Equatable {
-    /// Decoded text increment (already parsed of the model's `language ...<asr_text>` prefix).
-    case text(String)
-    /// The complete transcript, delivered once at the end.
-    case final(String)
-}
-
-/// What the engine needs from a speech model: one bounded utterance in, a stream of text out. The real implementation is
+/// What the engine needs from a speech model: one bounded utterance in, its complete transcript out.
+///
+/// `recognize` returns (or throws) only after the model has fully stopped working on the utterance, so the caller may start the
+/// next recognition immediately without two generations ever overlapping on one model (QA B5). The real implementation is
 /// ``MLXQwenRecognizer``; tests use scripted fakes so the engine logic runs without Metal.
 protocol SinhalaRecognizing: Sendable {
-    /// Recognises `samples` (16 kHz mono) with at most `maxTokens` generated tokens. Cancelling the consumer stops
-    /// generation at the next token.
-    func recognize(samples: [Float], maxTokens: Int) -> AsyncThrowingStream<RecognitionPiece, any Error>
+    /// Recognises `samples` (16 kHz mono) with at most `maxTokens` generated tokens and returns the raw transcript (the model's
+    /// `language ...<asr_text>` prefix already parsed off).
+    func recognize(samples: [Float], maxTokens: Int) async throws -> String
 }
 
-/// Carries the non-`Sendable` MLX model into a detached task; the engine guarantees one recognition at a time.
-private struct ModelBox: @unchecked Sendable { let model: Qwen3ASRModel }
+/// Owns the non-`Sendable` MLX model. It is an actor on its own serial queue, so the model is only ever touched by one
+/// synchronous, run-to-completion `generate` call at a time, off the cooperative pool, without any `@unchecked Sendable`.
+///
+/// mlx-audio-swift's `generateStream` runs its decode loop in a private detached task that cannot be joined, so the stream API
+/// cannot give the "next utterance waits for real completion" guarantee; the synchronous `generate` can. The cost is that a
+/// decode is not interrupted mid-utterance; it is bounded by `maxTokens` (`SinhalaOutputGuard.maxTokens(forSeconds:)`).
+actor MLXQwenRecognizer: SinhalaRecognizing {
+    private static let queue = DispatchSerialQueue(label: "lk.dumindu.earmark.qwen-asr")
+    nonisolated var unownedExecutor: UnownedSerialExecutor { Self.queue.asUnownedSerialExecutor() }
 
-/// Owns the non-`Sendable` MLX model. Calls are serialised by the engine (one recognition at a time).
-final class MLXQwenRecognizer: SinhalaRecognizing, @unchecked Sendable {
     private let model: Qwen3ASRModel
 
-    private init(model: Qwen3ASRModel) { self.model = model }
+    private init(model: sending Qwen3ASRModel) { self.model = model }
 
     /// Loads weights from an installed model folder (never downloads).
     static func load(folder: URL) async throws -> MLXQwenRecognizer {
         MLXQwenRecognizer(model: try await Qwen3ASRModel.fromModelDirectory(folder))
     }
 
-    func recognize(samples: [Float], maxTokens: Int) -> AsyncThrowingStream<RecognitionPiece, any Error> {
-        let box = ModelBox(model: model)
-        return AsyncThrowingStream { continuation in
-            let task = Task.detached {
-                let model = box.model
-                do {
-                    // Language is left unset: the research measurements (and the model author's) were made that way.
-                    let events = model.generateStream(
-                        audio: MLXArray(samples), maxTokens: maxTokens, temperature: 0, context: "", language: nil)
-                    for try await event in events {
-                        try Task.checkCancellation()
-                        switch event {
-                        case .token(let piece): continuation.yield(.text(piece))
-                        case .result(let output): continuation.yield(.final(output.text))
-                        case .info: break
-                        }
-                    }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
-                }
-            }
-            continuation.onTermination = { _ in task.cancel() }
-        }
+    func recognize(samples: [Float], maxTokens: Int) async throws -> String {
+        try Task.checkCancellation()
+        // Language is left unset: the research measurements (and the model author's) were made that way.
+        let output = model.generate(audio: MLXArray(samples), maxTokens: maxTokens, temperature: 0, context: "", language: nil)
+        return output.text
     }
 }

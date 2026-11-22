@@ -63,10 +63,13 @@ public struct ResolvedDictationEngine: Sendable {
     public var model: ModelID?
     /// True for engines flagged experimental (Sinhala); the HUD shows a badge.
     public var isExperimental: Bool
-    public init(engine: any TranscriptionEngine, model: ModelID? = nil, isExperimental: Bool = false) {
+    /// Router notices to show the user, e.g. "Apple Speech is unavailable, using Whisper instead" (`EnginePlan.warnings`).
+    public var warnings: [String]
+    public init(engine: any TranscriptionEngine, model: ModelID? = nil, isExperimental: Bool = false, warnings: [String] = []) {
         self.engine = engine
         self.model = model
         self.isExperimental = isExperimental
+        self.warnings = warnings
     }
 }
 
@@ -100,7 +103,8 @@ public struct RoutedEngineProvider: Sendable {
         guard let engine = engines[assignment.engine] else {
             throw AppError.engineFailure(assignment.engine, reason: "engine not registered")
         }
-        return ResolvedDictationEngine(engine: engine, model: assignment.model, isExperimental: assignment.isExperimental)
+        return ResolvedDictationEngine(
+            engine: engine, model: assignment.model, isExperimental: assignment.isExperimental, warnings: plan.warnings)
     }
 
     /// Adapter for ``DictationController``.

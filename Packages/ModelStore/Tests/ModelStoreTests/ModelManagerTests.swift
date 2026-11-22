@@ -160,6 +160,21 @@ struct ModelManagerDownloadTests {
         #expect(!FileManager.default.fileExists(atPath: harness.root.appendingPathComponent(".partial/whisperkit__small").path))
     }
 
+    @Test("manifest paths that escape the model folder are rejected before any download (QA B10)")
+    func rejectsTraversal() async throws {
+        for bad in ["../evil.bin", "sub/../../evil.bin", "/etc/evil.bin", "", "a//b.bin", "./a.bin", "~/x", "a\\b"] {
+            var harness = Harness()
+            harness.downloader.serve(hf("a.bin"), Data("hello".utf8))
+            harness.manifests[small] = [RemoteFile(relativePath: bad, url: hf("a.bin"), sizeBytes: 5)]
+            let manager = harness.manager()
+            await #expect(throws: AppError.self, "path \(bad)") { try await collect(manager.ensureAvailable(small)) }
+            #expect(harness.downloader.calls.isEmpty, "path \(bad)")
+        }
+        let root = URL(fileURLWithPath: "/tmp/model-root")
+        #expect(RemoteFile(relativePath: "sub/b.bin", url: hf("b")).destination(in: root)?.path == "/tmp/model-root/sub/b.bin")
+        #expect(RemoteFile(relativePath: "../b.bin", url: hf("b")).destination(in: root) == nil)
+    }
+
     @Test("descriptor-level checksum applies to single-file downloads")
     func singleFileDescriptorHash() async throws {
         let harness = Harness()

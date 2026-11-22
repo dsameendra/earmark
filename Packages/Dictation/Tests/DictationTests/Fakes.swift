@@ -169,8 +169,16 @@ final class SpyProcessor: TranscriptPostProcessor, @unchecked Sendable {
 
 final class FakePermissions: PermissionsServicing, @unchecked Sendable {
     private let state = Mutex<(status: PermissionStatus, cont: AsyncStream<(PermissionKind, PermissionStatus)>.Continuation?)>((.granted, nil))
-    init(accessibility: PermissionStatus = .granted) { state.withLock { $0.status = accessibility } }
-    func status(_ kind: PermissionKind) async -> PermissionStatus { state.withLock { $0.status } }
+    /// How long `status` takes, to model a slow Accessibility check.
+    private let delay: Duration
+    init(accessibility: PermissionStatus = .granted, delay: Duration = .zero) {
+        self.delay = delay
+        state.withLock { $0.status = accessibility }
+    }
+    func status(_ kind: PermissionKind) async -> PermissionStatus {
+        if delay > .zero { try? await Task.sleep(for: delay) }
+        return state.withLock { $0.status }
+    }
     func request(_ kind: PermissionKind) async -> PermissionStatus { state.withLock { $0.status } }
     func settingsURL(for kind: PermissionKind) -> URL { URL(string: "x-apple.systempreferences:test")! }
     func changes() -> AsyncStream<(PermissionKind, PermissionStatus)> {

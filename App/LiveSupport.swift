@@ -136,6 +136,7 @@ final class LiveExtrasService: LiveSessionExtras, Sendable {
                 LiveNotice(kind: .problem, message: String(describing: error))
             }
         case .speakerLimitReached: LiveNotice(kind: .info, message: "More than four speakers. Extra voices are labelled More speakers.")
+        case .engineNotice(let message): LiveNotice(kind: .info, message: message)
         case .checkpointFailed(let reason): LiveNotice(kind: .warning, message: "Could not save the transcript so far: \(reason)")
         }
     }

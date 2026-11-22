@@ -153,10 +153,14 @@ final class ScriptedEngine: TranscriptionEngine {
 
 final class StubEngines: LiveEngineProviding {
     let queue: Mutex<[ScriptedEngine]>
-    init(_ engines: [ScriptedEngine]) { queue = Mutex(engines) }
+    let warnings: [String]
+    init(_ engines: [ScriptedEngine], warnings: [String] = []) {
+        queue = Mutex(engines)
+        self.warnings = warnings
+    }
     func resolve(languageMode: LanguageMode) async throws -> LiveEngineSelection {
         let engine = queue.withLock { $0.count > 1 ? $0.removeFirst() : $0[0] }
-        return LiveEngineSelection(engine: engine, model: ModelID("test/model"))
+        return LiveEngineSelection(engine: engine, model: ModelID("test/model"), warnings: warnings)
     }
 }
 
@@ -284,12 +288,12 @@ func testOptions(
 func makeRig(
     script: [Step], diarizer: (any StreamingDiarizer)? = nil, translation: (any TranslationRouter)? = nil,
     lanes: [LiveAudioLane]? = nil, repo: InMemoryTranscriptRepository = InMemoryTranscriptRepository(),
-    options: LiveSessionOptions = testOptions()
+    options: LiveSessionOptions = testOptions(), warnings: [String] = []
 ) -> Rig {
     let source = ManualAudioSource()
     let engine = ScriptedEngine(script)
     let orchestrator = LiveSessionOrchestrator(
-        audio: StubAudio(lanes: lanes ?? [LiveAudioLane(source: source)]), engines: StubEngines([engine]), transcripts: repo,
+        audio: StubAudio(lanes: lanes ?? [LiveAudioLane(source: source)]), engines: StubEngines([engine], warnings: warnings), transcripts: repo,
         postProcessor: StubPostProcessor(), diarizer: diarizer, translation: translation, options: options)
     return Rig(orchestrator: orchestrator, repo: repo, source: source, engine: engine)
 }

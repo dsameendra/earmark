@@ -134,30 +134,25 @@ final class ScriptedRecognizer: SinhalaRecognizing, @unchecked Sendable {
         self.endless = endless
         self.byDuration = byDuration
     }
-    func recognize(samples: [Float], maxTokens: Int) -> AsyncThrowingStream<RecognitionPiece, any Error> {
-        lock.lock()
-        calls.append((samples.count, maxTokens))
-        let text = byDuration?(Double(samples.count) / 16000) ?? (texts.isEmpty ? "" : texts.removeFirst())
-        lock.unlock()
-        let endless = endless
-        return AsyncThrowingStream { continuation in
-            let task = Task {
-                if endless {
-                    while !Task.isCancelled {
-                        continuation.yield(.text("අ"))
-                        try? await Task.sleep(for: .milliseconds(5))
-                    }
-                    continuation.finish()
-                    return
-                }
-                for piece in text.split(separator: " ", omittingEmptySubsequences: false) {
-                    continuation.yield(.text(String(piece) + " "))
-                }
-                continuation.yield(.final(text))
-                continuation.finish()
-            }
-            continuation.onTermination = { _ in task.cancel() }
+    private var active = 0
+    private(set) var maxConcurrent = 0
+    /// Extra time the fake keeps "working" after it has been cancelled, like a real decode finishing its current step.
+    var lingerAfterCancel: Duration = .zero
+
+    func recognize(samples: [Float], maxTokens: Int) async throws -> String {
+        let text: String = lock.withLock {
+            calls.append((samples.count, maxTokens))
+            active += 1
+            maxConcurrent = max(maxConcurrent, active)
+            return byDuration?(Double(samples.count) / 16000) ?? (texts.isEmpty ? "" : texts.removeFirst())
         }
+        defer { lock.withLock { active -= 1 } }
+        if endless {
+            while !Task.isCancelled { try? await Task.sleep(for: .milliseconds(5)) }
+            try? await Task.sleep(for: lingerAfterCancel)
+            throw CancellationError()
+        }
+        return text
     }
 }
 
@@ -233,16 +228,13 @@ struct QwenSinhalaEngineTests {
         #expect(thrown == .modelNotInstalled(QwenSinhalaTargets.model))
     }
 
-    @Test("a runaway repetition stream is stopped early and flagged low-confidence")
+    @Test("a runaway repetition is cut and flagged low-confidence")
     func runaway() async throws {
-        let rec = ScriptedRecognizer([], endless: true)
+        let rec = ScriptedRecognizer([String(repeating: "අ", count: 200)])
         var finals: [Segment] = []
-        let clock = ContinuousClock()
-        let start = clock.now
         for try await event in engine(rec).stream(audio: audio(tone(1.5) + silence(1)), options: TranscriptionOptions(languageMode: .single("si"), useCase: .live)) {
             if case .final(let segment) = event { finals.append(segment) }
         }
-        #expect(clock.now - start < .seconds(10))
         #expect(finals.count == 1)
         #expect((finals.first?.confidence ?? 1) < 0.5)
         #expect((finals.first?.text.count ?? 1000) < 40)
@@ -271,5 +263,24 @@ struct QwenSinhalaEngineTests {
         let start = clock.now
         _ = try? await task.value
         #expect(clock.now - start < .seconds(1))
+    }
+
+    @Test("a cancelled utterance finishes before the next one starts (QA B5)")
+    func noOverlapAfterCancel() async throws {
+        let rec = ScriptedRecognizer([], endless: true)
+        rec.lingerAfterCancel = .milliseconds(300)
+        let eng = engine(rec)
+        let options = TranscriptionOptions(languageMode: .single("si"), useCase: .live)
+        let first = Task { for try await _ in eng.stream(audio: audio(tone(1.5) + silence(1)), options: options) {} }
+        try await Task.sleep(for: .milliseconds(200))
+        // A second consumer on the same engine (live captions and dictation share one) starts while the first is mid-decode.
+        let second = Task { for try await _ in eng.stream(audio: audio(tone(1.5) + silence(1)), options: options) {} }
+        try await Task.sleep(for: .milliseconds(100))
+        first.cancel()
+        try await Task.sleep(for: .milliseconds(100))
+        second.cancel()
+        _ = try? await first.value
+        _ = try? await second.value
+        #expect(rec.maxConcurrent == 1)
     }
 }

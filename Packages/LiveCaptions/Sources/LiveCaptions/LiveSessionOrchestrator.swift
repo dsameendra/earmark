@@ -108,6 +108,7 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
             if ctx.transcriptID != nil { launchCheckpointing(ctx) }
             if config.translateTo != nil, translation != nil { launchTranslation(ctx) }
             setState(.running)
+            for warning in selection.warnings { eventBus.send(.engineNotice(warning)) }
         } catch {
             let wasCancelled = ctx.cancelRequested
             await abortStart(ctx)

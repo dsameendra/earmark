@@ -5,7 +5,8 @@ import Testing
 /// 1. No glass on content: `GlassCard`/`GlassPanel` are banned in Features, and any file that applies glass
 ///    (`.glassEffect`, `.glassBackground`, `.dsGlass`, glass button styles, `GlassEffectContainer`, `DSGlassGroup`)
 ///    must carry a `// glass-layer: sidebar|toolbar|floater` marker naming which of the three budgeted layers it is.
-/// 2. Tokens only: no literal colour construction (`Color(red:`, `Color(hex:`, `NSColor(`, ...) in views.
+/// 2. Tokens only: no literal colour construction (`Color(red:`, `Color(hex:`, `NSColor(`, ...) in views, including the
+///    LiveCaptions and Dictation panel packages.
 @Suite("Design guards") struct DesignGuardTests {
     /// `Packages/Features/Sources`, located from this file so the cwd does not matter.
     static let sourcesRoot: URL = URL(fileURLWithPath: #filePath)
@@ -118,17 +119,19 @@ import Testing
     static let literalColorAllowlist: [String: String] = [
         "FeatureEditor/WordFlow.swift": "renders a user-chosen speaker colour persisted as hex (SpeakerColorSpec.hex)",
         "FeatureSettings/PreferenceViews.swift": "caption preset text colour is user data (hex string) in the live preview",
+        "LiveCaptions/LiveCaptions/CaptionPresets.swift": "decodes the user-chosen caption colour persisted as a hex string (CaptionStyle.color)",
     ]
 
     @Test func noLiteralColoursOutsideAllowlist() {
-        let offenders = Self.sourceFiles().filter {
+        // Features plus the panel packages (LiveCaptions overlay, Dictation HUD).
+        let offenders = Self.glassScanFiles().filter {
             Self.literalColorAllowlist[$0.path] == nil && Self.contains($0, anyOf: Self.literalColorPatterns)
         }.map(\.path)
         #expect(offenders.isEmpty, "Use DSColor/DSPalette tokens instead of literal colours: \(offenders)")
     }
 
     @Test func allowlistHasNoStaleEntries() {
-        let files = Dictionary(uniqueKeysWithValues: Self.sourceFiles().map { ($0.path, $0) })
+        let files = Dictionary(uniqueKeysWithValues: Self.glassScanFiles().map { ($0.path, $0) })
         for path in Self.literalColorAllowlist.keys {
             guard let f = files[path] else {
                 Issue.record("allowlisted file missing: \(path)")

@@ -390,6 +390,9 @@ public actor ModelManager: ModelManaging {
         for file in files where !allowList.permits(file.url) {
             throw AppError.modelDownloadFailed(model, reason: "Host not allow-listed: \(file.url.host ?? "unknown")")
         }
+        for file in files where !file.hasSafeRelativePath {
+            throw AppError.modelDownloadFailed(model, reason: "Unsafe file path in the model manifest")
+        }
         let known = files.compactMap(\.sizeBytes).reduce(0, +)
         let total = max(known > 0 && files.allSatisfy({ $0.sizeBytes != nil }) ? known : descriptor.sizeBytes, 1)
 
@@ -401,7 +404,9 @@ public actor ModelManager: ModelManaging {
         var done: Int64 = 0
         for file in files {
             try Task.checkCancellation()
-            let destination = payload.appendingPathComponent(file.relativePath)
+            guard let destination = file.destination(in: payload) else {
+                throw AppError.modelDownloadFailed(model, reason: "Unsafe file path in the model manifest")
+            }
             if let existing = fileSize(destination), file.sizeBytes == nil || existing == file.sizeBytes {
                 done += existing
                 continue
@@ -459,7 +464,9 @@ public actor ModelManager: ModelManaging {
         try fm.createDirectory(at: folder, withIntermediateDirectories: true)
         for file in WhisperTokenizerFiles.remoteFiles(repo: repo) {
             try Task.checkCancellation()
-            let destination = folder.appendingPathComponent(file.relativePath)
+            guard let destination = file.destination(in: folder) else {
+                throw AppError.modelDownloadFailed(model, reason: "Unsafe file path in the model manifest")
+            }
             if fm.fileExists(atPath: destination.path) { continue }
             guard allowList.permits(file.url) else {
                 throw AppError.modelDownloadFailed(model, reason: "Host not allow-listed: \(file.url.host ?? "unknown")")

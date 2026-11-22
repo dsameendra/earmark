@@ -8,7 +8,7 @@ import Foundation
 /// `MeetingsModel`, which owns every decision; this type only talks to `UserNotifications`.
 ///
 /// If notification permission is denied nothing is posted and the inline banner in Meetings is the fallback.
-final class SystemMeetingPrompter: NSObject, MeetingPromptPresenting, UNUserNotificationCenterDelegate, @unchecked Sendable {
+final class SystemMeetingPrompter: NSObject, MeetingPromptPresenting, UNUserNotificationCenterDelegate, Sendable {
     private let bus = Broadcaster<MeetingPromptResponse>()
     private static let consentIdentifier = "earmark.meeting.consent"
 

@@ -95,6 +95,16 @@ struct LiveSessionOrchestratorTests {
         #expect(try await rig.repo.transcript(id)?.source == .liveCaptions)
     }
 
+    @Test("Router warnings (Whisper fallback) are surfaced as engine notices once the session runs")
+    func engineWarningsBecomeNotices() async throws {
+        let notice = "Apple Speech is unavailable. Using Whisper instead."
+        let rig = makeRig(script: [], warnings: [notice])
+        let events = Recorder(rig.orchestrator.events())
+        try await rig.orchestrator.start(LiveSessionConfig(source: .mic(deviceUID: nil)))
+        #expect(await waitUntil { events.all == [.engineNotice(notice)] })
+        _ = await rig.orchestrator.stop()
+    }
+
     // MARK: pause / resume
 
     @Test("Paused audio is discarded; resume continues transcription")

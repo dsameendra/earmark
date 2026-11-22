@@ -103,6 +103,9 @@ public actor DictationController {
     private var settings = DictationSettings()
     private var trigger = DictationTrigger(mode: .pushToTalk)
     private var phase = Phase.idle
+    /// A release or cancel that arrived while the session slot was claimed but the session did not exist yet (during the
+    /// Accessibility check); honoured as soon as the check returns (QA B11).
+    private var stopRequestedWhileStarting = false
     private var session: Session?
     private var registeredCombo: KeyCombo?
     private var hotkeyTask: Task<Void, Never>?
@@ -171,6 +174,10 @@ public actor DictationController {
     /// Cancels any running session without inserting (Escape, app quit).
     public func cancel() async {
         trigger.sessionEnded()
+        if phase == .listening, session == nil {
+            stopRequestedWhileStarting = true
+            return
+        }
         guard phase == .listening, let s = session else { return }
         session = nil
         phase = .idle
@@ -242,7 +249,17 @@ public actor DictationController {
             return
         }
         phase = .listening  // claim the slot before any suspension point
+        stopRequestedWhileStarting = false
         guard await ensureAccessibility() else {
+            phase = .idle
+            stopRequestedWhileStarting = false
+            trigger.sessionEnded()
+            return
+        }
+        if stopRequestedWhileStarting {
+            // The key was released (or Escape pressed) while permissions were being checked: nothing was captured, so
+            // do not start listening at all.
+            stopRequestedWhileStarting = false
             phase = .idle
             trigger.sessionEnded()
             return
@@ -260,6 +277,10 @@ public actor DictationController {
     }
 
     private func finishSession() async {
+        if phase == .listening, session == nil {
+            stopRequestedWhileStarting = true
+            return
+        }
         guard phase == .listening, let s = session else { return }
         phase = .finalizing
         hub.publish(.finalizing)
@@ -379,6 +400,7 @@ public actor DictationController {
             do {
                 let resolved = try await provider(settings)
                 if resolved.isExperimental { await hud.showExperimentalBadge() }
+                for warning in resolved.warnings { await notifier.notify(DictationNotice(kind: .info, message: warning)) }
                 if let model = resolved.model { try await resolved.engine.prepare(model: model) }
                 let chunks = try await source.start()
                 side.append(

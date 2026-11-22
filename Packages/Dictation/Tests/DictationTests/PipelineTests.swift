@@ -106,6 +106,17 @@ struct EngineRoutingTests {
         #expect(r.engine.id == "qwen3.si" && r.isExperimental && r.model == "qwen3/si")
     }
 
+    @Test func routerWarningsReachTheResolvedEngine() async throws {
+        let whisper = MockTranscriptionEngine(id: "whisperkit")
+        let router = StubRouter(
+            plan: EnginePlan(
+                assignments: [EngineAssignment(language: .english, engine: "whisperkit", model: nil)],
+                warnings: ["Apple Speech is unavailable. Using Whisper instead."]))
+        let p = RoutedEngineProvider(router: router, tier: { .tier16 }, installedModels: { [] }, engines: ["whisperkit": whisper])
+        let r = try await p.resolve(DictationSettings())
+        #expect(r.warnings == ["Apple Speech is unavailable. Using Whisper instead."])
+    }
+
     @Test func missingModelAndMissingEngineThrow() async {
         let needs = provider(EngineAssignment(language: nil, engine: "e", model: "m", requiresDownload: true), engines: [:])
         await #expect(throws: AppError.modelNotInstalled("m")) { _ = try await needs.resolve(DictationSettings()) }

@@ -15,6 +15,24 @@ public struct RemoteFile: Sendable, Hashable {
         self.sizeBytes = sizeBytes
         self.sha256 = sha256
     }
+
+    /// Whether ``relativePath`` is a plain relative path: non-empty, no leading `/` or `~`, no empty, `.` or `..` components,
+    /// no backslashes or NUL bytes. Remote manifests are untrusted input (QA B10).
+    public var hasSafeRelativePath: Bool {
+        guard !relativePath.isEmpty, !relativePath.hasPrefix("/"), !relativePath.hasPrefix("~"),
+            !relativePath.contains("\\"), !relativePath.contains("\0")
+        else { return false }
+        return relativePath.split(separator: "/", omittingEmptySubsequences: false)
+            .allSatisfy { !$0.isEmpty && $0 != "." && $0 != ".." }
+    }
+
+    /// The file's destination inside `root`, or `nil` when the path is unsafe or would resolve outside `root`.
+    public func destination(in root: URL) -> URL? {
+        guard hasSafeRelativePath else { return nil }
+        let base = root.standardizedFileURL.path
+        let candidate = root.appendingPathComponent(relativePath).standardizedFileURL
+        return candidate.path.hasPrefix(base.hasSuffix("/") ? base : base + "/") ? candidate : nil
+    }
 }
 
 /// Thrown by a ``Downloading`` implementation when a transfer stops before completion (task cancelled, network drop).

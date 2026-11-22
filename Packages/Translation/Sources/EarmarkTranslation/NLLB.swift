@@ -180,6 +180,8 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
         p.arguments = isNative ? [modelFolder.path, String(threads)] : ["-I", "-c", Self.workerScript, modelFolder.path, String(threads)]
         let inPipe = Pipe()
         let outPipe = Pipe()
+        // A worker that died between requests must surface as a thrown EPIPE, never as a process-killing SIGPIPE (QA B6).
+        Self.suppressSIGPIPE(on: inPipe.fileHandleForWriting)
         p.standardInput = inPipe
         p.standardOutput = outPipe
         p.standardError = FileHandle.nullDevice
@@ -208,6 +210,12 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
             throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "The translation worker could not load its model.")
         }
         lines = reader
+    }
+
+    /// Makes writes to `handle` fail with `EPIPE` instead of raising `SIGPIPE` when the reader has gone. Per-descriptor, so it
+    /// changes no process-wide signal disposition.
+    static func suppressSIGPIPE(on handle: FileHandle) {
+        _ = fcntl(handle.fileDescriptor, F_SETNOSIGPIPE, 1)
     }
 
     private func acquire() async {

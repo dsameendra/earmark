@@ -5,7 +5,7 @@ import CoreGraphics
 import Foundation
 
 /// `NSPasteboard.general` adapter. Unverified against real clipboard managers.
-public final class SystemPasteboard: PasteboardAccessing, @unchecked Sendable {
+public final class SystemPasteboard: PasteboardAccessing, Sendable {
     private var board: NSPasteboard { .general }
     static let transientType = NSPasteboard.PasteboardType("org.nspasteboard.TransientType")
     static let concealedType = NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")

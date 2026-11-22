@@ -21,7 +21,7 @@ private struct Harness {
         events: [TranscriptionEvent] = [.final(seg("hello world"))], failure: AppError? = nil,
         accessibility: PermissionStatus = .granted, insertError: (any Error)? = nil, sourceFails: Bool = false,
         configure: (inout DictationSettings) -> Void = { _ in }, rules: MemoryRules = MemoryRules(),
-        translation: (any TranslationRouter)? = nil
+        translation: (any TranslationRouter)? = nil, warnings: [String] = [], permissionDelay: Duration = .zero
     ) async {
         let source = FakeEventSource(failStart: sourceFails)
         let inserter = FakeInserter(error: insertError)
@@ -29,7 +29,7 @@ private struct Harness {
         let hud = FakeHUD()
         let notifier = FakeNotifier()
         let onboarding = FakeOnboarding()
-        let permissions = FakePermissions(accessibility: accessibility)
+        let permissions = FakePermissions(accessibility: accessibility, delay: permissionDelay)
         let clock = ManualClock()
         let settings = MemorySettings()
         var s = DictationSettings()
@@ -38,7 +38,7 @@ private struct Harness {
         let engine = MockTranscriptionEngine(events: events, failure: failure)
         let deps = DictationDependencies(
             hotkeys: GlobalHotkeyService(source: source), makeAudioSource: { _ in MockAudioSource() },
-            engineProvider: { _ in ResolvedDictationEngine(engine: engine) },
+            engineProvider: { _ in ResolvedDictationEngine(engine: engine, warnings: warnings) },
             pipeline: DictationPipeline(postProcessor: SpyProcessor(), rules: rules, translation: translation), inserter: inserter,
             history: DictationHistory(repository: history), settings: settings, permissions: permissions, hud: hud,
             notifier: notifier, onboarding: onboarding)
@@ -98,6 +98,44 @@ struct ControllerTests {
         #expect(h.hud.log.first == "show:Press Fn to insert")
         h.clock.advance(2)
         await h.controller.handle(.pressed)
+        #expect(h.inserter.texts == ["hello world"])
+    }
+
+    @Test func releaseDuringAccessibilityCheckDoesNotLeaveDictationListening() async {
+        let h = await Harness(permissionDelay: .milliseconds(200))
+        await h.controller.start()
+        let pressed = Task { await h.controller.handle(.pressed) }
+        try? await Task.sleep(for: .milliseconds(50))
+        h.clock.advance(1)
+        await h.controller.handle(.released)  // arrives while the Accessibility check is still running
+        await pressed.value
+        #expect(!h.hud.log.contains { $0.hasPrefix("show") })
+        var states = h.controller.states().makeAsyncIterator()
+        #expect(await states.next() == .idle)
+        #expect(h.inserter.texts.isEmpty)
+        // The slot is free again.
+        await h.hold()
+        #expect(h.inserter.texts == ["hello world"])
+    }
+
+    @Test func cancelDuringAccessibilityCheckIsHonoured() async {
+        let h = await Harness(permissionDelay: .milliseconds(200))
+        await h.controller.start()
+        let pressed = Task { await h.controller.handle(.pressed) }
+        try? await Task.sleep(for: .milliseconds(50))
+        await h.controller.cancel()
+        await pressed.value
+        #expect(!h.hud.log.contains { $0.hasPrefix("show") })
+        var states = h.controller.states().makeAsyncIterator()
+        #expect(await states.next() == .idle)
+    }
+
+    @Test func fallbackNoticeFromTheRouterIsShownToTheUser() async {
+        let notice = "Apple Speech is unavailable. Using Whisper instead."
+        let h = await Harness(warnings: [notice])
+        await h.controller.start()
+        await h.hold()
+        #expect(h.notifier.notices.contains(DictationNotice(kind: .info, message: notice)))
         #expect(h.inserter.texts == ["hello world"])
     }
 

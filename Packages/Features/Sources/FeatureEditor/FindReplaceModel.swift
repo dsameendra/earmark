@@ -62,6 +62,12 @@ public final class FindReplaceModel {
     public init(editor: TranscriptEditorModel) { self.editor = editor }
 
     public var currentMatch: FindMatch? { matches.indices.contains(currentIndex) ? matches[currentIndex] : nil }
+    /// The current match's range when it lies in the translation of segment `id`; nil for original-text matches.
+    public func currentTranslationRange(in id: SegmentID) -> NSRange? {
+        guard let match = currentMatch, match.segmentID == id, case .translation = match.field else { return nil }
+        return match.range
+    }
+
     /// "n of m" text (FR-AC-01).
     public var statusText: String {
         if let errorMessage { return errorMessage }

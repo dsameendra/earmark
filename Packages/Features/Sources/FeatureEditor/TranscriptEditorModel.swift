@@ -98,6 +98,7 @@ public final class TranscriptEditorModel {
     public internal(set) var rerunStatus: String?
     @ObservationIgnored var rerunWatcher: Task<Void, Never>?
     @ObservationIgnored var rerunRestoreReadOnly = false
+    @ObservationIgnored var rerunStarting = false
     /// Set once the user states the transcript language: saving the header then stops adding segment languages back.
     @ObservationIgnored var languagesPinned = false
     /// This Mac's memory tier, for greying out models in the Re-transcribe popover.
@@ -341,6 +342,7 @@ public final class TranscriptEditorModel {
         waveformTask?.cancel()
         debounce?.cancel()
         translationWatcher?.cancel()
+        rerunWatcher?.cancel()
         if playbackCenter == nil { playback.stop() }
     }
 
@@ -606,7 +608,12 @@ public final class TranscriptEditorModel {
 
     /// Applies a Replace / Replace All change set as one undo step.
     public func apply(changeSet: ChangeSet, name: String) {
-        perform(EditDelta(name: name, changeSet: changeSet))
+        var delta = EditDelta(name: name, changeSet: changeSet)
+        // Find and Replace edits the text, so a later re-transcribe must keep these segments (SCR-013).
+        for index in delta.replaced.indices where delta.replaced[index].before.text != delta.replaced[index].after.text {
+            delta.replaced[index].after.isUserEdited = true
+        }
+        perform(delta)
     }
 
     // MARK: Persistence (EDIT-AC-18)

@@ -105,11 +105,17 @@ public final class RerunPanelModel {
             identifySpeakers: identifySpeakers, speakerCount: speakerCount, replaceEverything: replaceEverything && transcribe)
     }
 
-    public var canStart: Bool {
-        guard editor.canRerun, transcribe || identifySpeakers else { return false }
-        if scope == .selection && selectionCount == 0 { return false }
-        if kind == .multilingual && multiLanguages.isEmpty { return false }
-        return true
+    public var canStart: Bool { editor.canRerun && startBlockedReason == nil }
+
+    /// Why Start is disabled, in words; nil when it is enabled.
+    public var startBlockedReason: String? {
+        if editor.mediaURL == nil { return "The media file is missing, so there is nothing to re-transcribe. Relink it first." }
+        if editor.jobQueue == nil { return "Re-transcribing is unavailable right now." }
+        if editor.isReadOnly && !editor.isRerunning { return "The transcript is read-only." }
+        if !transcribe && !identifySpeakers { return "Choose to re-transcribe the speech, identify speakers, or both." }
+        if scope == .selection && selectionCount == 0 { return "Select some segments in the transcript, or switch to the whole transcript." }
+        if kind == .multilingual && multiLanguages.isEmpty && transcribe { return "Choose at least one language." }
+        return nil
     }
 
     /// `true` when starting needs the "Replace everything" confirmation.
@@ -225,6 +231,10 @@ struct RerunPanel: View {
                     .font(DSTypography.caption)
                     .foregroundStyle(panel.replaceEverything ? DSColor.danger : DSColor.secondaryText)
             }
+        }
+        if let reason = panel.startBlockedReason {
+            Text(reason).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                .accessibilityIdentifier("editor.rerun.blockedReason")
         }
         HStack {
             Spacer()

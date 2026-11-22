@@ -82,6 +82,10 @@ private struct EditorContent: View {
             .onChange(of: showExport) { if showExport { export.adoptViewState() } else { listFocused = true } }
             .onChange(of: model.translationChoice) { find.refresh() }
             .onAppear { PlayerZoomRegistry.shared.activate(model.playback.zoom) }
+            // The shared session's player replaces the editor's private one once it loads; View > Zoom must follow it.
+            .onChange(of: ObjectIdentifier(model.playback)) {
+                PlayerZoomRegistry.shared.activate(model.playback.zoom)
+            }
             .onDisappear {
                 PlayerZoomRegistry.shared.deactivate(model.playback.zoom)
                 model.acknowledgeReconciliation()
@@ -106,6 +110,20 @@ private struct EditorContent: View {
                     Button("Dismiss") { model.dismissLanguageError() }.buttonStyle(.link)
                 }
                 .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.xs).background(DSColor.solidChrome)
+            }
+            if model.isRerunning {
+                // The editor is read-only while the merge runs; say so wherever the user is, not only inside the popover.
+                HStack(spacing: DSSpacing.sm) {
+                    ProgressView(value: model.rerunJob?.progress ?? 0).progressViewStyle(.linear).frame(width: 120)
+                    Text("Re-transcribing. The transcript is read-only until this finishes.")
+                        .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    Spacer()
+                    Button("Cancel") { Task { await model.cancelRerun() } }.buttonStyle(.link).font(DSTypography.caption)
+                        .accessibilityIdentifier("editor.rerun.banner.cancel")
+                }
+                .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.xs).background(DSColor.solidChrome)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("editor.rerun.banner")
             }
             if let report = model.reconciliation { ReconciliationBanner(report: report) { model.acknowledgeReconciliation() } }
             HStack(alignment: .top, spacing: DSSpacing.md) {

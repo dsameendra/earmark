@@ -82,7 +82,8 @@ public struct MiniPlayerView: View {
                 .onChanged { size.pinch(magnification: $0.magnification) }
                 .onEnded { _ in size.endPinch() }
         )
-        .onHover { if $0 { registry.activate(size) } else { registry.deactivate(size) } }
+        // Stay the target after the pointer leaves: reaching the View menu with the mouse always ends the hover.
+        .onHover { if $0 { registry.activate(size) } }
         .onDisappear { registry.deactivate(size) }
         .accessibilityAction(named: "Make larger") { size.makeLarger() }
         .accessibilityAction(named: "Make smaller") { size.makeSmaller() }

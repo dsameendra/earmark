@@ -28,6 +28,20 @@ public struct PlayerWindowSizing: Sendable, Equatable {
         return CGSize(width: (size.width * applied).rounded(), height: (size.height * applied).rounded())
     }
 
+    /// A saved window frame made safe for the screens connected now: shrunk to fit the screen it overlaps most (the first one
+    /// when none overlaps, as after unplugging a display) and moved fully inside it. `nil` when there are no screens.
+    public static func restored(_ frame: CGRect, screens: [CGRect]) -> CGRect? {
+        guard let first = screens.first, frame.width > 0, frame.height > 0 else { return nil }
+        let screen = screens.max { $0.intersection(frame).area < $1.intersection(frame).area } ?? first
+        let target = screen.intersection(frame).area > 0 ? screen : first
+        var result = frame
+        result.size.width = min(frame.width, target.width)
+        result.size.height = min(frame.height, target.height)
+        result.origin.x = min(max(result.origin.x, target.minX), target.maxX - result.width)
+        result.origin.y = min(max(result.origin.y, target.minY), target.maxY - result.height)
+        return result
+    }
+
     /// The frame of `size` plus `extra` (title bar) with the same centre as `old`, nudged back inside `bounds` when given.
     public static func frame(centeredOn old: CGRect, size: CGSize, extra: CGSize = .zero, within bounds: CGRect? = nil) -> CGRect {
         let total = CGSize(width: size.width + extra.width, height: size.height + extra.height)
@@ -153,4 +167,9 @@ public final class MiniPlayerSizeModel: PlayerResizing {
 
     public func makeLarger() { if let next = preset.larger { set(next) } }
     public func makeSmaller() { if let next = preset.smaller { set(next) } }
+}
+
+private extension CGRect {
+    /// Zero for a null or empty rectangle.
+    var area: CGFloat { isNull || isEmpty ? 0 : width * height }
 }

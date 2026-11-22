@@ -193,7 +193,13 @@ public final class PlaybackModel {
 
     public func togglePlay() {
         guard let engine else { return }
-        if engine.isPlaying { engine.pause() } else { engine.play() }
+        if engine.isPlaying {
+            engine.pause()
+            return
+        }
+        // At the very end (the player pauses there) play starts over rather than doing nothing.
+        if duration > 0, currentTime >= duration - 0.05 { seek(to: 0) }
+        engine.play()
     }
 
     public func skip(by delta: TimeInterval) { seek(to: currentTime + delta) }

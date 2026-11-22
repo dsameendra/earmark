@@ -253,15 +253,21 @@ enum XML {
     }
 }
 
-enum FileNames {
+public enum FileNames {
+    /// Longest base name in UTF-8 bytes: file systems cap a name at 255 bytes, and the extension (and a " (2)" suffix) must fit.
+    static let maxBytes = 200
+
     /// A filesystem-safe name derived from `title`.
-    static func sanitize(_ title: String, fallback: String = "Transcript") -> String {
+    public static func sanitize(_ title: String, fallback: String = "Transcript") -> String {
         let illegal = CharacterSet(charactersIn: "/\\:?%*|\"<>").union(.controlCharacters).union(.newlines)
         var name = title.unicodeScalars.map { illegal.contains($0) ? "-" : String($0) }.joined()
         name = name.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         while name.hasPrefix(".") { name.removeFirst() }
         name = name.trimmingCharacters(in: .whitespaces)
         if name.count > 120 { name = String(name.prefix(120)).trimmingCharacters(in: .whitespaces) }
+        // 120 Sinhala, CJK or emoji characters are 360 to 480 bytes: cut by bytes too, on a character boundary.
+        while name.utf8.count > maxBytes { name.removeLast() }
+        name = name.trimmingCharacters(in: .whitespaces)
         return name.isEmpty ? fallback : name
     }
 }

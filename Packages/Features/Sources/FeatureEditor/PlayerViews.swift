@@ -249,7 +249,11 @@ final class PlayerWindowController: NSObject, NSWindowDelegate, PlayerResizing {
         window.isReleasedWhenClosed = false
         window.delegate = self
         let restored = autosaveName.map { window.setFrameUsingName($0) } ?? false
-        if !restored { window.center() }
+        if !restored {
+            window.center()
+        } else if let safe = PlayerWindowSizing.restored(window.frame, screens: NSScreen.screens.map(\.visibleFrame)), safe != window.frame {
+            window.setFrame(safe, display: false)  // saved on a display that is gone, or larger than the screen now
+        }
         if let autosaveName { window.setFrameAutosaveName(autosaveName) }
         window.makeKeyAndOrderFront(nil)
         self.window = window

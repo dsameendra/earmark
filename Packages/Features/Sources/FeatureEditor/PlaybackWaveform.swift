@@ -55,7 +55,12 @@ struct EditorWaveformView: View {
             },
             onAdjust: { playback.skip(by: $0) }, label: "Playback position", identifier: identifier
         )
-        .onHover { if $0 { zoom.target = .waveform } }
+        .onHover {
+            if $0 {
+                zoom.target = .waveform
+                PlayerZoomRegistry.shared.activate(zoom)  // after a mini-player hover, the menu commands come back to the dock
+            }
+        }
         .opacity(playback.canPlay ? 1 : 0.5)
         .allowsHitTesting(playback.canPlay)
     }

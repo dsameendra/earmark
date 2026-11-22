@@ -74,14 +74,18 @@ extension TranscriptEditorModel {
     /// Queues the re-run and follows it. Edits are saved first and the editor is read-only until the job ends, so a stale
     /// editor can never overwrite the merged result.
     public func rerun(_ request: RerunRequest) async {
+        // A second Start while one is running or starting would capture the locked state as the one to restore.
+        guard !isRerunning, !rerunStarting else { return }
         rerunStatus = nil
         guard let jobQueue, let job = rerunJob(for: request) else {
             rerunStatus = request.scope == .selection && selectedRanges().isEmpty ? "Select some segments first." : nil
             return
         }
-        await flush()
+        rerunStarting = true
+        defer { rerunStarting = false }
         rerunRestoreReadOnly = isReadOnly
-        setReadOnly(true)
+        setReadOnly(true)  // before the flush suspends: nothing can slip in between
+        await flush()
         rerunJob = job
         // Subscribe before enqueueing: a quick job can finish before a later subscription exists.
         watchRerunJob(job.id)

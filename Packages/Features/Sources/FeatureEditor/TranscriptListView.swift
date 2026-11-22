@@ -217,7 +217,7 @@ struct SegmentRowView: View {
                 }
                 let isActive = model.playback.activeRef?.segmentID == segment.id
                 let ranges = find.translationRanges[segment.id] ?? []
-                let currentRange: NSRange? = find.currentMatch.flatMap { $0.segmentID == segment.id ? $0.range : nil }
+                let currentRange: NSRange? = find.currentTranslationRange(in: segment.id)
                 if isEditing {
                     if case .translated = presentation {
                         Text("Editing the original text").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)

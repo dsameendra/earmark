@@ -50,6 +50,12 @@ public final class EditorExportModel {
         }
     }
 
+    /// The Save panel's starting name: the transcript's title (made filesystem-safe) with the format's extension.
+    public var suggestedFileName: String {
+        let base = FileNames.sanitize(editor.transcript?.title ?? "")
+        return "\(base).\(options.format == .markdown ? "md" : options.format.rawValue)"
+    }
+
     /// Formats offered in the picker.
     public static let formats: [ExportFormat] = ExportFormat.allCases
 

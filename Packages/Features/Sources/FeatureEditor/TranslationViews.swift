@@ -159,7 +159,7 @@ struct ParagraphTranslationText: View {
             var piece: AttributedString
             if let display = model.translationDisplay(for: segment) {
                 let ranges = find.translationRanges[segment.id] ?? []
-                let current: NSRange? = find.currentMatch.flatMap { $0.segmentID == segment.id ? $0.range : nil }
+                let current: NSRange? = find.currentTranslationRange(in: segment.id)
                 piece = TranslationText.attributed(display.text, matches: ranges, current: current)
                 piece.foregroundColor = display.isStale ? DSColor.secondaryText : base
             } else if style == .primary {

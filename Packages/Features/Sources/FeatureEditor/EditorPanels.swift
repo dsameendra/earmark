@@ -418,7 +418,7 @@ struct ExportSheet: View {
 
     private func save() {
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "Transcript.\(Self.fileExtension(export.options.format))"
+        panel.nameFieldStringValue = export.suggestedFileName
         panel.canCreateDirectories = true
         guard panel.runModal() == .OK, let url = panel.url else { return }
         Task {

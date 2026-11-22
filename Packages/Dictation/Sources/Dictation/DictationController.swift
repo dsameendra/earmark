@@ -373,7 +373,7 @@ public actor DictationController {
         if let e = error as? DictationError { return e.localizedDescription }
         if let e = error as? AppError {
             switch e {
-            case .permissionDenied(let k): return "Earmark needs \(k.rawValue) permission for dictation."
+            case .permissionDenied(let k): return "Earmark needs \(k.rawValue) permission for dictation. Open Settings > Privacy & Permissions to allow it, then use Re-check."
             case .deviceUnavailable: return "The microphone is unavailable."
             case .modelNotInstalled: return "The dictation model isn't installed yet."
             case .engineFailure(_, let reason): return "Dictation failed: \(reason)"

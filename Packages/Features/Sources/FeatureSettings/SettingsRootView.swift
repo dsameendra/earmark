@@ -16,6 +16,7 @@ public final class SettingsEnvironment {
     public let languages: LanguageSelectionModel
     public let audio: AudioSettingsModel
     public let meetings: MeetingsSettingsModel
+    public let meetingDiagnostics: MeetingDiagnosticsModel
     public let captions: CaptionPresetsModel
     public let overlayPlacement: OverlayPlacementSettingsModel
     public let dictation: DictationSettingsModel
@@ -53,6 +54,7 @@ public final class SettingsEnvironment {
             provider: deps.audioDevices, store: deps.store, microphonePreview: deps.microphonePreview,
             microphoneSettingsURL: deps.permissions.settingsURL(for: .microphone), sourceErrors: deps.microphonePreviewErrors)
         meetings = MeetingsSettingsModel(store: deps.store)
+        meetingDiagnostics = MeetingDiagnosticsModel(source: deps.meetingDiagnostics)
         captions = CaptionPresetsModel(repository: deps.presets, store: deps.store)
         let captionModel = captions
         overlayPlacement = OverlayPlacementSettingsModel(
@@ -210,7 +212,7 @@ public struct SettingsRootView: View {
         case .models: ModelsSettingsView(model: environment.modelManager)
         case .languages: LanguagesSettingsView(model: environment.languages)
         case .audio: AudioSettingsView(model: environment.audio)
-        case .meetings: MeetingsSettingsView(model: environment.meetings)
+        case .meetings: MeetingsSettingsView(model: environment.meetings, diagnostics: environment.meetingDiagnostics)
         case .liveCaptions: LiveCaptionsSettingsView(model: environment.captions, placement: environment.overlayPlacement)
         case .dictation: DictationSettingsView(model: environment.dictation)
         case .transcriptAppearance: AppearanceSettingsView(model: environment.appearance)

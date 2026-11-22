@@ -66,6 +66,8 @@ public struct SettingsDependencies: Sendable {
     public var voiceProfiles: (any VoiceProfileRepository)?
     /// Removes regenerable caches and returns the bytes freed.
     public var clearCaches: @Sendable () async -> Int64
+    /// Meeting detection readings and the test prompt for Settings > Meetings (nil hides the diagnostics section).
+    public var meetingDiagnostics: (any MeetingDiagnosing)?
 
     public init(
         store: any SettingsStore, models: any ModelManaging, hardware: any HardwareTierProviding,

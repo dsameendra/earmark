@@ -58,20 +58,85 @@ struct DetectorTests {
         await clock.waitForSleepers(1)
         clock.advance(by: 2)
         probe.set(.zoom, .runningIdle)
-        await clock.waitForSleepers(0)
         clock.advance(by: 30)
         #expect(await events.settled().isEmpty)
+        #expect(await detector.activeApps().isEmpty)
     }
 
-    @Test("output only (no mic) does not start a meeting")
-    func outputOnlyDoesNotStart() async {
+    @Test("a single weak sample does not reset a pending start")
+    func weakSampleDoesNotResetCandidate() async {
         let (detector, probe, clock, events) = await make()
         defer { withExtendedLifetime(detector) {} }
-        probe.set(.zoom, .muted)
+        probe.set(.zoom, .inCall)
+        await clock.waitForSleepers(1)
+        clock.advance(by: 1)
+        probe.set(.zoom, .runningIdle)
+        clock.advance(by: 0.5)
+        probe.set(.zoom, .inCall)
+        clock.advance(by: 1.6)  // 3.1 s after the first signal
+        await events.waitFor(count: 1)
+        #expect(await events.settled().count == 1)
+    }
+
+    @Test("muted join with the device mic running starts after 5 s")
+    func mutedJoinStartsViaOutputPlusDeviceMic() async {
+        let (detector, probe, clock, events) = await make()
+        defer { withExtendedLifetime(detector) {} }
+        probe.set(.zoom, AppAudioActivity(isAppRunning: true, micInput: false, audioOutput: true, deviceMicInUse: true))
+        await clock.waitForSleepers(1)
+        clock.advance(by: 3)
         try? await Task.sleep(for: .milliseconds(40))
-        #expect(clock.sleeperCount == 0)
-        clock.advance(by: 60)
         #expect(await events.settled().isEmpty)
+        await clock.waitForSleepers(1)
+        clock.advance(by: 2)
+        await events.waitFor(count: 1)
+        #expect(await events.settled().count == 1)
+    }
+
+    @Test("a call helper process counts as corroboration")
+    func callHelperCounts() async {
+        let (detector, probe, clock, events) = await make()
+        defer { withExtendedLifetime(detector) {} }
+        probe.set(.zoom, AppAudioActivity(isAppRunning: true, micInput: false, audioOutput: true, helperPresent: true))
+        await clock.waitForSleepers(1)
+        clock.advance(by: 3)
+        try? await Task.sleep(for: .milliseconds(40))
+        await clock.waitForSleepers(1)
+        clock.advance(by: 2)
+        await events.waitFor(count: 1)
+        #expect(await events.settled().count == 1)
+    }
+
+    @Test("listen-only output starts only after 15 s")
+    func outputOnlyForFifteenSecondsStarts() async {
+        let (detector, probe, clock, events) = await make()
+        defer { withExtendedLifetime(detector) {} }
+        probe.set(.teams, .muted)
+        await clock.waitForSleepers(1)
+        clock.advance(by: 3)
+        try? await Task.sleep(for: .milliseconds(40))
+        await clock.waitForSleepers(1)
+        clock.advance(by: 2)
+        try? await Task.sleep(for: .milliseconds(40))
+        #expect(await events.settled().isEmpty)
+        await clock.waitForSleepers(1)
+        clock.advance(by: 10)
+        await events.waitFor(count: 1)
+        #expect(events.items.first.map { if case .started(.teams, _) = $0 { true } else { false } } == true)
+    }
+
+    @Test("diagnostics report readings and phase")
+    func diagnosticsReportPhase() async {
+        let (detector, probe, clock, events) = await make()
+        defer { withExtendedLifetime(detector) {} }
+        probe.set(.zoom, .inCall)
+        await clock.waitForSleepers(1)
+        clock.advance(by: 3)
+        await events.waitFor(count: 1)
+        let rows = await detector.diagnostics()
+        let zoom = rows.first { $0.app == .zoom }
+        #expect(zoom?.phase == "active" && zoom?.activity.audioOutput == true && zoom?.lastStartedAt != nil)
+        #expect(rows.first { $0.app == .teams }?.phase == "idle")
     }
 
     @Test("a running but idle app emits nothing")
@@ -258,6 +323,20 @@ struct RealProbeTests {
         #expect(!teams.matches("us.zoom.xos"))
         #expect(MeetingApp.zoom.bundleIDs.allSatisfy(zoom.matches))
         #expect(MeetingApp.teams.bundleIDs.allSatisfy(teams.matches))
+    }
+
+    @Test("zoom and teams ids from real calls are recognised and unrelated apps rejected")
+    func realBundleIDs() {
+        let zoom = MeetingAppSignature.defaults.first { $0.app == .zoom }!
+        let teams = MeetingAppSignature.defaults.first { $0.app == .teams }!
+        #expect(zoom.matches("us.zoom.CptHost"))
+        #expect(teams.matches("com.microsoft.teams"))
+        #expect(teams.matches("com.microsoft.teams2.modulehost"))
+        #expect(!teams.matches("com.microsoft.Word"))
+        #expect(Set(MeetingApp.teams.bundleIDs) == ["com.microsoft.teams2", "com.microsoft.teams"])
+        #expect(teams.matchesExecutable("MSTeams") && teams.matchesExecutable("MSTeams Helper (Renderer)"))
+        #expect(!teams.matchesExecutable("MSTeamsish"))
+        #expect(zoom.callHelperNames.contains("CptHost"))
     }
 
     @Test("reading the live system never crashes and an absent app is inactive")

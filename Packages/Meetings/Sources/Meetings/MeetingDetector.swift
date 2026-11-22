@@ -12,12 +12,18 @@ public struct AppAudioActivity: Sendable, Equatable {
     public var audioOutput: Bool
     /// `kAudioDevicePropertyDeviceIsRunningSomewhere` on the default input device. Corroborating only.
     public var deviceMicInUse: Bool
+    /// A call-only helper process is running (Zoom `CptHost`, spawned only while a meeting is in progress). Corroborating.
+    public var helperPresent: Bool
 
-    public init(isAppRunning: Bool = false, micInput: Bool = false, audioOutput: Bool = false, deviceMicInUse: Bool = false) {
+    public init(
+        isAppRunning: Bool = false, micInput: Bool = false, audioOutput: Bool = false, deviceMicInUse: Bool = false,
+        helperPresent: Bool = false
+    ) {
         self.isAppRunning = isAppRunning
         self.micInput = micInput
         self.audioOutput = audioOutput
         self.deviceMicInUse = deviceMicInUse
+        self.helperPresent = helperPresent
     }
 
     public static let inactive = AppAudioActivity()
@@ -28,10 +34,40 @@ public protocol MeetingProbe: Sendable {
     func activity(for app: MeetingApp) async -> AppAudioActivity
     /// Emits (coalesced) whenever app launch/quit or audio process state may have changed.
     func changes() -> AsyncStream<Void>
+    /// Audio processes that currently have input or output running, for the diagnostics list. Defaults to none.
+    func activeAudioProcesses() async -> [AudioProcessActivity]
+}
+
+extension MeetingProbe {
+    public func activeAudioProcesses() async -> [AudioProcessActivity] { [] }
+}
+
+/// One Core Audio process with a running stream (bundle ID and flags only; never audio content).
+public struct AudioProcessActivity: Sendable, Equatable, Identifiable {
+    public var bundleID: String
+    public var input: Bool
+    public var output: Bool
+    public var id: String { bundleID }
+    public init(bundleID: String, input: Bool, output: Bool) {
+        self.bundleID = bundleID
+        self.input = input
+        self.output = output
+    }
+}
+
+/// What the detector currently believes about one app (Settings > Meetings > Detection diagnostics).
+public struct AppDetectionDiagnostics: Sendable, Equatable, Identifiable {
+    public var app: MeetingApp
+    public var activity: AppAudioActivity
+    /// `idle`, `candidate`, `active` or `ending`.
+    public var phase: String
+    public var lastSignalAt: Date?
+    public var lastStartedAt: Date?
+    public var id: MeetingApp { app }
 }
 
 public struct MeetingDetectorConfig: Sendable {
-    /// Input and output must both stay active this long before `.started` (research §4: 3 s).
+    /// Fast path: input and output both active this long before `.started` (research §4: 3 s).
     public var startDebounce: TimeInterval
     /// Default time without audio activity before `.ended`, used when `endGrace` yields nothing.
     public var defaultEndGrace: TimeInterval
@@ -41,12 +77,22 @@ public struct MeetingDetectorConfig: Sendable {
     /// default input device to be running somewhere before counting it as a meeting start. Default off: the
     /// per-process flags are the primary signal and the device flag only corroborates.
     public var requireDeviceCorroboration: Bool
+    /// Muted or listen-only joins: output running plus another corroborating signal (mic, device mic, call helper).
+    public var corroboratedDebounce: TimeInterval
+    /// Output running with nothing else (listen-only webinar): start only after this long.
+    public var outputOnlyDebounce: TimeInterval
+    /// A pending start survives signal gaps shorter than this (one weak sample must not reset it).
+    public var candidateGrace: TimeInterval
 
     public init(
         startDebounce: TimeInterval = 3, defaultEndGrace: TimeInterval = 15,
         requireDeviceCorroboration: Bool = false,
+        corroboratedDebounce: TimeInterval = 5, outputOnlyDebounce: TimeInterval = 15, candidateGrace: TimeInterval = 3,
         endGrace: (@Sendable (MeetingApp) async -> TimeInterval)? = nil
     ) {
+        self.corroboratedDebounce = corroboratedDebounce
+        self.outputOnlyDebounce = outputOnlyDebounce
+        self.candidateGrace = candidateGrace
         self.startDebounce = startDebounce
         self.defaultEndGrace = defaultEndGrace
         self.requireDeviceCorroboration = requireDeviceCorroboration
@@ -56,17 +102,35 @@ public struct MeetingDetectorConfig: Sendable {
 
 /// Detects Zoom and Teams meetings from per-process audio activity (MTG-AC-01, -02, -20).
 ///
-/// Per app: a meeting *starts* once the app's own audio process has input **and** output running for
-/// `startDebounce` seconds; it *ends* once neither has been active for the grace period. While active, either signal
-/// keeps the meeting alive, so muting (mic released) or a quiet stretch does not end it and never re-emits `.started`.
+/// Per app: a meeting *starts* when the app's audio shows a call for long enough. Three paths, fastest first:
+/// input and output for `startDebounce` (3 s); output plus a corroborating signal (mic, default-device mic, call
+/// helper process) for `corroboratedDebounce` (5 s), which covers muted joins where Zoom releases the input stream;
+/// output alone for `outputOnlyDebounce` (15 s), which covers listen-only joins. A pending start is not reset by a
+/// short gap (`candidateGrace`). It *ends* once neither input nor output has been active for the grace period.
 /// Timers exist only while a start or end is pending; an idle detector holds no timers (MTG-AC-20).
 /// Call ``start()`` once and keep a strong reference to the detector: its probe watcher holds it weakly.
 public actor ProbeMeetingDetector: MeetingDetector {
+    private struct Candidate {
+        var since: Date
+        var token: Int
+        var task: Task<Void, Never>
+        var missingSince: Date?
+    }
+
     private enum Phase {
         case idle
-        case candidate(since: Date, token: Int, task: Task<Void, Never>)
+        case candidate(Candidate)
         case active(since: Date)
         case ending(activeSince: Date, inactiveSince: Date, token: Int, task: Task<Void, Never>)
+
+        var name: String {
+            switch self {
+            case .idle: "idle"
+            case .candidate: "candidate"
+            case .active: "active"
+            case .ending: "ending"
+            }
+        }
     }
 
     private let probe: any MeetingProbe
@@ -75,6 +139,9 @@ public actor ProbeMeetingDetector: MeetingDetector {
     private let apps: [MeetingApp]
     private let broadcaster = Broadcaster<MeetingEvent>()
     private var phases: [MeetingApp: Phase] = [:]
+    private var lastActivity: [MeetingApp: AppAudioActivity] = [:]
+    private var lastSignalAt: [MeetingApp: Date] = [:]
+    private var lastStartedAt: [MeetingApp: Date] = [:]
     private var watcher: Task<Void, Never>?
     private var nextToken = 0
     private let log = AppLog.logger("meetings.detector")
@@ -122,33 +189,75 @@ public actor ProbeMeetingDetector: MeetingDetector {
             })
     }
 
+    /// Fresh per-app readings and detector phase for the diagnostics list. Contains no audio or transcript content.
+    public func diagnostics() async -> [AppDetectionDiagnostics] {
+        var rows: [AppDetectionDiagnostics] = []
+        for app in apps {
+            let activity = await probe.activity(for: app)
+            lastActivity[app] = activity
+            rows.append(
+                AppDetectionDiagnostics(
+                    app: app, activity: activity, phase: (phases[app] ?? .idle).name, lastSignalAt: lastSignalAt[app],
+                    lastStartedAt: lastStartedAt[app]))
+        }
+        return rows
+    }
+
+    public func audioProcesses() async -> [AudioProcessActivity] { await probe.activeAudioProcesses() }
+
+    // MARK: Signals
+
+    /// Enough to open a pending start: the app is running and shows output, or a mic stream together with a call helper.
+    private func isBeginSignal(_ a: AppAudioActivity) -> Bool {
+        a.isAppRunning && (a.audioOutput || (a.micInput && a.helperPresent))
+    }
+
+    /// Whether the readings justify `.started` after `elapsed` seconds of continuous signal.
+    private func qualifies(_ a: AppAudioActivity, elapsed: TimeInterval) -> Bool {
+        guard a.isAppRunning else { return false }
+        let slack = 0.001
+        if a.micInput && a.audioOutput && elapsed + slack >= config.startDebounce { return true }
+        let corroborated = (a.audioOutput && (a.micInput || a.deviceMicInUse)) || (a.helperPresent && (a.audioOutput || a.micInput))
+        if corroborated && elapsed + slack >= config.corroboratedDebounce { return true }
+        return a.audioOutput && elapsed + slack >= config.outputOnlyDebounce
+    }
+
+    /// Either signal keeps an active meeting alive, so muting or a quiet stretch does not end it.
+    private func isAlive(_ a: AppAudioActivity) -> Bool { a.isAppRunning && (a.micInput || a.audioOutput) }
+
     // MARK: State machine
 
     private func evaluateAll() async {
         for app in apps { await evaluate(app) }
     }
 
-    private func isStrong(_ a: AppAudioActivity) -> Bool {
-        guard a.isAppRunning, a.micInput, a.audioOutput else { return false }
-        return true
-    }
-
-    /// Output-only (muted or listen-only) counts as "start" only with device corroboration when that is required.
-    private func isAlive(_ a: AppAudioActivity) -> Bool { a.isAppRunning && (a.micInput || a.audioOutput) }
-
     private func evaluate(_ app: MeetingApp) async {
         let activity = await probe.activity(for: app)
         let now = clock.now()
+        if lastActivity[app] != activity {
+            log.debug(
+                "\(app.rawValue, privacy: .public) running=\(activity.isAppRunning) mic=\(activity.micInput) out=\(activity.audioOutput) deviceMic=\(activity.deviceMicInUse) helper=\(activity.helperPresent)"
+            )
+        }
+        lastActivity[app] = activity
+        if isAlive(activity) { lastSignalAt[app] = now }
         let phase = phases[app] ?? .idle
         switch phase {
         case .idle:
-            guard isStrong(activity), !config.requireDeviceCorroboration || activity.deviceMicInUse else { return }
+            guard isBeginSignal(activity), !config.requireDeviceCorroboration || activity.deviceMicInUse else { return }
             schedule(app, since: now)
-        case .candidate(_, _, let task):
-            if !isStrong(activity) {
-                task.cancel()
-                phases[app] = .idle
+        case .candidate(var candidate):
+            if isBeginSignal(activity) {
+                candidate.missingSince = nil
+            } else {
+                candidate.missingSince = candidate.missingSince ?? now
+                if now.timeIntervalSince(candidate.missingSince ?? now) >= config.candidateGrace {
+                    candidate.task.cancel()
+                    phases[app] = .idle
+                    return
+                }
             }
+            phases[app] = .candidate(candidate)
         case .active(let since):
             if !isAlive(activity) { scheduleEnd(app, activeSince: since, inactiveSince: now) }
         case .ending(let activeSince, _, _, let task):
@@ -162,27 +271,68 @@ public actor ProbeMeetingDetector: MeetingDetector {
     private func schedule(_ app: MeetingApp, since: Date) {
         nextToken += 1
         let token = nextToken
-        let clock = clock
-        let debounce = config.startDebounce
         let task = Task { [weak self] in
-            do { try await clock.sleep(for: debounce) } catch { return }
-            await self?.confirmStart(app, token: token)
+            guard let self else { return }
+            await self.runCandidate(app, token: token)
         }
-        phases[app] = .candidate(since: since, token: token, task: task)
+        phases[app] = .candidate(Candidate(since: since, token: token, task: task, missingSince: nil))
     }
 
-    private func confirmStart(_ app: MeetingApp, token: Int) async {
-        guard case .candidate(let since, let current, _) = phases[app], current == token else { return }
+    /// Sleeps to the next checkpoint (3 s, 5 s, 15 s, or the end of a signal gap) and re-reads the probe there.
+    private func runCandidate(_ app: MeetingApp, token: Int) async {
+        while !Task.isCancelled {
+            guard let wait = nextWait(app, token: token) else { return }
+            do { try await clock.sleep(for: wait) } catch { return }
+            guard await checkpoint(app, token: token) else { return }
+        }
+    }
+
+    private func nextWait(_ app: MeetingApp, token: Int) -> TimeInterval? {
+        guard case .candidate(let candidate) = phases[app], candidate.token == token else { return nil }
+        let now = clock.now()
+        let elapsed = now.timeIntervalSince(candidate.since)
+        let checkpoints = [config.startDebounce, config.corroboratedDebounce, config.outputOnlyDebounce]
+        var waits = checkpoints.filter { $0 > elapsed + 0.001 }.map { $0 - elapsed }
+        if let missing = candidate.missingSince {
+            waits.append(max(0, config.candidateGrace - now.timeIntervalSince(missing)))
+        }
+        return waits.min()
+    }
+
+    /// Returns whether the candidate is still pending.
+    private func checkpoint(_ app: MeetingApp, token: Int) async -> Bool {
+        guard case .candidate(let before) = phases[app], before.token == token else { return false }
         let activity = await probe.activity(for: app)
         // Re-check after the (suspending) probe call: a newer evaluation may have replaced this candidate.
-        guard case .candidate(_, let again, _) = phases[app], again == token else { return }
-        guard isStrong(activity) else {
-            phases[app] = .idle
-            return
+        guard case .candidate(var candidate) = phases[app], candidate.token == token else { return false }
+        let now = clock.now()
+        lastActivity[app] = activity
+        if isAlive(activity) { lastSignalAt[app] = now }
+        if isBeginSignal(activity) {
+            candidate.missingSince = nil
+        } else {
+            candidate.missingSince = candidate.missingSince ?? now
+            if now.timeIntervalSince(candidate.missingSince ?? now) >= config.candidateGrace {
+                phases[app] = .idle
+                return false
+            }
+            phases[app] = .candidate(candidate)
+            return true
         }
-        phases[app] = .active(since: since)
-        log.info("meeting started: \(app.rawValue, privacy: .public)")
-        broadcaster.send(.started(app, at: since))
+        if qualifies(activity, elapsed: now.timeIntervalSince(candidate.since)) {
+            phases[app] = .active(since: candidate.since)
+            lastStartedAt[app] = candidate.since
+            log.info("meeting started: \(app.rawValue, privacy: .public)")
+            broadcaster.send(.started(app, at: candidate.since))
+            return false
+        }
+        phases[app] = .candidate(candidate)
+        // Past the last checkpoint with a begin signal that never qualified: give up until the next change.
+        if now.timeIntervalSince(candidate.since) + 0.001 >= config.outputOnlyDebounce {
+            phases[app] = .idle
+            return false
+        }
+        return true
     }
 
     private func scheduleEnd(_ app: MeetingApp, activeSince: Date, inactiveSince: Date) {
@@ -215,7 +365,8 @@ public actor ProbeMeetingDetector: MeetingDetector {
 
     private func cancelTimer(for app: MeetingApp) {
         switch phases[app] {
-        case .candidate(_, _, let task), .ending(_, _, _, let task): task.cancel()
+        case .candidate(let candidate): candidate.task.cancel()
+        case .ending(_, _, _, let task): task.cancel()
         default: break
         }
     }

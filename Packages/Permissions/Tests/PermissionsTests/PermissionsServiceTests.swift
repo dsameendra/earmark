@@ -72,6 +72,33 @@ final class FakeProbe: PermissionProbing, @unchecked Sendable {
         #expect(probe.requested == [.accessibility])
     }
 
+    @Test func microphoneNotDeterminedIsNotDeniedEvenIfRequestedBefore() async {
+        let memory = InMemoryPermissionMemory()
+        memory.markRequested(.microphone)
+        memory.markRequested(.notifications)
+        let service = PermissionsService(probe: FakeProbe(), memory: memory)
+        #expect(await service.status(.microphone) == .notDetermined)
+        #expect(await service.status(.notifications) == .notDetermined)
+    }
+
+    @Test func microphoneRequestPromptsAfterStaleMemory() async {
+        let probe = FakeProbe()
+        let memory = InMemoryPermissionMemory()
+        memory.markRequested(.microphone)
+        probe.onRequest(.microphone, becomes: .granted)
+        let service = PermissionsService(probe: probe, memory: memory)
+        #expect(await service.request(.microphone) == .granted)
+        #expect(probe.requested == [.microphone])
+    }
+
+    @Test func recheckPicksUpChangeMadeInSystemSettings() async {
+        let (service, probe) = make()
+        probe.set(.microphone, .denied)
+        #expect(await service.recheck(.microphone) == .denied)
+        probe.set(.microphone, .granted)
+        #expect(await service.recheck(.microphone) == .granted)
+    }
+
     @Test func systemAudioUsesObservedOutcomeBecauseOSHasNoStatus() async {
         let (service, probe) = make()
         probe.set(.systemAudioRecording, .indeterminate)

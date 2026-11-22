@@ -416,7 +416,10 @@ private func descriptor(
         #expect(model.rowState(.microphone).action == .request)
         await model.request(.microphone)
         #expect(model.status(.microphone) == .denied)
-        #expect(model.rowState(.microphone).action == .none)
+        let denied = model.rowState(.microphone)
+        #expect(denied.action == .request && denied.actionTitle == "Request access" && denied.showsRecheck)
+        #expect(denied.helpNote?.contains("tccutil reset Microphone lk.dumindu.earmark.Earmark") == true)
+        #expect(model.rowState(.accessibility).showsRecheck == false)
     }
 
     @Test func builtInCaptionPresetsExistAndAreReadOnly() async {  // SET-AC-11

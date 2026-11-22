@@ -132,6 +132,7 @@ struct AudioSettingsView: View {
 
 struct MeetingsSettingsView: View {
     let model: MeetingsSettingsModel
+    var diagnostics: MeetingDiagnosticsModel?
     @State private var keyword: [MeetingApp: String] = [:]
 
     var body: some View {
@@ -171,6 +172,7 @@ struct MeetingsSettingsView: View {
             } footer: {
                 Text("Tell participants before recording. Recording laws vary by place.")
             }
+            if let diagnostics, diagnostics.isAvailable { MeetingDiagnosticsSection(model: diagnostics) }
         }
         .formStyle(.grouped)
         .task { await model.load() }
@@ -561,7 +563,8 @@ struct PrivacySettingsView: View {
                     PermissionRow(
                         state: model.rowState(kind),
                         onRequest: { Task { await model.request(kind) } },
-                        onOpenSettings: { openURL(model.settingsURL(for: kind)) })
+                        onOpenSettings: { openURL(model.settingsURL(for: kind)) },
+                        onRecheck: { Task { await model.recheck(kind) } })
                 }
             } header: {
                 Text("Earmark asks for access only when a feature needs it.")

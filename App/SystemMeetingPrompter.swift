@@ -1,15 +1,28 @@
 import AppCore
+import AppKit
+import FeatureSettings
 import FeatureSupport
 import Foundation
+import os
 @preconcurrency import UserNotifications
 
 /// Delivers "meeting detected" prompts as user notifications with actions (MTG-AC-04): Record, Transcribe only,
 /// Ignore this meeting, Always transcribe and Never ask for this app. Responses flow back through `responses()` to
 /// `MeetingsModel`, which owns every decision; this type only talks to `UserNotifications`.
 ///
-/// If notification permission is denied nothing is posted and the inline banner in Meetings is the fallback.
+/// If notification permission is denied nothing is posted and the inline banner in Meetings is the fallback; the Dock icon
+/// also bounces once so the user notices the in-app prompt.
 final class SystemMeetingPrompter: NSObject, MeetingPromptPresenting, UNUserNotificationCenterDelegate, Sendable {
+    struct LastPrompt: Sendable {
+        var date: Date
+        var app: MeetingApp
+        var channel: String
+    }
+
     private let bus = Broadcaster<MeetingPromptResponse>()
+    private let lastPromptState = OSAllocatedUnfairLock<LastPrompt?>(initialState: nil)
+    private let log = AppLog.logger("meetings.prompts")
+    var lastPrompt: LastPrompt? { lastPromptState.withLock { $0 } }
     private static let consentIdentifier = "earmark.meeting.consent"
 
     /// Registers the notification categories and becomes the centre's delegate. Call once at launch.
@@ -31,8 +44,44 @@ final class SystemMeetingPrompter: NSObject, MeetingPromptPresenting, UNUserNoti
 
     private static func category(for app: MeetingApp) -> String { "\(MeetingPrompt.categoryPrefix).\(app.rawValue)" }
 
+    /// Asks for notification permission once, while the user is in Earmark (launch with meeting detection on), not
+    /// in the middle of a call when the system dialog would appear behind Zoom or Teams.
+    func requestAuthorizationIfNeeded() async {
+        _ = await authorized()
+    }
+
+    /// Posts an action-less, prompt-style notification so the user can confirm alerts reach them. Starts no capture.
+    func sendTestPrompt() async -> MeetingTestPromptOutcome {
+        guard await authorized() else {
+            record(app: .zoom, channel: "in-app only (test)")
+            await requestAttention()
+            return .notificationsDenied
+        }
+        let content = UNMutableNotificationContent()
+        content.title = "Meeting prompt test"
+        content.body = "This is how Earmark asks before it transcribes or records a meeting. Nothing was detected."
+        content.sound = .default
+        await add(UNNotificationRequest(identifier: "earmark.meeting.test", content: content, trigger: nil))
+        record(app: .zoom, channel: "notification (test)")
+        return .delivered
+    }
+
+    private func record(app: MeetingApp, channel: String) {
+        lastPromptState.withLock { $0 = LastPrompt(date: Date(), app: app, channel: channel) }
+        log.info("meeting prompt: \(app.rawValue, privacy: .public) via \(channel, privacy: .public)")
+    }
+
+    private func requestAttention() async {
+        await MainActor.run { _ = NSApplication.shared.requestUserAttention(.informationalRequest) }
+    }
+
     func present(_ prompt: MeetingPrompt) async {
-        guard await authorized() else { return }
+        guard await authorized() else {
+            record(app: prompt.app, channel: "in-app only")
+            await requestAttention()
+            return
+        }
+        record(app: prompt.app, channel: "notification")
         let content = UNMutableNotificationContent()
         content.title = prompt.title
         content.body = prompt.body

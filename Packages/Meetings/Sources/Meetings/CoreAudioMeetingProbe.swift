@@ -1,6 +1,7 @@
 import AppCore
 import AppKit
 import CoreAudio
+import Darwin
 import Foundation
 import os
 
@@ -9,19 +10,32 @@ import os
 public struct MeetingAppSignature: Sendable, Equatable {
     public var app: MeetingApp
     public var bundleIDPrefixes: [String]
-    public init(app: MeetingApp, bundleIDPrefixes: [String]) {
+    /// Executable names that also show the app is running (new Teams runs as `MSTeams`; its helpers as `MSTeams ...`).
+    public var executableNames: [String]
+    /// Process names that exist only while a call is in progress (Zoom `CptHost`). Unverified against a live call.
+    public var callHelperNames: [String]
+    public init(app: MeetingApp, bundleIDPrefixes: [String], executableNames: [String] = [], callHelperNames: [String] = []) {
         self.app = app
         self.bundleIDPrefixes = bundleIDPrefixes
+        self.executableNames = executableNames
+        self.callHelperNames = callHelperNames
     }
 
     /// Zoom: `us.zoom.xos`. Teams: new client `com.microsoft.teams2`, classic `com.microsoft.teams`. Capture-only Zoom
     /// helpers (`us.zoom.CptHost`, `us.zoom.caphost`) never carry call audio so including them is harmless.
     public static let defaults: [MeetingAppSignature] = [
-        MeetingAppSignature(app: .zoom, bundleIDPrefixes: ["us.zoom."]),
-        MeetingAppSignature(app: .teams, bundleIDPrefixes: ["com.microsoft.teams"]),
+        MeetingAppSignature(
+            app: .zoom, bundleIDPrefixes: ["us.zoom."], executableNames: ["zoom.us"], callHelperNames: ["CptHost", "caphost"]),
+        MeetingAppSignature(
+            app: .teams, bundleIDPrefixes: ["com.microsoft.teams"], executableNames: ["MSTeams", "Microsoft Teams"]),
     ]
 
     public func matches(_ bundleID: String) -> Bool { bundleIDPrefixes.contains { bundleID.hasPrefix($0) } }
+
+    /// Executable names match exactly or as a prefix followed by a space (helper processes are named `MSTeams Helper ...`).
+    public func matchesExecutable(_ name: String) -> Bool {
+        executableNames.contains { name == $0 || name.hasPrefix($0 + " ") }
+    }
 }
 
 /// Real probe: `NSWorkspace` running applications plus Core Audio per-process `IsRunningInput/Output` and the default
@@ -43,24 +57,58 @@ public final class CoreAudioMeetingProbe: MeetingProbe {
 
     public func changes() -> AsyncStream<Void> { hub.changes() }
 
+    public func activeAudioProcesses() async -> [AudioProcessActivity] {
+        CoreAudioReads.processObjects().compactMap { process in
+            guard let bundle = CoreAudioReads.string(process, selector: kAudioProcessPropertyBundleID) else { return nil }
+            let input = CoreAudioReads.uint32(process, selector: kAudioProcessPropertyIsRunningInput) == 1
+            let output = CoreAudioReads.uint32(process, selector: kAudioProcessPropertyIsRunningOutput) == 1
+            return input || output ? AudioProcessActivity(bundleID: bundle, input: input, output: output) : nil
+        }
+    }
+
     // MARK: Reading
 
     static func snapshot(_ signature: MeetingAppSignature) -> AppAudioActivity {
-        let running = NSWorkspace.shared.runningApplications.contains { app in
-            app.bundleIdentifier.map(signature.matches) ?? false
+        var running = NSWorkspace.shared.runningApplications.contains { app in
+            if let id = app.bundleIdentifier, signature.matches(id) { return true }
+            return app.executableURL.map { signature.matchesExecutable($0.lastPathComponent) } ?? false
         }
-        guard running else { return .inactive }
         var input = false
         var output = false
+        var sawAudioProcess = false
         for process in CoreAudioReads.processObjects() {
             guard let bundle = CoreAudioReads.string(process, selector: kAudioProcessPropertyBundleID), signature.matches(bundle) else {
                 continue
             }
+            sawAudioProcess = true
             if CoreAudioReads.uint32(process, selector: kAudioProcessPropertyIsRunningInput) == 1 { input = true }
             if CoreAudioReads.uint32(process, selector: kAudioProcessPropertyIsRunningOutput) == 1 { output = true }
         }
+        // An audio process owned by the app proves it is running even when NSWorkspace does not list a helper.
+        if sawAudioProcess { running = true }
+        guard running else { return .inactive }
+        let helper = !signature.callHelperNames.isEmpty && ProcessNames.anyRunning(signature.callHelperNames)
         return AppAudioActivity(
-            isAppRunning: true, micInput: input, audioOutput: output, deviceMicInUse: CoreAudioReads.defaultInputRunning())
+            isAppRunning: true, micInput: input, audioOutput: output, deviceMicInUse: CoreAudioReads.defaultInputRunning(),
+            helperPresent: helper)
+    }
+}
+
+/// Running-process lookup by name through libproc (no permission needed for the user's own processes).
+enum ProcessNames {
+    static func anyRunning(_ names: [String]) -> Bool {
+        let count = proc_listallpids(nil, 0)
+        guard count > 0 else { return false }
+        var pids = [pid_t](repeating: 0, count: Int(count) + 32)
+        let bytes = proc_listallpids(&pids, Int32(pids.count * MemoryLayout<pid_t>.size))
+        guard bytes > 0 else { return false }
+        var buffer = [UInt8](repeating: 0, count: 256)
+        for pid in pids.prefix(Int(bytes) / MemoryLayout<pid_t>.size) where pid > 0 {
+            let length = Int(proc_name(pid, &buffer, UInt32(buffer.count)))
+            guard length > 0 else { continue }
+            if names.contains(String(decoding: buffer.prefix(length), as: UTF8.self)) { return true }
+        }
+        return false
     }
 }
 

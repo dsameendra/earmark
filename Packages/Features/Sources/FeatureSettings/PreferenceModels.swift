@@ -254,6 +254,9 @@ public final class PermissionsSettingsModel {
 
     public func request(_ kind: PermissionKind) async { statuses[kind] = await service.request(kind) }
 
+    /// Re-reads the OS state (the "Re-check" button); never prompts.
+    public func recheck(_ kind: PermissionKind) async { statuses[kind] = await service.status(kind) }
+
     public func settingsURL(for kind: PermissionKind) -> URL { service.settingsURL(for: kind) }
 
     public func status(_ kind: PermissionKind) -> PermissionStatus { statuses[kind] ?? .notDetermined }

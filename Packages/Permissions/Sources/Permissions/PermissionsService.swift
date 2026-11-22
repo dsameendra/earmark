@@ -15,6 +15,9 @@ public final class PermissionsService: PermissionsServicing {
         var polling: Task<Void, Never>?
     }
 
+    /// Permissions whose OS status separates "never asked" from "denied"; the requested-flag memory is ignored for them.
+    static let osDistinguishesDenial: Set<PermissionKind> = [.microphone, .notifications]
+
     private let probe: any PermissionProbing
     private let memory: any PermissionMemory
     private let state = OSAllocatedUnfairLock(initialState: State())
@@ -67,6 +70,10 @@ public final class PermissionsService: PermissionsServicing {
     }
 
     // MARK: Refresh, polling and silent denial
+
+    /// Re-reads one permission from the OS (the "Re-check" action) and publishes a change.
+    @discardableResult
+    public func recheck(_ kind: PermissionKind) async -> PermissionStatus { await status(kind) }
 
     /// Re-reads every permission and emits a change for each one that differs from the last read.
     /// Call when the app becomes active again (the user may have toggled a switch in System Settings).
@@ -124,7 +131,11 @@ public final class PermissionsService: PermissionsServicing {
         case .granted: return .granted
         case .denied: return .denied
         case .restricted: return .restricted
-        case .notDetermined: return memory.hasRequested(kind) ? .denied : .notDetermined
+        case .notDetermined:
+            // Microphone and notifications report an exact OS state, so "not determined" really means "never asked"
+            // (for example after a TCC reset or an identity change). Only panes that cannot tell use the memory heuristic.
+            if Self.osDistinguishesDenial.contains(kind) { return .notDetermined }
+            return memory.hasRequested(kind) ? .denied : .notDetermined
         case .indeterminate: return memory.lastOutcome(kind) ?? .notDetermined
         }
     }

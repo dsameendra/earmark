@@ -7,7 +7,8 @@ public enum MeetingApp: String, Codable, Sendable, CaseIterable {
     public var bundleIDs: [String] {
         switch self {
         case .zoom: ["us.zoom.xos"]
-        case .teams: ["com.microsoft.teams2"]
+        // New Teams (`teams2`, executable MSTeams) first, then classic Teams. SCR-012.
+        case .teams: ["com.microsoft.teams2", "com.microsoft.teams"]
         }
     }
 }

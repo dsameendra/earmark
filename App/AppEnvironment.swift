@@ -86,6 +86,16 @@ final class AppEnvironment {
         let queue = services.jobQueue
         Task { await queue.resumeInterrupted() }
         startMeetings(composition)
+        followActivation()
+    }
+
+    /// Re-reads every permission when the app becomes active, so a switch changed in System Settings reaches the menu bar,
+    /// onboarding, dictation and live without a relaunch. The OS state is exact for microphone and notifications.
+    private func followActivation() {
+        guard let permissions = services.permissions as? PermissionsService else { return }
+        NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in
+            Task { await permissions.refresh() }
+        }
     }
 
     /// Starts the meeting detector, recovers interrupted recordings, follows the consent switch and registers the bookmark
@@ -96,6 +106,10 @@ final class AppEnvironment {
         let queue = services.jobQueue
         let repository = services.meetings
         let controller = meetings.controller
+        // Ask for notification permission now, while the user is in Earmark, not mid-call when the dialog would hide behind Zoom.
+        if let prompter = services.meetingPrompts as? SystemMeetingPrompter {
+            Task { await prompter.requestAuthorizationIfNeeded() }
+        }
         Task {
             // Recovery finishes before detection starts, so an auto-started recording can never be mistaken for a leftover.
             await MeetingRuntimeFactory.recover(
@@ -245,6 +259,7 @@ final class AppEnvironment {
             microphonePreview: { uid in MicrophoneSource(deviceUID: uid, permissions: permissions, deviceProvider: audioDevices) })
         settingsDependencies.mediaPurger = MediaPurger(
             transcripts: database.transcripts, media: database.media, meetings: database.meetings, roots: services.mediaRoots)
+        settingsDependencies.meetingDiagnostics = MeetingDiagnosticsAdapter(detector: meetings.detector, prompter: meetingPrompter)
         return Composition(
             services: services, settingsDependencies: settingsDependencies, live: live, dictation: dictation, meetings: meetings,
             translationPacks: translation.packs, engineRouter: router)

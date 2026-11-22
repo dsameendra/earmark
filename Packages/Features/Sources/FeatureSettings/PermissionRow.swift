@@ -92,9 +92,28 @@ public struct PermissionRowState: Sendable, Equatable {
     public var chipLabel: String { context == .onboarding && status == .notDetermined ? "Ask later" : status.chipLabel }
 
     /// Only a never-asked permission can be requested; denied ones go through System Settings. Granted needs nothing.
-    public var action: PermissionRowAction { status == .notDetermined ? .request : .none }
+    /// In Settings a denied microphone or notifications row also offers "Request access": the OS state is exact, so the
+    /// system prompt appears again whenever macOS reports it as not determined (after a reset or reinstall).
+    public var action: PermissionRowAction {
+        if status == .notDetermined { return .request }
+        if context == .settings, status == .denied, kind == .microphone || kind == .notifications { return .request }
+        return .none
+    }
 
-    public var actionTitle: String { context == .onboarding ? "Allow now" : "Allow…" }
+    public var actionTitle: String {
+        if status == .denied { return "Request access" }
+        return context == .onboarding ? "Allow now" : "Allow…"
+    }
+
+    /// A denied row in Settings can be re-read from the OS without relaunching.
+    public var showsRecheck: Bool { context == .settings && status == .denied }
+
+    /// Help for the "toggle is on but Earmark still says access is needed" case (ad-hoc builds and reinstalls change identity).
+    public var helpNote: String? {
+        guard context == .settings, status == .denied, kind == .microphone else { return nil }
+        return "If the toggle is on but Earmark still says access is needed, run "
+            + "tccutil reset Microphone lk.dumindu.earmark.Earmark and relaunch."
+    }
 
     /// Denied or restricted rows explain how to recover (ONB-AC-06); `nil` otherwise.
     public var recoveryNote: String? {
@@ -119,11 +138,16 @@ public struct PermissionRow: View {
     private let state: PermissionRowState
     private let onRequest: () -> Void
     private let onOpenSettings: () -> Void
+    private let onRecheck: (() -> Void)?
 
-    public init(state: PermissionRowState, onRequest: @escaping () -> Void, onOpenSettings: @escaping () -> Void) {
+    public init(
+        state: PermissionRowState, onRequest: @escaping () -> Void, onOpenSettings: @escaping () -> Void,
+        onRecheck: (() -> Void)? = nil
+    ) {
         self.state = state
         self.onRequest = onRequest
         self.onOpenSettings = onOpenSettings
+        self.onRecheck = onRecheck
     }
 
     public var body: some View {
@@ -139,6 +163,10 @@ public struct PermissionRow: View {
                     Text(note).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                         .accessibilityIdentifier("\(state.identifierBase).recovery")
                 }
+                if let help = state.helpNote {
+                    Text(help).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText).textSelection(.enabled)
+                        .accessibilityIdentifier("\(state.identifierBase).help")
+                }
             }
             Spacer(minLength: DSSpacing.md)
             VStack(alignment: .trailing, spacing: DSSpacing.xs) {
@@ -149,6 +177,10 @@ public struct PermissionRow: View {
                 if state.action == .request {
                     Button(state.actionTitle, action: onRequest)
                         .accessibilityIdentifier("\(state.identifierBase).request")
+                }
+                if state.showsRecheck, let onRecheck {
+                    Button("Re-check", action: onRecheck)
+                        .accessibilityIdentifier("\(state.identifierBase).recheck")
                 }
                 if state.showsSettingsLink {
                     Button("Open System Settings", action: onOpenSettings)

@@ -177,7 +177,7 @@ private let side = DisplayInfo(
         await layout.setDisplayChoice(.display(2))
         await layout.setPosition(.custom, for: .display(2))
         overlay.onLayoutChange?()
-        #expect(await waitUntil { model.choice == .display(2) && model.position == .custom })
+        #expect(await eventually { model.choice == .display(2) && model.position == .custom })
     }
 
     @Test func settingKeysMatchTheOverlayStore() {
@@ -192,10 +192,3 @@ private let side = DisplayInfo(
     }
 }
 
-@MainActor private func waitUntil(_ condition: @MainActor () -> Bool) async -> Bool {
-    for _ in 0..<300 {
-        if condition() { return true }
-        try? await Task.sleep(for: .milliseconds(10))
-    }
-    return condition()
-}

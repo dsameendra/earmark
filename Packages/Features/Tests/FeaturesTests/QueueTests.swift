@@ -22,7 +22,7 @@ private func job(_ name: String, _ state: JobState, progress: Double = 0) -> Job
         ])
         let queue = QueueModel(services: services)
         let task = Task { await queue.run() }
-        try? await Task.sleep(for: .milliseconds(100))
+        #expect(await eventually { !queue.isLoading })
         #expect(queue.visibleGroups == [.running, .pending, .paused, .failed])
         #expect(!queue.isLoading)
         task.cancel()
@@ -34,11 +34,11 @@ private func job(_ name: String, _ state: JobState, progress: Double = 0) -> Job
         services.jobQueue = jobs
         let queue = QueueModel(services: services)
         let task = Task { await queue.run() }
-        try? await Task.sleep(for: .milliseconds(100))
+        #expect(await eventually { !queue.isLoading })  // run() subscribes before it loads
         let first = await jobs.jobs()[0]
         _ = try? await jobs.enqueue(job("late", .pending))
         await jobs.pause(first.id)
-        try? await Task.sleep(for: .milliseconds(100))
+        #expect(await eventually { queue.jobs.count == 2 && queue.jobs(in: .paused).count == 1 })
         #expect(queue.jobs.count == 2)
         #expect(queue.jobs(in: .paused).count == 1)
         task.cancel()
@@ -81,7 +81,7 @@ private func job(_ name: String, _ state: JobState, progress: Double = 0) -> Job
         services.jobQueue = jobs
         let queue = QueueModel(services: services)
         let task = Task { await queue.run() }
-        try? await Task.sleep(for: .milliseconds(100))
+        #expect(await eventually { !queue.isLoading })
         await queue.movePending(from: IndexSet(integer: 2), to: 0)  // third pending -> top of the waiting list
         #expect(queue.jobs(in: .pending).map(\.id) == [third.id, first.id, second.id])
         #expect(await jobs.jobs().first?.id == third.id)
@@ -98,7 +98,7 @@ private func job(_ name: String, _ state: JobState, progress: Double = 0) -> Job
         #expect(await store.value(for: SettingsKey.queueMaxConcurrency, as: Int.self) == 4)
         let restored = QueueModel(services: services)
         let task = Task { await restored.run() }
-        try? await Task.sleep(for: .milliseconds(100))
+        #expect(await eventually { restored.maxConcurrency == 4 })
         #expect(restored.maxConcurrency == 4)
         task.cancel()
     }
@@ -112,7 +112,7 @@ private func job(_ name: String, _ state: JobState, progress: Double = 0) -> Job
         services.jobQueue = jobs
         let queue = QueueModel(services: services)
         let task = Task { await queue.run() }
-        try? await Task.sleep(for: .milliseconds(100))
+        #expect(await eventually { !queue.isLoading })
         #expect(queue.jobs(in: .failed).first?.failureReason == "Unsupported format")
         await queue.retryAllFailed()
         let states = await jobs.jobs().map(\.state)
@@ -231,10 +231,10 @@ private func job(_ name: String, _ state: JobState, progress: Double = 0) -> Job
         services.jobQueue = queue
         let home = HomeModel(services: services)
         let task = Task { await home.run() }
-        try? await Task.sleep(for: .milliseconds(100))
+        #expect(await eventually { home.summary.running == 1 })
         #expect(home.summary.running == 1)
         _ = try? await queue.enqueue(job("b", .pending))
-        try? await Task.sleep(for: .milliseconds(100))
+        #expect(await eventually { home.summary.pending == 1 })
         #expect(home.summary.pending == 1)
         #expect(home.activeJobs.count == 2)
         task.cancel()

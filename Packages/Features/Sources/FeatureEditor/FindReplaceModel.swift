@@ -1,6 +1,7 @@
 import AppCore
 import Foundation
 import Observation
+import FeatureSupport
 import Processing
 
 /// Scope choices in the find bar (FR-AC-03).
@@ -17,6 +18,16 @@ struct FindOutcome: Sendable {
     var errorMessage: String?
     /// Words (by display index) covered by matches, per segment, for highlighting.
     var words: [SegmentID: Set<Int>] = [:]
+    /// UTF-16 ranges (in the NFC translation text) of matches inside the shown translation, per segment.
+    var translationRanges: [SegmentID: [NSRange]] = [:]
+}
+
+/// Which text the find bar searches: what the transcript currently shows (original, translation, or both).
+struct FindViewScope: Sendable, Hashable {
+    var mode: TranslationDisplayMode = .original
+    var target: LanguageCode?
+    static let original = FindViewScope()
+    var includesTranslations: Bool { mode != .original && target != nil }
 }
 
 /// In-transcript find (⌘F) and replace (⌥⌘F) backed by `Processing.FindReplaceEngine` (EDIT-AC-11, FR-AC-01...09).
@@ -42,6 +53,8 @@ public final class FindReplaceModel {
     public private(set) var errorMessage: String?
     public private(set) var preview: [ReplacePreview]?
     public private(set) var matchedWords: [SegmentID: Set<Int>] = [:]
+    /// Matches inside the shown translation, for drawing (translated and bilingual modes).
+    public private(set) var translationRanges: [SegmentID: [NSRange]] = [:]
 
     @ObservationIgnored private let editor: TranscriptEditorModel
     @ObservationIgnored private var searchTask: Task<Void, Never>?
@@ -55,7 +68,13 @@ public final class FindReplaceModel {
         if text.isEmpty { return "" }
         return matches.isEmpty ? "No results" : "\(currentIndex + 1) of \(matches.count)"
     }
-    public var canReplace: Bool { !editor.isReadOnly && !matches.isEmpty && errorMessage == nil }
+    /// Replace only ever edits the original text, so it needs an original match and a mode that shows the original.
+    public var canReplace: Bool {
+        !editor.isReadOnly && errorMessage == nil && matches.contains { $0.field == .text } && !replaceNeedsOriginalView
+    }
+    /// In Translated mode the originals are hidden; replacing them blind would edit text the user cannot see.
+    public var replaceNeedsOriginalView: Bool { editor.translationChoice.mode == .translated && editor.translationChoice.target != nil }
+    var viewScope: FindViewScope { FindViewScope(mode: editor.translationChoice.mode, target: editor.translationChoice.target) }
 
     // MARK: Presentation
 
@@ -73,6 +92,7 @@ public final class FindReplaceModel {
         searchTask?.cancel()
         matches = []
         matchedWords = [:]
+        translationRanges = [:]
     }
 
     public func toggleReplace() { showsReplace.toggle() }
@@ -89,7 +109,14 @@ public final class FindReplaceModel {
             }
         return FindQuery(
             text: text, matchCase: matchCase, wholeWord: wholeWord, isRegex: isRegex, scope: scopeValue,
-            includeIgnored: editor.showIgnored)
+            includeIgnored: editor.showIgnored, includeTranslations: viewScope.includesTranslations)
+    }
+
+    /// The query used to replace: never touches translation tracks.
+    func makeReplaceQuery() -> FindQuery {
+        var query = makeQuery()
+        query.includeTranslations = false
+        return query
     }
 
     /// Re-runs the search after the document or the selection changed.
@@ -105,11 +132,12 @@ public final class FindReplaceModel {
             return
         }
         let query = makeQuery()
+        let scope = viewScope
         let segments = editor.segments
         searchTask = Task { [weak self] in
             if debounce > .zero { try? await Task.sleep(for: debounce) }
             guard !Task.isCancelled else { return }
-            let outcome = await Task.detached(priority: .userInitiated) { Self.search(query, in: segments) }.value
+            let outcome = await Task.detached(priority: .userInitiated) { Self.search(query, in: segments, view: scope) }.value
             guard !Task.isCancelled else { return }
             self?.apply(outcome, keepIndex: true)
         }
@@ -123,23 +151,37 @@ public final class FindReplaceModel {
             return
         }
         let query = makeQuery()
+        let scope = viewScope
         let segments = editor.segments
-        let outcome = await Task.detached(priority: .userInitiated) { Self.search(query, in: segments) }.value
+        let outcome = await Task.detached(priority: .userInitiated) { Self.search(query, in: segments, view: scope) }.value
         apply(outcome, keepIndex: true)
     }
 
     /// Waits for a debounced search in flight.
     public func waitForSearch() async { await searchTask?.value }
 
-    nonisolated static func search(_ query: FindQuery, in segments: [Segment]) -> FindOutcome {
+    nonisolated static func search(_ query: FindQuery, in segments: [Segment], view: FindViewScope = .original) -> FindOutcome {
         let engine: FindReplaceEngine
         do { engine = try FindReplaceEngine(query: query) } catch PatternError.invalid(let message) {
             return FindOutcome(errorMessage: "Invalid regular expression: \(message)")
         } catch {
             return FindOutcome()
         }
-        let matches = engine.matches(in: segments)
+        var matches = engine.matches(in: segments)
+        if view.includesTranslations, let target = view.target {
+            // Search what is shown: the translation track of the target language, plus the original where the mode shows it.
+            let translated = Set(
+                segments.filter { s in s.translations.contains { $0.language.primary == target.primary } }.map(\.id))
+            matches = matches.filter { match in
+                switch match.field {
+                case .translation(let language): return language.primary == target.primary
+                case .text: return view.mode == .bilingual || !translated.contains(match.segmentID)
+                }
+            }
+        }
         var words: [SegmentID: Set<Int>] = [:]
+        var ranges: [SegmentID: [NSRange]] = [:]
+        for match in matches { if case .translation = match.field { ranges[match.segmentID, default: []].append(match.range) } }
         let byID = Dictionary(segments.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         for match in matches where match.field == .text {
             guard let segment = byID[match.segmentID] else { continue }
@@ -150,13 +192,14 @@ public final class FindReplaceModel {
                 words[match.segmentID, default: []].insert(index)
             }
         }
-        return FindOutcome(matches: matches, errorMessage: nil, words: words)
+        return FindOutcome(matches: matches, errorMessage: nil, words: words, translationRanges: ranges)
     }
 
     private func apply(_ outcome: FindOutcome, keepIndex: Bool) {
         matches = outcome.matches
         errorMessage = outcome.errorMessage
         matchedWords = outcome.words
+        translationRanges = outcome.translationRanges
         currentIndex = keepIndex ? min(currentIndex, max(0, matches.count - 1)) : 0
     }
 
@@ -175,7 +218,12 @@ public final class FindReplaceModel {
 
     /// Replaces the current match and advances.
     public func replaceCurrent() async {
-        guard canReplace, let match = currentMatch, let engine = try? FindReplaceEngine(query: makeQuery()) else { return }
+        guard canReplace, let match = currentMatch else { return }
+        guard match.field == .text else {  // a translation match is read-only: move on to the next one
+            next()
+            return
+        }
+        guard let engine = try? FindReplaceEngine(query: makeReplaceQuery()) else { return }
         let changes = engine.replace(match, in: editor.segments, replacement: replacement)
         guard !changes.isEmpty else { return }
         editor.apply(changeSet: changes, name: "Replace")
@@ -185,7 +233,7 @@ public final class FindReplaceModel {
 
     /// Computes the before → after list; nothing is applied until ``confirmReplaceAll()``.
     public func requestReplaceAll() async {
-        guard canReplace, let engine = try? FindReplaceEngine(query: makeQuery()) else { return }
+        guard canReplace, let engine = try? FindReplaceEngine(query: makeReplaceQuery()) else { return }
         let segments = editor.segments
         let replacement = replacement
         preview = await Task.detached { engine.preview(in: segments, replacement: replacement) }.value
@@ -195,7 +243,7 @@ public final class FindReplaceModel {
 
     /// Applies Replace All as one undoable step.
     public func confirmReplaceAll() async {
-        guard preview != nil, !editor.isReadOnly, let engine = try? FindReplaceEngine(query: makeQuery()) else { return }
+        guard preview != nil, !editor.isReadOnly, let engine = try? FindReplaceEngine(query: makeReplaceQuery()) else { return }
         preview = nil
         let changes = engine.replaceAll(in: editor.segments, replacement: replacement)
         editor.apply(changeSet: changes, name: "Replace All")

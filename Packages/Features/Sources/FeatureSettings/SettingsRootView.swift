@@ -95,9 +95,9 @@ public struct SettingsRootView: View {
     private var motionReduced: Bool { policyOverride?.suppressesMotion ?? reduceMotion }
 
     public var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: .constant(.all)) {
             GeometryReader { _ in
-                ScrollViewReader { proxy in
+                Group {
                     VStack(alignment: .leading, spacing: DSSpacing.md) {
                         VStack(alignment: .leading, spacing: DSSpacing.xxs) {
                             Text("earmark").font(DSTypography.title2)
@@ -110,7 +110,7 @@ public struct SettingsRootView: View {
                                     VStack(alignment: .leading, spacing: DSSpacing.xxs) {
                                         SectionCaption(LocalizedStringKey(group.title)).padding(.horizontal, DSSpacing.sm)
                                             .padding(.bottom, DSSpacing.xs)
-                                        ForEach(group.sections) { section in sectionButton(section).id(section) }
+                                        ForEach(group.sections) { section in sectionButton(section) }
                                     }
                                 }
                             }
@@ -119,7 +119,6 @@ public struct SettingsRootView: View {
                         .scrollIndicators(.automatic)
                         .accessibilityIdentifier("settings.navigation")
                     }
-                    .onChange(of: focusedSection) { _, value in if let value { proxy.scrollTo(value, anchor: .center) } }
                     .onKeyPress(.upArrow) {
                         moveSelection(by: -1)
                         return .handled
@@ -131,7 +130,7 @@ public struct SettingsRootView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
-            .navigationSplitViewColumnWidth(min: 220, ideal: 238, max: 270)
+            .navigationSplitViewColumnWidth(238)
             .accessibilityLabel("Settings navigation")
         } detail: {
             GeometryReader { _ in
@@ -145,7 +144,7 @@ public struct SettingsRootView: View {
                         .scrollContentBackground(.hidden)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .id(selection)
-                        .dsTransition(.settle)
+                        .transition(.opacity)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .background(DSColor.paper)

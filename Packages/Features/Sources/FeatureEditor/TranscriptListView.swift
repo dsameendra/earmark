@@ -16,6 +16,8 @@ enum TimeFormat {
 struct TranscriptListView: View {
     let model: TranscriptEditorModel
     let find: FindReplaceModel
+    /// The row at the top of the viewport, kept across layout and translation-mode switches so the text does not jump.
+    @State private var topID: SegmentID?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityPolicyOverride) private var policyOverride
 
@@ -33,9 +35,17 @@ struct TranscriptListView: View {
                         }
                     }
                 }
+                .scrollTargetLayout()
                 .padding(.vertical, DSSpacing.sm)
                 .dsAnimation(.glide, value: model.visibleSegments.count)
             }
+            .scrollPosition(id: $topID, anchor: .top)
+            .onChange(of: model.translationChoice) { keepPosition(proxy) }
+            .onChange(of: model.options.layout) { keepPosition(proxy) }
+            .onChange(of: model.options.showTimestamps) { keepPosition(proxy) }
+            .onChange(of: model.options.showSpeakers) { keepPosition(proxy) }
+            .onChange(of: model.options.density) { keepPosition(proxy) }
+            .onChange(of: model.options.fontSize) { keepPosition(proxy) }
             .background(DSColor.contentBackground)
             .onScrollPhaseChange { _, phase in
                 if phase == .interacting || phase == .decelerating { model.playback.userDidScroll() }
@@ -61,6 +71,16 @@ struct TranscriptListView: View {
                 }
             }
             .dsAnimation(.glide, value: model.playback.showsReturnToPlayhead)
+        }
+    }
+
+    /// Re-anchors the viewport on the row that was at the top before row heights changed.
+    private func keepPosition(_ proxy: ScrollViewProxy) {
+        guard let saved = topID else { return }
+        let target = model.options.layout == .paragraphs ? (model.paragraphIDBySegment[saved] ?? saved) : saved
+        Task { @MainActor in
+            await Task.yield()
+            proxy.scrollTo(target, anchor: .top)
         }
     }
 
@@ -155,6 +175,16 @@ func updateSelection(model: TranscriptEditorModel, id: SegmentID) {
     }
 }
 
+/// Selects a whole paragraph (⌘ toggles it).
+@MainActor
+func updateSelection(model: TranscriptEditorModel, ids: Set<SegmentID>) {
+    if NSEvent.modifierFlags.contains(.command) {
+        if ids.isSubset(of: model.selection) { model.selection.subtract(ids) } else { model.selection.formUnion(ids) }
+    } else {
+        model.selection = ids
+    }
+}
+
 // MARK: - Segment row
 
 struct SegmentRowView: View {
@@ -173,34 +203,47 @@ struct SegmentRowView: View {
         let typography = EditorTypography(model.options)
         HStack(alignment: .top, spacing: DSSpacing.md) {
             SegmentGutter(
-                model: model, speakerID: segment.speakerID, start: segment.start, language: segment.languageCode,
+                model: model, speakerID: segment.speakerID, start: segment.start, language: model.gutterLanguage(for: [segment]),
                 isIgnored: segment.isIgnored, isRelabeled: model.relabeledSegmentIDs.contains(segment.id),
                 isLanguageUncertain: model.isLanguageUncertain(segment), isRetranscribing: model.retranscribing.contains(segment.id)
             )
             .contentShape(Rectangle())
             .onTapGesture { updateSelection(model: model, id: segment.id) }
             VStack(alignment: .leading, spacing: DSSpacing.xs) {
-                let translation = model.translationDisplay(for: segment)
-                if isEditing {
-                    editor(typography)
-                } else if model.translationChoice.mode == .translated, let translation {
-                    TranslationLine(translation: translation, typography: typography, onRetranslate: nil)
-                } else {
-                    WordFlowView(
-                        items: wordItems(for: segment, model: model, find: find), typography: typography,
-                        onTap: {
-                            model.requestListFocus()
-                            model.playback.seekToWord(in: segment, wordIndex: $0.index)
-                        },
-                        onSplit: { model.split(segment.id, beforeWord: $0.index) },
-                        onBookmark: { model.addBookmark(at: SeekTarget.time(for: segment, wordIndex: $0.index)) },
-                        onHighlight: { model.addHighlight(segmentID: segment.id, wordRange: $0.index...$0.index) })
+                let presentation = model.presentation(for: segment)
+                let seek = {
+                    model.requestListFocus()
+                    _ = model.playback.seekToWord(in: segment, wordIndex: 0)
                 }
-                if !isEditing, model.translationChoice.mode == .bilingual {
-                    if let translation {
-                        TranslationLine(translation: translation, typography: typography, onRetranslate: nil)
-                    } else if model.isMissingTranslation(segment) {
-                        Text("Not translated").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                let isActive = model.playback.activeRef?.segmentID == segment.id
+                let ranges = find.translationRanges[segment.id] ?? []
+                let currentRange: NSRange? = find.currentMatch.flatMap { $0.segmentID == segment.id ? $0.range : nil }
+                if isEditing {
+                    if case .translated = presentation {
+                        Text("Editing the original text").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    }
+                    editor(typography)
+                    if case .translated(let translation) = presentation {
+                        TranslationLine(translation: translation, typography: typography, style: .secondary)
+                    } else if case .bilingual(let translation) = presentation {
+                        TranslationLine(translation: translation, typography: typography, style: .secondary)
+                    }
+                } else {
+                    switch presentation {
+                    case .translated(let translation):
+                        TranslationLine(
+                            translation: translation, typography: typography, isActive: isActive, matches: ranges,
+                            current: currentRange, onTap: seek)
+                    case .bilingual(let translation):
+                        originalWords(typography)
+                        TranslationLine(
+                            translation: translation, typography: typography, style: .secondary, isActive: isActive,
+                            matches: ranges, current: currentRange, onTap: seek)
+                    case .untranslated(let isPending):
+                        originalWords(typography)
+                        UntranslatedNote(isPending: isPending)
+                    case .original:
+                        originalWords(typography)
                     }
                 }
                 if segment.isIgnored {
@@ -220,6 +263,18 @@ struct SegmentRowView: View {
         )
         .contextMenu { SegmentContextMenu(model: model, segment: segment) }
         .accessibilityElement(children: .contain)
+    }
+
+    private func originalWords(_ typography: EditorTypography) -> some View {
+        WordFlowView(
+            items: wordItems(for: segment, model: model, find: find), typography: typography,
+            onTap: {
+                model.requestListFocus()
+                model.playback.seekToWord(in: segment, wordIndex: $0.index)
+            },
+            onSplit: { model.split(segment.id, beforeWord: $0.index) },
+            onBookmark: { model.addBookmark(at: SeekTarget.time(for: segment, wordIndex: $0.index)) },
+            onHighlight: { model.addHighlight(segmentID: segment.id, wordRange: $0.index...$0.index) })
     }
 
     @ViewBuilder
@@ -306,7 +361,7 @@ struct SegmentContextMenu: View {
         Divider()
         Button("Copy Text") {
             NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(segment.text, forType: .string)
+            NSPasteboard.general.setString(model.displayedText(for: targets), forType: .string)
         }
     }
 }
@@ -318,54 +373,67 @@ struct ParagraphRowView: View {
     let find: FindReplaceModel
     let paragraph: TranscriptParagraph
 
+    private var ids: Set<SegmentID> { Set(paragraph.segments.map(\.id)) }
+    private var isSelected: Bool { !ids.isDisjoint(with: model.selection) }
+
     var body: some View {
         let typography = EditorTypography(model.options)
-        let items = paragraph.segments.flatMap { wordItems(for: $0, model: model, find: find) }
-        let byID = Dictionary(paragraph.segments.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let mode = model.translationChoice.mode
+        let hasTranslation = mode != .original && model.translationChoice.target != nil
+        let showsOriginal = !hasTranslation || mode == .bilingual
+        let language = model.gutterLanguage(for: paragraph.segments)
+        let allIgnored = paragraph.segments.allSatisfy(\.isIgnored)
         HStack(alignment: .top, spacing: DSSpacing.md) {
             SegmentGutter(
-                model: model, speakerID: paragraph.speakerID, start: paragraph.start, language: paragraph.languageCode,
-                isRelabeled: paragraph.segments.contains { model.relabeledSegmentIDs.contains($0.id) })
-            WordFlowView(
-                items: items, typography: typography,
-                onTap: { item in
-                    model.requestListFocus()
-                    if let s = byID[item.segmentID] { model.playback.seekToWord(in: s, wordIndex: item.index) }
-                },
-                onSplit: { item in model.split(item.segmentID, beforeWord: item.index) },
-                onBookmark: { item in
-                    if let s = byID[item.segmentID] { model.addBookmark(at: SeekTarget.time(for: s, wordIndex: item.index)) }
-                },
-                onHighlight: { item in model.addHighlight(segmentID: item.segmentID, wordRange: item.index...item.index) }
+                model: model, speakerID: paragraph.speakerID, start: paragraph.start, language: language, isIgnored: allIgnored,
+                isRelabeled: paragraph.segments.contains { model.relabeledSegmentIDs.contains($0.id) }
             )
+            .contentShape(Rectangle())
+            .onTapGesture { updateSelection(model: model, ids: ids) }
+            .contextMenu { SegmentContextMenu(model: model, segment: paragraph.segments[0]) }
+            VStack(alignment: .leading, spacing: DSSpacing.xs) {
+                if mode == .translated, hasTranslation {
+                    ParagraphTranslationText(
+                        model: model, find: find, paragraph: paragraph, typography: typography, style: .primary,
+                        language: model.translationChoice.target)
+                } else {
+                    originalFlow(typography)
+                    if mode == .bilingual {
+                        ParagraphTranslationText(
+                            model: model, find: find, paragraph: paragraph, typography: typography, style: .secondary,
+                            language: model.translationChoice.target)
+                    }
+                }
+                if allIgnored {
+                    Button("Stop ignoring") { model.setIgnored(false, for: ids) }
+                        .buttonStyle(.link).font(DSTypography.caption)
+                }
+            }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, DSSpacing.lg)
         .padding(.vertical, model.options.density.rowPadding)
-        .opacity(paragraph.segments.allSatisfy(\.isIgnored) ? 0.5 : 1)
+        .opacity(allIgnored ? 0.5 : 1)
+        .background(isSelected ? Color.accentColor.opacity(0.12) : Color.clear)
+        .accessibilityElement(children: .contain)
+        .accessibilityHint(showsOriginal ? "" : "Translated")
     }
-}
 
-/// The translation drawn under the original (bilingual) or instead of it (translated), with the low-confidence and
-/// out-of-date labels (TRN-AC-07, TRN-AC-10).
-struct TranslationLine: View {
-    let translation: SegmentTranslationDisplay
-    let typography: EditorTypography
-    let onRetranslate: (() -> Void)?
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: DSSpacing.xs) {
-            Text(translation.text)
-                .font(typography.font).lineSpacing(typography.lineSpacing)
-                .foregroundStyle(translation.isStale ? DSColor.secondaryText : DSColor.primaryText)
-                .textSelection(.enabled)
-                .accessibilityLabel("Translation: \(translation.text)")
-            if translation.isLowConfidence {
-                StatusPill("Low confidence", systemImage: "exclamationmark.triangle", tone: .warning)
-            }
-            if translation.isStale {
-                StatusPill("Out of date", systemImage: "clock.arrow.circlepath", tone: .neutral)
-            }
-        }
+    private func originalFlow(_ typography: EditorTypography) -> some View {
+        let items = paragraph.segments.flatMap { wordItems(for: $0, model: model, find: find) }
+        let byID = Dictionary(paragraph.segments.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return WordFlowView(
+            items: items, typography: typography,
+            onTap: { item in
+                model.requestListFocus()
+                if let s = byID[item.segmentID] { model.playback.seekToWord(in: s, wordIndex: item.index) }
+            },
+            onSplit: { item in model.split(item.segmentID, beforeWord: item.index) },
+            onBookmark: { item in
+                if let s = byID[item.segmentID] { model.addBookmark(at: SeekTarget.time(for: s, wordIndex: item.index)) }
+            },
+            onHighlight: { item in model.addHighlight(segmentID: item.segmentID, wordRange: item.index...item.index) }
+        )
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

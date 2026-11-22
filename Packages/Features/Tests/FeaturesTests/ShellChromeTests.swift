@@ -1,6 +1,7 @@
 import AppCore
 import DesignSystem
 import FeatureLibrary
+import FeatureLive
 import FeatureSupport
 import Foundation
 import SwiftUI
@@ -59,17 +60,37 @@ import Testing
         #expect(DSLayout.minWindowSize == CGSize(width: 960, height: 600))
     }
 
-    @Test func narrowWindowCollapsesSidebarOnlyWhenCrossing() {
-        let model = ShellModel(services: .preview())
-        model.updateWindowWidth(1440)
-        #expect(model.columnVisibility == .all)
-        model.updateWindowWidth(780)
-        #expect(model.columnVisibility == .detailOnly)
-        model.columnVisibility = .all  // user reveals the sidebar overlay
-        model.updateWindowWidth(770)
-        #expect(model.columnVisibility == .all, "no fight on every resize tick")
-        model.updateWindowWidth(900)
-        #expect(model.columnVisibility == .all)
+    @Test func navigationPaneIsPersistentInShellAndSettings() throws {
+        let shell = source("FeatureShell/ShellView.swift")
+        #expect(shell.contains("columnVisibility: .constant(.all)") && shell.contains(".toolbar(removing: .sidebarToggle)"))
+        #expect(!source("FeatureShell/ShellModel.swift").contains("columnVisibility"))
+        let settings = source("FeatureSettings/SettingsRootView.swift")
+        #expect(settings.contains("columnVisibility: .constant(.all)") && settings.contains(".toolbar(removing: .sidebarToggle)"))
+        let app = try String(contentsOf: URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("App/EarmarkApp.swift"), encoding: .utf8)
+        #expect(app.contains("CommandGroup(replacing: .sidebar)"), "no Hide Sidebar menu command")
+        #expect(!app.contains("windowToolbarStyle(.unifiedCompact)"), "compact toolbars made the controls too small")
+    }
+
+    @Test func settingsSelectionSwitchesPaneWithoutScrolling() {
+        let settings = source("FeatureSettings/SettingsRootView.swift")
+        #expect(!settings.contains("scrollTo") && !settings.contains("ScrollViewReader"))
+        #expect(settings.contains(".transition(.opacity)"))
+    }
+
+    @Test func liveSidePanelUsesInsetCardsAndSummarisesLines() {
+        let live = source("FeatureLive/LiveView.swift")
+        #expect(live.contains("InsetCard") && live.contains("SectionCaption"))
+        let lines = [
+            CaptionLine(text: "hello there friend", translation: "hola", speakerLabel: "Ann", speakerSlot: 0, isVolatile: false),
+            CaptionLine(text: "ok", speakerLabel: "Bob", speakerSlot: 1, isVolatile: false),
+            CaptionLine(text: "again", speakerLabel: "Ann", speakerSlot: 0, isVolatile: false),
+            CaptionLine(text: "in progress words", isVolatile: true),
+        ]
+        let summary = LiveSessionSummary(lines: lines)
+        #expect(summary.finalCount == 3 && summary.wordCount == 5 && summary.translatedCount == 1)
+        #expect(summary.speakers.map(\.label) == ["Ann", "Bob"] && summary.speakers.first?.lineCount == 2)
+        #expect(LiveSessionSummary(lines: []).speakers.isEmpty)
     }
 
     @Test func inspectorHidesBelow1100AndToggleResetsWhenWide() {

@@ -33,10 +33,11 @@ struct EarmarkApp: App {
         }
         .defaultSize(width: UITestConfiguration.width, height: UITestConfiguration.height)
         .defaultLaunchBehavior(.presented)
-        .windowToolbarStyle(.unifiedCompact)
+        .windowToolbarStyle(.unified)
         .restorationBehavior(AppEnvironment.usesMocks ? .disabled : .automatic)
         .windowResizability(.contentMinSize)
         .commands {
+            CommandGroup(replacing: .sidebar) {}  // the navigation pane is persistent: no Hide/Show Sidebar
             ShellCommands(model: environment.shell)
             PlayerZoomCommands()
             OnboardingCommands(settings: environment.services.settings)
@@ -79,7 +80,6 @@ struct EarmarkApp: App {
                     .tint(DSColor.accent)
             }
         }
-        .windowToolbarStyle(.unifiedCompact)
 
         MenuBarExtra {
             if environment.startupFailure != nil {

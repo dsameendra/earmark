@@ -241,6 +241,7 @@ public struct LibraryView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelStyle(.iconOnly)
+                .controlSize(.large)
                 .accessibilityLabel("Layout")
             }
             ToolbarSpacer(.fixed)
@@ -253,11 +254,14 @@ public struct LibraryView: View {
                     Text("Recently modified").tag(LibrarySort.modifiedDesc)
                 }
                 .pickerStyle(.menu)
+                .controlSize(.large)
                 .accessibilityLabel("Sort by")
             }
             ToolbarSpacer(.fixed)
             ToolbarItem {
                 Button("Delete", systemImage: "trash") { Task { await model.deleteSelected() } }  // stock-chrome: destructive action
+                    .labelStyle(.titleAndIcon)
+                    .controlSize(.large)
                     .disabled(model.selection.isEmpty)
             }
         } else {
@@ -272,15 +276,20 @@ public struct LibraryView: View {
                         }
                     }
                 }
+                .controlSize(.large)
                 .accessibilityHint("How long deleted items are kept before they are removed")
             }
             ToolbarSpacer(.fixed)
             ToolbarItem {
                 Button("Restore", systemImage: "arrow.uturn.backward") { Task { await model.restoreSelected() } }
+                    .labelStyle(.titleAndIcon)
+                    .controlSize(.large)
                     .disabled(model.selection.isEmpty)
             }
             ToolbarItem {
                 Button("Delete Permanently", systemImage: "trash.slash") { confirmPurge = true }
+                    .labelStyle(.titleAndIcon)
+                    .controlSize(.large)
                     .disabled(model.selection.isEmpty)
             }
         }

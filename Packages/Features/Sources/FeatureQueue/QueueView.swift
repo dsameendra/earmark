@@ -114,11 +114,15 @@ public struct QueueView: View {
     @ToolbarContentBuilder private var toolbarContent: some ToolbarContent {
         ToolbarItem {
             Button("Add Files…", systemImage: "plus") { isImporterPresented = true }
+                .labelStyle(.titleAndIcon)
+                .controlSize(.large)
                 .help("Add audio or video files or folders")
                 .accessibilityIdentifier("queue.add")
         }
         ToolbarItem {
             Button("Clear Finished", systemImage: "checkmark.circle") { Task { await model.clearFinished() } }
+                .labelStyle(.titleAndIcon)
+                .controlSize(.large)
                 .disabled(!model.hasFinished || model.isClearing)
                 .help("Remove completed and cancelled jobs from the queue. Transcripts stay in the Library.")
                 .accessibilityIdentifier("queue.clearFinished")
@@ -137,6 +141,7 @@ public struct QueueView: View {
                     .disabled(model.jobs.isEmpty || model.isClearing)
                     .accessibilityIdentifier("queue.clearAll")
             }
+            .controlSize(.large)
             .accessibilityIdentifier("queue.actions")
         }
     }

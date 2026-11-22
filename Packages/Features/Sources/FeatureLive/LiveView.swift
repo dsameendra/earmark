@@ -96,12 +96,16 @@ public struct LiveView: View {
                     Button(model.isPaused ? "Resume" : "Pause", systemImage: model.isPaused ? LiveSymbol.resume : LiveSymbol.pause) {
                         Task { await model.togglePause() }
                     }
+                    .labelStyle(.titleAndIcon)
+                    .controlSize(.large)
                     .help(model.isPaused ? "Resume live captions" : "Pause live captions")
                     .accessibilityIdentifier("live.pause")
                 }
             }
             ToolbarItem(placement: .primaryAction) {
                 Button("Stop", systemImage: LiveSymbol.stop) { Task { await model.stop() } }
+                    .labelStyle(.titleAndIcon)
+                    .controlSize(.large)
                     .keyboardShortcut(.return, modifiers: [.command])
                     .help("Stop live captions")
                     .accessibilityIdentifier("live.stop")
@@ -111,6 +115,7 @@ public struct LiveView: View {
                 Button { Task { await model.start() } } label: { Label("Start", systemImage: LiveSymbol.start) }
                     .labelStyle(.titleAndIcon)
                     .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
                     .tint(DSColor.accent)
                     .keyboardShortcut(.return, modifiers: [.command])
                     .disabled(model.startDisabledReason != nil)
@@ -128,6 +133,7 @@ public struct LiveView: View {
             Text("Both").tag(LiveSourceChoice.micAndSystem)
         }
         .pickerStyle(.segmented)
+        .controlSize(.large)
         .labelsHidden()
         .help("Caption source: microphone, system audio or both")
         .disabled(model.isRunning)
@@ -177,82 +183,177 @@ public struct LiveView: View {
 
     // MARK: Side panel
 
+    /// Solid inspector column: one InsetCard per concern (input, session, translation, speakers, overlay). The cards
+    /// scroll as one column so nothing is clipped at small heights; controls always get the full card width.
     private var sidePanel: some View {
-        ScrollView {
+        let summary = LiveSessionSummary(lines: model.lines)
+        return ScrollView {
             VStack(alignment: .leading, spacing: DSSpacing.lg) {
-                section("Input") {
-                    if model.source.usesMicrophone {
-                        Text("Microphone").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
-                        Picker("Microphone", selection: $model.deviceUID) {
-                            Text("System Default").tag(String?.none)
-                            ForEach(model.devices) { Text($0.name).tag(String?.some($0.id)) }
-                        }
-                        .labelsHidden()
-                        .frame(maxWidth: .infinity)
-                        .disabled(model.isRunning)
-                        .accessibilityIdentifier("live.device")
-                    }
-                    Text("Language").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
-                    Picker("Language", selection: $model.language) {
-                        ForEach(model.languageChoices) { Text($0.title).tag($0) }
-                    }
-                    .labelsHidden()
-                    .frame(maxWidth: .infinity)
-                    .disabled(model.isRunning)
-                    .accessibilityIdentifier("live.language")
-                    LevelMeter(level: model.level)
-                        .accessibilityLabel("Input level")
-                        .accessibilityValue("\(Int(model.level * 100)) percent")
-                        .accessibilityIdentifier("live.levelMeter")
-                }
-                Divider()
-                section("Transcript") {
-                    Toggle("Save as transcript", isOn: $model.saveAsTranscript)
-                        .disabled(model.isRunning)
-                        .accessibilityIdentifier("live.saveAsTranscript")
-                    if model.savedTranscriptID != nil {
-                        Label("Saved to your library", systemImage: LiveSymbol.saved)
-                            .font(DSTypography.caption)
-                            .foregroundStyle(DSColor.secondaryText)
-                            .accessibilityIdentifier("live.saved")
-                    }
-                }
-                if model.hasExtras {
-                    Divider()
-                    overlaySection
-                }
+                panelSection("Input") { inputCard }
+                panelSection("Session") { sessionCard(summary) }
+                panelSection("Translation") { translationCard(summary) }
+                panelSection("Speakers") { speakersCard(summary) }
+                if model.hasExtras { panelSection("Caption overlay") { overlayCard } }
                 Text("Captions stay on this Mac. Final lines settle in place as you speak.")
                     .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, DSSpacing.xs)
             }
             .padding(DSSpacing.lg)
         }
+        .scrollIndicators(.automatic)
         .frame(maxHeight: .infinity)
-        .background(DSColor.insetBackground.opacity(0.6))
+        .background(DSColor.paper)
         .accessibilityIdentifier("live.sidebar")
     }
 
-    private var overlaySection: some View {
-        section("Caption overlay") {
-            Toggle(
-                "Show overlay",
-                isOn: Binding(get: { model.overlayEnabled }, set: { value in Task { await model.setOverlayEnabled(value) } })
-            )
-            .accessibilityIdentifier("live.overlay")
+    private func panelSection<Content: View>(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: DSSpacing.sm) {
+            SectionCaption(title).padding(.horizontal, DSSpacing.xs)
+            InsetCard(padding: DSSpacing.md) {
+                VStack(alignment: .leading, spacing: DSSpacing.md) { content() }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private func labeled<Content: View>(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: DSSpacing.xs) {
+            Text(title).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+            content()
+        }
+    }
+
+    private func factRow(_ title: LocalizedStringKey, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: DSSpacing.sm) {
+            Text(title).font(DSTypography.body).foregroundStyle(DSColor.secondaryText)
+            Spacer(minLength: DSSpacing.sm)
+            Text(value).font(DSTypography.body.monospacedDigit()).foregroundStyle(DSColor.primaryText)
+        }
+    }
+
+    @ViewBuilder private var inputCard: some View {
+        if model.source.usesMicrophone {
+            labeled("Microphone") {
+                Picker("Microphone", selection: $model.deviceUID) {
+                    Text("System Default").tag(String?.none)
+                    ForEach(model.devices) { Text($0.name).tag(String?.some($0.id)) }
+                }
+                .labelsHidden()
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
+                .disabled(model.isRunning)
+                .accessibilityIdentifier("live.device")
+            }
+        }
+        labeled("Language") {
+            Picker("Language", selection: $model.language) {
+                ForEach(model.languageChoices) { Text($0.title).tag($0) }
+            }
+            .labelsHidden()
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
+            .disabled(model.isRunning)
+            .accessibilityIdentifier("live.language")
+        }
+        labeled("Level") {
+            LevelMeter(level: model.level)
+                .accessibilityLabel("Input level")
+                .accessibilityValue("\(Int(model.level * 100)) percent")
+                .accessibilityIdentifier("live.levelMeter")
+        }
+    }
+
+    @ViewBuilder private func sessionCard(_ summary: LiveSessionSummary) -> some View {
+        factRow("Status", model.isPaused ? "Paused" : (model.isRunning ? "Listening" : "Not started"))
+        factRow("Segments", "\(summary.finalCount)")
+        factRow("Words", "\(summary.wordCount)")
+        Divider()
+        Toggle("Save as transcript", isOn: $model.saveAsTranscript)
+            .toggleStyle(.switch)
+            .disabled(model.isRunning)
+            .accessibilityIdentifier("live.saveAsTranscript")
+        if model.savedTranscriptID != nil {
+            Label("Saved to your library", systemImage: LiveSymbol.saved)
+                .font(DSTypography.caption)
+                .foregroundStyle(DSColor.secondaryText)
+                .accessibilityIdentifier("live.saved")
+        }
+    }
+
+    @ViewBuilder private func translationCard(_ summary: LiveSessionSummary) -> some View {
+        if summary.translatedCount == 0 {
+            Text("No translated lines yet. Translations appear under each caption when a language pair is active.")
+                .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            factRow("Translated lines", "\(summary.translatedCount) of \(summary.finalCount)")
+        }
+    }
+
+    @ViewBuilder private func speakersCard(_ summary: LiveSessionSummary) -> some View {
+        if summary.speakers.isEmpty {
+            Text("Speakers are labelled here once they are identified.")
+                .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            ForEach(summary.speakers) { speaker in
+                HStack(spacing: DSSpacing.sm) {
+                    SpeakerChip(name: speaker.label, slot: speaker.slot)
+                    Spacer(minLength: DSSpacing.sm)
+                    Text("\(speaker.lineCount)").font(DSTypography.body.monospacedDigit()).foregroundStyle(DSColor.secondaryText)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var overlayCard: some View {
+        Toggle(
+            "Show overlay",
+            isOn: Binding(get: { model.overlayEnabled }, set: { value in Task { await model.setOverlayEnabled(value) } })
+        )
+        .toggleStyle(.switch)
+        .accessibilityIdentifier("live.overlay")
+        labeled("Preset") {
             Picker(
                 "Preset",
                 selection: Binding(get: { model.preset.id }, set: { id in Task { await model.selectPreset(id) } })
             ) {
                 ForEach(model.presets) { Text($0.name).tag($0.id) }
             }
+            .labelsHidden()
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
             .accessibilityIdentifier("live.preset")
-            CaptionPresetControls(preset: Binding(get: { model.preset }, set: { model.updatePreset($0) }))
         }
+        CaptionPresetControls(preset: Binding(get: { model.preset }, set: { model.updatePreset($0) }))
     }
+}
 
-    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: DSSpacing.sm) {
-            Text(title).font(DSTypography.headline)
-            content()
+/// Counts shown in the Live side panel, derived from the caption lines (pure, so it is unit tested).
+public struct LiveSessionSummary: Equatable, Sendable {
+    public struct Speaker: Equatable, Sendable, Identifiable {
+        public var label: String
+        public var slot: Int
+        public var lineCount: Int
+        public var id: String { label }
+    }
+    public var finalCount = 0
+    public var wordCount = 0
+    public var translatedCount = 0
+    public var speakers: [Speaker] = []
+
+    public init(lines: [CaptionLine]) {
+        for line in lines where !line.isVolatile {
+            finalCount += 1
+            wordCount += line.text.split(whereSeparator: \.isWhitespace).count
+            if let translation = line.translation, !translation.isEmpty { translatedCount += 1 }
+            guard let label = line.speakerLabel else { continue }
+            if let index = speakers.firstIndex(where: { $0.label == label }) {
+                speakers[index].lineCount += 1
+            } else {
+                speakers.append(Speaker(label: label, slot: line.speakerSlot ?? speakers.count, lineCount: 1))
+            }
         }
     }
 }

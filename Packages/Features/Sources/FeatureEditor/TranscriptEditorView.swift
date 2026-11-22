@@ -79,7 +79,8 @@ private struct EditorContent: View {
                 guard layout.inspectorCollapsed else { return }
                 if inspectorPresented { activeTool = .inspector } else if activeTool == .inspector { activeTool = nil }
             }
-            .onChange(of: showExport) { if !showExport { listFocused = true } }
+            .onChange(of: showExport) { if showExport { export.adoptViewState() } else { listFocused = true } }
+            .onChange(of: model.translationChoice) { find.refresh() }
             .onAppear { PlayerZoomRegistry.shared.activate(model.playback.zoom) }
             .onDisappear {
                 PlayerZoomRegistry.shared.deactivate(model.playback.zoom)
@@ -137,17 +138,24 @@ private struct EditorContent: View {
                 find.open()
                 findFocused = true
             }
+            .labelStyle(.titleAndIcon)
+            .controlSize(.large)
             .keyboardShortcut("f", modifiers: .command)
             .accessibilityIdentifier("editor.find")
         }
         ToolbarSpacer(.fixed)
         ToolbarItemGroup {
             Button("Speakers", symbol: .speaker) { presentTool(.speakers) }
+                .labelStyle(.titleAndIcon)
+                .controlSize(.large)
                 .accessibilityIdentifier("editor.speakers")
             Button("Translate", symbol: .translate) { presentTool(.translation) }
+                .labelStyle(.titleAndIcon)
+                .controlSize(.large)
                 .accessibilityIdentifier("editor.translation")
             Button("Re-transcribe", symbol: .retry) { presentTool(.retranscribe) }
                 .help("Re-transcribe, identify speakers again, or set the transcript language")
+                .controlSize(.large)
                 .accessibilityIdentifier("editor.retranscribe")
         }
         ToolbarSpacer(.fixed)
@@ -172,6 +180,7 @@ private struct EditorContent: View {
                 Button("Bookmarks and highlights", symbol: .earmark) { presentTool(.bookmarks) }
                 Button("View options", systemImage: "textformat.size") { presentTool(.options) }
             }
+            .controlSize(.large)
             .accessibilityIdentifier("editor.more")
         }
         ToolbarSpacer(.fixed)
@@ -180,6 +189,7 @@ private struct EditorContent: View {
             Button { showExport = true } label: { Label("Export", symbol: .export) }
                 .labelStyle(.titleAndIcon)
                 .buttonStyle(.borderedProminent).tint(DSColor.accent)
+                .controlSize(.large)
                 .accessibilityIdentifier("editor.export")
         }
     }

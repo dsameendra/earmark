@@ -35,8 +35,6 @@ public final class ShellModel {
 
     /// Window width as last measured; drives ``layout``.
     public private(set) var windowWidth: CGFloat = 1440
-    /// Sidebar column visibility. Collapses (detail only) below 800 pt; the system toolbar button reveals it as an overlay.
-    public var columnVisibility: NavigationSplitViewVisibility = .all
     /// Editor inspector toolbar toggle (only meaningful when the window is below 1100 pt).
     public var isInspectorToggledOn = false
 
@@ -71,13 +69,9 @@ public final class ShellModel {
     /// `true` when the Editor inspector should be on screen: always when wide, else only while toggled on.
     public var isInspectorPresented: Bool { !layout.inspectorCollapsed || isInspectorToggledOn }
 
-    /// Records the window width and applies the responsive rules. Only crossing the 800 pt boundary changes the
-    /// sidebar, so a user who revealed it in a compact window is not fought on every resize tick.
+    /// Records the window width and applies the responsive rules. The navigation pane is persistent and never collapses.
     public func updateWindowWidth(_ width: CGFloat) {
-        let wasCollapsed = layout.sidebarCollapsed
         windowWidth = width
-        let nowCollapsed = layout.sidebarCollapsed
-        if nowCollapsed != wasCollapsed { columnVisibility = nowCollapsed ? .detailOnly : .all }
         if !layout.inspectorCollapsed { isInspectorToggledOn = false }
     }
 

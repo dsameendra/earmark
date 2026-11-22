@@ -22,12 +22,12 @@ public struct ShellView: View {
     public init(model: ShellModel) { self.model = model }
 
     public var body: some View {
-        NavigationSplitView(columnVisibility: $model.columnVisibility) {
+        NavigationSplitView(columnVisibility: .constant(.all)) {  // the navigation pane is persistent
             GeometryReader { _ in
                 SidebarView(model: model)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
-            .navigationSplitViewColumnWidth(min: 190, ideal: DSLayout.sidebarWidth, max: 280)
+            .navigationSplitViewColumnWidth(min: 220, ideal: DSLayout.sidebarWidth, max: 280)
         } detail: {
             GeometryReader { _ in
                 VStack(spacing: 0) {
@@ -49,6 +49,7 @@ public struct ShellView: View {
             }
             .toolbar { shellToolbar }
         }
+        .toolbar(removing: .sidebarToggle)
         .background(DSColor.paper)
         .frame(minWidth: DSLayout.minWindowSize.width, minHeight: DSLayout.minWindowSize.height)
         .onGeometryChange(for: CGFloat.self) {
@@ -92,6 +93,7 @@ public struct ShellView: View {
         if model.openedTranscript != nil {
             ToolbarItem(placement: .navigation) {
                 Button("Back", systemImage: "chevron.backward") { model.closeTranscript() }
+                    .controlSize(.large)
                     .help("Back to \(model.selection.title)")
                     .keyboardShortcut("[", modifiers: [.command])
                     .accessibilityIdentifier("toolbar.back")
@@ -101,6 +103,7 @@ public struct ShellView: View {
             ToolbarItem {
                 Button("Search transcripts", symbol: .search) { model.presentQuickOpen() }
                     .labelStyle(.iconOnly)
+                    .controlSize(.large)
                     .help("Quick Open (⌘K)")
                     .accessibilityLabel("Quick Open")
                     .accessibilityHint("Search transcripts by title and text")
@@ -116,6 +119,7 @@ public struct ShellView: View {
         if model.openedTranscript != nil && model.layout.inspectorCollapsed {
             ToolbarItem {
                 Toggle(isOn: $model.isInspectorToggledOn) { Label("Inspector", systemImage: "sidebar.trailing") }
+                    .controlSize(.large)
                     .help("Show or hide the inspector")
                     .accessibilityIdentifier("toolbar.inspector")
             }
@@ -127,6 +131,7 @@ public struct ShellView: View {
                 Button { model.presentImporter() } label: { Label("Transcribe", systemImage: "plus") }
                     .labelStyle(.titleAndIcon)
                     .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
                     .tint(DSColor.accent)
                     .help("Choose audio or video files to transcribe")
                     .accessibilityIdentifier("toolbar.transcribe")

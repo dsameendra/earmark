@@ -8,6 +8,8 @@ struct FindBarView: View {
     @Bindable var find: FindReplaceModel
     @FocusState.Binding var fieldFocused: Bool
 
+    static let replaceHint = "Replace edits the original text. Switch to Original or Bilingual to replace."
+
     var body: some View {
         VStack(spacing: DSSpacing.xs) {
             HStack(spacing: DSSpacing.sm) {
@@ -72,7 +74,9 @@ struct FindBarView: View {
                     TextField("Replace with", text: $find.replacement).textFieldStyle(.roundedBorder).frame(minWidth: 160)
                         .accessibilityLabel("Replace with")
                     Button("Replace") { Task { await find.replaceCurrent() } }.disabled(!find.canReplace)
+                        .help(find.replaceNeedsOriginalView ? Self.replaceHint : "")
                     Button("Replace All…") { Task { await find.requestReplaceAll() } }.disabled(!find.canReplace)
+                        .help(find.replaceNeedsOriginalView ? Self.replaceHint : "")
                     if model.isReadOnly { Text("Read-only").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText) }
                     Spacer()
                 }

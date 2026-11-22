@@ -124,6 +124,74 @@ extension TranscriptEditorModel {
         return !segment.translations.contains { $0.language.primary == target.primary }
     }
 
+    /// What a row shows for this segment in the current mode (shared by the Segments and Paragraphs layouts).
+    public enum Presentation: Equatable, Sendable {
+        case original
+        /// The translation replaces the original.
+        case translated(SegmentTranslationDisplay)
+        /// The translation is drawn under the original.
+        case bilingual(SegmentTranslationDisplay)
+        /// A translation was asked for but this segment has none: the original is shown with a quiet label.
+        case untranslated(isPending: Bool)
+    }
+
+    public func presentation(for segment: Segment) -> Presentation {
+        let mode = translationChoice.mode
+        guard mode != .original else { return .original }
+        if let display = translationDisplay(for: segment) { return mode == .translated ? .translated(display) : .bilingual(display) }
+        if isMissingTranslation(segment) { return .untranslated(isPending: isTranslating(to: translationChoice.target)) }
+        return .original
+    }
+
+    /// The language badge for a row: the target language when Translated mode shows a translation, else the original's.
+    public func gutterLanguage(for segments: [Segment]) -> LanguageCode? {
+        if translationChoice.mode == .translated, let target = translationChoice.target,
+            segments.contains(where: { translationDisplay(for: $0) != nil })
+        {
+            return target
+        }
+        return segments.first?.languageCode
+    }
+
+    /// `true` while a translate job for `target` is queued or running.
+    func isTranslating(to target: LanguageCode?) -> Bool {
+        guard isTranslating, let target, let job = translationJob?.settings.translateTo else { return false }
+        return job.primary == target.primary
+    }
+
+    /// The text of `segment` as the transcript currently shows it (copy matches the view).
+    public func displayedText(for segment: Segment) -> String {
+        switch presentation(for: segment) {
+        case .original, .untranslated: segment.text
+        case .translated(let display): display.text
+        case .bilingual(let display): segment.text + "\n" + display.text
+        }
+    }
+
+    /// The displayed text of `ids` in transcript order, one block per segment.
+    public func displayedText(for ids: Set<SegmentID>) -> String {
+        segments.filter { ids.contains($0.id) }.map { displayedText(for: $0) }.joined(separator: "\n")
+    }
+
+    /// Keeps the "out of date" label right through edits, undo and redo (TRN-AC-10).
+    func reconcileStaleTranslations(_ delta: EditDelta) {
+        for replacement in delta.replaced where replacement.before.text != replacement.after.text {
+            let id = replacement.after.id
+            if replacement.after.translations.isEmpty {
+                staleTranslations.remove(id)
+                staleBaseline[id] = nil
+            } else if let baseline = staleBaseline[id] {
+                if baseline == replacement.after.text {
+                    staleTranslations.remove(id)
+                    staleBaseline[id] = nil
+                }
+            } else {
+                staleBaseline[id] = replacement.before.text
+                staleTranslations.insert(id)
+            }
+        }
+    }
+
     public var hasStaleTranslations: Bool { !staleTranslations.isEmpty }
 
     // MARK: Translate action (TRN-AC-03, TRN-AC-05)
@@ -191,6 +259,7 @@ extension TranscriptEditorModel {
         case .completed:
             await reloadSegmentsFromRepository()
             staleTranslations = []
+            staleBaseline = [:]
             translationChoice.target = target
             if translationChoice.mode == .original { translationChoice.mode = .bilingual }
             saveSetting(translationChoice, for: EditorSettingsKey.translationView(transcriptID))

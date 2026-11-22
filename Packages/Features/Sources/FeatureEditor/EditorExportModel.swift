@@ -30,6 +30,26 @@ public final class EditorExportModel {
         options = ExportOptions(format: .txt, includeIgnored: false)
     }
 
+    /// Starts the export sheet from what the editor is showing: version, language, speakers, timestamps, ignored, paragraphs.
+    public func adoptViewState() {
+        let view = editor.options
+        let choice = editor.translationChoice
+        if choice.mode != .original, let target = choice.target, translationLanguages.contains(where: { $0.primary == target.primary }) {
+            options.translation = choice.mode == .translated ? .replace : .bilingual
+            options.translationLanguage = translationLanguages.first { $0.primary == target.primary }
+        } else {
+            options.translation = .none
+        }
+        options.includeSpeakers = view.showSpeakers
+        options.includeIgnored = editor.showIgnored
+        options.paragraphGrouping = view.layout == .paragraphs
+        if !view.showTimestamps {
+            options.timestamps = .none
+        } else if options.timestamps == .none {
+            options.timestamps = view.layout == .paragraphs ? .perParagraph : .perSegment
+        }
+    }
+
     /// Formats offered in the picker.
     public static let formats: [ExportFormat] = ExportFormat.allCases
 

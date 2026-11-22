@@ -82,6 +82,8 @@ public final class TranscriptEditorModel {
     public internal(set) var translationChoice = TranslationDisplayChoice()
     /// Segments edited after their translation was made (TRN-AC-10).
     public internal(set) var staleTranslations: Set<SegmentID> = []
+    /// The original text each stale segment had when its translation was made, so undoing the edit clears the label.
+    @ObservationIgnored var staleBaseline: [SegmentID: String] = [:]
     /// Segments being re-transcribed right now.
     public internal(set) var retranscribing: Set<SegmentID> = []
     /// Replaced content kept by re-transcription (LANG-AC-08).
@@ -479,6 +481,7 @@ public final class TranscriptEditorModel {
         var next = segments
         delta.apply(to: &next)
         segments = next
+        reconcileStaleTranslations(delta)
         if let change = delta.speakers { transcript?.speakers = change.after }
         if delta.isStructural { needsFullWrite = true } else { dirtyIDs.formUnion(delta.touchedIDs) }
         needsHeaderWrite = true
@@ -529,7 +532,6 @@ public final class TranscriptEditorModel {
         var new = SegmentOps.editText(old, to: text)
         guard new != old else { return }
         if old.text != new.text { new.isUserEdited = true }  // SCR-013: a re-transcribe keeps this segment
-        if old.text != new.text, !old.translations.isEmpty { staleTranslations.insert(id) }  // TRN-AC-10
         perform(EditDelta(name: "Edit Text", replaced: [.init(before: old, after: new)]))
     }
 

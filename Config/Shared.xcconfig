@@ -1,0 +1,3 @@
+// Shared build settings. Defaults to ad-hoc; Local.xcconfig (gitignored) overrides with a real identity.
+CODE_SIGN_IDENTITY = -
+#include? "Local.xcconfig"

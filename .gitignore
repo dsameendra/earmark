@@ -87,3 +87,5 @@ spikes/**/.venv/
 *.oga
 *.ogv
 .claude/
+# Local signing
+Config/Local.xcconfig

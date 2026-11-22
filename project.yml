@@ -26,6 +26,8 @@ packages:
   Export: { path: Packages/Export }
   Jobs: { path: Packages/Jobs }
   Permissions: { path: Packages/Permissions }
+  LiveCaptions: { path: Packages/LiveCaptions }
+  Dictation: { path: Packages/Dictation }
 targets:
   Earmark:
     type: application
@@ -33,6 +35,9 @@ targets:
     sources: [App]
     entitlements:
       path: App/Earmark.entitlements
+      properties:
+        # Not sandboxed; hardened runtime needs the audio-input entitlement for microphone capture.
+        com.apple.security.device.audio-input: true
     info:
       path: App/Info.plist
       properties:
@@ -50,6 +55,8 @@ targets:
       - package: Diarization
       - package: Jobs
       - package: Permissions
+      - package: LiveCaptions
+      - package: Dictation
       - package: AppCore
         product: AppCoreTesting   # debug `-UseMocks` composition only
       - package: Features

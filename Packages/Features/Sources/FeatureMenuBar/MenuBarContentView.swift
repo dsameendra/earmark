@@ -25,6 +25,12 @@ public struct MenuBarActions {
     }
 }
 
+/// Symbols for menu bar rows (rule A3).
+enum MenuBarSymbol {
+    static let startDictation = "mic"
+    static let stopDictation = "mic.fill"
+}
+
 /// Menu bar icon; the recording state pulses unless Reduce Motion is on (MENU-AC-07).
 public struct MenuBarIconView: View {
     private let model: MenuBarModel
@@ -117,6 +123,13 @@ public struct MenuBarContentView: View {
 
     private var captureRow: some View {
         VStack(alignment: .leading, spacing: DSSpacing.xs) {
+            if model.isDictationAvailable {
+                Button(
+                    model.isDictating ? "Stop Dictation" : "Start Dictation",
+                    systemImage: model.isDictating ? MenuBarSymbol.stopDictation : MenuBarSymbol.startDictation
+                ) { Task { await model.toggleDictation() } }
+                .accessibilityIdentifier("menuBar.dictation")
+            }
             Button("Start Meeting Capture", systemImage: "person.2.wave.2") {}
                 .disabled(true)
                 .help("Meeting capture is not available yet")

@@ -36,6 +36,12 @@ public enum SettingsKey {
     public static let meetingStorageLocation = "meetings.storageLocation"
     /// `String` (UUID) of the active live-caption preset.
     public static let activeCaptionPreset = "liveCaptions.activePreset"
+    /// `Bool`; show the floating caption overlay while a live session runs (default `true`).
+    public static let liveOverlayEnabled = "liveCaptions.overlayEnabled"
+    /// `Bool`; "Save as transcript" default for live sessions (default `false`).
+    public static let liveSaveAsTranscript = "liveCaptions.saveAsTranscript"
+    /// `String` raw value of the last live source (`mic`, `system`, `micAndSystem`).
+    public static let liveSource = "liveCaptions.source"
     /// Dictation: `HotkeyMode`, `TextInsertionMethod`, `Bool`s and `Int`.
     public static let dictationMode = "dictation.mode"
     public static let dictationInsertion = "dictation.insertionMethod"

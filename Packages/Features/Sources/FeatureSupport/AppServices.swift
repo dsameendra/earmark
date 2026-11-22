@@ -16,12 +16,17 @@ public struct AppServices: Sendable {
     public var media: (any MediaRepository)?
     /// Export presets (batch auto-export picker). Optional until the composition root provides it.
     public var presets: (any PresetRepository)?
+    /// Pause, meter, overlay and preset controls for live captions; `nil` where unavailable (previews, mocks).
+    public var liveExtras: (any LiveSessionExtras)?
+    /// Menu bar dictation toggle; `nil` where dictation is unavailable.
+    public var dictation: DictationMenuControl?
 
     public init(
         jobQueue: any JobQueue, transcripts: any TranscriptRepository, meetings: any MeetingRepository, models: any ModelManaging,
         live: any LiveSessionControlling, meetingDetector: any MeetingDetector, hardware: any HardwareTierProviding,
         permissions: any PermissionsServicing, audioDevices: any AudioDeviceProviding, settings: any SettingsStore,
-        media: (any MediaRepository)? = nil, presets: (any PresetRepository)? = nil
+        media: (any MediaRepository)? = nil, presets: (any PresetRepository)? = nil,
+        liveExtras: (any LiveSessionExtras)? = nil, dictation: DictationMenuControl? = nil
     ) {
         self.jobQueue = jobQueue
         self.transcripts = transcripts
@@ -35,6 +40,8 @@ public struct AppServices: Sendable {
         self.settings = settings
         self.media = media
         self.presets = presets
+        self.liveExtras = liveExtras
+        self.dictation = dictation
     }
 
     /// Fully in-memory services for previews and tests.

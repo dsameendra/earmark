@@ -55,6 +55,12 @@ public final class MenuBarModel {
     /// Why Start is unavailable, or `nil` when it can start (edge case: no input device).
     public var startDisabledReason: String? { devices.isEmpty ? "No input device available" : nil }
 
+    /// `true` when the app wired dictation (the menu offers the toggle only then).
+    public var isDictationAvailable: Bool { services.dictation != nil }
+
+    /// `true` while dictation is listening.
+    public var isDictating: Bool { inputs.dictationArmed }
+
     public var isLiveRunning: Bool { inputs.liveState == .running || inputs.liveState == .starting }
 
     /// Starts following all services. Call once at launch; idempotent.
@@ -85,6 +91,10 @@ public final class MenuBarModel {
                     case .removed(let id): self?.track(id, nil)
                     }
                 }
+            },
+            Task { [weak self] in
+                guard let control = services.dictation else { return }
+                for await listening in control.isListening() { self?.inputs.dictationArmed = listening }
             },
             Task { [weak self] in
                 await self?.reloadDevices()
@@ -134,6 +144,9 @@ public final class MenuBarModel {
             errorMessage = String(describing: error)
         }
     }
+
+    /// Starts dictation, or finishes the running session (MENU-AC-02: status shows "Dictation armed" while listening).
+    public func toggleDictation() async { await services.dictation?.toggle() }
 
     public func stopLive() async { _ = await services.live.stop() }
 

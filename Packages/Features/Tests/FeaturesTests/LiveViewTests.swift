@@ -1,0 +1,197 @@
+import AppCore
+import FeatureLive
+import FeatureMenuBar
+import FeatureSupport
+import Foundation
+import Testing
+
+private actor RecordingLive: LiveSessionControlling {
+    private(set) var configs: [LiveSessionConfig] = []
+    private let stateBus = Broadcaster<LiveSessionState>()
+    private let linesBus = Broadcaster<[CaptionLine]>()
+    var transcriptID: TranscriptID?
+
+    func start(_ config: LiveSessionConfig) async throws {
+        configs.append(config)
+        stateBus.send(.running)
+    }
+    func stop() async -> TranscriptID? {
+        stateBus.send(.idle)
+        return transcriptID
+    }
+    func setTranscriptID(_ id: TranscriptID?) { transcriptID = id }
+    nonisolated func state() -> AsyncStream<LiveSessionState> { stateBus.stream(initial: .idle) }
+    nonisolated func lines() -> AsyncStream<[CaptionLine]> { linesBus.stream(initial: []) }
+}
+
+private final class FakeExtras: LiveSessionExtras, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _paused: [Bool] = []
+    private var _committed: [CaptionPreset] = []
+    let levelBus = Broadcaster<Float>()
+    let noticeBus = Broadcaster<LiveNotice>()
+    var paused: [Bool] { lock.withLock { _paused } }
+    var committed: [CaptionPreset] { lock.withLock { _committed } }
+    var overlay = true
+
+    func setPaused(_ paused: Bool) async { lock.withLock { _paused.append(paused) } }
+    func levels() -> AsyncStream<Float> { levelBus.stream() }
+    func notices() -> AsyncStream<LiveNotice> { noticeBus.stream() }
+    func setOverlayEnabled(_ enabled: Bool) async { overlay = enabled }
+    func isOverlayEnabled() async -> Bool { overlay }
+    func presets() async -> [CaptionPreset] { [CaptionPreset(name: "Subtle")] }
+    func activePreset() async -> CaptionPreset { CaptionPreset(name: "Subtle") }
+    func setActivePreset(_ id: PresetID) async {}
+    func commit(_ preset: CaptionPreset) async -> CaptionPreset {
+        lock.withLock { _committed.append(preset) }
+        return preset
+    }
+}
+
+@Suite @MainActor struct LiveScreenTests {
+    private func make(live: RecordingLive = RecordingLive(), extras: FakeExtras? = FakeExtras()) -> (LiveModel, RecordingLive, FakeExtras?, InMemorySettingsStore) {
+        let store = InMemorySettingsStore()
+        var services = AppServices.preview()
+        services.live = live
+        services.settings = store
+        services.liveExtras = extras
+        return (LiveModel(services: services), live, extras, store)
+    }
+
+    @Test func defaultsToEnglishAndStartsWithChosenSourceAndDevice() async throws {
+        let (model, live, _, _) = make()
+        #expect(model.language == .english)
+        model.source = .micAndSystem
+        model.deviceUID = "uid-1"
+        model.saveAsTranscript = true
+        let states = Task { await model.watchState() }
+        try await Task.sleep(for: .milliseconds(50))
+        await model.start()
+        let config = try #require(await live.configs.first)
+        #expect(config.source == .micAndSystem(deviceUID: "uid-1", lanes: true))
+        #expect(config.languageMode == .single(.english))
+        #expect(config.saveAsTranscript)
+        #expect(config.diarize)
+        states.cancel()
+    }
+
+    @Test func micOnlyDoesNotDiarize() async throws {
+        let (model, live, _, _) = make()
+        await model.start()
+        #expect(await live.configs.first?.diarize == false)
+    }
+
+    @Test func pauseForwardsToExtrasAndNoticesFollow() async throws {
+        let (model, _, extras, _) = make()
+        let extrasValue = try #require(extras)
+        let states = Task { await model.watchState() }
+        let notices = Task { await model.watchNotices() }
+        try await Task.sleep(for: .milliseconds(50))
+        await model.start()
+        try await Task.sleep(for: .milliseconds(50))
+        await model.togglePause()
+        #expect(model.isPaused)
+        #expect(extrasValue.paused == [true])
+        extrasValue.noticeBus.send(LiveNotice(kind: .resumed, message: "Resumed"))
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(!model.isPaused)
+        states.cancel()
+        notices.cancel()
+    }
+
+    @Test func levelsAreOnlyShownWhileRunning() async throws {
+        let (model, _, extras, _) = make()
+        let extrasValue = try #require(extras)
+        let states = Task { await model.watchState() }
+        let levels = Task { await model.watchLevels() }
+        try await Task.sleep(for: .milliseconds(50))
+        extrasValue.levelBus.send(0.8)
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(model.level == 0)
+        await model.start()
+        try await Task.sleep(for: .milliseconds(50))
+        extrasValue.levelBus.send(0.8)
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(model.level > 0.5)
+        states.cancel()
+        levels.cancel()
+    }
+
+    @Test func preferencesPersistAndReload() async throws {
+        let (model, _, _, store) = make()
+        model.saveAsTranscript = true
+        model.language = .sinhala
+        model.source = .system
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(await store.value(for: SettingsKey.liveSaveAsTranscript, as: Bool.self) == true)
+        #expect(await store.value(for: SettingsKey.languageMode, as: LanguageMode.self) == .single(.sinhala))
+        var services = AppServices.preview()
+        services.settings = store
+        let reloaded = LiveModel(services: services)
+        await reloaded.loadPreferences()
+        #expect(reloaded.source == .system && reloaded.language == .sinhala && reloaded.saveAsTranscript)
+    }
+
+    @Test func presetEditsAreCommittedAfterDebounce() async throws {
+        let (model, _, extras, _) = make()
+        let extrasValue = try #require(extras)
+        await model.loadPreferences()
+        var edited = model.preset
+        edited.visibleLines = 3
+        model.updatePreset(edited)
+        #expect(model.preset.visibleLines == 3)
+        try await Task.sleep(for: .milliseconds(500))
+        #expect(extrasValue.committed.last?.visibleLines == 3)
+    }
+
+    @Test func overlayToggleIsForwarded() async throws {
+        let (model, _, extras, _) = make()
+        let extrasValue = try #require(extras)
+        await model.setOverlayEnabled(false)
+        #expect(!model.overlayEnabled)
+        #expect(!extrasValue.overlay)
+    }
+
+    @Test func failedStartSurfacesAsFailedState() async {
+        struct Failing: LiveSessionControlling {
+            func start(_ config: LiveSessionConfig) async throws { throw AppError.deviceUnavailable }
+            func stop() async -> TranscriptID? { nil }
+            func state() -> AsyncStream<LiveSessionState> { AsyncStream { _ in } }
+            func lines() -> AsyncStream<[CaptionLine]> { AsyncStream { _ in } }
+        }
+        var services = AppServices.preview()
+        services.live = Failing()
+        let model = LiveModel(services: services)
+        await model.start()
+        if case .failed = model.state {} else { Issue.record("expected failed state") }
+    }
+}
+
+@Suite @MainActor struct MenuBarDictationTests {
+    @Test func dictationToggleArmsStatusAndCallsApp() async throws {
+        let bus = Broadcaster<Bool>()
+        let calls = CallCounter()
+        var services = AppServices.preview()
+        services.dictation = DictationMenuControl(isListening: { bus.stream(initial: false) }, toggle: { await calls.increment() })
+        let model = MenuBarModel(services: services)
+        #expect(model.isDictationAvailable)
+        model.start()
+        try await Task.sleep(for: .milliseconds(100))
+        await model.toggleDictation()
+        #expect(await calls.value == 1)
+        bus.send(true)
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(model.isDictating)
+        #expect(model.status == .dictationArmed)
+        model.stop()
+    }
+
+    @Test func noDictationControlMeansUnavailable() {
+        #expect(!MenuBarModel(services: .preview()).isDictationAvailable)
+    }
+}
+
+private actor CallCounter {
+    var value = 0
+    func increment() { value += 1 }
+}

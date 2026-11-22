@@ -39,6 +39,11 @@ struct GeneralSettingsView: View {
             } footer: {
                 Text("Choose specific languages and models in Languages.")
             }
+            Section("Welcome") {
+                Button("Show Welcome Again") { Task { await model.showWelcomeAgain() } }
+                    .accessibilityIdentifier("settings.general.showWelcome")
+                    .accessibilityHint("Reopens the first-run introduction")
+            }
             Section("Notifications") {
                 Toggle("Allow notifications", isOn: model.notificationsEnabled.binding)
                 Toggle("Notify when a file finishes transcribing", isOn: model.notifyJobCompleted.binding)

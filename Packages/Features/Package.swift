@@ -22,6 +22,7 @@ let package = Package(
         .library(name: "FeatureMenuBar", targets: ["FeatureMenuBar"]),
         .library(name: "FeatureSettings", targets: ["FeatureSettings"]),
         .library(name: "FeatureEditor", targets: ["FeatureEditor"]),
+        .library(name: "FeatureOnboarding", targets: ["FeatureOnboarding"]),
     ],
     dependencies: [
         .package(path: "../AppCore"),
@@ -52,6 +53,7 @@ let package = Package(
             dependencies: base + [
                 .product(name: "Processing", package: "Processing"), .product(name: "Export", package: "Export"),
             ], swiftSettings: strict),
+        .target(name: "FeatureOnboarding", dependencies: base + ["FeatureSettings"], swiftSettings: strict),
         .target(
             name: "FeatureShell",
             dependencies: base + ["FeatureHome", "FeatureQueue", "FeatureLibrary", "FeatureMeetings", "FeatureLive", "FeatureEditor"],
@@ -61,7 +63,7 @@ let package = Package(
             dependencies: base + [
                 .product(name: "AppCoreTesting", package: "AppCore"),
                 "FeatureShell", "FeatureHome", "FeatureQueue", "FeatureLibrary", "FeatureMeetings", "FeatureLive", "FeatureMenuBar",
-                "FeatureSettings", "FeatureEditor", .product(name: "Processing", package: "Processing"),
+                "FeatureSettings", "FeatureEditor", "FeatureOnboarding", .product(name: "Processing", package: "Processing"),
                 .product(name: "LiveCaptions", package: "LiveCaptions"),
             ]),
     ],

@@ -79,5 +79,7 @@ targets:
         product: FeatureLive
       - package: Features
         product: FeatureEditor
+      - package: Features
+        product: FeatureOnboarding
       - package: Processing
       - package: Export

@@ -17,12 +17,23 @@ struct EarmarkApp: App {
     var body: some Scene {
         Window("Earmark", id: MainWindow.id) {
             ShellView(model: environment.shell)
+                .onboardingLauncher(settings: environment.services.settings)
         }
         .defaultSize(width: 1000, height: 640)
-        .commands { ShellCommands(model: environment.shell) }
+        .commands {
+            ShellCommands(model: environment.shell)
+            OnboardingCommands(settings: environment.services.settings)
+        }
+
+        Window("Welcome to Earmark", id: OnboardingWindow.id) {
+            OnboardingWindowRoot(services: environment.services)
+        }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
 
         Settings {
             SettingsRootView(dependencies: environment.settingsDependencies)
+                .onboardingLauncher(settings: environment.services.settings)
         }
 
         MenuBarExtra {

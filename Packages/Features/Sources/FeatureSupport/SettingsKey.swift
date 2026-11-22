@@ -95,6 +95,10 @@ public enum SettingsKey {
     public static let libraryRetentionDays = recentlyDeletedRetentionDays  // one shared setting (Settings > Storage and Library)
     /// `[LibraryFolder]`; Library folder names (folders have no repository, only `Transcript.folderID`).
     public static let libraryFolders = "library.folders"
+    /// `Bool`; first-run onboarding was completed or skipped (ONB-AC-01). Setting it to `false` shows the welcome flow again.
+    public static let onboardingCompleted = "onboarding.completed"
+    /// `Int`; raw index of the onboarding step to resume at (absent means the first step).
+    public static let onboardingStep = "onboarding.step"
     /// `Int`; maximum parallel jobs (FILE-AC-07).
     public static let queueMaxConcurrency = "queue.maxConcurrency"
 }

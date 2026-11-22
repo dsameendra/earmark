@@ -1,0 +1,6 @@
+# SCR-002: Segment language-uncertain flag
+Status: Proposed. Not applied; the app derives the state instead (no AppCore edit).
+Reason: LANG-AC-06 says a segment whose language ID fell below the threshold "is flagged as uncertain". `Segment` has `languageCode` and `languageConfidence` but no flag, and `MultilingualEngine` reports a fallback to the previous language as `languageConfidence == nil` or low (found by T25).
+Current workaround: `FeatureSupport.LanguageCertainty.isUncertain(segment, in: transcriptLanguages)`: uncertain when the transcript holds more than one language and the segment's confidence is nil or below 0.5. The restriction to multilingual transcripts matters: in a single-language transcript the engine stamps the language without identifying it, so nil means "not measured", not "doubtful". A user-chosen language (language change, re-transcription) stores confidence 1.
+Proposed change: additive `public var isLanguageUncertain: Bool = false` on `Segment` (defaulted init parameter, Codable with a default so stored rows still decode), set by `MultilingualEngine` and cleared when the user sets the language. Persistence needs one nullable column or a flag inside the existing JSON. Then `LanguageCertainty` reads the flag.
+Impact: AppCore frozen contract; AppCoreTesting mocks unaffected (defaulted).

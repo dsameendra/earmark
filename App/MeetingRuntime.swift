@@ -191,7 +191,9 @@ final class MeetingCaptureAdapter: MeetingCapturing, Sendable {
                 .capturing(info.app, mode: info.recording ? .transcribeAndRecord : .transcribeOnly, since: info.startedAt))
         case .sessionEnded: publish(.idle)
         case .consentNoticeRequired:
-            if let app = await controller.currentSession?.app { await prompts?.remindConsent(app: app) }
+            // `MeetingsModel` owns the consent gate (blocking notice for a manual Record, one-time reminder for an automatic
+            // one), so the controller's event is only logged here.
+            log.info("recording started before the consent notice was acknowledged")
         case .recordingFailed(let reason), .failed(let reason):
             lastFailure.withLock { $0 = reason }
             log.error("meeting capture problem: \(reason, privacy: .public)")

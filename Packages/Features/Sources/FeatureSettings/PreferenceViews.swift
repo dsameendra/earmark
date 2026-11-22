@@ -1,4 +1,5 @@
 import AppCore
+import AppKit
 import DesignSystem
 import SwiftUI
 
@@ -460,23 +461,17 @@ struct PrivacySettingsView: View {
         Form {
             Section {
                 ForEach(PermissionKind.allCases, id: \.self) { kind in
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text(kind.title)
-                            Text(kind.purpose).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
-                        }
-                        Spacer()
-                        let status = model.status(kind)
-                        StatusPill(LocalizedStringKey(Self.label(status)), tone: Self.tone(status))
-                        if status == .notDetermined {
-                            Button("Allow") { Task { await model.request(kind) } }
-                        }
-                        Button("Open System Settings") { openURL(model.settingsURL(for: kind)) }
-                    }
-                    .accessibilityElement(children: .combine)
+                    PermissionRow(
+                        state: model.rowState(kind),
+                        onRequest: { Task { await model.request(kind) } },
+                        onOpenSettings: { openURL(model.settingsURL(for: kind)) })
                 }
+            } header: {
+                Text("Earmark asks for access only when a feature needs it.")
             } footer: {
-                Text("Earmark makes no network requests except model downloads you start.")
+                Text(
+                    "Denied permissions never block the rest of the app. Earmark makes no network requests except model downloads you start."
+                )
             }
         }
         .formStyle(.grouped)
@@ -484,23 +479,9 @@ struct PrivacySettingsView: View {
             await model.load()
             await model.observe()
         }
-    }
-
-    static func label(_ status: PermissionStatus) -> String {
-        switch status {
-        case .granted: "Granted"
-        case .denied: "Denied"
-        case .restricted: "Restricted"
-        case .notDetermined: "Not requested"
-        }
-    }
-
-    static func tone(_ status: PermissionStatus) -> DSTone {
-        switch status {
-        case .granted: .success
-        case .denied: .danger
-        case .restricted: .warning
-        case .notDetermined: .neutral
+        // The user may have changed a switch in System Settings while Earmark was in the background.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await model.load() }
         }
     }
 }

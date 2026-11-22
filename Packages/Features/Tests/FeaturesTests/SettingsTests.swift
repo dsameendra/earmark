@@ -350,6 +350,31 @@ private func descriptor(
         for kind in PermissionKind.allCases { #expect(model.settingsURL(for: kind).scheme == "x-apple.systempreferences") }
     }
 
+    @Test func permissionRowStatesDriveActionsAndRecovery() {  // SET-AC-17, ONB-AC-05/06
+        let fresh = PermissionRowState(kind: .microphone, status: .notDetermined)
+        #expect(fresh.action == .request && fresh.chipLabel == "Not requested" && fresh.recoveryNote == nil)
+        #expect(fresh.showsSettingsLink)
+        let onboarding = PermissionRowState(kind: .microphone, status: .notDetermined, context: .onboarding)
+        #expect(onboarding.chipLabel == "Ask later" && !onboarding.showsSettingsLink && onboarding.actionTitle == "Allow now")
+        let denied = PermissionRowState(kind: .accessibility, status: .denied, context: .onboarding)
+        #expect(denied.action == .none && denied.showsSettingsLink && denied.recoveryNote?.contains("System Settings") == true)
+        let granted = PermissionRowState(kind: .notifications, status: .granted)
+        #expect(granted.action == .none && granted.recoveryNote == nil && granted.status.chipTone == .success)
+        #expect(PermissionRowState(kind: .screenRecording, status: .restricted).recoveryNote != nil)
+        #expect(Set(PermissionKind.allCases.map(\.systemImage)).count == PermissionKind.allCases.count)
+        let ids = PermissionKind.allCases.map { PermissionRowState(kind: $0, status: .granted).identifierBase }
+        #expect(Set(ids).count == PermissionKind.allCases.count)
+    }
+
+    @Test func permissionsModelRequestUpdatesStatusAndNeverBlocks() async {
+        let model = PermissionsSettingsModel(service: ScriptedPermissions(initial: .notDetermined, afterRequest: .denied))
+        await model.load()
+        #expect(model.rowState(.microphone).action == .request)
+        await model.request(.microphone)
+        #expect(model.status(.microphone) == .denied)
+        #expect(model.rowState(.microphone).action == .none)
+    }
+
     @Test func builtInCaptionPresetsExistAndAreReadOnly() async {  // SET-AC-11
         let model = CaptionPresetsModel(repository: InMemoryPresetRepository(), store: InMemorySettingsStore())
         await model.load()

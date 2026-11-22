@@ -12,7 +12,7 @@ let package = Package(
     targets: [
         .target(
             name: "DesignSystem", dependencies: [.product(name: "AppCore", package: "AppCore")],
-            swiftSettings: [.treatAllWarnings(as: .error)]),
+            resources: [.process("Symbols/Resources")], swiftSettings: [.treatAllWarnings(as: .error)]),
         .testTarget(name: "DesignSystemTests", dependencies: ["DesignSystem", .product(name: "AppCoreTesting", package: "AppCore")]),
     ],
     swiftLanguageModes: [.v6]

@@ -53,6 +53,11 @@ actor AsyncGate {
     }
 }
 
+extension Duration {
+    /// The duration in (fractional) seconds.
+    var secondsValue: Double { Double(components.seconds) + Double(components.attoseconds) / 1e18 }
+}
+
 /// Text clean-up shared by the engines.
 enum TranscriptText {
     /// Removes Whisper special tokens such as `<|startoftranscript|>` or `<|0.00|>` that can leak into text.

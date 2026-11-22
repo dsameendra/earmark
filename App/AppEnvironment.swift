@@ -100,22 +100,29 @@ final class AppEnvironment {
         #endif
         let database = openDatabase()
         let hardware = SystemHardwareTierProvider()
-        let models = ModelManager(hardware: hardware)
+        // Apple's speech assets are system-managed; without this provider the Models screen reported them as "not available".
+        let apple = AppleSpeechEngine()
+        let appleReadiness = AppleSpeechReadiness()
+        let models = ModelManager(
+            appleAssets: AppleSpeechAssetProvider(engine: apple, readiness: appleReadiness), hardware: hardware)
+        let systemLanguage = LanguageCode(Locale.current.language.languageCode?.identifier ?? "en")
+        Task { await appleReadiness.refresh(engine: apple, languages: [systemLanguage, .english]) }
         // One settings store instance: its change streams are tied to it, and the queue observes the same one.
         let settings = database.makeSettingsStore()
         let permissions = PermissionsService()
         let audioDevices = AudioDeviceProvider()
         // One engine instance each, shared by file jobs, live captions and dictation: WhisperKit holds a single resident model.
         let whisper = WhisperKitEngine(models: models, tokenizerFolder: models.tokenizerFolder)
-        let apple = AppleSpeechEngine()
         let engines: [EngineID: any TranscriptionEngine] = [whisper.id: whisper, apple.id: apple]
+        // Live and dictation leave Apple Speech for Whisper (with a notice) when it cannot be used on this Mac.
+        let router = AppleAwareEngineRouter(readiness: appleReadiness)
 
         let live = makeLive(
             database: database, models: models, hardware: hardware, settings: settings, permissions: permissions,
-            audioDevices: audioDevices, engines: engines)
+            audioDevices: audioDevices, engines: engines, router: router)
         let dictation = makeDictation(
             database: database, models: models, hardware: hardware, settings: settings, permissions: permissions,
-            engines: engines)
+            engines: engines, router: router)
         let dictationControl = DictationMenuControl.make(controller: dictation.controller, settings: settings)
 
         let services = AppServices(
@@ -137,11 +144,12 @@ final class AppEnvironment {
     /// diarization and the shared post-processing chain, plus the caption overlay.
     private static func makeLive(
         database: AppDatabase, models: ModelManager, hardware: any HardwareTierProviding, settings: any SettingsStore,
-        permissions: any PermissionsServicing, audioDevices: AudioDeviceProvider, engines: [EngineID: any TranscriptionEngine]
+        permissions: any PermissionsServicing, audioDevices: AudioDeviceProvider, engines: [EngineID: any TranscriptionEngine],
+        router: any EngineRouter
     ) -> LiveRuntime {
         let audio = LiveAudioProvider(permissions: permissions, settings: settings, deviceProvider: audioDevices)
         let provider = RouterEngineProvider(
-            router: DefaultEngineRouter(), hardware: hardware, models: models, engine: { engines[$0] },
+            router: router, hardware: hardware, models: models, engine: { engines[$0] },
             explicitModel: {
                 let raw = await settings.value(for: SettingsKey.preferredModel, as: String.self)
                 guard let raw, !raw.isEmpty else { return nil }
@@ -170,11 +178,11 @@ final class AppEnvironment {
     /// text insertion, HUD and history. The controller is started at launch; a missing permission only disables the hotkey.
     private static func makeDictation(
         database: AppDatabase, models: ModelManager, hardware: any HardwareTierProviding, settings: any SettingsStore,
-        permissions: any PermissionsServicing, engines: [EngineID: any TranscriptionEngine]
+        permissions: any PermissionsServicing, engines: [EngineID: any TranscriptionEngine], router: any EngineRouter
     ) -> DictationRuntime {
         let hud = DictationHUDController()
         let routed = RoutedEngineProvider(
-            router: DefaultEngineRouter(), tier: { hardware.profile.tier }, installedModels: { await models.installedModels() },
+            router: router, tier: { hardware.profile.tier }, installedModels: { await models.installedModels() },
             engines: engines)
         let hotkeys = GlobalHotkeyService(source: FallbackHotkeySource())
         let controller = DictationController(

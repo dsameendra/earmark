@@ -12,6 +12,8 @@ public enum AppleSpeechAssetStatus: Sendable, Equatable {
     /// The assets are being downloaded by the system.
     case downloading
     case installed
+    /// `SpeechTranscriber.isAvailable` is false (unsupported hardware, region or OS configuration).
+    case unavailable
 }
 
 /// ASR engine backed by Apple's `SpeechAnalyzer` / `SpeechTranscriber` (macOS 26+).
@@ -27,53 +29,58 @@ public enum AppleSpeechAssetStatus: Sendable, Equatable {
 public actor AppleSpeechEngine: TranscriptionEngine {
     public nonisolated let id: EngineID = RoutingTargets.appleEngine
 
+    private let backend: any AppleSpeechAssetBackend
+
     /// Creates the engine.
-    public init() {}
+    /// - Parameter backend: Seam over the system assets; tests inject a fake.
+    public init(backend: any AppleSpeechAssetBackend = SystemAppleSpeechBackend()) { self.backend = backend }
 
     // MARK: - Capability
 
     public func supportedLanguages(model: ModelID?) async -> Set<LanguageCode> {
-        let locales = await SpeechTranscriber.supportedLocales
+        let locales = await backend.supportedLocales()
         return Set(locales.compactMap { locale in locale.language.languageCode.map { LanguageCode($0.identifier) } })
     }
 
     /// Whether the system speech assets for `language` are installed.
     public func assetStatus(for language: LanguageCode) async -> AppleSpeechAssetStatus {
-        guard SpeechTranscriber.isAvailable, let locale = await Self.supportedLocale(for: language) else { return .unsupported }
-        let transcriber = SpeechTranscriber(locale: locale, preset: .timeIndexedProgressiveTranscription)
-        switch await AssetInventory.status(forModules: [transcriber]) {
+        guard backend.isAvailable else { return .unavailable }
+        guard let locale = await resolveLocale(language) else { return .unsupported }
+        switch await backend.status(for: locale) {
         case .unsupported: return .unsupported
-        case .supported: return .notInstalled
         case .downloading: return .downloading
         case .installed: return .installed
-        @unknown default: return .unsupported
+        case .supported:
+            // `AssetInventory` reports `.supported` for assets that are on disk but not yet reserved by this app.
+            let installed = await backend.installedLocales()
+            let key = AppleSpeechLocaleResolver.key(locale)
+            return installed.contains { AppleSpeechLocaleResolver.key($0) == key } ? .installed : .notInstalled
         }
     }
 
     /// Downloads and installs the locale assets (user-initiated; shows `progress` as 0...1).
-    /// - Throws: ``AppError/unsupportedLanguage(_:)`` or ``AppError/modelDownloadFailed(_:reason:)``.
+    /// - Throws: ``AppError/unsupportedLanguage(_:)`` or ``AppError/modelDownloadFailed(_:reason:)`` whose reason explains
+    ///   the cause and where to look in System Settings.
     public func installAssets(for language: LanguageCode, progress: (@Sendable (Double) -> Void)? = nil) async throws {
-        guard let locale = await Self.supportedLocale(for: language) else { throw AppError.unsupportedLanguage(language) }
-        let transcriber = SpeechTranscriber(locale: locale, preset: .timeIndexedProgressiveTranscription)
+        guard backend.isAvailable else {
+            throw AppError.modelDownloadFailed(RoutingTargets.appleSpeech, reason: AppleSpeechMessages.unavailable(language: nil))
+        }
+        guard let locale = await resolveLocale(language) else {
+            throw AppError.modelDownloadFailed(
+                RoutingTargets.appleSpeech, reason: AppleSpeechMessages.unavailable(language: language))
+        }
         do {
-            guard let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) else { return }
-            let watcher = Task { [progress] in
-                while !Task.isCancelled {
-                    progress?(request.progress.fractionCompleted)
-                    try? await Task.sleep(for: .milliseconds(200))
-                }
-            }
-            defer { watcher.cancel() }
-            try await request.downloadAndInstall()
-            progress?(1)
+            try await backend.install(locale, progress: progress)
+            if await assetStatus(for: language) == .notInstalled { try await backend.reserve(locale) }
         } catch {
-            throw AppError.modelDownloadFailed(RoutingTargets.appleSpeech, reason: String(describing: error))
+            if error is CancellationError { throw error }
+            throw AppError.modelDownloadFailed(RoutingTargets.appleSpeech, reason: AppleSpeechMessages.installFailure(error))
         }
     }
 
     /// Nothing to load: assets are managed per locale by the system. Verifies the framework is usable.
     public func prepare(model: ModelID) async throws {
-        guard SpeechTranscriber.isAvailable else {
+        guard backend.isAvailable else {
             throw AppError.engineFailure(id, reason: "Speech transcription is not available on this device.")
         }
     }
@@ -90,15 +97,16 @@ public actor AppleSpeechEngine: TranscriptionEngine {
         audio: AsyncStream<AppCore.AudioChunk>, options: TranscriptionOptions
     ) -> AsyncThrowingStream<TranscriptionEvent, any Error> {
         .engineTask(engine: id) { continuation in
-            try await Self.runSession(audio: audio, options: options, continuation: continuation)
+            try await self.runSession(audio: audio, options: options, continuation: continuation)
         }
     }
 
     // MARK: - Session
 
-    static func supportedLocale(for language: LanguageCode) async -> Locale? {
-        await SpeechTranscriber.supportedLocale(
-            equivalentTo: Locale(identifier: language.rawValue.replacingOccurrences(of: "_", with: "-")))
+    func resolveLocale(_ language: LanguageCode) async -> Locale? {
+        AppleSpeechLocaleResolver.resolve(
+            language: language, supported: await backend.supportedLocales(), installed: await backend.installedLocales(),
+            preferred: Locale.current)
     }
 
     private static func language(of options: TranscriptionOptions) throws -> LanguageCode {
@@ -111,27 +119,27 @@ public actor AppleSpeechEngine: TranscriptionEngine {
         }
     }
 
-    private static func runSession(
+    private func runSession(
         audio: AsyncStream<AppCore.AudioChunk>, options: TranscriptionOptions,
         continuation: AsyncThrowingStream<TranscriptionEvent, any Error>.Continuation
     ) async throws {
         let engineID = RoutingTargets.appleEngine
-        guard SpeechTranscriber.isAvailable else {
+        guard backend.isAvailable else {
             throw AppError.engineFailure(engineID, reason: "Speech transcription is not available on this device.")
         }
-        let language = try language(of: options)
-        guard let locale = await supportedLocale(for: language) else { throw AppError.unsupportedLanguage(language) }
+        let language = try Self.language(of: options)
+        guard let locale = await resolveLocale(language) else { throw AppError.unsupportedLanguage(language) }
+        guard await assetStatus(for: language) == .installed else { throw AppError.modelNotInstalled(RoutingTargets.appleSpeech) }
+        // Installed assets must also be reserved for this app before a transcriber can use them.
+        if await backend.status(for: locale) != .installed { try await backend.reserve(locale) }
         let transcriber = SpeechTranscriber(locale: locale, preset: .timeIndexedProgressiveTranscription)
-        guard await AssetInventory.status(forModules: [transcriber]) >= .installed else {
-            throw AppError.modelNotInstalled(RoutingTargets.appleSpeech)
-        }
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
             throw AppError.engineFailure(engineID, reason: "No compatible audio format for \(locale.identifier).")
         }
         let converter = try ChunkConverter(target: format)
 
-        let analyzer = SpeechAnalyzer(modules: [transcriber], options: analyzerOptions(for: options.useCase))
-        if let context = contextualContext(options.vocabulary) { try await analyzer.setContext(context) }
+        let analyzer = SpeechAnalyzer(modules: [transcriber], options: Self.analyzerOptions(for: options.useCase))
+        if let context = Self.contextualContext(options.vocabulary) { try await analyzer.setContext(context) }
         let (inputs, inputContinuation) = AsyncStream<AnalyzerInput>.makeStream()
         let wantWords = options.wordTimestamps
         let baseBox = BaseTime()

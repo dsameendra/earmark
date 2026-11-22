@@ -107,6 +107,9 @@ extension PermissionKind {
 public final class PermissionGateModel {
     public let kinds: [PermissionKind]
     public private(set) var statuses: [PermissionKind: PermissionStatus] = [:]
+    /// `false` until the first read: an unread status is "unknown", not "not requested", so nothing is flagged as blocked
+    /// (a granted user never sees the banner flash).
+    public private(set) var hasLoaded = false
     @ObservationIgnored private let service: any PermissionsServicing
 
     public init(kinds: [PermissionKind], service: any PermissionsServicing) {
@@ -117,6 +120,7 @@ public final class PermissionGateModel {
     /// Reads current statuses; never prompts.
     public func load() async {
         for kind in kinds { statuses[kind] = await service.status(kind) }
+        hasLoaded = true
     }
 
     /// Follows OS-side changes (for example after the user returns from System Settings) until cancelled.
@@ -125,8 +129,14 @@ public final class PermissionGateModel {
     }
 
     /// The permissions that still need attention: anything not granted.
-    public var blocked: [PermissionKind] { kinds.filter { (statuses[$0] ?? .notDetermined) != .granted } }
+    public var blocked: [PermissionKind] { blocked(among: kinds) }
     public var isBlocked: Bool { !blocked.isEmpty }
+
+    /// The not-granted permissions among `relevant` (for example only the ones the chosen Live source needs).
+    public func blocked(among relevant: [PermissionKind]) -> [PermissionKind] {
+        guard hasLoaded else { return [] }
+        return kinds.filter { relevant.contains($0) && (statuses[$0] ?? .notDetermined) != .granted }
+    }
 
     public func status(_ kind: PermissionKind) -> PermissionStatus { statuses[kind] ?? .notDetermined }
 
@@ -165,20 +175,25 @@ public struct PermissionGateBanner: View {
     private let model: PermissionGateModel
     private let feature: String
     private let identifierBase: String
+    private let relevant: [PermissionKind]?
     @Environment(\.openURL) private var openURL
     @State private var showsReset = false
 
-    public init(model: PermissionGateModel, feature: String, identifier: String = "permissionGate") {
+    /// - Parameter relevant: limits the banner to these permissions (default: every permission the model tracks).
+    public init(model: PermissionGateModel, feature: String, identifier: String = "permissionGate", relevant: [PermissionKind]? = nil) {
         self.model = model
         self.feature = feature
         self.identifierBase = identifier
+        self.relevant = relevant
     }
+
+    private var blocked: [PermissionKind] { model.blocked(among: relevant ?? model.kinds) }
 
     public var body: some View {
         Group {
-            if model.isBlocked {
+            if !blocked.isEmpty {
                 VStack(alignment: .leading, spacing: DSSpacing.md) {
-                    ForEach(model.blocked, id: \.self) { kind in row(kind) }
+                    ForEach(blocked, id: \.self) { kind in row(kind) }
                 }
                 .padding(DSSpacing.md)
                 .background(DSColor.insetBackground, in: RoundedRectangle(cornerRadius: DSRadius.large))
@@ -205,7 +220,8 @@ public struct PermissionGateBanner: View {
                     .accessibilityIdentifier("\(base).status")
             }
             Text(model.message(for: kind, feature: feature)).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
-            HStack(spacing: DSSpacing.sm) {
+            // Wraps instead of clipping at large text sizes or narrow popovers.
+            WrappingChips(spacing: DSSpacing.sm) {
                 if status != .restricted {
                     Button(model.actionTitle(for: kind)) {
                         Task {

@@ -15,6 +15,9 @@ public enum PreferredModel {
     /// Saves the choice for one use case (`nil` means Auto).
     public static func set(_ id: ModelID?, for useCase: UseCase, settings: any SettingsStore) async {
         await settings.set(id?.rawValue ?? "", for: SettingsKey.preferredModelKey(for: useCase))
+        // The Transcribe sheet's own last pick outranks the file default (see ``FileJobSettings/load``). A newer choice made
+        // anywhere else (model picker, Settings > Models or Languages) must win, so the two are kept in step.
+        if useCase == .file { await settings.set(id?.rawValue ?? "", for: SettingsKey.filesLastModel) }
     }
 
     /// One-time migration from the single shared key: the old choice becomes the FILE choice only (live and dictation start on

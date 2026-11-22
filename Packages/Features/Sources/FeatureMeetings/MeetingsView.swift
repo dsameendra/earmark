@@ -93,8 +93,9 @@ public struct MeetingsView: View {
     }
 
     @ToolbarContentBuilder private var policyToolbar: some ToolbarContent {
-        ToolbarItemGroup {
-            ForEach(MeetingApp.allCases, id: \.self) { app in
+        // One item per app (like every other screen): two menus never share a single glass capsule.
+        ForEach(MeetingApp.allCases, id: \.self) { app in
+            ToolbarItem {
                 Menu {
                     ForEach(MeetingBehavior.allCases, id: \.self) { behavior in
                         Button {

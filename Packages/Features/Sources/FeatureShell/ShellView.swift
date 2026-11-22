@@ -133,7 +133,7 @@ public struct ShellView: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
                     .tint(DSColor.accent)
-                    .help("Choose audio or video files to transcribe")
+                    .help("Choose audio or video files to transcribe (⌘O)")
                     .accessibilityIdentifier("toolbar.transcribe")
             }
         }
@@ -178,6 +178,10 @@ public struct ShellCommands: Commands {
     public init(model: ShellModel) { self.model = model }
 
     public var body: some Commands {
+        CommandGroup(replacing: .newItem) {
+            Button("Transcribe Files…") { model.presentImporter() }
+                .keyboardShortcut("o", modifiers: [.command])
+        }
         CommandMenu("Go") {
             ForEach(AppSection.allCases) { section in
                 Button(section.title) { model.select(section) }

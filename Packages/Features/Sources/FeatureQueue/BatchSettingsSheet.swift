@@ -53,24 +53,38 @@ public struct BatchSettingsSheet: View {
                 }
             }
             .formStyle(.grouped)
+            if let reason = model.submitBlockReason {
+                Text(reason).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.horizontal, DSSpacing.lg)
+                    .accessibilityIdentifier("batch.blockReason")
+            }
             HStack {
                 Toggle("Don't ask again, use these settings", isOn: $model.dontAskAgain)
                     .toggleStyle(.checkbox)
                     .help("Add files straight away next time. Turn this back on in Settings > General.")
                     .accessibilityIdentifier("batch.dontAskAgain")
                 Spacer()
-                Button("Cancel", role: .cancel, action: onCancel).keyboardShortcut(.cancelAction)
+                Button("Cancel", role: .cancel) {
+                    Task { await model.cancelDownloads() }
+                    onCancel()
+                }
+                .keyboardShortcut(.cancelAction)
                     .accessibilityIdentifier("batch.cancel")
                 Button("Transcribe", action: onAdd)
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
                     .disabled(!model.canSubmit)
+                    .help(model.submitBlockReason ?? "Add the files to the queue")
                     .accessibilityIdentifier("batch.add")
             }
             .padding(DSSpacing.lg)
         }
         .frame(minWidth: 460, idealWidth: 520, minHeight: 480, idealHeight: 640, maxHeight: 760)
         .task { await model.prepare() }
+        // Esc or a click outside also dismisses the sheet: an unfinished download started here is not wanted then.
+        .onDisappear { Task { await model.cancelDownloads() } }
     }
 
     /// FILE-AC-04: any file or folder can deviate from the batch settings.
@@ -166,8 +180,15 @@ public struct BatchSettingsSheet: View {
                 ProgressRow(
                     title: "Downloading \(model.catalog.first { $0.id == id }?.displayName ?? id.rawValue)",
                     detail: verifying ? "Verifying" : nil, fraction: fraction)
-            case .failed(_, let reason):
+                if !verifying {
+                    Button("Cancel Download") { Task { await model.cancelDownloads() } }
+                        .accessibilityIdentifier("batch.model.cancelDownload")
+                }
+            case .failed(let id, let reason):
                 Label(reason, systemImage: "exclamationmark.triangle").foregroundStyle(DSColor.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Try Again") { Task { await model.selectModel(id) } }
+                    .accessibilityIdentifier("batch.model.retry")
             }
         }
     }
@@ -211,9 +232,15 @@ public struct BatchSettingsSheet: View {
         switch model.speakerDownload {
         case .downloading(_, let fraction, let verifying):
             ProgressRow(title: "Downloading the speaker model", detail: verifying ? "Verifying" : nil, fraction: fraction)
+            if !verifying {
+                Button("Cancel Download") { Task { await model.cancelDownloads() } }
+                    .accessibilityIdentifier("batch.speakerModel.cancelDownload")
+            }
         case .failed(_, let reason):
             Label(reason, systemImage: "exclamationmark.triangle").foregroundStyle(DSColor.danger)
+                .fixedSize(horizontal: false, vertical: true)
             Button("Try Again") { Task { await model.downloadSpeakerModel() } }
+                .accessibilityIdentifier("batch.speakerModel.retry")
         case .idle:
             VStack(alignment: .leading, spacing: DSSpacing.xs) {
                 Text("Identifying speakers needs a \(model.speakerModelSizeText) model that is not downloaded yet.")

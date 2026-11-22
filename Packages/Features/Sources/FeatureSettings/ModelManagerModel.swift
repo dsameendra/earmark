@@ -105,6 +105,13 @@ public final class ModelManagerModel {
 
     /// Follows `stateChanges()` until cancelled.
     public func observe() async {
+        // The file default can change elsewhere (the sidebar model picker, the Transcribe sheet) while this page is open.
+        let defaultChanges = store.changes(for: SettingsKey.preferredModelFile)
+        let store = store
+        let watcher = Task { [weak self] in
+            for await _ in defaultChanges { self?.activeModelID = await PreferredModel.explicitID(for: .file, settings: store) }
+        }
+        defer { watcher.cancel() }
         for await (id, state) in manager.stateChanges() {
             apply(state: state, to: id)
             usage = await manager.diskUsage()

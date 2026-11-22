@@ -6,6 +6,8 @@ import Observation
 /// A download the user is being asked to confirm (size, licence, hardware) before it starts.
 public struct PendingModelDownload: Equatable, Sendable {
     public var preflight: ModelPreflightResult
+    /// The use case the model was picked for; the choice is saved there even if the user switches tabs while it downloads.
+    public var useCase: UseCase
     public var text: ModelConsentText
     /// `true` when the model failed before: the download restarts cleanly.
     public var isRetry: Bool
@@ -117,7 +119,8 @@ public final class ModelPickerModel {
         }
         var isRetry = false
         if case .failed = entry.state { isRetry = true }
-        pending = PendingModelDownload(preflight: preflight, text: ModelConsentText.make(preflight), isRetry: isRetry)
+        pending = PendingModelDownload(
+            preflight: preflight, useCase: useCase, text: ModelConsentText.make(preflight), isRetry: isRetry)
     }
 
     public func cancelPending() { pending = nil }
@@ -154,7 +157,7 @@ public final class ModelPickerModel {
             await reload()  // cancelled or paused mid-way
             return
         }
-        await persist(id)
+        await persist(id, for: pending.useCase)
     }
 
     public func cancelDownload(_ id: ModelID) async {
@@ -163,8 +166,8 @@ public final class ModelPickerModel {
         await reload()
     }
 
-    private func persist(_ id: ModelID) async {
-        await PreferredModel.set(id, for: useCase, settings: services.settings)
+    private func persist(_ id: ModelID, for target: UseCase? = nil) async {
+        await PreferredModel.set(id, for: target ?? useCase, settings: services.settings)
         await reload()
     }
 }

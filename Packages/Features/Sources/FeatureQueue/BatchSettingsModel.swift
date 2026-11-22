@@ -227,7 +227,30 @@ public final class BatchSettingsModel {
             installed.insert(id)
             speakerDownload = .idle
         } catch {
-            speakerDownload = .failed(model: id, reason: String(describing: error))
+            if case AppError.cancelled = error {
+                speakerDownload = .idle
+            } else {
+                speakerDownload = .failed(model: id, reason: ModelDownloadErrorText.message(for: error, modelName: speakerModel?.displayName))
+            }
+        }
+    }
+
+    public var isDownloadingSpeakerModel: Bool {
+        if case .downloading = speakerDownload { return true }
+        return false
+    }
+
+    /// Stops any download this sheet started (Cancel, Esc, or switching to another model); a half-finished model is not wanted
+    /// once the sheet is gone.
+    public func cancelDownloads() async {
+        if case .downloading(let id, _, _) = download {
+            download = .idle
+            if modelID == id { modelID = nil }
+            await services.models.cancelDownload(id)
+        }
+        if case .downloading(let id, _, _) = speakerDownload {
+            speakerDownload = .idle
+            await services.models.cancelDownload(id)
         }
     }
 
@@ -260,9 +283,14 @@ public final class BatchSettingsModel {
         }
     }
 
-    /// Picks a model (`nil` = Auto). An undownloaded model is downloaded with inline progress.
+    /// Picks a model (`nil` = Auto). An undownloaded model is downloaded with inline progress; switching away from a model that is
+    /// still downloading cancels that download.
     public func selectModel(_ id: ModelID?) async {
         hasEditedConfiguration = true
+        if case .downloading(let previous, _, _) = download, previous != id {
+            download = .idle
+            await services.models.cancelDownload(previous)
+        }
         modelID = id
         download = .idle
         guard let id, !installed.contains(id) else { return }
@@ -276,14 +304,21 @@ public final class BatchSettingsModel {
                 case .completed: break
                 }
             }
+            if await services.models.installedModels().contains(id) { installed.insert(id) }
             guard modelID == id else { return }
-            installed.insert(id)
             download = .idle
         } catch {
             guard modelID == id else { return }
-            download = .failed(model: id, reason: String(describing: error))
+            if case AppError.cancelled = error {
+                download = .idle  // the user cancelled: back to Automatic rather than a model that is not there
+                modelID = nil
+            } else {
+                download = .failed(model: id, reason: ModelDownloadErrorText.message(for: error, modelName: modelName(id)))
+            }
         }
     }
+
+    private func modelName(_ id: ModelID) -> String? { catalog.first { $0.id == id }?.displayName }
 
     // MARK: Submit
 
@@ -346,8 +381,15 @@ public final class BatchSettingsModel {
     /// Inputs that will be enqueued (folders are expanded by the queue, which honours the media type filter).
     public var urlsToEnqueue: [URL] { skipDuplicates ? urls.filter { !duplicates.contains($0) } : urls }
 
-    public var canSubmit: Bool {
-        !isDownloading && !isSubmitting && !urlsToEnqueue.isEmpty && (kind != .multilingual || !multiLanguages.isEmpty)
+    public var canSubmit: Bool { !isSubmitting && submitBlockReason == nil }
+
+    /// Why "Transcribe" is unavailable, in words (`nil` when it can go ahead).
+    public var submitBlockReason: String? {
+        if isDownloading { return "Wait for the model download to finish, or choose Automatic." }
+        if isDownloadingSpeakerModel { return "Wait for the speaker model download to finish." }
+        if kind == .multilingual, multiLanguages.isEmpty { return "Choose at least one language." }
+        if urlsToEnqueue.isEmpty { return "Everything here is already in the queue. Turn off \u{201C}Skip\u{201D} to add it again." }
+        return nil
     }
 
     /// Saves what was chosen so the next add starts from it (SCR-013), and honours the "Dont ask again" checkbox.

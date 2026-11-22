@@ -120,6 +120,8 @@ public enum SettingsKey {
     public static func shortcut(_ actionRawValue: String) -> String { "shortcuts.\(actionRawValue)" }
     /// `String` ("grid" or "list"); Library layout (LIB-AC-04).
     public static let libraryLayout = "library.layout"
+    /// `String` (`LibrarySort` raw value); the Library's sort order, restored on launch.
+    public static let librarySort = "library.sort"
     /// `Int`; days soft-deleted items are kept before auto-purge (LIB-AC-08). 0 means never.
     public static let libraryRetentionDays = recentlyDeletedRetentionDays  // one shared setting (Settings > Storage and Library)
     /// `[LibraryFolder]`; Library folder names (folders have no repository, only `Transcript.folderID`).

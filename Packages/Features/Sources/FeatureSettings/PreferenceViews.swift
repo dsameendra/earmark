@@ -165,6 +165,8 @@ struct AudioSettingsView: View {
             await model.load()
             await model.observe()
         }
+        // The banner is only on screen while blocked, so the gate is read here (it stays hidden until the first read).
+        .task { await model.permissionGate?.load() }
         .onDisappear { Task { await model.stopMicrophoneTest() } }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
             Task { await model.stopMicrophoneTest() }
@@ -433,6 +435,7 @@ struct DictationSettingsView: View {
         }
         .formStyle(.grouped)
         .task { await model.load() }
+        .task { await model.permissionGate?.load() }
     }
 }
 

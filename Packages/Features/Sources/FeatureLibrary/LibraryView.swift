@@ -242,6 +242,7 @@ public struct LibraryView: View {
                 .pickerStyle(.segmented)
                 .labelStyle(.iconOnly)
                 .controlSize(.large)
+                .help("Show the library as a list or a grid")
                 .accessibilityLabel("Layout")
             }
             ToolbarSpacer(.fixed)
@@ -255,6 +256,7 @@ public struct LibraryView: View {
                 }
                 .pickerStyle(.menu)
                 .controlSize(.large)
+                .help("Choose how the library is ordered")
                 .accessibilityLabel("Sort by")
             }
             ToolbarSpacer(.fixed)
@@ -263,6 +265,8 @@ public struct LibraryView: View {
                     .labelStyle(.titleAndIcon)
                     .controlSize(.large)
                     .disabled(model.selection.isEmpty)
+                    .help(model.selection.isEmpty ? "Select transcripts to delete" : "Move the selected transcripts to Recently Deleted")
+                    .accessibilityIdentifier("library.delete")
             }
         } else {
             ToolbarItem {
@@ -277,6 +281,7 @@ public struct LibraryView: View {
                     }
                 }
                 .controlSize(.large)
+                .help("How long deleted items are kept before they are removed")
                 .accessibilityHint("How long deleted items are kept before they are removed")
             }
             ToolbarSpacer(.fixed)
@@ -285,12 +290,14 @@ public struct LibraryView: View {
                     .labelStyle(.titleAndIcon)
                     .controlSize(.large)
                     .disabled(model.selection.isEmpty)
+                    .help(model.selection.isEmpty ? "Select transcripts to restore" : "Move the selected transcripts back to the Library")
             }
             ToolbarItem {
                 Button("Delete Permanently", systemImage: "trash.slash") { confirmPurge = true }
                     .labelStyle(.titleAndIcon)
                     .controlSize(.large)
                     .disabled(model.selection.isEmpty)
+                    .help(model.selection.isEmpty ? "Select transcripts to delete for good" : "Permanently delete the selected transcripts")
             }
         }
     }

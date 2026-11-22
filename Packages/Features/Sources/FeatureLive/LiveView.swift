@@ -60,10 +60,18 @@ public struct LiveView: View {
         .task { await model.watchNotices() }
         .task { await model.watchDevices() }
         .task { await model.watchLanguageChoices() }
+        .task { await model.permissionGate.load() }
     }
 
     private var captionPane: some View {
         VStack(spacing: 0) {
+            if !model.isRunning {
+                PermissionGateBanner(
+                    model: model.permissionGate, feature: "Live captions", identifier: "live.permissions",
+                    relevant: model.source.requiredPermissions
+                )
+                .padding([.horizontal, .top], DSSpacing.lg)
+            }
             if let notice = model.notice, notice.kind != .resumed { noticeBanner(notice) }
             captions.frame(maxWidth: .infinity, maxHeight: .infinity)
         }

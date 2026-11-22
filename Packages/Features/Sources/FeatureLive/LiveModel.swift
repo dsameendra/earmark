@@ -49,6 +49,15 @@ public enum LiveSourceChoice: String, CaseIterable, Identifiable, Sendable {
 
     /// Whether the choice involves an input device.
     public var usesMicrophone: Bool { self != .system }
+
+    /// The permissions this source needs.
+    public var requiredPermissions: [PermissionKind] {
+        switch self {
+        case .mic: [.microphone]
+        case .system: [.systemAudioRecording]
+        case .micAndSystem: [.microphone, .systemAudioRecording]
+        }
+    }
 }
 
 /// Shared catalog-driven language choice, also used by the menu-bar controls.
@@ -81,6 +90,8 @@ public final class LiveModel {
     public private(set) var presets: [CaptionPreset] = []
     public private(set) var preset: CaptionPreset = CaptionPreset(name: "Subtle")
 
+    /// Microphone and System Audio Recording; the banner shows only what the chosen source needs.
+    @ObservationIgnored public let permissionGate: PermissionGateModel
     @ObservationIgnored private let live: any LiveSessionControlling
     @ObservationIgnored private let extras: (any LiveSessionExtras)?
     @ObservationIgnored private let models: any ModelManaging
@@ -95,6 +106,7 @@ public final class LiveModel {
         settings = services.settings
         models = services.models
         audioDevices = services.audioDevices
+        permissionGate = PermissionGateModel(kinds: [.microphone, .systemAudioRecording], service: services.permissions)
     }
 
     public var isRunning: Bool { state == .running || state == .starting }
@@ -102,7 +114,9 @@ public final class LiveModel {
 
     /// Why Start is unavailable, or `nil` when it can start.
     public var startDisabledReason: String? {
-        if source.usesMicrophone, devices.isEmpty { return "No input device available" }
+        // `devices` also lists a saved-but-unplugged microphone, so ask the connected list (nil until the first read).
+        if source.usesMicrophone, let connected = connectedDevices, connected.isEmpty { return "No input device available" }
+        if source.usesMicrophone, connectedDevices == nil, devices.isEmpty { return "No input device available" }
         return nil
     }
 

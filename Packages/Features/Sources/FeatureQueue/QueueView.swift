@@ -53,22 +53,19 @@ public struct QueueView: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Loading queue")
         } else if model.jobs.isEmpty {
-            EmptyState(
-                systemImage: DSSymbol.queue.systemImageName, title: "Queue is empty",
-                message: "Files you add are processed one after another. Drop files or folders here, or add them.",
-                actionTitle: "Add Files…"
-            ) { isImporterPresented = true }
+            // A failed drop must be visible even before anything is queued.
+            VStack(spacing: 0) {
+                errorBanner
+                EmptyState(
+                    systemImage: DSSymbol.queue.systemImageName, title: "Queue is empty",
+                    message: "Files you add are processed one after another. Drop files or folders here, or add them.",
+                    actionTitle: "Add Files…"
+                ) { isImporterPresented = true }
+            }
         } else {
             VStack(spacing: 0) {
                 concurrencyHeader
-                if let message = model.errorMessage {
-                    HStack {
-                        Label(message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(DSColor.danger)
-                        Spacer()
-                        Button("Dismiss") { model.dismissError() }
-                    }
-                    .padding(DSSpacing.md)
-                }
+                errorBanner
                 List {
                     ForEach(model.visibleGroups) { group in
                         Section {
@@ -93,6 +90,19 @@ public struct QueueView: View {
                 .listRowSeparator(.hidden)
                 .accessibilityLabel("Transcription queue")
             }
+        }
+    }
+
+    @ViewBuilder private var errorBanner: some View {
+        if let message = model.errorMessage {
+            HStack {
+                Label(message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(DSColor.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                Button("Dismiss") { model.dismissError() }
+            }
+            .padding(DSSpacing.md)
+            .accessibilityIdentifier("queue.error")
         }
     }
 
@@ -142,6 +152,7 @@ public struct QueueView: View {
                     .accessibilityIdentifier("queue.clearAll")
             }
             .controlSize(.large)
+            .help("Pause, resume or clear the queue")
             .accessibilityIdentifier("queue.actions")
         }
     }
@@ -258,12 +269,17 @@ private struct QueueRow: View {
         switch job.state {
         case .pending, .running:
             Button("Pause", systemImage: "pause.fill") { Task { await model.pause(job.id) } }.labelStyle(.iconOnly)
+                .help("Pause this job").accessibilityIdentifier("queue.pause.\(job.id)")
             Button("Cancel", systemImage: "stop.fill") { Task { await model.cancel(job.id) } }.labelStyle(.iconOnly)
+                .help("Stop this job").accessibilityIdentifier("queue.cancel.\(job.id)")
         case .paused:
             Button("Resume", systemImage: "play.fill") { Task { await model.resume(job.id) } }.labelStyle(.iconOnly)
+                .help("Resume this job").accessibilityIdentifier("queue.resume.\(job.id)")
             Button("Cancel", systemImage: "stop.fill") { Task { await model.cancel(job.id) } }.labelStyle(.iconOnly)
+                .help("Stop this job").accessibilityIdentifier("queue.cancel.\(job.id)")
         case .failed, .cancelled:
             Button("Retry", symbol: .retry) { Task { await model.retry(job.id) } }.labelStyle(.iconOnly)
+                .help("Try this file again").accessibilityIdentifier("queue.retry.\(job.id)")
         case .completed:
             if let id = job.transcriptID { Button("Open Transcript") { onOpenTranscript(id) } }
         }

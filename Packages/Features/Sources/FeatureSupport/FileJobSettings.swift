@@ -54,13 +54,15 @@ public enum FileJobSettings {
 
     /// Remembers what the user chose in the sheet. The speaker choices always persist. Language and model persist only when the
     /// user changed them (`persistLanguageAndModel`), so merely opening and confirming the sheet never rewrites the defaults.
-    /// The model goes to its own file-scoped key, not `defaults.preferredModel`, which live captions also read.
+    /// The model is saved as the file-scoped default only; the live-caption and dictation models are separate keys.
     public static func save(_ choices: Choices, persistLanguageAndModel: Bool, to settings: any SettingsStore) async {
         await settings.set(choices.diarize, for: SettingsKey.filesDiarize)
         await settings.set(choices.speakerCount.storedValue, for: SettingsKey.filesSpeakerCount)
         guard persistLanguageAndModel else { return }
         await settings.set(choices.languageMode, for: SettingsKey.languageMode)
-        await settings.set(choices.modelID?.rawValue ?? "", for: SettingsKey.filesLastModel)
+        // Also the file default shown by the sidebar chip, Settings and the model picker, so nothing disagrees about which
+        // model files will use (``PreferredModel/set(_:for:settings:)`` mirrors it into `files.lastModel`).
+        await PreferredModel.set(choices.modelID, for: .file, settings: settings)
         let used: [LanguageCode]
         switch choices.languageMode {
         case .single(let code): used = [code]

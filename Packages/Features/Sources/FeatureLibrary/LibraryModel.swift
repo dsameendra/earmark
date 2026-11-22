@@ -22,7 +22,14 @@ public final class LibraryModel {
     public var searchText = ""
     public var selection: Set<TranscriptID> = []
     public var filters = LibraryFilters()
-    public var sort: LibrarySort = .createdDesc
+    public var sort: LibrarySort = .createdDesc {
+        didSet {
+            guard sort != oldValue, mode == .library, !isRestoringSort else { return }
+            let value = sort.rawValue
+            let settings = services.settings
+            Task { await settings.set(value, for: SettingsKey.librarySort) }
+        }
+    }
     public private(set) var layout: LibraryLayout = .list
     public private(set) var folders: [LibraryFolder] = []
     public private(set) var retentionDays = LibraryModel.defaultRetentionDays
@@ -38,6 +45,7 @@ public final class LibraryModel {
 
     /// Called before transcripts are deleted or purged, so dependents (the shared player) can let go of them.
     @ObservationIgnored public var onTranscriptsRemoved: (@MainActor ([TranscriptID]) -> Void)?
+    @ObservationIgnored private var isRestoringSort = false
     @ObservationIgnored private let services: AppServices
     @ObservationIgnored private let transcripts: any TranscriptRepository
     @ObservationIgnored private let access: any MediaAccessing
@@ -112,6 +120,13 @@ public final class LibraryModel {
     public func start() async {
         let storedLayout = await services.settings.value(for: SettingsKey.libraryLayout, as: String.self)
         if let storedLayout, let value = LibraryLayout(rawValue: storedLayout) { layout = value }
+        if mode == .library, let storedSort = await services.settings.value(for: SettingsKey.librarySort, as: String.self),
+            let value = LibrarySort(rawValue: storedSort)
+        {
+            isRestoringSort = true
+            sort = value
+            isRestoringSort = false
+        }
         if let days = await services.settings.value(for: SettingsKey.libraryRetentionDays, as: Int.self) { retentionDays = max(0, days) }
         folders = await services.settings.value(for: SettingsKey.libraryFolders, as: [LibraryFolder].self) ?? []
         await purgeExpired()

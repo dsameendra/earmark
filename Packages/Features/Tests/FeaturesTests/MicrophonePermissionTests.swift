@@ -222,6 +222,40 @@ private final class FailingMic: AudioSource, Sendable {
         #expect(model.effectiveDeviceUID == nil, "capture falls back to the system default")
         #expect(await store.value(for: SettingsKey.liveInputDeviceUID, as: String.self) == "usb")
     }
+
+    @Test func liveStartIsBlockedWithNoConnectedInputEvenWhenASavedDeviceIsListed() async {
+        let store = InMemorySettingsStore()
+        await store.set("usb", for: SettingsKey.liveInputDeviceUID)
+        var services = AppServices.preview()
+        services.settings = store
+        services.audioDevices = FakeDevices([])
+        let model = LiveModel(services: services)
+        await model.loadPreferences()
+        let watching = Task { await model.watchDevices() }
+        defer { watching.cancel() }
+        #expect(await eventually { model.devices.contains { $0.id == "usb" } })
+        #expect(model.startDisabledReason == "No input device available", "the disconnected entry is not a usable input")
+        model.source = .system
+        #expect(model.startDisabledReason == nil)
+    }
+
+    @Test func liveGateOnlyListsWhatTheSourceNeeds() async {
+        let permissions = RecordingPermissions([.microphone: .granted, .systemAudioRecording: .denied])
+        var services = AppServices.preview()
+        services.permissions = permissions
+        let model = LiveModel(services: services)
+        await model.permissionGate.load()
+        #expect(model.permissionGate.blocked(among: LiveSourceChoice.mic.requiredPermissions).isEmpty)
+        #expect(model.permissionGate.blocked(among: LiveSourceChoice.micAndSystem.requiredPermissions) == [.systemAudioRecording])
+    }
+
+    @Test func gateStaysQuietUntilItHasRead() async {
+        let permissions = RecordingPermissions([.microphone: .granted])
+        let gate = PermissionGateModel(kinds: [.microphone], service: permissions)
+        #expect(!gate.isBlocked, "an unread status is unknown, not blocked (no banner flash for a granted user)")
+        await gate.load()
+        #expect(!gate.isBlocked)
+    }
 }
 
 // MARK: - Permissions UI state

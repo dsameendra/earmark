@@ -137,6 +137,16 @@ def compare_payload(mount: Path, source_app: Path, developer_id: bool, layout_as
     return result
 
 
+def matches_mount_point(returned: object, requested: Path) -> bool:
+    """Match macOS path aliases such as /var and /private/var without accepting absent mount points."""
+    if not isinstance(returned, str) or not returned:
+        return False
+    try:
+        return Path(returned).resolve() == requested.resolve()
+    except (OSError, RuntimeError, ValueError):
+        return False
+
+
 def verify_image(dmg: Path, source_app: Path, developer_id: bool = False, layout_assets: Path | None = None) -> dict[str, object]:
     dmg = dmg.resolve(strict=True)
     source_app = source_app.resolve(strict=True)
@@ -150,7 +160,7 @@ def verify_image(dmg: Path, source_app: Path, developer_id: bool = False, layout
                                     capture_output=True, check=True)
             attachment = plistlib.loads(result.stdout)
             for entity in attachment.get("system-entities", []):
-                if entity.get("mount-point") == str(mount):
+                if matches_mount_point(entity.get("mount-point"), mount):
                     device = entity.get("dev-entry")
                     break
             verification.require(bool(device), "hdiutil did not return the mounted volume's device")

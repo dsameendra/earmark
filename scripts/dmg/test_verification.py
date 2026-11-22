@@ -87,6 +87,18 @@ class DMGMetadataTests(unittest.TestCase):
         self.assertTrue(report["matchesStagedApp"])
         self.assertNotIn("installerLayout", report)
 
+    def test_mount_point_matches_equivalent_alias_paths(self) -> None:
+        alias = self.root / "mount-alias"
+        alias.symlink_to(self.mount, target_is_directory=True)
+        self.assertTrue(verifier.matches_mount_point(str(alias), self.mount))
+        self.assertTrue(verifier.matches_mount_point(str(self.mount), alias))
+        self.assertFalse(verifier.matches_mount_point(str(self.assets), self.mount))
+
+    def test_mount_point_rejects_missing_and_invalid_values(self) -> None:
+        for value in [None, "", 123, {}, "\0invalid"]:
+            with self.subTest(value=value):
+                self.assertFalse(verifier.matches_mount_point(value, self.mount))
+
     def test_branded_payload_matches_authored_artwork_and_layout(self) -> None:
         self.styled()
         report = self.verify()

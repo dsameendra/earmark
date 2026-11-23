@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="Brand/preview/icon-Default-128.png" width="112" height="112" alt="Earmark app icon">
+<img src="Brand/preview/icon-Dark-128.png" width="112" height="112" alt="Earmark app icon (dark variant)">
 
 # Earmark
 

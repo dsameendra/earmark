@@ -105,19 +105,24 @@ public struct SettingsRootView: View {
                             Text("Settings").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                         }
                         .padding(.horizontal, DSSpacing.lg).padding(.top, DSSpacing.lg)
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: DSSpacing.lg) {
-                                ForEach(SettingsSectionGroup.allCases) { group in
-                                    VStack(alignment: .leading, spacing: DSSpacing.xxs) {
-                                        SectionCaption(LocalizedStringKey(group.title)).padding(.horizontal, DSSpacing.sm)
-                                            .padding(.bottom, DSSpacing.xs)
-                                        ForEach(group.sections) { section in sectionButton(section) }
+                        ScrollViewReader { proxy in
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: DSSpacing.lg) {
+                                    ForEach(SettingsSectionGroup.allCases) { group in
+                                        VStack(alignment: .leading, spacing: DSSpacing.xxs) {
+                                            SectionCaption(LocalizedStringKey(group.title)).padding(.horizontal, DSSpacing.sm)
+                                                .padding(.bottom, DSSpacing.xs)
+                                            ForEach(group.sections) { section in sectionButton(section).id(section) }
+                                        }
                                     }
                                 }
+                                .padding(DSSpacing.md)
                             }
-                            .padding(DSSpacing.md)
+                            .scrollIndicators(.automatic)
+                            // Minimal scroll (nil anchor): the list moves only when the selected item is off-screen, so
+                            // clicking a visible item never jumps, while arrow keys can still reach every section.
+                            .onChange(of: selection) { _, new in proxy.scrollTo(new, anchor: nil) }
                         }
-                        .scrollIndicators(.automatic)
                         .accessibilityIdentifier("settings.navigation")
                     }
                     .onKeyPress(.upArrow) {

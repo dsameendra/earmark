@@ -74,7 +74,9 @@ import Testing
 
     @Test func settingsSelectionSwitchesPaneWithoutScrolling() {
         let settings = source("FeatureSettings/SettingsRootView.swift")
-        #expect(!settings.contains("scrollTo") && !settings.contains("ScrollViewReader"))
+        // Only a minimal scroll (nil anchor) that keeps a keyboard-selected item visible; never a centring jump.
+        #expect(settings.contains("scrollTo(new, anchor: nil)"))
+        #expect(!settings.contains("anchor: .center") && !settings.contains("anchor: .top"))
         #expect(settings.contains(".transition(.opacity)"))
     }
 

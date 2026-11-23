@@ -96,9 +96,10 @@ public struct MeetingsView: View {
         // One item per app (like every other screen): two menus never share a single glass capsule. Each menu is its own
         // View so it observes the policy itself; reading it inside the toolbar builder's closures was never tracked, which
         // left the label and the checkmark stuck on "Ask first" after a choice.
-        ForEach(MeetingApp.allCases, id: \.self) { app in
-            ToolbarItem { MeetingPolicyMenu(model: model, app: app) }
-        }
+        // Written out (not ForEach): Swift 6.3 (Xcode 26.x) cannot resolve a ForEach of ToolbarItems in this builder. A unit
+        // test asserts these two cover every `MeetingApp` so a new app cannot be forgotten.
+        ToolbarItem { MeetingPolicyMenu(model: model, app: .zoom) }
+        ToolbarItem { MeetingPolicyMenu(model: model, app: .teams) }
     }
 }
 

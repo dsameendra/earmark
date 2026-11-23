@@ -98,3 +98,7 @@ python3 scripts/sign-bundle.py /path/to/Earmark.app --identity - --entitlements 
 ```
 
 Actual Release packaging, image mounting, Developer ID signing/notarization and update installation must be reported from executed runs. Script inspection and fixture tests do not count as those results.
+
+## Artefact naming (owner's convention)
+
+Published releases are `Earmark-<marketing version>.dmg` with `Earmark-<version>.dmg.sha256`, `appcast.xml`, tag `v<version>` and title `Earmark <version>`. Local previews are `Earmark-<version>-local.dmg` and are never published. The appcast enclosure URL must end with the exact published asset name: renaming an asset on GitHub requires re-uploading `appcast.xml` (`scripts/verify-appcast.py` and `scripts/verify-published-release.py` enforce this, and the **Verify release** workflow runs the latter after every published release). See `CLAUDE.md` for the full release recipe and learnings.

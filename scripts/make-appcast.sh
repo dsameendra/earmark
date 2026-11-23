@@ -1,7 +1,7 @@
 #!/bin/bash
 # Sparkle EdDSA key setup and appcast generation for a self-signed Earmark release. Publishes nothing.
 #   scripts/make-appcast.sh keys                 create the EdDSA key in the login Keychain (if absent) and print the PUBLIC key
-#   scripts/make-appcast.sh appcast RELEASE_DIR  sign the *-selfsigned.dmg in RELEASE_DIR and write RELEASE_DIR/appcast.xml
+#   scripts/make-appcast.sh appcast RELEASE_DIR  sign the Earmark-<version>.dmg in RELEASE_DIR and write RELEASE_DIR/appcast.xml
 #
 # The private EdDSA key lives only in the login Keychain (Sparkle's generate_keys). It is never written to the repo.
 # Back it up once with:  "$SPARKLE_BIN/generate_keys" --account earmark -x ~/earmark-sparkle-private-key   (store offline, never commit)
@@ -62,8 +62,11 @@ appcast)
     release_dir="$(cd "$2" && pwd)"
     bin="$(find_sparkle_bin)"
     shopt -s nullglob
-    dmgs=("$release_dir"/Earmark-*-selfsigned.dmg)
-    [ "${#dmgs[@]}" -eq 1 ] || { echo "Expected exactly one Earmark-*-selfsigned.dmg in $release_dir" >&2; exit 64; }
+    dmgs=()
+    for candidate in "$release_dir"/Earmark-[0-9]*.dmg; do
+        case "$candidate" in *-local.dmg) ;; *) dmgs+=("$candidate") ;; esac
+    done
+    [ "${#dmgs[@]}" -eq 1 ] || { echo "Expected exactly one Earmark-<version>.dmg in $release_dir" >&2; exit 64; }
     dmg="${dmgs[0]}"
     [ -f "$release_dir/app-manifest.json" ] || { echo 'Missing app-manifest.json; run scripts/release.sh selfsigned first.' >&2; exit 64; }
     [ ! -e "$release_dir/appcast.xml" ] || { echo "Refusing to overwrite $release_dir/appcast.xml" >&2; exit 64; }

@@ -136,7 +136,9 @@ if [ "$mode" = distribution ]; then
 fi
 version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Contents/Info.plist")"
 build_number="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$app/Contents/Info.plist")"
-dmg_name="Earmark-$version-$build_number-$mode.dmg"
+# Release artefacts are named Earmark-<version>.dmg (owner's convention). A local preview keeps a "-local" suffix so it can
+# never be mistaken for a published release.
+if [ "$mode" = local ]; then dmg_name="Earmark-$version-local.dmg"; else dmg_name="Earmark-$version.dmg"; fi
 dmg="$release_root/$dmg_name"
 bash "$repo_root/scripts/make-dmg.sh" "$app" "$dmg" "$release_root/installer-artwork" "$mode"
 dmg_python="${EARMARK_DMG_PYTHON:-${EARMARK_BUILD_ROOT:-$HOME/Library/Caches/EarmarkBuild}/dmg-venv/bin/python}"

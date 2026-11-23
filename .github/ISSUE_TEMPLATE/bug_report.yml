@@ -1,0 +1,35 @@
+name: Bug report
+description: Something in Earmark does not work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead. Screenshots help.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Earmark version
+      description: Earmark menu, About Earmark (for example 1.0.0)
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Mac and macOS version
+      placeholder: "MacBook Air M2, 16 GB, macOS 26.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [File transcription, Live captions, Dictation, Meetings, Editor and playback, Export, Models and downloads, Settings, Updates, Other]
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Model and language used, permissions state, whether it happens every time. Please do not paste private transcripts.

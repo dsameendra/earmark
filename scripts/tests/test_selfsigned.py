@@ -149,11 +149,11 @@ class AppcastTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(prefix="earmark-appcast-fixture-")
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-        self.dmg = self.root / "Earmark-0.1.0-1-selfsigned.dmg"
+        self.dmg = self.root / "Earmark-0.1.0.dmg"
         self.dmg.write_bytes(b"x" * 1234)
         self.signature = base64.b64encode(b"s" * 64).decode()
 
-    def write(self, url="https://github.com/dsameendra/earmark/releases/download/v0.1.0/Earmark-0.1.0-1-selfsigned.dmg",
+    def write(self, url="https://github.com/dsameendra/earmark/releases/download/v0.1.0/Earmark-0.1.0.dmg",
               length="1234", signature=None, version="0.1.0", build="1") -> Path:
         signature = self.signature if signature is None else signature
         path = self.root / "appcast.xml"
@@ -175,8 +175,12 @@ class AppcastTests(unittest.TestCase):
         self.assertEqual(self.verify(self.write(), "https://github.com/dsameendra/earmark/releases/download/v0.1.0/")["build"], "1")
 
     def test_insecure_or_unexpected_enclosure_is_rejected(self) -> None:
-        self.rejects("HTTPS", self.write(url="http://example.com/Earmark-0.1.0-1-selfsigned.dmg"))
-        self.rejects("outside", self.write(url="https://evil.example/Earmark-0.1.0-1-selfsigned.dmg"), "https://github.com/dsameendra/")
+        self.rejects("HTTPS", self.write(url="http://example.com/Earmark-0.1.0.dmg"))
+        self.rejects("outside", self.write(url="https://evil.example/Earmark-0.1.0.dmg"), "https://github.com/dsameendra/")
+
+    def test_enclosure_name_must_match_the_published_dmg_name(self) -> None:
+        # A renamed asset with a stale appcast URL would 404 every update check (this happened to v1.0.0's first appcast).
+        self.rejects("exactly one appcast item", self.write(url="https://github.com/dsameendra/earmark/releases/download/v0.1.0/Earmark-0.1.0-1-selfsigned.dmg"))
 
     def test_length_signature_and_version_mismatches_are_rejected(self) -> None:
         self.rejects("length", self.write(length="1"))

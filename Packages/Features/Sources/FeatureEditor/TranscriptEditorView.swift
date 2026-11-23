@@ -152,9 +152,11 @@ private struct EditorContent: View {
     @ToolbarContentBuilder private var editorToolbar: some ToolbarContent {
         // Groups: [Find] | [Speakers, Translate] | [More]; icon-only, system-sized, with fixed spacers.
         ToolbarItem {
-            Button("Find", symbol: .find) {
+            Button {
                 find.open()
                 findFocused = true
+            } label: {
+                DSToolbarLabel("Find", symbol: .find)
             }
             .labelStyle(.titleAndIcon)
             .dsToolbarControl()
@@ -163,22 +165,23 @@ private struct EditorContent: View {
         }
         ToolbarSpacer(.fixed)
         ToolbarItemGroup {
-            Button("Speakers", symbol: .speaker) { presentTool(.speakers) }
+            Button { presentTool(.speakers) } label: { DSToolbarLabel("Speakers", symbol: .speaker) }
                 .labelStyle(.titleAndIcon)
                 .dsToolbarControl()
                 .accessibilityIdentifier("editor.speakers")
-            Button("Translate", symbol: .translate) { presentTool(.translation) }
+            Button { presentTool(.translation) } label: { DSToolbarLabel("Translate", symbol: .translate) }
                 .labelStyle(.titleAndIcon)
                 .dsToolbarControl()
                 .accessibilityIdentifier("editor.translation")
-            Button("Re-transcribe", symbol: .retry) { presentTool(.retranscribe) }
+            Button { presentTool(.retranscribe) } label: { DSToolbarLabel("Re-transcribe", symbol: .retry, iconOnly: true) }
+                .labelStyle(.iconOnly)
                 .help("Re-transcribe, identify speakers again, or set the transcript language")
                 .dsToolbarControl()
                 .accessibilityIdentifier("editor.retranscribe")
         }
         ToolbarSpacer(.fixed)
         ToolbarItem {
-            Menu("More", systemImage: "ellipsis") {
+            Menu {
                 Toggle(
                     "Show ignored (\(model.hiddenIgnoredCount))",
                     isOn: Binding(get: { model.showIgnored }, set: { model.setShowIgnored($0) }))
@@ -197,14 +200,17 @@ private struct EditorContent: View {
                 Divider()
                 Button("Bookmarks and highlights", symbol: .earmark) { presentTool(.bookmarks) }
                 Button("View options", systemImage: "textformat.size") { presentTool(.options) }
+            } label: {
+                DSToolbarLabel("More", systemImage: "ellipsis", iconOnly: true)
             }
+            .labelStyle(.iconOnly)
             .dsToolbarControl()
             .accessibilityIdentifier("editor.more")
         }
         ToolbarSpacer(.fixed)
         ToolbarItem(placement: .primaryAction) {
             // System prominent capsule: padding, height and pressed/disabled behaviour come from the toolbar.
-            Button { showExport = true } label: { Label("Export", symbol: .export) }
+            Button { showExport = true } label: { DSToolbarLabel("Export", symbol: .export) }
                 .labelStyle(.titleAndIcon)
                 .buttonStyle(.borderedProminent).tint(DSColor.accent)
                 .dsToolbarControl()

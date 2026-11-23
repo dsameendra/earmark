@@ -235,6 +235,7 @@ public struct LibraryView: View {
         // segmented picker or menu never nests inside another control's glass capsule.
         if model.mode == .library {
             ToolbarItem {
+                // Segmented: segments are the highlight, so size via controlSize(.large) with no outside padding.
                 Picker("Layout", selection: Binding(get: { model.layout }, set: { value in Task { await model.setLayout(value) } })) {
                     Label("List", systemImage: "list.bullet").tag(LibraryLayout.list)
                     Label("Grid", systemImage: "square.grid.2x2").tag(LibraryLayout.grid)
@@ -247,21 +248,31 @@ public struct LibraryView: View {
             }
             ToolbarSpacer(.fixed)
             ToolbarItem {
-                Picker("Sort", selection: $model.sort) {
-                    Text("Newest").tag(LibrarySort.createdDesc)
-                    Text("Oldest").tag(LibrarySort.createdAsc)
-                    Text("Title").tag(LibrarySort.titleAsc)
-                    Text("Longest").tag(LibrarySort.durationDesc)
-                    Text("Recently modified").tag(LibrarySort.modifiedDesc)
+                // A menu with an inline picker (not a `.menu` Picker) so the label can carry its padding inside the highlight.
+                Menu {
+                    Picker("Sort by", selection: $model.sort) {
+                        Text("Newest").tag(LibrarySort.createdDesc)
+                        Text("Oldest").tag(LibrarySort.createdAsc)
+                        Text("Title").tag(LibrarySort.titleAsc)
+                        Text("Longest").tag(LibrarySort.durationDesc)
+                        Text("Recently modified").tag(LibrarySort.modifiedDesc)
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    DSToolbarLabel("Sort", systemImage: "arrow.up.arrow.down")
                 }
-                .pickerStyle(.menu)
+                .labelStyle(.titleAndIcon)
                 .dsToolbarControl()
                 .help("Choose how the library is ordered")
                 .accessibilityLabel("Sort by")
             }
             ToolbarSpacer(.fixed)
             ToolbarItem {
-                Button("Delete", systemImage: "trash") { Task { await model.deleteSelected() } }  // stock-chrome: destructive action
+                Button {
+                    Task { await model.deleteSelected() }  // stock-chrome: destructive action
+                } label: {
+                    DSToolbarLabel("Delete", systemImage: "trash")
+                }
                     .labelStyle(.titleAndIcon)
                     .dsToolbarControl()
                     .disabled(model.selection.isEmpty)
@@ -270,7 +281,7 @@ public struct LibraryView: View {
             }
         } else {
             ToolbarItem {
-                Menu("Keep deleted items", systemImage: "clock.arrow.circlepath") {
+                Menu {
                     Picker(
                         "Keep deleted items",
                         selection: Binding(get: { model.retentionDays }, set: { value in Task { await model.setRetention(days: value) } })
@@ -279,21 +290,28 @@ public struct LibraryView: View {
                             Text(days == 0 ? "Forever" : "\(days) days").tag(days)
                         }
                     }
+                } label: {
+                    DSToolbarLabel("Keep deleted items", systemImage: "clock.arrow.circlepath", iconOnly: true)
                 }
+                .labelStyle(.iconOnly)
                 .dsToolbarControl()
                 .help("How long deleted items are kept before they are removed")
                 .accessibilityHint("How long deleted items are kept before they are removed")
             }
             ToolbarSpacer(.fixed)
             ToolbarItem {
-                Button("Restore", systemImage: "arrow.uturn.backward") { Task { await model.restoreSelected() } }
+                Button {
+                    Task { await model.restoreSelected() }
+                } label: {
+                    DSToolbarLabel("Restore", systemImage: "arrow.uturn.backward")
+                }
                     .labelStyle(.titleAndIcon)
                     .dsToolbarControl()
                     .disabled(model.selection.isEmpty)
                     .help(model.selection.isEmpty ? "Select transcripts to restore" : "Move the selected transcripts back to the Library")
             }
             ToolbarItem {
-                Button("Delete Permanently", systemImage: "trash.slash") { confirmPurge = true }
+                Button { confirmPurge = true } label: { DSToolbarLabel("Delete Permanently", systemImage: "trash.slash") }
                     .labelStyle(.titleAndIcon)
                     .dsToolbarControl()
                     .disabled(model.selection.isEmpty)

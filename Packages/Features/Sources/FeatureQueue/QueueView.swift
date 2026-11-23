@@ -123,15 +123,19 @@ public struct QueueView: View {
     /// Functional groups separated by fixed spacers: [Add, Clear Finished] | [Actions].
     @ToolbarContentBuilder private var toolbarContent: some ToolbarContent {
         ToolbarItem {
-            Button("Add Files…", systemImage: "plus") { isImporterPresented = true }
+            Button { isImporterPresented = true } label: { DSToolbarLabel("Add Files…", systemImage: "plus") }
                 .labelStyle(.titleAndIcon)
                 .dsToolbarControl()
                 .help("Add audio or video files or folders")
                 .accessibilityIdentifier("queue.add")
         }
         ToolbarItem {
-            Button("Clear Finished", systemImage: "checkmark.circle") { Task { await model.clearFinished() } }
-                .labelStyle(.titleAndIcon)
+            Button {
+                Task { await model.clearFinished() }
+            } label: {
+                DSToolbarLabel("Clear Finished", systemImage: "checkmark.circle")
+            }
+            .labelStyle(.titleAndIcon)
                 .dsToolbarControl()
                 .disabled(!model.hasFinished || model.isClearing)
                 .help("Remove completed and cancelled jobs from the queue. Transcripts stay in the Library.")
@@ -139,7 +143,7 @@ public struct QueueView: View {
         }
         ToolbarSpacer(.fixed)
         ToolbarItem {
-            Menu("Queue Actions", systemImage: "ellipsis.circle") {
+            Menu {
                 Button("Pause All", systemImage: "pause.fill") { Task { await model.pauseAll() } }
                     .disabled(!model.hasActive || model.isClearing)
                 Button("Resume All", systemImage: "play.fill") { Task { await model.resumeAll() } }
@@ -150,7 +154,10 @@ public struct QueueView: View {
                 Button("Clear Queue…", systemImage: "xmark.circle", role: .destructive) { confirmsClearQueue = true }
                     .disabled(model.jobs.isEmpty || model.isClearing)
                     .accessibilityIdentifier("queue.clearAll")
+            } label: {
+                DSToolbarLabel("Queue Actions", systemImage: "ellipsis.circle", iconOnly: true)
             }
+            .labelStyle(.iconOnly)
             .dsToolbarControl()
             .help("Pause, resume or clear the queue")
             .accessibilityIdentifier("queue.actions")
@@ -251,8 +258,7 @@ private struct QueueRow: View {
         } label: {
             Image(systemName: "minus.circle")
         }
-        .buttonStyle(.borderless)
-        .frame(minWidth: DSLayout.minControlHeight, minHeight: DSLayout.minControlHeight)
+        .buttonStyle(.dsHoverIcon)
         .help(job.state == .running || job.state == .pending ? "Cancel and remove from queue" : "Remove from queue")
         .accessibilityLabel(job.state == .running || job.state == .pending ? "Cancel and remove from queue" : "Remove from queue")
         .accessibilityIdentifier("queue.remove.\(job.id)")
@@ -268,20 +274,20 @@ private struct QueueRow: View {
     @ViewBuilder private var actionButtons: some View {
         switch job.state {
         case .pending, .running:
-            Button("Pause", systemImage: "pause.fill") { Task { await model.pause(job.id) } }.labelStyle(.iconOnly)
+            Button("Pause", systemImage: "pause.fill") { Task { await model.pause(job.id) } }.labelStyle(.iconOnly).buttonStyle(.dsHoverIcon)
                 .help("Pause this job").accessibilityIdentifier("queue.pause.\(job.id)")
-            Button("Cancel", systemImage: "stop.fill") { Task { await model.cancel(job.id) } }.labelStyle(.iconOnly)
+            Button("Cancel", systemImage: "stop.fill") { Task { await model.cancel(job.id) } }.labelStyle(.iconOnly).buttonStyle(.dsHoverIcon)
                 .help("Stop this job").accessibilityIdentifier("queue.cancel.\(job.id)")
         case .paused:
-            Button("Resume", systemImage: "play.fill") { Task { await model.resume(job.id) } }.labelStyle(.iconOnly)
+            Button("Resume", systemImage: "play.fill") { Task { await model.resume(job.id) } }.labelStyle(.iconOnly).buttonStyle(.dsHoverIcon)
                 .help("Resume this job").accessibilityIdentifier("queue.resume.\(job.id)")
-            Button("Cancel", systemImage: "stop.fill") { Task { await model.cancel(job.id) } }.labelStyle(.iconOnly)
+            Button("Cancel", systemImage: "stop.fill") { Task { await model.cancel(job.id) } }.labelStyle(.iconOnly).buttonStyle(.dsHoverIcon)
                 .help("Stop this job").accessibilityIdentifier("queue.cancel.\(job.id)")
         case .failed, .cancelled:
-            Button("Retry", symbol: .retry) { Task { await model.retry(job.id) } }.labelStyle(.iconOnly)
+            Button("Retry", symbol: .retry) { Task { await model.retry(job.id) } }.labelStyle(.iconOnly).buttonStyle(.dsHoverIcon)
                 .help("Try this file again").accessibilityIdentifier("queue.retry.\(job.id)")
         case .completed:
-            if let id = job.transcriptID { Button("Open Transcript") { onOpenTranscript(id) } }
+            if let id = job.transcriptID { Button("Open Transcript") { onOpenTranscript(id) }.buttonStyle(.dsHover) }
         }
     }
 }

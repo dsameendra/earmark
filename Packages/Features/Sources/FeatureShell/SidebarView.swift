@@ -205,11 +205,10 @@ struct SidebarView: View {
                 Spacer(minLength: 0)
             }
             .foregroundStyle(DSColor.secondaryText)
-            .padding(.horizontal, 14)
-            .frame(minHeight: DSLayout.minControlHeight + 6)
-            .contentShape(Rectangle())
+            .frame(maxWidth: .infinity, minHeight: DSLayout.minControlHeight + 6, alignment: .leading)
         }
-        .buttonStyle(.plain)
+        // Hover/pressed highlight is drawn behind the full padded row, in the same shape as the sidebar selection pill.
+        .buttonStyle(DSHoverButtonStyle(shape: .rounded(DSRadius.medium + 4), horizontalPadding: 14))
         .accessibilityLabel("Settings")
         .accessibilityIdentifier("sidebar.settings")
     }

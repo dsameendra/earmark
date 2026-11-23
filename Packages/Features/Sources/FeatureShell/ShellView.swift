@@ -92,7 +92,8 @@ public struct ShellView: View {
     @ToolbarContentBuilder private var shellToolbar: some ToolbarContent {
         if model.openedTranscript != nil {
             ToolbarItem(placement: .navigation) {
-                Button("Back", systemImage: "chevron.backward") { model.closeTranscript() }
+                Button { model.closeTranscript() } label: { DSToolbarLabel("Back", systemImage: "chevron.backward", iconOnly: true) }
+                    .labelStyle(.iconOnly)
                     .dsToolbarControl()
                     .help("Back to \(model.selection.title)")
                     .keyboardShortcut("[", modifiers: [.command])
@@ -101,7 +102,7 @@ public struct ShellView: View {
         }
         if !model.usesLibrarySearch {
             ToolbarItem {
-                Button("Search transcripts", symbol: .search) { model.presentQuickOpen() }
+                Button { model.presentQuickOpen() } label: { DSToolbarLabel("Search transcripts", symbol: .search, iconOnly: true) }
                     .labelStyle(.iconOnly)
                     .dsToolbarControl()
                     .help("Quick Open (⌘K)")
@@ -118,7 +119,8 @@ public struct ShellView: View {
         }
         if model.openedTranscript != nil && model.layout.inspectorCollapsed {
             ToolbarItem {
-                Toggle(isOn: $model.isInspectorToggledOn) { Label("Inspector", systemImage: "sidebar.trailing") }
+                Toggle(isOn: $model.isInspectorToggledOn) { DSToolbarLabel("Inspector", systemImage: "sidebar.trailing", iconOnly: true) }
+                    .labelStyle(.iconOnly)
                     .dsToolbarControl()
                     .help("Show or hide the inspector")
                     .accessibilityIdentifier("toolbar.inspector")
@@ -128,7 +130,7 @@ public struct ShellView: View {
             ToolbarSpacer(.fixed)
             ToolbarItem(placement: .primaryAction) {
                 // The system supplies the prominent capsule, padding and height; no custom style, font or frame.
-                Button { model.presentImporter() } label: { Label("Transcribe", systemImage: "plus") }
+                Button { model.presentImporter() } label: { DSToolbarLabel("Transcribe", systemImage: "plus") }
                     .labelStyle(.titleAndIcon)
                     .buttonStyle(.borderedProminent)
                     .dsToolbarControl()

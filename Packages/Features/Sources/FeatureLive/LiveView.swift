@@ -101,8 +101,10 @@ public struct LiveView: View {
         if model.isRunning {
             if model.hasExtras {
                 ToolbarItem(placement: .primaryAction) {
-                    Button(model.isPaused ? "Resume" : "Pause", systemImage: model.isPaused ? LiveSymbol.resume : LiveSymbol.pause) {
+                    Button {
                         Task { await model.togglePause() }
+                    } label: {
+                        DSToolbarLabel(model.isPaused ? "Resume" : "Pause", systemImage: model.isPaused ? LiveSymbol.resume : LiveSymbol.pause)
                     }
                     .labelStyle(.titleAndIcon)
                     .dsToolbarControl()
@@ -111,7 +113,7 @@ public struct LiveView: View {
                 }
             }
             ToolbarItem(placement: .primaryAction) {
-                Button("Stop", systemImage: LiveSymbol.stop) { Task { await model.stop() } }
+                Button { Task { await model.stop() } } label: { DSToolbarLabel("Stop", systemImage: LiveSymbol.stop) }
                     .labelStyle(.titleAndIcon)
                     .dsToolbarControl()
                     .keyboardShortcut(.return, modifiers: [.command])
@@ -120,7 +122,7 @@ public struct LiveView: View {
             }
         } else {
             ToolbarItem(placement: .primaryAction) {
-                Button { Task { await model.start() } } label: { Label("Start", systemImage: LiveSymbol.start) }
+                Button { Task { await model.start() } } label: { DSToolbarLabel("Start", systemImage: LiveSymbol.start) }
                     .labelStyle(.titleAndIcon)
                     .buttonStyle(.borderedProminent)
                     .dsToolbarControl()

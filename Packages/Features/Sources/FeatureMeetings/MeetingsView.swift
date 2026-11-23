@@ -110,7 +110,7 @@ public struct MeetingsView: View {
                         .accessibilityIdentifier("meetings.policy.\(app.rawValue).\(behavior.rawValue)")
                     }
                 } label: {
-                    Label("\(app.badgeTitle) · \(model.policy(for: app).behavior.title)", symbol: MeetingsSymbol.policy)
+                    DSToolbarLabel("\(app.badgeTitle) · \(model.policy(for: app).behavior.title)", symbol: MeetingsSymbol.policy)
                 }
                 .labelStyle(.titleAndIcon)
                 .dsToolbarControl()

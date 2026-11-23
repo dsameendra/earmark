@@ -133,6 +133,8 @@ struct TranslatePanel: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
+                .disabled(model.translationLanguages.isEmpty)
+                .help(model.translationLanguages.isEmpty ? "Translate this transcript first to switch views" : "Show the original, the translation or both")
                 .accessibilityLabel("Show")
                 .accessibilityIdentifier("editor.translation.mode")
                 if model.translationLanguages.count > 1 {
@@ -156,7 +158,7 @@ struct TranslatePanel: View {
             }
         }
         .padding(DSSpacing.lg)
-        .frame(minWidth: 340, idealWidth: 380)
+        .frame(minWidth: 380, idealWidth: 400)
         .fixedSize(horizontal: false, vertical: true)
         .task { await panel.load() }
     }
@@ -167,9 +169,14 @@ struct TranslatePanel: View {
             SectionCaption("Translate")
             if model.translationSource == nil {
                 Label("The language of this transcript is unknown. Set it on a segment first.", systemImage: "questionmark.circle")
-                    .font(DSTypography.caption)
+                    .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
             } else if panel.targets.isEmpty {
-                if panel.isLoading { ProgressView() } else { Text("No translation targets are available.").font(DSTypography.caption) }
+                if panel.isLoading {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Text("No translation targets are available for \(TranscriptEditorModel.name(of: panel.source ?? .english)).")
+                        .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                }
             } else {
                 Picker("Into", selection: Binding(get: { panel.selected }, set: { value in if let value { Task { await panel.select(value) } } })) {
                     ForEach(panel.targets) { target in
@@ -210,7 +217,7 @@ struct TranslatePanel: View {
         switch target.readiness {
         case .ready: return name
         case .needsModel, .needsApplePack: return "\(name) (needs download)"
-        case .unavailable: return "\(name) (unavailable)"
+        case .unavailable(let reason): return "\(name) (unavailable: \(reason))"
         }
     }
 
@@ -242,7 +249,8 @@ struct TranslatePanel: View {
                 .buttonStyle(.borderedProminent).tint(DSColor.accent).controlSize(.large)
             }
         case .needsApplePack:
-            Text("Apple's on-device language pack for this pair is not installed yet.").font(DSTypography.caption)
+            Text("Apple's on-device language pack for this pair is not installed yet.")
+                .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
             Button { Task { await panel.installApplePack() } } label: {
                 Label("Install language pack…", symbol: .download).frame(maxWidth: .infinity)
             }

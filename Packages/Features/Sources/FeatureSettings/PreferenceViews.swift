@@ -469,7 +469,8 @@ struct TranslationSettingsView: View {
         VStack(spacing: 0) {
             Form {
                 Section("Defaults") {
-                    TextField("Target language code (blank to ask each time)", text: model.targetLanguage.binding)
+                    TextField("Default target language", text: model.targetLanguage.binding, prompt: Text("Language code, such as es or si"))
+                        .help("Leave blank to choose the language each time you translate")
                     Picker("Engine", selection: model.engine.binding) {
                         Text("Auto").tag("auto")
                         Text("Apple Translation").tag("apple")

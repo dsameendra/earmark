@@ -157,6 +157,20 @@ public final class BatchSettingsModel {
         return recent + all.filter { !recent.contains($0) }
     }
 
+    /// The shared "Several languages" list: recents and the Mac's languages first; languages the chosen model cannot handle greyed out.
+    public var languageSelector: LanguageSelectorModel {
+        let options = languageOptions
+        let chosen = catalog.first { $0.id == modelID }
+        return LanguageSelectorModel(
+            options: options, recents: recentLanguages, suggested: LanguageSelectorModel.suggestions(from: options),
+            unsupportedReasons: LanguageSelectorModel.unsupportedReasons(for: chosen, options: options))
+    }
+
+    public func clearLanguages() {
+        hasEditedConfiguration = true
+        multiLanguages = []
+    }
+
     /// Languages offered as translation targets.
     public var translationOptions: [LanguageCode] {
         let all = table.languages(kind: .translation)

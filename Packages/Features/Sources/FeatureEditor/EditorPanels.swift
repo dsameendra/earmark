@@ -2,6 +2,7 @@ import AppCore
 import AppKit
 import DesignSystem
 import Export
+import FeatureSupport
 import SwiftUI
 
 /// Speaker list: rename, colour, merge, add (EDIT-AC-08).
@@ -13,10 +14,12 @@ struct SpeakersPanel: View {
         VStack(alignment: .leading, spacing: DSSpacing.md) {
             Text("Speakers").font(DSTypography.headline)
             if model.speakers.isEmpty {
-                Text("No speakers yet.").foregroundStyle(DSColor.secondaryText)
+                Text("No speakers yet. Add one below, or run Identify speakers from Re-transcribe.")
+                    .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
             }
             if model.speakers.count > 4 {
-                ScrollView { speakerRows.padding(.vertical, 2) }.frame(height: 320)  // long lists scroll instead of growing
+                // Long lists scroll instead of growing; the range keeps the area roomy without a fixed height.
+                ScrollView { speakerRows.padding(.vertical, DSSpacing.xxs) }.frame(minHeight: 200, idealHeight: 320, maxHeight: 360)
             } else {
                 speakerRows
             }
@@ -33,7 +36,7 @@ struct SpeakersPanel: View {
             }
         }
         .padding(DSSpacing.lg)
-        .frame(minWidth: 340, idealWidth: 360)
+        .frame(minWidth: 380, idealWidth: 400)
     }
 
     private var speakerRows: some View {
@@ -62,6 +65,7 @@ struct SpeakerRow: View {
                 TextField("Name", text: $name).textFieldStyle(.roundedBorder).onSubmit { model.renameSpeaker(speaker.id, to: name) }
                     .accessibilityIdentifier("editor.speaker.\(speaker.id).name")
                 Text("\(model.segmentCount(for: speaker.id))").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    .help("Segments by this speaker").accessibilityLabel("\(model.segmentCount(for: speaker.id)) segments")
                 Menu("Merge") {
                     ForEach(model.speakers.filter { $0.id != speaker.id }) { other in
                         Button("Into \(other.name)") { model.mergeSpeaker(speaker.id, into: other.id) }
@@ -69,6 +73,7 @@ struct SpeakerRow: View {
                     }
                 }
                 .menuStyle(.borderlessButton).fixedSize().disabled(model.speakers.count < 2)
+                .help(model.speakers.count < 2 ? "Add another speaker to merge into" : "Merge this speaker into another")
                 .accessibilityIdentifier("editor.speaker.\(speaker.id).merge")
                 if model.voiceProfiles != nil { voiceProfileControl }
             }
@@ -77,10 +82,14 @@ struct SpeakerRow: View {
                     Button {
                         model.setSpeakerColor(speaker.id, hex: hex)
                     } label: {
-                        Circle().fill(EditorColors.color(.hex(hex, fallbackSlot: 0))).frame(width: 14, height: 14)
-                            .overlay { if speaker.colorHex.uppercased() == hex { Circle().stroke(Color.primary, lineWidth: 2) } }
+                        Circle().fill(EditorColors.color(.hex(hex, fallbackSlot: 0))).frame(width: 16, height: 16)
+                            .overlay { if speaker.colorHex.uppercased() == hex { Circle().stroke(DSColor.primaryText, lineWidth: 2) } }
+                            .padding(DSSpacing.xxs + 1)  // a 22 pt hit target around the 16 pt swatch
+                            .contentShape(Circle())
                     }
-                    .buttonStyle(.plain).accessibilityLabel("Colour \(hex)")
+                    .buttonStyle(.plain).help("Use this colour")
+                    .accessibilityLabel("Colour \(hex)")
+                    .accessibilityAddTraits(speaker.colorHex.uppercased() == hex ? .isSelected : [])
                     .accessibilityIdentifier("editor.speaker.\(speaker.id).color.\(hex)")
                 }
             }
@@ -112,8 +121,8 @@ struct BookmarksPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpacing.md) {
             HStack {
-                Text("Bookmarks & Highlights").font(DSTypography.headline)
-                Spacer()
+                Text("Bookmarks & Highlights").font(DSTypography.headline).lineLimit(1)
+                Spacer(minLength: DSSpacing.sm)
                 Button {
                     model.addBookmark()
                 } label: {
@@ -121,9 +130,15 @@ struct BookmarksPanel: View {
                 }
             }
             if model.bookmarks.isEmpty && model.highlights.isEmpty {
-                Text("Add bookmarks at the playhead, or right-click a word or segment to bookmark or highlight it.")
-                    .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
-            }
+                VStack(spacing: DSSpacing.xs) {
+                    Text("Nothing marked yet").font(DSTypography.headline)
+                    Text("Add a bookmark at the playhead, or right-click a word or segment to bookmark or highlight it.")
+                        .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText).multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, minHeight: 160)
+                .accessibilityIdentifier("editor.bookmarks.empty")
+            } else {
             List {
                 ForEach(model.bookmarks) { bookmark in
                     NoteRow(
@@ -141,9 +156,10 @@ struct BookmarksPanel: View {
                 }
             }
             .frame(minHeight: 160)
+            }
         }
         .padding(DSSpacing.lg)
-        .frame(minWidth: 340, idealWidth: 380, minHeight: 280, idealHeight: 320, maxHeight: 480)
+        .frame(minWidth: 380, idealWidth: 400, minHeight: 280, idealHeight: 320, maxHeight: 480)
     }
 }
 
@@ -162,10 +178,10 @@ struct NoteRow: View {
                 Label(TimeFormat.clock(time), systemImage: icon).font(DSTypography.timestamp)
             }
             .buttonStyle(.borderless)
-            TextField("Note", text: $text).textFieldStyle(.plain).onSubmit { onNote(text) }
+            TextField("Note", text: $text, prompt: Text("Add a note")).textFieldStyle(.plain).onSubmit { onNote(text) }
             Button(role: .destructive, action: onDelete) {
                 Image(systemName: "trash")  // stock-chrome: destructive action
-            }.buttonStyle(.borderless)
+            }.buttonStyle(.dsHoverIcon).help("Delete")
                 .accessibilityLabel("Delete")
         }
         .onAppear { text = note }
@@ -214,7 +230,7 @@ struct ViewOptionsPanel: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-        .frame(minWidth: 340, idealWidth: 360)
+        .frame(minWidth: 380, idealWidth: 400)
         .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -232,7 +248,7 @@ struct ExportSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpacing.lg) {
-            Text("Export").font(DSTypography.title1).accessibilityAddTraits(.isHeader)
+            Text("Export").font(DSTypography.title).accessibilityAddTraits(.isHeader)
             HStack(alignment: .top, spacing: DSSpacing.xl) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: DSSpacing.lg) {
@@ -249,7 +265,9 @@ struct ExportSheet: View {
                 VStack(alignment: .leading, spacing: DSSpacing.md) {
                     SectionCaption(export.previewIsPlainText ? "Text preview" : "Preview")
                     ScrollView {
-                        Text(export.previewText).font(.system(.caption, design: .monospaced))
+                        Text(export.previewText.isEmpty ? "Nothing to preview yet." : export.previewText)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(export.previewText.isEmpty ? DSColor.secondaryText : DSColor.primaryText)
                             .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                     }
                     Text("First six segments").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
@@ -354,7 +372,7 @@ struct ExportSheet: View {
                             .foregroundStyle(export.options.format == format ? DSColor.accentText : DSColor.secondaryText)
                             .background(export.options.format == format ? DSColor.accentTint : DSColor.insetBackground, in: Capsule())
                     }
-                    .buttonStyle(.plain).help(EditorExportModel.title(for: format))
+                    .buttonStyle(FormatChipStyle()).help(EditorExportModel.title(for: format))
                     .accessibilityLabel(EditorExportModel.title(for: format))
                     .accessibilityAddTraits(export.options.format == format ? .isSelected : [])
                     .accessibilityIdentifier("export.format.\(format.rawValue)")
@@ -387,7 +405,9 @@ struct ExportSheet: View {
                 if export.options.translation != .none {
                     Picker("Translation language", selection: $export.options.translationLanguage) {
                         Text("Choose a language").tag(LanguageCode?.none)
-                        ForEach(export.translationLanguages, id: \.self) { Text($0.rawValue.uppercased()).tag(LanguageCode?.some($0)) }
+                        ForEach(export.translationLanguages, id: \.self) {
+                            Text(LanguageSelectorModel.name(of: $0)).tag(LanguageCode?.some($0))
+                        }
                     }
                 }
             }
@@ -429,5 +449,21 @@ struct ExportSheet: View {
 
     static func fileExtension(_ format: ExportFormat) -> String {
         format == .markdown ? "md" : format.rawValue
+    }
+}
+
+/// A format pill's hover and pressed feedback (a plain button had none).
+private struct FormatChipStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View { Chip(configuration: configuration) }
+
+    struct Chip: View {
+        let configuration: ButtonStyleConfiguration
+        @State private var hovering = false
+        var body: some View {
+            configuration.label
+                .overlay { Capsule().fill(DSColor.primaryText.opacity(configuration.isPressed ? 0.12 : hovering ? 0.06 : 0)) }
+                .contentShape(Capsule())
+                .onHover { hovering = $0 }
+        }
     }
 }

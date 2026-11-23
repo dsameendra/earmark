@@ -33,6 +33,8 @@ public final class RerunPanelModel {
     public var replaceEverything = false
     public private(set) var catalog: [ModelDescriptor] = []
     public private(set) var installed: Set<ModelID> = []
+    /// Languages used recently for files, most recent first (offered first in the language list).
+    public private(set) var recentLanguages: [LanguageCode] = []
 
     @ObservationIgnored private let editor: TranscriptEditorModel
 
@@ -53,6 +55,7 @@ public final class RerunPanelModel {
         guard let models = editor.models else { return }
         catalog = await models.catalog()
         installed = await models.installedModels()
+        recentLanguages = await FileJobSettings.recentLanguages(in: editor.settings)
     }
 
     public var selectionCount: Int { editor.selection.count }
@@ -69,6 +72,17 @@ public final class RerunPanelModel {
     public var languageOptions: [LanguageCode] {
         Set(LanguageCapabilityTable(models: catalog).languages()).union([singleLanguage]).union(multiLanguages).sorted()
     }
+
+    /// The shared "Several languages" list: recents and the Mac's languages first; languages the chosen model cannot handle greyed out.
+    public var languageSelector: LanguageSelectorModel {
+        let options = languageOptions
+        let chosen = catalog.first { $0.id == modelID }
+        return LanguageSelectorModel(
+            options: options, recents: recentLanguages, suggested: LanguageSelectorModel.suggestions(from: options),
+            unsupportedReasons: LanguageSelectorModel.unsupportedReasons(for: chosen, options: options))
+    }
+
+    public func clearLanguages() { multiLanguages = [] }
 
     public var modelRows: [ModelChoiceRow] {
         ModelChoices.rows(catalog: catalog, installed: installed, mode: languageMode, tier: tier)
@@ -151,7 +165,7 @@ struct RerunPanel: View {
             transcriptLanguageSection
         }
         .padding(DSSpacing.lg)
-        .frame(minWidth: 360, idealWidth: 380)
+        .frame(minWidth: LanguageSelectorLayout.minPopoverWidth, idealWidth: 400)
         .task { await panel.prepare() }
     }
 
@@ -189,16 +203,9 @@ struct RerunPanel: View {
                     .accessibilityIdentifier("editor.rerun.language")
                 case .autoDetect: EmptyView()
                 case .multilingual:
-                    ScrollView {
-                        VStack(alignment: .leading) {
-                            ForEach(panel.languageOptions, id: \.self) { code in
-                                Toggle(
-                                    TranscriptEditorModel.name(of: code),
-                                    isOn: Binding(get: { panel.multiLanguages.contains(code) }, set: { _ in panel.toggleLanguage(code) }))
-                            }
-                        }
-                    }
-                    .frame(maxHeight: 120)
+                    LanguageMultiSelectView(
+                        selector: panel.languageSelector, selection: panel.multiLanguages, idPrefix: "editor.rerun.languages",
+                        onToggle: { panel.toggleLanguage($0) }, onClear: { panel.clearLanguages() })
                 }
             }
             VStack(alignment: .leading, spacing: DSSpacing.sm) {

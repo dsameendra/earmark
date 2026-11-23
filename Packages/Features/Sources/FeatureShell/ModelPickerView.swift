@@ -48,7 +48,7 @@ struct ModelPickerView: View {
                     }
                 }
             }
-            .frame(maxHeight: 380)
+            .frame(minHeight: 200, idealHeight: 320, maxHeight: 380)
 
             Divider()
             HStack {
@@ -58,7 +58,7 @@ struct ModelPickerView: View {
             }
         }
         .padding(DSSpacing.lg)
-        .frame(width: 360)
+        .frame(minWidth: 380, idealWidth: 400)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("modelPicker")
         .task { await model.reload() }
@@ -80,7 +80,7 @@ struct ModelPickerView: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.dsHover(shape: .rounded(DSRadius.small), horizontalPadding: DSSpacing.sm))
         .accessibilityAddTraits(model.isAutomaticSelected ? .isSelected : [])
         .accessibilityIdentifier("modelPicker.automatic")
     }
@@ -122,7 +122,7 @@ struct ModelPickerView: View {
             .contentShape(Rectangle())
             .opacity(entry.isDisabled ? 0.55 : 1)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.dsHover(shape: .rounded(DSRadius.small), horizontalPadding: DSSpacing.sm))
         .disabled(entry.isDisabled)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(entry.accessibilityLabel)
@@ -135,7 +135,7 @@ struct ModelPickerView: View {
             HStack {
                 ProgressView(value: fraction).accessibilityLabel("Downloading \(entry.descriptor.displayName)")
                 Button("Cancel", systemImage: "xmark.circle") { Task { await model.cancelDownload(entry.id) } }
-                    .labelStyle(.iconOnly).buttonStyle(.borderless)
+                    .labelStyle(.iconOnly).buttonStyle(.dsHoverIcon).help("Cancel download")
                     .accessibilityLabel("Cancel download of \(entry.descriptor.displayName)")
                     .accessibilityIdentifier("modelPicker.cancel.\(entry.id.rawValue)")
             }

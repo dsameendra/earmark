@@ -145,7 +145,7 @@ public struct LiveView: View {
         .pickerStyle(.segmented)
         .dsToolbarControl()
         .labelsHidden()
-        .help("Caption source: microphone, system audio or both")
+        .help(model.isRunning ? "Stop captioning to change the source" : "Caption source: microphone, system audio or both")
         .disabled(model.isRunning)
         .accessibilityLabel("Source")
         .accessibilityIdentifier("live.source")
@@ -253,6 +253,7 @@ public struct LiveView: View {
                 .controlSize(.large)
                 .frame(maxWidth: .infinity)
                 .disabled(model.isRunning)
+                .help(model.isRunning ? "Stop captioning to change the microphone" : "")
                 .accessibilityIdentifier("live.device")
             }
         }
@@ -264,6 +265,7 @@ public struct LiveView: View {
             .controlSize(.large)
             .frame(maxWidth: .infinity)
             .disabled(model.isRunning)
+            .help(model.isRunning ? "Stop captioning to change the language" : "")
             .accessibilityIdentifier("live.language")
         }
         labeled("Level") {

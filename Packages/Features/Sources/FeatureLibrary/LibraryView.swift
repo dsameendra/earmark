@@ -271,7 +271,7 @@ public struct LibraryView: View {
                 Button {
                     Task { await model.deleteSelected() }  // stock-chrome: destructive action
                 } label: {
-                    DSToolbarLabel("Delete", systemImage: "trash")
+                    DSToolbarLabel("Delete", systemImage: "trash")  // stock-chrome: destructive action
                 }
                     .labelStyle(.titleAndIcon)
                     .dsToolbarControl()

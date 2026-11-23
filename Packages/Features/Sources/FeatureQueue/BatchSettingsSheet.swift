@@ -98,7 +98,7 @@ public struct BatchSettingsSheet: View {
                         }
                     }
                 }
-                .frame(maxHeight: 180)
+                .frame(minHeight: 80, idealHeight: 140, maxHeight: 220)
             }
             .accessibilityIdentifier("batch.perFile")
             if !model.overrides.isEmpty {
@@ -136,11 +136,9 @@ public struct BatchSettingsSheet: View {
                 Text("The language is detected from the first 30 seconds.").font(DSTypography.caption).foregroundStyle(
                     DSColor.secondaryText)
             case .multilingual:
-                ForEach(model.languageOptions, id: \.self) { code in
-                    Toggle(
-                        Self.name(of: code),
-                        isOn: Binding(get: { model.multiLanguages.contains(code) }, set: { _ in model.toggleLanguage(code) }))
-                }
+                LanguageMultiSelectView(
+                    selector: model.languageSelector, selection: model.multiLanguages, idPrefix: "batch.languages",
+                    onToggle: { model.toggleLanguage($0) }, onClear: { model.clearLanguages() })
             }
         }
     }
@@ -336,7 +334,7 @@ private struct FileOverrideEditor: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-        .frame(minWidth: 340, idealWidth: 360)
+        .frame(minWidth: 380, idealWidth: 400)
         .fixedSize(horizontal: false, vertical: true)
         .padding(DSSpacing.sm)
     }

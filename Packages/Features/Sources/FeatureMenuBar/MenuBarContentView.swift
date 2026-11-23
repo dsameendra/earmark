@@ -102,7 +102,7 @@ public struct MenuBarContentView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                     Button("Dismiss message", systemImage: "xmark", action: model.dismissError)
-                        .labelStyle(.iconOnly).buttonStyle(.plain)
+                        .labelStyle(.iconOnly).buttonStyle(.dsHoverIcon).help("Dismiss")
                         .accessibilityIdentifier("menuBar.error.dismiss")
                 }
                 .padding(DSSpacing.md)
@@ -215,6 +215,7 @@ public struct MenuBarContentView: View {
                         }
                     }
                     .labelsHidden().frame(maxWidth: 190).disabled(model.status.isRecording)
+                    .help(model.status.isRecording ? "Stop captions to change the microphone" : "")
                     .accessibilityIdentifier("menuBar.microphone")
                 }
                 LabeledContent("Language") {
@@ -224,6 +225,7 @@ public struct MenuBarContentView: View {
                         ForEach(model.languageChoices) { Text($0.title).tag($0) }
                     }
                     .labelsHidden().frame(maxWidth: 190).disabled(model.status.isRecording)
+                    .help(model.status.isRecording ? "Stop captions to change the language" : "")
                     .accessibilityIdentifier("menuBar.language")
                 }
                 Divider()
@@ -268,10 +270,9 @@ public struct MenuBarContentView: View {
                 if count > 0 { Text("\(count)").font(DSTypography.timestamp).foregroundStyle(DSColor.secondaryText) }
                 Image(systemName: "chevron.right").font(DSTypography.caption).foregroundStyle(DSColor.tertiaryText)
             }
-            .padding(.horizontal, DSSpacing.sm).frame(minHeight: 32)
-            .contentShape(RoundedRectangle(cornerRadius: DSRadius.small))
+            .frame(minHeight: DSLayout.minControlHeight)
         }
-        .buttonStyle(.plain).accessibilityIdentifier(identifier)
+        .buttonStyle(.dsHover(shape: .rounded(DSRadius.small))).accessibilityIdentifier(identifier)
     }
 
     private var footer: some View {
@@ -282,7 +283,7 @@ public struct MenuBarContentView: View {
             Button("Quit", systemImage: "power", action: actions.quit)
                 .keyboardShortcut("q", modifiers: [.command]).accessibilityIdentifier("menuBar.quit")
         }
-        .font(DSTypography.caption).buttonStyle(.plain).foregroundStyle(DSColor.secondaryText)
+        .font(DSTypography.caption).buttonStyle(.dsHover(shape: .rounded(DSRadius.small))).foregroundStyle(DSColor.secondaryText)
         .frame(minHeight: DSLayout.minControlHeight)
     }
 }

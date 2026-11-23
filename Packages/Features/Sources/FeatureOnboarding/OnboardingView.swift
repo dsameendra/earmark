@@ -300,7 +300,9 @@ private struct LanguageStep: View {
                 Button("Cancel") { Task { await model.cancel() } }.accessibilityIdentifier("onboarding.download.cancel")
             } else if model.hasPendingDownload {
                 Button("Download \(model.totalSizeText)") { Task { await model.startDownload() } }
+                    .buttonStyle(.borderedProminent)
                     .disabled(model.isOffline)
+                    .help(model.isOffline ? "You are offline. Connect to download, or continue and download later." : "")
                     .accessibilityIdentifier("onboarding.download.start")
                 Text("or continue and download later in Settings").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
             }

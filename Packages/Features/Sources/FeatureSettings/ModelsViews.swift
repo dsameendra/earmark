@@ -128,10 +128,10 @@ struct ModelRowView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .frame(maxHeight: 240)
+                .frame(minHeight: 100, idealHeight: 200, maxHeight: 280)
             }
             .padding(DSSpacing.lg)
-            .frame(width: 300)
+            .frame(minWidth: 340, idealWidth: 360)
         }
     }
 
@@ -438,7 +438,7 @@ struct LanguagesSettingsView: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.dsHover(shape: .rounded(DSRadius.small), horizontalPadding: DSSpacing.sm))
         .disabled(isUnavailable)
         .opacity(isUnavailable ? 0.5 : 1)
         .accessibilityAddTraits(selected ? .isSelected : [])

@@ -20,11 +20,12 @@ Earmark turns audio and video into searchable, editable transcripts on your Mac.
 
 ## Features
 
-- **Files and batches.** Drop audio, video or folders into a persistent queue. Pause, resume, reorder, retry or clear jobs while keeping saved transcripts.
-- **Meeting capture.** Detect Zoom and Teams calls with an ask-first default, separate microphone and system-audio tracks, optional video and recording recovery.
-- **Live captions and dictation.** Caption microphone audio, system audio or both in a floating overlay. Use a global shortcut to dictate into the focused app, with quick controls in the menu bar.
-- **An editor tied to playback.** Click words to seek, edit text, rename and reassign speakers, add earmarks, and find or replace text. Space toggles playback; arrow keys skip five seconds in docked and detached players.
-- **Multiple languages.** Choose a language, auto-detect or use a multilingual selection for code-switching. Re-transcribe individual segments and view original, translated or bilingual text.
+- **Files and batches.** Drop audio, video or folders into a persistent queue. A short Transcribe sheet lets you pick the language (one, several or auto-detect), the model and whether to identify speakers before anything starts. Pause, resume, reorder, retry or clear jobs while keeping saved transcripts.
+- **Meeting capture.** Detect Zoom and Teams calls with an ask-first default, separate microphone and system-audio tracks, optional video and recording recovery. A diagnostics list in Settings shows exactly what the detector sees.
+- **Live captions and dictation.** Caption microphone audio, system audio or both in a floating overlay you can place on any display. Use a global shortcut to dictate into the focused app, with quick controls in the menu bar.
+- **An editor tied to playback.** A waveform scrubber with speaker and bookmark markers, zoom and pan, and one shared player that keeps playing in a mini-player when you leave the transcript. Click words to seek, edit text, rename and reassign speakers, add earmarks, and find or replace text.
+- **Speakers and languages.** Identify speakers with an optional expected count and re-run them later without losing your edits. Re-transcribe a whole transcript or a selection in one or several languages, and view original, translated or bilingual text in segments or paragraphs.
+- **Models that explain themselves.** Pick a model per use (files, live, dictation) from the sidebar. Each model lists what it supports, unsupported choices are greyed out with a reason, and the best option for your Mac is marked Recommended. Downloads check disk space and licences first.
 - **A useful library.** Search titles and transcript text, organize with folders and tags, restore recently deleted items and relink missing media. Ignore rules and replacements preserve the source.
 - **Flexible export.** Save documents, structured data and subtitles, including TXT, Markdown, DOCX, PDF, JSON, CSV, SRT and VTT, with reusable export presets.
 - **Private by design.** Audio and transcripts stay on your Mac. No accounts, cloud transcription or analytics. Models download when you choose; automatic update checks require opt-in.
@@ -43,6 +44,10 @@ Earmark turns audio and video into searchable, editable transcripts on your Mac.
 </table>
 
 Screenshots use demo content. See the [full gallery and validation record](specs/qa/ui-refinement-2026-11-22.md) for coverage and remaining checks.
+
+## Privacy and permissions
+
+Earmark asks for permissions only when a feature needs them: microphone, system audio recording, Accessibility (dictation insertion), notifications (meeting prompts). If one is denied, the feature shows an inline **Request access** button; for a stale entry run `tccutil reset <Service> lk.dumindu.earmark.Earmark` and relaunch. Nothing leaves your Mac except model downloads you start and update checks you opt into.
 
 ## Getting started
 
@@ -77,6 +82,17 @@ scripts/release.sh selfsigned  # self-signed, un-notarized release DMG (see pack
 ```
 
 See [packaging and release](specs/qa/release.md), [manual acceptance](specs/qa/manual.md) and the [project specifications](specs/00-product.md) for details.
+
+## Repository map
+
+| Path | What it holds |
+|---|---|
+| `App/` | The thin app target, composition root and system integrations |
+| `Packages/` | 18 local Swift packages (AppCore contracts, engines, capture, UI features, DesignSystem) |
+| `NativeRuntime/` | Source and build notes for the bundled translation helper |
+| `Brand/`, `App/Earmark.icon` | App icon, menu bar glyphs and brand sources |
+| `scripts/` | Build checks, release packaging, signing, appcast and DMG tooling |
+| `specs/` | Product spec, architecture, decisions (ADRs), change requests, design and QA records |
 
 ## License
 

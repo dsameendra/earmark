@@ -37,7 +37,9 @@ public struct ShellView: View {
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     if model.showsMiniPlayer {
                         MiniPlayerView(center: model.playback) { model.openTranscript($0) }
-                            .padding(DSSpacing.md)
+                            // The screen above already ends with its own bottom inset, so no extra top padding: the gap to
+                            // the content panel equals the gap under the toolbar instead of doubling.
+                            .padding(EdgeInsets(top: 0, leading: DSSpacing.md, bottom: DSSpacing.md, trailing: DSSpacing.md))
                             .dsTransition(.settle)  // arrives on settle, leaves on the exit curve; Reduce Motion crossfades
                     }
                 }

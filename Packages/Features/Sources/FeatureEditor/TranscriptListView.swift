@@ -36,9 +36,13 @@ struct TranscriptListView: View {
                     }
                 }
                 .scrollTargetLayout()
-                .padding(.vertical, DSSpacing.sm)
+                // Generous bottom slack: the lazily measured last row, the transport dock and the "Return to playhead"
+                // button must never hide the final line when the list is scrolled to its end.
+                .padding(.top, DSSpacing.sm)
+                .padding(.bottom, DSSpacing.xxl)
                 .dsAnimation(.glide, value: model.visibleSegments.count)
             }
+            .contentMargins(.bottom, DSSpacing.lg, for: .scrollContent)
             .scrollPosition(id: $topID, anchor: .top)
             .onChange(of: model.translationChoice) { keepPosition(proxy) }
             .onChange(of: model.options.layout) { keepPosition(proxy) }

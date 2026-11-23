@@ -80,8 +80,12 @@ public final class QueueModel {
 
     public init(services: AppServices) { self.services = services }
 
-    /// Jobs of one section, in queue order.
-    public func jobs(in group: QueueGroup) -> [Job] { jobs.filter { QueueGroup($0.state) == group } }
+    /// Jobs of one section, in queue order; Finished lists the most recently finished job first.
+    public func jobs(in group: QueueGroup) -> [Job] {
+        let inGroup = jobs.filter { QueueGroup($0.state) == group }
+        guard group == .finished else { return inGroup }
+        return inGroup.sorted { ($0.finishedAt ?? $0.createdAt) > ($1.finishedAt ?? $1.createdAt) }
+    }
 
     /// Sections that have at least one job.
     public var visibleGroups: [QueueGroup] { QueueGroup.allCases.filter { !jobs(in: $0).isEmpty } }

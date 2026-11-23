@@ -220,11 +220,14 @@ public struct Job: Codable, Sendable, Hashable, Identifiable {
     public var priority: Int
     public var createdAt: Date
     public var deletedAt: Date?
+    /// When the job last reached a terminal state (completed, failed or cancelled); `nil` while it is still active or for
+    /// jobs journaled before this field existed. The Queue's Finished section sorts by it, newest first.
+    public var finishedAt: Date?
     public init(
         id: JobID = JobID(), kind: JobKind, state: JobState = .pending, input: URL? = nil, transcriptID: TranscriptID? = nil,
         settings: JobSettings = JobSettings(), progress: Double = 0, etaSeconds: TimeInterval? = nil, engine: EngineID? = nil,
         checkpoint: JobCheckpoint? = nil, failureReason: String? = nil, warning: String? = nil, priority: Int = 0,
-        createdAt: Date = Date(), deletedAt: Date? = nil
+        createdAt: Date = Date(), deletedAt: Date? = nil, finishedAt: Date? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -241,9 +244,10 @@ public struct Job: Codable, Sendable, Hashable, Identifiable {
         self.priority = priority
         self.createdAt = createdAt
         self.deletedAt = deletedAt
+        self.finishedAt = finishedAt
     }
 
-    /// Decodes jobs journaled before `warning` existed.
+    /// Decodes jobs journaled before `warning` or `finishedAt` existed.
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
@@ -256,7 +260,8 @@ public struct Job: Codable, Sendable, Hashable, Identifiable {
             checkpoint: try c.decodeIfPresent(JobCheckpoint.self, forKey: .checkpoint),
             failureReason: try c.decodeIfPresent(String.self, forKey: .failureReason),
             warning: try c.decodeIfPresent(String.self, forKey: .warning), priority: try c.decode(Int.self, forKey: .priority),
-            createdAt: try c.decode(Date.self, forKey: .createdAt), deletedAt: try c.decodeIfPresent(Date.self, forKey: .deletedAt))
+            createdAt: try c.decode(Date.self, forKey: .createdAt), deletedAt: try c.decodeIfPresent(Date.self, forKey: .deletedAt),
+            finishedAt: try c.decodeIfPresent(Date.self, forKey: .finishedAt))
     }
 }
 

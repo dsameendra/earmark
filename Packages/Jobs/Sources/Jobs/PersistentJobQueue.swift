@@ -274,6 +274,13 @@ public actor PersistentJobQueue: JobQueue {
 
     /// Stores and journals `job`, then broadcasts it. Persistence failures are logged, never thrown.
     func commit(_ job: Job, persist: Bool = true) async {
+        var job = job
+        // Stamp the moment a job reaches a terminal state (kept if already set); clear it when the job is active again
+        // (retry, re-run) so the Queue's Finished section can order by the real finishing time.
+        switch job.state {
+        case .completed, .failed, .cancelled: if job.finishedAt == nil { job.finishedAt = Date() }
+        case .pending, .running, .paused: job.finishedAt = nil
+        }
         store[job.id] = job
         if persist {
             do { try await services.jobs.save(job) } catch {

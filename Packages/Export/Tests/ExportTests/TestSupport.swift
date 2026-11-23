@@ -56,11 +56,16 @@ enum Fixture {
 
     static func longDocument(count: Int) -> TranscriptDocument {
         var doc = document()
-        doc.segments = (0..<count).map { i in
-            segment(
-                i % 90 + 1, Double(i) * 4, Double(i) * 4 + 3.5,
-                i % 3 == 0 ? "මම හොඳින්, ස්තුතියි. කොහොමද ඔබට අද දවස? Segment \(i) text for pagination." : "Plain English segment number \(i) with enough words to wrap a little across the line.",
-                i % 2 == 0 ? alice : dumindu, i % 3 == 0 ? "si" : "en", withWords: false)
+        // Explicit steps and types: one big ternary-laden call made the Swift 6.3 type-checker time out.
+        doc.segments = (0..<count).map { (i: Int) -> Segment in
+            let start: Double = Double(i) * 4
+            let isSinhala: Bool = i % 3 == 0
+            let sinhalaText: String = "මම හොඳින්, ස්තුතියි. කොහොමද ඔබට අද දවස? Segment \(i) text for pagination."
+            let englishText: String = "Plain English segment number \(i) with enough words to wrap a little across the line."
+            let text: String = isSinhala ? sinhalaText : englishText
+            let speaker: Speaker = i % 2 == 0 ? alice : dumindu
+            let language: LanguageCode = isSinhala ? "si" : "en"
+            return segment(i % 90 + 1, start, start + 3.5, text, speaker, language, withWords: false)
         }
         doc.transcript.duration = Double(count) * 4
         return doc

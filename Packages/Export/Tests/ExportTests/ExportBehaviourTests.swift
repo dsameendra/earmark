@@ -109,11 +109,15 @@ struct ExportBehaviourTests {
     func constraints() async throws {
         var doc = Fixture.document()
         // Overlapping, short and very long segments.
-        doc.segments = (0..<60).map { i in
-            Fixture.segment(
-                i % 90 + 1, Double(i) * 0.7, Double(i) * 0.7 + (i % 4 == 0 ? 15 : 0.3),
-                i % 2 == 0 ? "A fairly long sentence, with a comma. Another one follows here!" : "කොහොමද ඔබට අද දවස? ස්තුතියි, මම හොඳින් ඉන්නවා.",
-                i % 3 == 0 ? Fixture.alice : Fixture.dumindu, i % 2 == 0 ? "en" : "si", withWords: i % 5 != 0)
+        doc.segments = (0..<60).map { (i: Int) -> Segment in
+            let start: Double = Double(i) * 0.7
+            let length: Double = i % 4 == 0 ? 15 : 0.3
+            let english: String = "A fairly long sentence, with a comma. Another one follows here!"
+            let sinhala: String = "කොහොමද ඔබට අද දවස? ස්තුතියි, මම හොඳින් ඉන්නවා."
+            let text: String = i % 2 == 0 ? english : sinhala
+            let speaker: Speaker = i % 3 == 0 ? Fixture.alice : Fixture.dumindu
+            let language: LanguageCode = i % 2 == 0 ? "en" : "si"
+            return Fixture.segment(i % 90 + 1, start, start + length, text, speaker, language, withWords: i % 5 != 0)
         }
         for limits in [SubtitleConstraints(), SubtitleConstraints(maxCharsPerLine: 12, maxLinesPerCue: 1, minCueDuration: 0.5, maxCueDuration: 3, minGap: 0.1, splitOnPunctuation: false)] {
             let t = try await Fixture.text(.srt, doc) { $0.subtitle = limits }

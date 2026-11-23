@@ -26,25 +26,22 @@ public struct LiveView: View {
     public var body: some View {
         GeometryReader { viewport in
             let sizing = LiveWorkspaceLayout(width: viewport.size.width)
+            // Two separate solid panels: the captions, and the controls panel on the right. The panel has a fixed width and
+            // its own scrolling, and its content is built to fit that width, so nothing is cut off at the window edge.
             Group {
                 if sizing.stacksPanels {
-                    VStack(spacing: 0) {
-                        captionPane
-                        Divider()
-                        sidePanel.frame(height: 260)
+                    VStack(spacing: DSSpacing.md) {
+                        captionPane.livePanelSurface()
+                        sidePanel.frame(height: 280).livePanelSurface()
                     }
                 } else {
-                    HStack(spacing: 0) {
-                        captionPane
-                        Divider()
-                        sidePanel.frame(width: sizing.sidePanelWidth)
+                    HStack(alignment: .top, spacing: DSSpacing.md) {
+                        captionPane.livePanelSurface()
+                        sidePanel.frame(width: sizing.sidePanelWidth).livePanelSurface()
                     }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(DSColor.contentBackground)
-            .clipShape(RoundedRectangle(cornerRadius: DSRadius.panel))
-            .dsSolidSurface(.sheet, radius: DSRadius.panel)
         }
         .dsPanelInset()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -209,11 +206,11 @@ public struct LiveView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, DSSpacing.xs)
             }
-            .padding(DSSpacing.lg)
+            .padding(DSSpacing.md)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .scrollIndicators(.automatic)
         .frame(maxHeight: .infinity)
-        .background(DSColor.paper)
         .accessibilityIdentifier("live.sidebar")
     }
 
@@ -338,7 +335,7 @@ public struct LiveView: View {
             .frame(maxWidth: .infinity)
             .accessibilityIdentifier("live.preset")
         }
-        CaptionPresetControls(preset: Binding(get: { model.preset }, set: { model.updatePreset($0) }))
+        CaptionPresetControls(preset: Binding(get: { model.preset }, set: { model.updatePreset($0) }), layout: .embedded)
     }
 }
 
@@ -410,10 +407,19 @@ struct CaptionLineView: View {
 
 #Preview("Live - idle") { LiveView(model: LiveModel(services: .preview())).frame(width: 920, height: 520) }
 
+extension View {
+    /// A rounded solid panel (the "sheet" tier) that clips its content to its own shape.
+    fileprivate func livePanelSurface() -> some View {
+        background(DSColor.contentBackground)
+            .clipShape(RoundedRectangle(cornerRadius: DSRadius.panel))
+            .dsSolidSurface(.sheet, radius: DSRadius.panel)
+    }
+}
+
 /// Compact windows stack controls below captions; ordinary windows reserve a predictable solid inspector width.
 public struct LiveWorkspaceLayout: Equatable, Sendable {
     public var width: CGFloat
     public init(width: CGFloat) { self.width = max(0, width) }
-    public var stacksPanels: Bool { width < 700 }
-    public var sidePanelWidth: CGFloat { width >= 1500 ? 320 : 280 }
+    public var stacksPanels: Bool { width < 820 }
+    public var sidePanelWidth: CGFloat { width >= 1500 ? 340 : 308 }
 }

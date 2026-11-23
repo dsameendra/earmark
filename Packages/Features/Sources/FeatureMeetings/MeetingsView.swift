@@ -93,31 +93,43 @@ public struct MeetingsView: View {
     }
 
     @ToolbarContentBuilder private var policyToolbar: some ToolbarContent {
-        // One item per app (like every other screen): two menus never share a single glass capsule.
+        // One item per app (like every other screen): two menus never share a single glass capsule. Each menu is its own
+        // View so it observes the policy itself; reading it inside the toolbar builder's closures was never tracked, which
+        // left the label and the checkmark stuck on "Ask first" after a choice.
         ForEach(MeetingApp.allCases, id: \.self) { app in
-            ToolbarItem {
-                Menu {
-                    ForEach(MeetingBehavior.allCases, id: \.self) { behavior in
-                        Button {
-                            Task { await model.setBehavior(behavior, for: app) }
-                        } label: {
-                            if model.policy(for: app).behavior == behavior {
-                                Label(behavior.title, systemImage: "checkmark")
-                            } else {
-                                Text(behavior.title)
-                            }
-                        }
-                        .accessibilityIdentifier("meetings.policy.\(app.rawValue).\(behavior.rawValue)")
-                    }
-                } label: {
-                    DSToolbarLabel("\(app.badgeTitle) · \(model.policy(for: app).behavior.title)", symbol: MeetingsSymbol.policy)
-                }
-                .labelStyle(.titleAndIcon)
-                .dsToolbarControl()
-                .accessibilityIdentifier("meetings.policy.\(app.rawValue)")
-                .help("What Earmark does when a \(app.title) meeting starts")
-            }
+            ToolbarItem { MeetingPolicyMenu(model: model, app: app) }
         }
+    }
+}
+
+/// The "Zoom · Ask first" style toolbar menu for one meeting app.
+struct MeetingPolicyMenu: View {
+    let model: MeetingsModel
+    let app: MeetingApp
+
+    var body: some View {
+        let current = model.policy(for: app).behavior
+        Menu {
+            ForEach(MeetingBehavior.allCases, id: \.self) { behavior in
+                Button {
+                    Task { await model.setBehavior(behavior, for: app) }
+                } label: {
+                    if current == behavior {
+                        Label(behavior.title, systemImage: "checkmark")
+                    } else {
+                        Text(behavior.title)
+                    }
+                }
+                .accessibilityIdentifier("meetings.policy.\(app.rawValue).\(behavior.rawValue)")
+            }
+        } label: {
+            DSToolbarLabel("\(app.badgeTitle) · \(current.title)", symbol: MeetingsSymbol.policy)
+        }
+        .labelStyle(.titleAndIcon)
+        .dsToolbarControl()
+        .accessibilityIdentifier("meetings.policy.\(app.rawValue)")
+        .accessibilityValue(current.title)
+        .help("What Earmark does when a \(app.title) meeting starts")
     }
 }
 

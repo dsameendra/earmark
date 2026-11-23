@@ -199,6 +199,25 @@ final class EarmarkUITests: XCTestCase {
         hover(app.buttons["live.start"], "live-start")
     }
 
+    /// The Zoom/Teams policy menus in the Meetings toolbar must change their label (and stored policy) when a choice is made.
+    func testMeetingPolicyMenusChangeSelection() throws {
+        let app = launch(appearance: "dark")
+        defer { app.terminate() }
+        app.typeKey("3", modifierFlags: .command)
+        let zoom = app.descendants(matching: .any)["meetings.policy.zoom"].firstMatch
+        XCTAssertTrue(zoom.waitForExistence(timeout: 8))
+        capture(app, "meetings-policy-before")
+        let before = zoom.value as? String ?? ""
+        zoom.click()
+        let auto = app.descendants(matching: .any)["meetings.policy.zoom.autoTranscribeAndRecord"].firstMatch
+        XCTAssertTrue(auto.waitForExistence(timeout: 5), "policy choices must open")
+        auto.click()
+        Thread.sleep(forTimeInterval: 1)
+        capture(app, "meetings-policy-after")
+        let after = app.descendants(matching: .any)["meetings.policy.zoom"].firstMatch.value as? String ?? ""
+        XCTAssertNotEqual(before, after, "label must reflect the new policy (was \(before), now \(after))")
+    }
+
     func testExpandedLightWorkspace() { expandedWorkspace(appearance: "light") }
     func testExpandedDarkWorkspace() { expandedWorkspace(appearance: "dark") }
 

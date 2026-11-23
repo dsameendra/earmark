@@ -11,7 +11,10 @@ if [ "$mode" = all ] || [ "$mode" = unit ]; then
     for package in AppCore Persistence DesignSystem ModelStore AudioCapture Processing Export Permissions Meetings Translation Transcription Diarization LiveCaptions Dictation Jobs QwenASR Features NLLBNative; do
         printf 'Testing %s\n' "$package"
         if ! swift test --no-parallel --package-path "$repo_root/Packages/$package" > "$report_root/$package.log" 2>&1; then
-            tail -80 "$report_root/$package.log"
+            printf '%s\n' "--- failing tests and errors in $package ---"
+            sed 's/\x1b\[[0-9;]*m//g' "$report_root/$package.log" | grep -aE '✘ Test |recorded an issue|error:' | sort -u | cut -c1-300 | head -40 || true
+            printf '%s\n' '--- end ---'
+            tail -20 "$report_root/$package.log"
             exit 1
         fi
         rg 'Test run with|tests? passed|Test Suite.*passed' "$report_root/$package.log" | tail -2 || true

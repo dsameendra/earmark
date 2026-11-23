@@ -31,7 +31,10 @@ if [ "$mode" = all ] || [ "$mode" = build ] || [ "$mode" = ui ]; then
     fi
     xcodebuild -project "$project" -scheme "$scheme" -configuration "$configuration" -destination 'platform=macOS' \
         -disableAutomaticPackageResolution -skipPackageUpdates "${signing[@]}" "$action" > "$report_root/xcode-$action.log" 2>&1 || {
-        tail -80 "$report_root/xcode-$action.log"; exit 1;
+        printf '%s\n' '--- compiler and test errors ---'
+        sed 's/\x1b\[[0-9;]*m//g' "$report_root/xcode-$action.log" | grep -aE '(error|warning: unre)[: ]|\*\* .* FAILED' | sort -u | head -40 || true
+        printf '%s\n' '--- end of log ---'
+        tail -40 "$report_root/xcode-$action.log"; exit 1;
     }
     tail -4 "$report_root/xcode-$action.log"
 fi

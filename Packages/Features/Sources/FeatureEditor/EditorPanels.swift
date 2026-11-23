@@ -37,6 +37,8 @@ struct SpeakersPanel: View {
         }
         .padding(DSSpacing.lg)
         .frame(minWidth: 380, idealWidth: 400)
+        // A speaker typed into "New speaker" but not yet added is added when the popover closes instead of being lost.
+        .onDisappear { if !newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { add() } }
     }
 
     private var speakerRows: some View {
@@ -57,12 +59,27 @@ struct SpeakerRow: View {
     let model: TranscriptEditorModel
     let speaker: Speaker
     @State private var name = ""
+    @FocusState private var nameFocused: Bool
+
+    /// Saves the typed name. Called on Return, when the field loses focus and when the popover closes, so clicking outside
+    /// the popover never discards a rename. An empty name reverts to the current one.
+    private func commitName() {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            name = speaker.name
+        } else if trimmed != speaker.name {
+            model.renameSpeaker(speaker.id, to: trimmed)
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpacing.xs) {
             HStack {
                 Circle().fill(EditorColors.color(model.color(for: speaker.id))).frame(width: 10, height: 10)
-                TextField("Name", text: $name).textFieldStyle(.roundedBorder).onSubmit { model.renameSpeaker(speaker.id, to: name) }
+                TextField("Name", text: $name).textFieldStyle(.roundedBorder)
+                    .focused($nameFocused)
+                    .onSubmit { commitName() }
+                    .onChange(of: nameFocused) { _, focused in if !focused { commitName() } }
                     .accessibilityIdentifier("editor.speaker.\(speaker.id).name")
                 Text("\(model.segmentCount(for: speaker.id))").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                     .help("Segments by this speaker").accessibilityLabel("\(model.segmentCount(for: speaker.id)) segments")
@@ -96,7 +113,8 @@ struct SpeakerRow: View {
             .padding(.leading, 18)
         }
         .onAppear { name = speaker.name }
-        .onChange(of: speaker.name) { name = speaker.name }
+        .onDisappear { commitName() }
+        .onChange(of: speaker.name) { if !nameFocused { name = speaker.name } }
     }
 
     /// Save or delete the speaker's local voice profile (embedding and name only, DIA-AC-13).

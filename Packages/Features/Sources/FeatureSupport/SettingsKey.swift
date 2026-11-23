@@ -39,6 +39,9 @@ public enum SettingsKey {
     public static let askBeforeAdding = "files.askBeforeAdding"
     /// `Bool`; "Identify speakers" as last chosen when adding files.
     public static let filesDiarize = "files.diarize"
+    /// `String`; a `VoiceProcessingLevel` raw value: the voice-processing choice last made when adding files, which is also the
+    /// "Voice processing default" in Settings (absent or unknown is off, SCR-014).
+    public static let filesVoiceProcessing = "files.voiceProcessing"
     /// `Int`; expected speaker count as last chosen (0 or absent is automatic).
     public static let filesSpeakerCount = "files.speakerCount"
     /// `String`; model last picked in the add sheet (empty is Automatic). File-scoped: live captions never read it.

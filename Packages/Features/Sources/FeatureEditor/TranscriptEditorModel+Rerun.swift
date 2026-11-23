@@ -17,11 +17,15 @@ public struct RerunRequest: Sendable, Equatable {
     public var speakerCount: SpeakerCount
     /// Wipe and rebuild everything instead of merging. The UI asks for confirmation first.
     public var replaceEverything: Bool
+    /// SCR-014: clean the audio before it is transcribed again.
+    public var voiceProcessing: VoiceProcessingLevel
 
     public init(
         scope: Scope = .wholeTranscript, languageMode: LanguageMode = .autoDetect, modelID: ModelID? = nil, transcribe: Bool = true,
-        identifySpeakers: Bool = false, speakerCount: SpeakerCount = .auto, replaceEverything: Bool = false
+        identifySpeakers: Bool = false, speakerCount: SpeakerCount = .auto, replaceEverything: Bool = false,
+        voiceProcessing: VoiceProcessingLevel = .off
     ) {
+        self.voiceProcessing = voiceProcessing
         self.scope = scope
         self.languageMode = languageMode
         self.modelID = modelID
@@ -67,7 +71,8 @@ extension TranscriptEditorModel {
             speakersOnly: !request.transcribe)
         let settings = JobSettings(
             languageMode: request.languageMode, modelID: request.modelID, diarize: request.identifySpeakers,
-            diarization: request.identifySpeakers ? request.speakerCount.diarization : [:], rerun: rerun)
+            diarization: request.identifySpeakers ? request.speakerCount.diarization : [:], rerun: rerun,
+            voiceProcessing: request.voiceProcessing)
         return Job(kind: .transcribeFile, input: mediaURL, transcriptID: transcriptID, settings: settings)
     }
 

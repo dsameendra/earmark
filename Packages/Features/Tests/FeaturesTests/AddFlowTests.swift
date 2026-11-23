@@ -235,6 +235,61 @@ struct AddFlowTests {
         #expect(batch.jobSettings.diarization == ["exact": 2] && batch.jobSettings.diarize)
     }
 
+    // MARK: Voice processing (SCR-014)
+
+    @Test func voiceProcessingDefaultsToOffAndTravelsInTheJobSettings() async {
+        let queue = PlaceholderJobQueue()
+        let batch = BatchSettingsModel(urls: [file], services: services(queue: queue))
+        await batch.prepare()
+        #expect(batch.voiceProcessing == .off && !batch.voiceProcessingEnabled && batch.jobSettings.voiceProcessing == .off)
+        batch.voiceProcessingEnabled = true
+        #expect(batch.voiceProcessing == .standard, "turning it on starts at Standard")
+        batch.voiceProcessing = .strong
+        #expect(batch.jobSettings.voiceProcessing == .strong)
+        batch.voiceProcessingEnabled = false
+        #expect(batch.jobSettings.voiceProcessing == .off)
+        batch.voiceProcessingEnabled = true
+        #expect(batch.voiceProcessing == .strong, "the toggle brings back the last level")
+        #expect(await batch.submit())
+        #expect(await queue.jobs().first?.settings.voiceProcessing == .strong)
+    }
+
+    @Test func perFileOverrideInheritsOrReplacesTheBatchVoiceProcessing() async {
+        let other = URL(fileURLWithPath: "/tmp/other.m4a")
+        let batch = BatchSettingsModel(urls: [file, other], services: services())
+        await batch.prepare()
+        batch.voiceProcessing = .light
+        batch.updateOverride(for: other) { $0.voiceProcessing = .off }
+        #expect(batch.settings(for: file).voiceProcessing == .light)
+        #expect(batch.settings(for: other).voiceProcessing == .off)
+        batch.updateOverride(for: other) { $0.voiceProcessing = nil }
+        #expect(!batch.hasOverride(other) && batch.settings(for: other).voiceProcessing == .light)
+    }
+
+    @Test func voiceProcessingIsRememberedAndIsTheSettingsDefault() async {
+        let store = InMemorySettingsStore()
+        let batch = BatchSettingsModel(urls: [file], services: services(store: store))
+        await batch.prepare()
+        batch.voiceProcessing = .light
+        #expect(await batch.submit())
+        #expect(await store.value(for: SettingsKey.filesVoiceProcessing, as: String.self) == "light")
+        let next = BatchSettingsModel(urls: [file], services: services(store: store))
+        await next.prepare()
+        #expect(next.voiceProcessing == .light)
+        // Settings > General edits the same key.
+        let general = GeneralSettingsModel(store: store)
+        await general.load()
+        #expect(general.voiceProcessingLevel == .light)
+        await general.voiceProcessing.set(VoiceProcessingLevel.strong.rawValue)
+        #expect(general.voiceProcessingLevel == .strong)
+        #expect(await FileJobSettings.voiceProcessing(in: store) == .strong)
+        // The no-sheet path reads the same default.
+        let loaded = await FileJobSettings.load(from: store, catalog: [])
+        #expect(loaded.voiceProcessing == .strong)
+        await store.set("turbo", for: SettingsKey.filesVoiceProcessing)
+        #expect(await FileJobSettings.voiceProcessing(in: store) == .off, "an unknown stored value reads as off")
+    }
+
     @Test func aMissingSpeakerModelIsOfferedAndCanBeDownloadedFromTheSheet() async {
         let batch = BatchSettingsModel(urls: [file], services: services(installed: ["whisper"]))
         await batch.prepare()

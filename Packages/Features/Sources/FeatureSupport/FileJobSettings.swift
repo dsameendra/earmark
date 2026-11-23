@@ -9,7 +9,12 @@ public enum FileJobSettings {
         public var modelID: ModelID?
         public var diarize: Bool
         public var speakerCount: SpeakerCount
-        public init(languageMode: LanguageMode, modelID: ModelID?, diarize: Bool, speakerCount: SpeakerCount) {
+        public var voiceProcessing: VoiceProcessingLevel
+        public init(
+            languageMode: LanguageMode, modelID: ModelID?, diarize: Bool, speakerCount: SpeakerCount,
+            voiceProcessing: VoiceProcessingLevel = .off
+        ) {
+            self.voiceProcessing = voiceProcessing
             self.languageMode = languageMode
             self.modelID = modelID
             self.diarize = diarize
@@ -44,7 +49,13 @@ public enum FileJobSettings {
         let diarize = await settings.value(for: SettingsKey.filesDiarize, as: Bool.self) ?? false
         let count = SpeakerCount(storedValue: await settings.value(for: SettingsKey.filesSpeakerCount, as: Int.self))
         return JobSettings(
-            languageMode: mode, modelID: modelID, diarize: diarize, diarization: diarize ? count.diarization : [:])
+            languageMode: mode, modelID: modelID, diarize: diarize, diarization: diarize ? count.diarization : [:],
+            voiceProcessing: await voiceProcessing(in: settings))
+    }
+
+    /// The remembered voice-processing level (and the Settings default); absent or unknown is off (SCR-014).
+    public static func voiceProcessing(in settings: any SettingsStore) async -> VoiceProcessingLevel {
+        VoiceProcessingLevel(storedValue: await settings.value(for: SettingsKey.filesVoiceProcessing, as: String.self))
     }
 
     /// Whether adding files shows the Transcribe sheet first. Absent means yes (default on).
@@ -58,6 +69,7 @@ public enum FileJobSettings {
     public static func save(_ choices: Choices, persistLanguageAndModel: Bool, to settings: any SettingsStore) async {
         await settings.set(choices.diarize, for: SettingsKey.filesDiarize)
         await settings.set(choices.speakerCount.storedValue, for: SettingsKey.filesSpeakerCount)
+        await settings.set(choices.voiceProcessing.rawValue, for: SettingsKey.filesVoiceProcessing)
         guard persistLanguageAndModel else { return }
         await settings.set(choices.languageMode, for: SettingsKey.languageMode)
         // Also the file default shown by the sidebar chip, Settings and the model picker, so nothing disagrees about which

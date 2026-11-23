@@ -48,10 +48,19 @@ struct GeneralSettingsView: View {
             Section {
                 Toggle("Ask before adding files", isOn: model.askBeforeAdding.binding)
                     .accessibilityIdentifier("settings.general.askBeforeAdding")
+                Picker(
+                    "Voice processing default",
+                    selection: Binding(get: { model.voiceProcessingLevel }, set: { model.setVoiceProcessingLevel($0) })
+                ) {
+                    ForEach(VoiceProcessingLevel.allCases) { Text($0.title).tag($0) }
+                }
+                .accessibilityIdentifier("settings.general.voiceProcessing")
             } header: {
                 Text("Adding files")
             } footer: {
-                Text("Choose the language, model and speaker options each time you add files. When off, the last choices are used.")
+                Text(
+                    "Choose the language, model and speaker options each time you add files. When off, the last choices are used. "
+                        + VoiceProcessingText.explanation)
             }
             Section("Welcome") {
                 Button("Show Welcome Again") { Task { await model.showWelcomeAgain() } }

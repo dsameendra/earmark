@@ -30,6 +30,17 @@ struct RerunEditorTests {
         #expect(job.settings.rerun == RerunOptions(ranges: [], replaceEverything: false, speakersOnly: false))
     }
 
+    @Test func voiceProcessingTravelsInTheRerunJob() async throws {
+        let (model, _) = await editor()
+        let plain = try #require(model.rerunJob(for: RerunRequest()))
+        #expect(plain.settings.voiceProcessing == .off)
+        let cleaned = try #require(model.rerunJob(for: RerunRequest(voiceProcessing: .standard)))
+        #expect(cleaned.settings.voiceProcessing == .standard)
+        let panel = RerunPanelModel(editor: model)
+        panel.voiceProcessing = .light
+        #expect(panel.request.voiceProcessing == .light)
+    }
+
     @Test func selectionScopeSendsMergedTimeRanges() async throws {
         let (model, _) = await editor()
         model.selection = [model.segments[0].id, model.segments[2].id]

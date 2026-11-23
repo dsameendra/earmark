@@ -31,6 +31,7 @@ public final class RerunPanelModel {
     public var identifySpeakers = false
     public var speakerCount: SpeakerCount = .auto
     public var replaceEverything = false
+    public var voiceProcessing: VoiceProcessingLevel = .off
     public private(set) var catalog: [ModelDescriptor] = []
     public private(set) var installed: Set<ModelID> = []
     /// Languages used recently for files, most recent first (offered first in the language list).
@@ -52,6 +53,7 @@ public final class RerunPanelModel {
     }
 
     public func prepare() async {
+        voiceProcessing = await FileJobSettings.voiceProcessing(in: editor.settings)
         guard let models = editor.models else { return }
         catalog = await models.catalog()
         installed = await models.installedModels()
@@ -116,7 +118,8 @@ public final class RerunPanelModel {
     public var request: RerunRequest {
         RerunRequest(
             scope: scope, languageMode: languageMode, modelID: modelID, transcribe: transcribe,
-            identifySpeakers: identifySpeakers, speakerCount: speakerCount, replaceEverything: replaceEverything && transcribe)
+            identifySpeakers: identifySpeakers, speakerCount: speakerCount, replaceEverything: replaceEverything && transcribe,
+            voiceProcessing: voiceProcessing)
     }
 
     public var canStart: Bool { editor.canRerun && startBlockedReason == nil }
@@ -238,6 +241,13 @@ struct RerunPanel: View {
                     .font(DSTypography.caption)
                     .foregroundStyle(panel.replaceEverything ? DSColor.danger : DSColor.secondaryText)
             }
+        }
+        if panel.transcribe {
+            Picker("Voice processing", selection: $panel.voiceProcessing) {
+                ForEach(VoiceProcessingLevel.allCases) { Text($0.title).tag($0) }
+            }
+            .accessibilityIdentifier("editor.rerun.voiceProcessing")
+            .help(VoiceProcessingText.explanation)
         }
         if let reason = panel.startBlockedReason {
             Text(reason).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)

@@ -29,6 +29,7 @@ public struct BatchSettingsSheet: View {
                 languageSection
                 modelSection
                 speakersSection
+                voiceProcessingSection
                 Section("Options") {
                     Picker("Translate to", selection: $model.translateTo) {
                         Text("None").tag(LanguageCode?.none)
@@ -226,6 +227,21 @@ public struct BatchSettingsSheet: View {
         }
     }
 
+    /// SCR-014: offline noise reduction and level evening before transcribing.
+    private var voiceProcessingSection: some View {
+        Section("Voice processing") {
+            Toggle("Voice processing", isOn: $model.voiceProcessingEnabled)
+                .accessibilityIdentifier("batch.voiceProcessing")
+            if model.voiceProcessingEnabled {
+                Picker("Level", selection: $model.voiceProcessing) {
+                    ForEach(VoiceProcessingLevel.allCases.filter { $0 != .off }) { Text($0.title).tag($0) }
+                }
+                .accessibilityIdentifier("batch.voiceProcessing.level")
+            }
+            Text(VoiceProcessingText.explanation).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+        }
+    }
+
     @ViewBuilder private var speakerModelRow: some View {
         switch model.speakerDownload {
         case .downloading(_, let fraction, let verifying):
@@ -314,6 +330,11 @@ private struct FileOverrideEditor: View {
                     Text("Off").tag("off")
                 }
                 .accessibilityIdentifier("batch.file.\(index).diarize")
+                Picker("Voice processing", selection: voiceTag) {
+                    Text("Same as batch").tag(Self.inherit)
+                    ForEach(VoiceProcessingLevel.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                .accessibilityIdentifier("batch.file.\(index).voiceProcessing")
                 Picker("Translate to", selection: translateTag) {
                     Text("Same as batch").tag(Self.inherit)
                     Text("None").tag(Self.auto)
@@ -373,6 +394,14 @@ private struct FileOverrideEditor: View {
         Binding(
             get: { model.override(for: url).diarize.map { $0 ? "on" : "off" } ?? Self.inherit },
             set: { tag in model.updateOverride(for: url) { $0.diarize = tag == Self.inherit ? nil : tag == "on" } })
+    }
+
+    private var voiceTag: Binding<String> {
+        Binding(
+            get: { model.override(for: url).voiceProcessing?.rawValue ?? Self.inherit },
+            set: { tag in
+                model.updateOverride(for: url) { $0.voiceProcessing = tag == Self.inherit ? nil : VoiceProcessingLevel(storedValue: tag) }
+            })
     }
 
     private var translateTag: Binding<String> {

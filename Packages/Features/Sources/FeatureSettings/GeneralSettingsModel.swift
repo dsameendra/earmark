@@ -16,6 +16,8 @@ public final class GeneralSettingsModel {
     public let languageMode: Pref<LanguageMode>
     /// Show the Transcribe sheet before adding files (default on, SCR-013).
     public let askBeforeAdding: Pref<Bool>
+    /// "Voice processing default" (a `VoiceProcessingLevel` raw value; SCR-014). Also what the Transcribe sheet remembers.
+    public let voiceProcessing: Pref<String>
 
     @ObservationIgnored private let store: any SettingsStore
     @ObservationIgnored private let loginItem: any LaunchAtLoginControlling
@@ -28,6 +30,7 @@ public final class GeneralSettingsModel {
         notifyJobCompleted = Pref(SettingsKey.notifyJobCompleted, default: true, store: store)
         languageMode = Pref(SettingsKey.languageMode, default: .default, store: store)
         askBeforeAdding = Pref(SettingsKey.askBeforeAdding, default: true, store: store)
+        voiceProcessing = Pref(SettingsKey.filesVoiceProcessing, default: VoiceProcessingLevel.off.rawValue, store: store)
     }
 
     public func load() async {
@@ -39,6 +42,7 @@ public final class GeneralSettingsModel {
         await notifyJobCompleted.load()
         await languageMode.load()
         await askBeforeAdding.load()
+        await voiceProcessing.load()
     }
 
     public func setShowDockIcon(_ value: Bool) async {
@@ -82,6 +86,11 @@ public final class GeneralSettingsModel {
         case (.multilingual, _): await languageMode.set(.multilingual([.english]))
         }
     }
+
+    /// The default voice-processing level; unknown stored values read as off.
+    public var voiceProcessingLevel: VoiceProcessingLevel { VoiceProcessingLevel(storedValue: voiceProcessing.value) }
+
+    public func setVoiceProcessingLevel(_ level: VoiceProcessingLevel) { voiceProcessing.update(level.rawValue) }
 
     /// Re-arms the welcome flow; the app presents it when it sees the completion flag cleared (ONB-AC-01).
     public func showWelcomeAgain() async {

@@ -36,6 +36,13 @@ struct OtherRepositoryTests {
         #expect(try await repo.allJobs() == [low])
     }
 
+    @Test func jobRepositoryKeepsVoiceProcessing() async throws {
+        let repo = try makeDB().jobs
+        let job = Job(kind: .transcribeFile, settings: JobSettings(voiceProcessing: .strong), createdAt: Date(timeIntervalSince1970: 3))
+        try await repo.save(job)
+        #expect(try await repo.allJobs().first?.settings.voiceProcessing == .strong)
+    }
+
     @Test func ruleRepository() async throws {
         let repo = try makeDB().rules
         let a = IgnoreRule(pattern: "[Music]")

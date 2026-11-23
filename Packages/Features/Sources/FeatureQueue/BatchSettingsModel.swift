@@ -37,11 +37,15 @@ public struct FileOverride: Equatable, Sendable {
     public var diarize: Bool?
     public var translateTo: Choice<LanguageCode?>?
     public var autoExportPresetID: Choice<PresetID?>?
+    /// SCR-014: `nil` inherits the batch's voice processing.
+    public var voiceProcessing: VoiceProcessingLevel?
 
     public init(
         languageMode: LanguageMode? = nil, model: Choice<ModelID?>? = nil, diarize: Bool? = nil,
-        translateTo: Choice<LanguageCode?>? = nil, autoExportPresetID: Choice<PresetID?>? = nil
+        translateTo: Choice<LanguageCode?>? = nil, autoExportPresetID: Choice<PresetID?>? = nil,
+        voiceProcessing: VoiceProcessingLevel? = nil
     ) {
+        self.voiceProcessing = voiceProcessing
         self.languageMode = languageMode
         self.model = model
         self.diarize = diarize
@@ -66,6 +70,21 @@ public final class BatchSettingsModel {
     public var diarize = false
     /// Expected speaker count when `diarize` is on (SCR-013); automatic by default.
     public var speakerCount: SpeakerCount = .auto
+    /// SCR-014: cleans the audio (noise reduction, level evening) before transcribing; the original file is never changed.
+    public var voiceProcessing: VoiceProcessingLevel = .off
+    @ObservationIgnored private var lastActiveVoiceLevel: VoiceProcessingLevel = .standard
+    /// The "Voice processing" toggle: on means the last chosen level (Standard at first).
+    public var voiceProcessingEnabled: Bool {
+        get { voiceProcessing != .off }
+        set {
+            if newValue {
+                if voiceProcessing == .off { voiceProcessing = lastActiveVoiceLevel }
+            } else {
+                if voiceProcessing != .off { lastActiveVoiceLevel = voiceProcessing }
+                voiceProcessing = .off
+            }
+        }
+    }
     /// "Dont ask again, use these settings": turns `files.askBeforeAdding` off when the batch is added.
     public var dontAskAgain = false
     public var translateTo: LanguageCode?
@@ -121,6 +140,8 @@ public final class BatchSettingsModel {
             }
             diarize = defaults.diarize
             speakerCount = SpeakerCount(diarization: defaults.diarization)
+            voiceProcessing = defaults.voiceProcessing
+            if defaults.voiceProcessing != .off { lastActiveVoiceLevel = defaults.voiceProcessing }
             recentLanguages = await FileJobSettings.recentLanguages(in: services.settings)
             installed = await services.models.installedModels()
             // Nothing saved yet: preselect the recommended model for this language and Mac (never starts a download).
@@ -344,7 +365,8 @@ public final class BatchSettingsModel {
     public var jobSettings: JobSettings {
         JobSettings(
             languageMode: languageMode, modelID: modelID, diarize: diarize, diarization: diarize ? speakerCount.diarization : [:],
-            translateTo: translateTo, autoExportPresetID: autoExportPresetID, copyIntoLibrary: copyIntoLibrary)
+            translateTo: translateTo, autoExportPresetID: autoExportPresetID, copyIntoLibrary: copyIntoLibrary,
+            voiceProcessing: voiceProcessing)
     }
 
     // MARK: Per-file overrides (FILE-AC-04)
@@ -389,6 +411,7 @@ public final class BatchSettingsModel {
         if let value = item.diarize { settings.diarize = value }
         if let choice = item.translateTo { settings.translateTo = choice.value }
         if let choice = item.autoExportPresetID { settings.autoExportPresetID = choice.value }
+        if let level = item.voiceProcessing { settings.voiceProcessing = level }
         return settings
     }
 
@@ -409,7 +432,8 @@ public final class BatchSettingsModel {
     /// Saves what was chosen so the next add starts from it (SCR-013), and honours the "Dont ask again" checkbox.
     func rememberChoices() async {
         let choices = FileJobSettings.Choices(
-            languageMode: languageMode, modelID: modelID, diarize: diarize, speakerCount: speakerCount)
+            languageMode: languageMode, modelID: modelID, diarize: diarize, speakerCount: speakerCount,
+            voiceProcessing: voiceProcessing)
         await FileJobSettings.save(choices, persistLanguageAndModel: hasEditedConfiguration, to: services.settings)
         if dontAskAgain { await services.settings.set(false, for: SettingsKey.askBeforeAdding) }
     }

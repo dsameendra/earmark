@@ -10,7 +10,7 @@ python3 "$repo_root/scripts/check-dependencies.py"
 if [ "$mode" = all ] || [ "$mode" = unit ]; then
     for package in AppCore Persistence DesignSystem ModelStore AudioCapture Processing Export Permissions Meetings Translation Transcription Diarization LiveCaptions Dictation Jobs QwenASR Features NLLBNative; do
         printf 'Testing %s\n' "$package"
-        if ! swift test --package-path "$repo_root/Packages/$package" > "$report_root/$package.log" 2>&1; then
+        if ! swift test --no-parallel --package-path "$repo_root/Packages/$package" > "$report_root/$package.log" 2>&1; then
             tail -80 "$report_root/$package.log"
             exit 1
         fi

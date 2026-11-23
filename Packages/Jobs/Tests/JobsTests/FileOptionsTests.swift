@@ -79,4 +79,38 @@ struct FileOptionsTests {
         let decoded = try JSONDecoder().decode(JobSettings.self, from: legacy)
         #expect(decoded.diarize && !decoded.copyIntoLibrary)
     }
+
+    @Test("SCR-014: voice processing is part of the settings, defaults to off and survives a journal round trip")
+    func voiceProcessingSettings() throws {
+        #expect(JobSettings().voiceProcessing == .off)
+        for level in VoiceProcessingLevel.allCases {
+            let encoded = try JSONEncoder().encode(JobSettings(voiceProcessing: level))
+            #expect(try JSONDecoder().decode(JobSettings.self, from: encoded).voiceProcessing == level)
+        }
+        let encoded = try JSONEncoder().encode(JobSettings(diarize: true, voiceProcessing: .strong))
+        var object = try #require(try JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        object.removeValue(forKey: "voiceProcessing")
+        let legacy = try JSONDecoder().decode(JobSettings.self, from: try JSONSerialization.data(withJSONObject: object))
+        #expect(legacy.diarize && legacy.voiceProcessing == .off)
+        object["voiceProcessing"] = "turbo"  // an unknown future value never breaks decoding
+        let unknown = try JSONDecoder().decode(JobSettings.self, from: try JSONSerialization.data(withJSONObject: object))
+        #expect(unknown.voiceProcessing == .off)
+    }
+
+    @Test("SCR-014: a job with voice processing transcribes the same chunks and times as one without")
+    func voiceProcessingJobMatchesPlainJob() async throws {
+        let plain = try Harness()
+        let plainID = try #require(try await plain.queue.enqueue(files: [try plain.makeFile()], settings: JobSettings(), recursive: false).first)
+        #expect(await plain.waitFor(plainID, .completed))
+        let processed = try Harness()
+        let processedID = try #require(
+            try await processed.queue.enqueue(
+                files: [try processed.makeFile()], settings: JobSettings(voiceProcessing: .standard), recursive: false
+            ).first)
+        #expect(await processed.waitFor(processedID, .completed))
+        #expect(processed.engine.chunkStarts == plain.engine.chunkStarts)
+        let job = try #require(await processed.job(processedID))
+        #expect(job.settings.voiceProcessing == .standard)
+        #expect(try await processed.segments(of: job).map(\.text) == (try await plain.segments(of: try #require(await plain.job(plainID))).map(\.text)))
+    }
 }

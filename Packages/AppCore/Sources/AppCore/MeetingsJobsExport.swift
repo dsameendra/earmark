@@ -161,12 +161,15 @@ public struct JobSettings: Codable, Sendable, Hashable {
     public var copyIntoLibrary: Bool
     /// SCR-013: non-`nil` marks a re-run of an existing transcript (see ``RerunOptions``).
     public var rerun: RerunOptions?
+    /// SCR-014: clean up the audio (noise reduction, level evening) before transcribing. Absent in older journals means `.off`.
+    public var voiceProcessing: VoiceProcessingLevel
     public init(
         languageMode: LanguageMode = .default, modelID: ModelID? = nil, diarize: Bool = false,
         diarization: [String: Int] = [:], translateTo: LanguageCode? = nil, applyReplacements: Bool = true,
         autoExportPresetID: PresetID? = nil, copyIntoLibrary: Bool = false,
-        rerun: RerunOptions? = nil
+        rerun: RerunOptions? = nil, voiceProcessing: VoiceProcessingLevel = .off
     ) {
+        self.voiceProcessing = voiceProcessing
         self.languageMode = languageMode
         self.modelID = modelID
         self.diarize = diarize
@@ -189,7 +192,8 @@ public struct JobSettings: Codable, Sendable, Hashable {
             applyReplacements: try c.decode(Bool.self, forKey: .applyReplacements),
             autoExportPresetID: try c.decodeIfPresent(PresetID.self, forKey: .autoExportPresetID),
             copyIntoLibrary: try c.decodeIfPresent(Bool.self, forKey: .copyIntoLibrary) ?? false,
-            rerun: try c.decodeIfPresent(RerunOptions.self, forKey: .rerun))
+            rerun: try c.decodeIfPresent(RerunOptions.self, forKey: .rerun),
+            voiceProcessing: VoiceProcessingLevel(storedValue: try c.decodeIfPresent(String.self, forKey: .voiceProcessing)))
     }
 }
 

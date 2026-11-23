@@ -97,6 +97,23 @@ public protocol VoiceActivityDetector: Sendable {
 
 public enum UseCase: String, Codable, Sendable, CaseIterable { case file, live, dictation }
 
+/// SCR-014: how strongly a file's audio is cleaned up (noise reduction, level evening) before it is transcribed.
+/// The original file is never changed; processing keeps the sample count and timing.
+public enum VoiceProcessingLevel: String, Codable, Sendable, CaseIterable, Hashable, Identifiable {
+    case off, light, standard, strong
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .off: "Off"
+        case .light: "Light"
+        case .standard: "Standard"
+        case .strong: "Strong"
+        }
+    }
+    /// The level a persisted raw value means; anything unknown or absent is `.off`.
+    public init(storedValue: String?) { self = storedValue.flatMap(Self.init(rawValue:)) ?? .off }
+}
+
 public struct TranscriptionOptions: Sendable {
     public var languageMode: LanguageMode
     public var useCase: UseCase
@@ -105,10 +122,13 @@ public struct TranscriptionOptions: Sendable {
     /// Custom vocabulary / acronyms fed to engines that support prompting or contextual strings.
     public var vocabulary: [String]
     public var wordTimestamps: Bool
+    /// SCR-014: offline speech enhancement applied to decoded file audio before segmentation and recognition.
+    public var voiceProcessing: VoiceProcessingLevel
     public init(
         languageMode: LanguageMode = .default, useCase: UseCase, modelID: ModelID? = nil,
-        vocabulary: [String] = [], wordTimestamps: Bool = true
+        vocabulary: [String] = [], wordTimestamps: Bool = true, voiceProcessing: VoiceProcessingLevel = .off
     ) {
+        self.voiceProcessing = voiceProcessing
         self.languageMode = languageMode
         self.useCase = useCase
         self.modelID = modelID

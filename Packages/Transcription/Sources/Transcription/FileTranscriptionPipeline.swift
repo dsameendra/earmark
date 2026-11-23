@@ -125,7 +125,10 @@ public struct FileTranscriptionPipeline: Sendable {
     public func run(
         file: URL, options: TranscriptionOptions, resumeFrom checkpoint: JobCheckpoint? = nil, engines: @escaping EngineResolver
     ) -> AsyncThrowingStream<FileTranscriptionEvent, any Error> {
-        let worker = Worker(decoder: decoder, vad: vad, identifier: identifier, configuration: configuration, engines: engines)
+        // SCR-014: clean the decoded audio before VAD, chunking and recognition. Timing and sample counts are unchanged.
+        let source: any AudioFileDecoder =
+            options.voiceProcessing == .off ? decoder : VoiceProcessingDecoder(wrapping: decoder, level: options.voiceProcessing)
+        let worker = Worker(decoder: source, vad: vad, identifier: identifier, configuration: configuration, engines: engines)
         return AsyncThrowingStream { continuation in
             let task = Task {
                 do {

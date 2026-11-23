@@ -278,7 +278,9 @@ extension PersistentJobQueue {
         collect: (([Segment]) -> Void)? = nil
     ) async throws {
         guard let job = store[id] else { return }
-        let options = TranscriptionOptions(languageMode: job.settings.languageMode, useCase: .file, modelID: job.settings.modelID)
+        let options = TranscriptionOptions(
+            languageMode: job.settings.languageMode, useCase: .file, modelID: job.settings.modelID,
+            voiceProcessing: job.settings.voiceProcessing)
         let startFraction = total > 0 ? min(1, (checkpoint?.mediaTime ?? 0) / total) : 0
         await mutate(id, persist: false) { $0.progress = startFraction }
         let estimator = ETAEstimator(startedAt: configuration.now(), startFraction: startFraction)

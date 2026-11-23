@@ -110,6 +110,8 @@ final class EarmarkUITests: XCTestCase {
         ).firstMatch
         XCTAssertTrue(recent.waitForExistence(timeout: 5))
         recent.click()
+        Thread.sleep(forTimeInterval: 1)
+        capture(app, "editor-narrow-before-inspector")
         let inspector = app.descendants(matching: .any)["toolbar.inspector"]
         XCTAssertTrue(inspector.waitForExistence(timeout: 5))
         inspector.click()
@@ -155,6 +157,7 @@ final class EarmarkUITests: XCTestCase {
     func testNavigationPaneHasNoToggleInMainOrReopenedSettings() throws {
         let app = launch(appearance: "dark")
         defer { app.terminate() }
+        Thread.sleep(forTimeInterval: 1.5)  // the toggle is hidden on the first window updates after launch
         let toggleLabels = ["Toggle Sidebar", "Hide Sidebar", "Show Sidebar"]
         for label in toggleLabels {
             XCTAssertFalse(app.windows.firstMatch.buttons[label].exists, "Main window must not offer \(label)")
@@ -175,6 +178,25 @@ final class EarmarkUITests: XCTestCase {
             app.typeKey("w", modifierFlags: .command)
             Thread.sleep(forTimeInterval: 0.5)
         }
+    }
+
+    /// Captures the hover highlight of representative toolbar buttons so its shape can be reviewed against the button.
+    func testToolbarHoverStates() throws {
+        let app = launch(appearance: "dark")
+        defer { app.terminate() }
+        func hover(_ element: XCUIElement, _ name: String) {
+            guard element.waitForExistence(timeout: 5) else { return XCTFail("missing \(name)") }
+            element.hover()
+            Thread.sleep(forTimeInterval: 0.7)
+            capture(app, "hover-\(name)")
+        }
+        hover(app.buttons["toolbar.transcribe"], "home-transcribe")
+        app.typeKey("2", modifierFlags: .command)
+        hover(app.buttons["queue.add"], "queue-add")
+        app.typeKey("5", modifierFlags: .command)
+        hover(app.descendants(matching: .any)["library.layout.grid"].firstMatch, "library-layout-grid")
+        app.typeKey("4", modifierFlags: .command)
+        hover(app.buttons["live.start"], "live-start")
     }
 
     func testExpandedLightWorkspace() { expandedWorkspace(appearance: "light") }

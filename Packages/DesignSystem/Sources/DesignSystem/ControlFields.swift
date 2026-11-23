@@ -23,6 +23,7 @@ public struct DSSegmentedControl<Value: Hashable>: View {
     @Binding private var selection: Value
     @Namespace private var pillSpace
     @Environment(\.isEnabled) private var isEnabled
+    @State private var hovered: Value?
 
     public init(selection: Binding<Value>, options: [Option], identifier: String) {
         _selection = selection
@@ -54,7 +55,13 @@ public struct DSSegmentedControl<Value: Hashable>: View {
                 .background {
                     if selected {
                         Capsule().fill(DSColor.selectionPill).matchedGeometryEffect(id: "pill", in: pillSpace)
+                    } else if hovered == option.value, isEnabled {
+                        // Hover feedback for the segments that are not selected: the same full-height capsule, fainter.
+                        Capsule().fill(DSColor.primaryText.opacity(0.08))
                     }
+                }
+                .onHover { inside in
+                    if inside { hovered = option.value } else if hovered == option.value { hovered = nil }
                 }
                 .help(option.title)
                 .accessibilityLabel(option.title)

@@ -17,6 +17,9 @@ public struct DSToolbarLabel: View {
     /// Horizontal padding inside an icon-only toolbar control: equal to the system's vertical inset, so it stays square-ish.
     public static let iconOnlyPadding: CGFloat = DSSpacing.xs
 
+    /// Height of the label, so the system hover and pressed highlight fills the toolbar capsule instead of hugging the text.
+    public static let minHeight: CGFloat = 30
+
     private let label: AnyView
     private let iconOnly: Bool
 
@@ -38,6 +41,7 @@ public struct DSToolbarLabel: View {
     public var body: some View {
         label
             .padding(.horizontal, iconOnly ? Self.iconOnlyPadding : Self.horizontalPadding)
+            .frame(minWidth: iconOnly ? Self.minHeight : nil, minHeight: Self.minHeight)
             .contentShape(Capsule())
     }
 }

@@ -211,10 +211,14 @@ public actor AppleSpeechEngine: TranscriptionEngine {
     }
 
     private static func analyzerOptions(for useCase: UseCase) -> SpeechAnalyzer.Options? {
+        // `ignoresResourceLimits` exists only in the macOS 27 SDK (Swift 6.4+ toolchains), so the call is fenced by compiler
+        // version as well as by availability; building with the macOS 26 SDK (Xcode 26.x) simply skips it.
+        #if compiler(>=6.4)
         if #available(macOS 27, *), useCase == .file {
             // Offline batch work may use as many resources as the system allows (macOS 27+ only).
             return SpeechAnalyzer.Options(priority: .userInitiated, modelRetention: .whileInUse, ignoresResourceLimits: true)
         }
+        #endif
         return nil
     }
 

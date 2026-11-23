@@ -94,6 +94,10 @@ See [packaging and release](specs/qa/release.md), [manual acceptance](specs/qa/m
 | `scripts/` | Build checks, release packaging, signing, appcast and DMG tooling |
 | `specs/` | Product spec, architecture, decisions (ADRs), change requests, design and QA records |
 
+## Support
+
+Earmark is free and open source. If it saves you time, you can [support its development on Ko-fi](https://ko-fi.com/dsameendra) ☕.
+
 ## License
 
 Earmark's source is [MIT licensed](LICENSE). Downloaded models and bundled dependencies have their own licences, shown in Model Manager and the app's notices. In particular, NLLB model weights are **CC-BY-NC-4.0**; the app's licence does not override that restriction. Native translation build details are in [NativeRuntime](NativeRuntime/README.md).

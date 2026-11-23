@@ -96,7 +96,7 @@ public struct WaveformView: View {
                 case .ended: hoverPoint = nil
                 }
             }
-            .overlay { hoverOverlay(metrics: metrics) }
+            .overlay(alignment: .topLeading) { hoverOverlay(metrics: metrics) }
             .overlay(alignment: .topTrailing) { zoomBadge }
             .background(
                 ScrollWheelCatcher { delta, location, modifiers in
@@ -216,6 +216,9 @@ public struct WaveformView: View {
                 )
                 .modifier(TooltipPlacement(x: point.x, width: metrics.size.width))
             }
+            // Full-size, top-leading: the line and tooltip are positioned in the waveform's own coordinates, so the overlay
+            // must not shrink to its content and be re-centred by the parent (that displaced both from the pointer).
+            .frame(width: metrics.size.width, height: metrics.size.height, alignment: .topLeading)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
         }

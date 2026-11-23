@@ -74,10 +74,12 @@ struct FindBarView: View {
                     TextField("Replace with", text: $find.replacement).textFieldStyle(.roundedBorder).frame(minWidth: 160)
                         .accessibilityLabel("Replace with")
                     Button("Replace") { Task { await find.replaceCurrent() } }.disabled(!find.canReplace)
-                        .help(find.replaceNeedsOriginalView ? Self.replaceHint : "")
+                        .help(model.lockedHelp ?? (find.replaceNeedsOriginalView ? Self.replaceHint : ""))
                     Button("Replace All…") { Task { await find.requestReplaceAll() } }.disabled(!find.canReplace)
-                        .help(find.replaceNeedsOriginalView ? Self.replaceHint : "")
-                    if model.isReadOnly { Text("Read-only").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText) }
+                        .help(model.lockedHelp ?? (find.replaceNeedsOriginalView ? Self.replaceHint : ""))
+                    if model.isReadOnly {
+                        Text(model.lockedHelp ?? "Read-only").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    }
                     Spacer()
                 }
             }

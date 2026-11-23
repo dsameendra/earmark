@@ -118,8 +118,21 @@ public final class TranscriptEditorModel {
     public private(set) var options = ViewOptions() { didSet { if oldValue.layout != options.layout { rebuildDerived() } } }
     public private(set) var globalOptions = ViewOptions()
     public private(set) var transcriptOverride: ViewOptionsOverride?
-    public private(set) var isReadOnly = false
-    public func setReadOnly(_ value: Bool) { isReadOnly = value }
+    /// Read-only requested by a flow (a re-run in progress); see ``isReadOnly``.
+    public private(set) var explicitReadOnly = false
+    /// Nothing can be edited while a flow holds the editor or while the file's transcription job has not finished (its segments
+    /// are still being written by the queue, which would overwrite edits).
+    public var isReadOnly: Bool { explicitReadOnly || transcriptionJob != nil }
+    public func setReadOnly(_ value: Bool) { explicitReadOnly = value }
+
+    /// The file-transcription job that is still writing (or stopped writing) this transcript; `nil` for a finished transcript.
+    public internal(set) var transcriptionJob: Job?
+    /// Live mode: keep the newest segment in view until the user scrolls up.
+    public internal(set) var followsLatest = true
+    /// Bumped when a new last segment arrives so the list can scroll to it.
+    public internal(set) var liveTailToken = 0
+    public internal(set) var transcriptionError: String?
+    @ObservationIgnored var transcriptionWatcher: Task<Void, Never>?
 
     /// The playback state shown by this editor. With a ``PlaybackCenter`` this is the shared session's model (so it survives
     /// leaving the editor); without one it is private to this editor and released with it.
@@ -228,6 +241,9 @@ public final class TranscriptEditorModel {
                 return
             }
             self.transcript = transcript
+            // Subscribe before reading segments so no chunk that lands in between is missed (the stream buffers).
+            let jobEvents = jobQueue?.events()
+            await adoptInitialTranscriptionJob()
             let loaded = try await repository.segments(for: transcriptID)
             segments = loaded.enumerated().sorted { ($0.element.start, $0.offset) < ($1.element.start, $1.offset) }.map(\.element)
             bookmarks = try await repository.bookmarks(for: transcriptID).filter { $0.deletedAt == nil }.sorted { $0.time < $1.time }
@@ -236,6 +252,7 @@ public final class TranscriptEditorModel {
             await loadReconciliation()
             await loadLanguageState()
             loadState = .loaded
+            if let jobEvents { watchTranscriptionJob(jobEvents) }
             await loadMedia(for: transcript)
         } catch {
             loadState = .failed(error.localizedDescription)
@@ -246,6 +263,12 @@ public final class TranscriptEditorModel {
     func reloadSegmentsFromRepository() async {
         guard let loaded = try? await repository.segments(for: transcriptID) else { return }
         segments = loaded.enumerated().sorted { ($0.element.start, $0.offset) < ($1.element.start, $1.offset) }.map(\.element)
+        revision += 1
+    }
+
+    /// Replaces the segments with the queue's latest (live transcribing mode); only the queue writes while it is active.
+    func replaceSegmentsFromQueue(_ new: [Segment]) {
+        segments = new
         revision += 1
     }
 
@@ -343,6 +366,7 @@ public final class TranscriptEditorModel {
         debounce?.cancel()
         translationWatcher?.cancel()
         rerunWatcher?.cancel()
+        transcriptionWatcher?.cancel()
         if playbackCenter == nil { playback.stop() }
     }
 
@@ -398,7 +422,7 @@ public final class TranscriptEditorModel {
 
     /// Points the transcript at a replacement media file (EDIT-AC-19 "Relink").
     public func relink(to url: URL) async {
-        guard let media, var current = transcript else { return }
+        guard !isLockedByJob, let media, var current = transcript else { return }
         let bookmark = try? url.bookmarkData(options: [.withSecurityScope])
         var asset = MediaAsset(kind: .audio, bookmark: bookmark)
         if let id = current.mediaAssetID, let existing = try? await media.asset(id) { asset = existing }

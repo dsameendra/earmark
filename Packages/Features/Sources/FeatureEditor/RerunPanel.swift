@@ -128,6 +128,7 @@ public final class RerunPanelModel {
     public var startBlockedReason: String? {
         if editor.mediaURL == nil { return "The media file is missing, so there is nothing to re-transcribe. Relink it first." }
         if editor.jobQueue == nil { return "Re-transcribing is unavailable right now." }
+        if let locked = editor.lockedHelp { return locked }
         if editor.isReadOnly && !editor.isRerunning { return "The transcript is read-only." }
         if !transcribe && !identifySpeakers { return "Choose to re-transcribe the speech, identify speakers, or both." }
         if scope == .selection && selectionCount == 0 { return "Select some segments in the transcript, or switch to the whole transcript." }

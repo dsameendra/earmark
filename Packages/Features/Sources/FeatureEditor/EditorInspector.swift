@@ -27,10 +27,14 @@ struct EditorInspector: View {
                                 }
                             }
                             .buttonStyle(.plain)
+                            .disabled(model.isLockedByJob)
+                            .help(model.lockedHelp ?? "")
                             .accessibilityLabel("Edit speaker \(speaker.name), \(model.segmentCount(for: speaker.id)) segments")
                         }
                         Button(model.speakers.isEmpty ? "Add speakers…" : "Edit speakers…", action: onSpeakers)
                             .buttonStyle(.plain).foregroundStyle(DSColor.accentText)
+                            .disabled(model.isLockedByJob)
+                            .help(model.lockedHelp ?? "")
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }

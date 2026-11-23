@@ -17,6 +17,9 @@ public final class LibraryModel {
     public private(set) var items: [Transcript] = []
     public private(set) var newlyAddedIDs: Set<TranscriptID> = []
     public private(set) var isFollowingJobs = false
+    /// Transcripts whose file job is still running (or paused/failed half-way): they open read-only in the live view (SCR-015).
+    public private(set) var inProgressIDs: Set<TranscriptID> = []
+    @ObservationIgnored private var inProgressByJob: [JobID: TranscriptID] = [:]
     public private(set) var isLoading = true
     public private(set) var errorMessage: String?
     public var searchText = ""
@@ -100,9 +103,19 @@ public final class LibraryModel {
         let events = services.jobQueue.events()
         isFollowingJobs = true
         defer { isFollowingJobs = false }
+        for job in await services.jobQueue.jobs() { trackProgress(of: job) }
         for await event in events {
             guard !Task.isCancelled else { return }
-            guard case .updated(let job) = event, job.state == .completed else { continue }
+            if case .removed(let id) = event {
+                inProgressByJob[id] = nil
+                inProgressIDs = Set(inProgressByJob.values)
+                continue
+            }
+            guard case .updated(let job) = event else { continue }
+            trackProgress(of: job)
+            // A transcript row exists from the moment its job starts: show it in the Library while it fills in.
+            if job.state == .running, let id = job.transcriptID, !items.contains(where: { $0.id == id }) { await refresh() }
+            guard job.state == .completed else { continue }
             let previous = Set(items.map(\.id))
             await refresh()
             let arrivals = Set(items.map(\.id)).subtracting(previous)
@@ -114,6 +127,16 @@ public final class LibraryModel {
                 }
             }
         }
+    }
+
+    private func trackProgress(of job: Job) {
+        guard job.kind == .transcribeFile, let id = job.transcriptID else { return }
+        let stopped = job.state == .failed || job.state == .cancelled
+        let ongoing = job.state == .pending || job.state == .running || job.state == .paused
+        // A failed or cancelled re-run of a finished transcript leaves it complete; only first runs stay in progress.
+        let partial = stopped && !(job.settings.rerun.map { !$0.replaceEverything } ?? false)
+        inProgressByJob[job.id] = (ongoing || partial) ? id : nil
+        inProgressIDs = Set(inProgressByJob.values)
     }
 
     /// First load: restores persisted preferences, applies auto-purge, then loads the list.

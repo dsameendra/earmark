@@ -21,6 +21,9 @@ private struct ItemBadges: View {
                     .accessibilityLabel("\(item.speakers.count) speakers")
             }
             ForEach(item.tags.prefix(3), id: \.self) { StatusPill(LocalizedStringKey($0), systemImage: "tag") }
+            if model.inProgressIDs.contains(item.id) {
+                StatusPill("Transcribing", symbol: .waveform, tone: .info)
+            }
             if model.mediaStates[item.id] == .missing {
                 StatusPill("Media missing", systemImage: "exclamationmark.triangle", tone: .warning)
             }

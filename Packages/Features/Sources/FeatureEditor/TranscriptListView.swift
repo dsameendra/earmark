@@ -52,7 +52,21 @@ struct TranscriptListView: View {
             .onChange(of: model.options.fontSize) { keepPosition(proxy) }
             .background(DSColor.contentBackground)
             .onScrollPhaseChange { _, phase in
-                if phase == .interacting || phase == .decelerating { model.playback.userDidScroll() }
+                if phase == .interacting || phase == .decelerating {
+                    model.playback.userDidScroll()
+                    model.userScrolledAwayFromLatest()
+                }
+            }
+            .onChange(of: model.liveTailToken) {
+                // Live transcribing: keep the newest segment in view, unless the user scrolled up or is following playback.
+                guard model.isTranscribing, model.followsLatest, !(model.playback.isPlaying && model.playback.autoFollow),
+                    let last = model.visibleSegments.last
+                else { return }
+                let lastID = last.id
+                Task { @MainActor in
+                    await Task.yield()  // let the new row lay out first
+                    scroll(proxy, to: lastID, animated: true, anchor: .bottom)
+                }
             }
             .onChange(of: model.playback.scrollRequest) {
                 guard model.playback.autoFollow, let target = model.playback.scrollTargetID else { return }
@@ -62,19 +76,34 @@ struct TranscriptListView: View {
                 if let request = model.revealRequest { scroll(proxy, to: request.segmentID, animated: true) }
             }
             .overlay(alignment: .bottom) {
-                if model.playback.showsReturnToPlayhead {
-                    Button {
-                        model.playback.returnToPlayhead()
-                    } label: {
-                        Label("Return to playhead", systemImage: "scope")
+                HStack(spacing: DSSpacing.sm) {
+                    if model.playback.showsReturnToPlayhead {
+                        Button {
+                            model.playback.returnToPlayhead()
+                        } label: {
+                            Label("Return to playhead", systemImage: "scope")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.regular)
+                        .dsTransition(.glide)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.regular)
-                    .padding(DSSpacing.md)
-                    .dsTransition(.glide)
+                    if model.isTranscribing && !model.followsLatest {
+                        Button {
+                            model.followLatest()
+                        } label: {
+                            Label("Follow latest", systemImage: "arrow.down.to.line")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.regular)
+                        .dsTransition(.glide)
+                        .help("Jump to the newest transcribed text and keep following it")
+                        .accessibilityIdentifier("editor.followLatest")
+                    }
                 }
+                .padding(DSSpacing.md)
             }
             .dsAnimation(.glide, value: model.playback.showsReturnToPlayhead)
+            .dsAnimation(.glide, value: model.followsLatest)
         }
     }
 
@@ -88,12 +117,12 @@ struct TranscriptListView: View {
         }
     }
 
-    private func scroll(_ proxy: ScrollViewProxy, to segmentID: SegmentID, animated: Bool) {
+    private func scroll(_ proxy: ScrollViewProxy, to segmentID: SegmentID, animated: Bool, anchor: UnitPoint = .center) {
         let target = model.options.layout == .paragraphs ? (model.paragraphIDBySegment[segmentID] ?? segmentID) : segmentID
         if animated && !(policyOverride?.suppressesMotion ?? reduceMotion) {
-            withAnimation(DSMotion.glide.animation()) { proxy.scrollTo(target, anchor: .center) }
+            withAnimation(DSMotion.glide.animation()) { proxy.scrollTo(target, anchor: anchor) }
         } else {
-            proxy.scrollTo(target, anchor: .center)
+            proxy.scrollTo(target, anchor: anchor)
         }
     }
 }
@@ -252,7 +281,7 @@ struct SegmentRowView: View {
                 }
                 if segment.isIgnored {
                     Button("Stop ignoring") { model.setIgnored(false, for: [segment.id]) }
-                        .buttonStyle(.link).font(DSTypography.caption)
+                        .buttonStyle(.link).font(DSTypography.caption).disabled(model.isLockedByJob)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -319,14 +348,20 @@ struct SegmentContextMenu: View {
 
     var body: some View {
         let targets: Set<SegmentID> = model.selection.contains(segment.id) ? model.selection : [segment.id]
+        let locked = model.isLockedByJob
         Button("Play From Here") { model.playback.playFrom(segment) }.disabled(!model.playback.canPlay)
+        if let reason = model.lockedHelp {
+            // Editing is unavailable until the queue finishes writing; say why instead of just greying items out.
+            Button(reason) {}.disabled(true)
+        }
         Button("Edit Text") {
             if model.options.layout == .paragraphs { model.updateOptions { $0.layout = .segments } }
             model.beginEditing(segment.id)
         }
+        .disabled(locked)
         Divider()
-        Button("Merge With Previous") { model.merge(segment.id, withNext: false) }
-        Button("Merge With Next") { model.merge(segment.id, withNext: true) }
+        Button("Merge With Previous") { model.merge(segment.id, withNext: false) }.disabled(locked)
+        Button("Merge With Next") { model.merge(segment.id, withNext: true) }.disabled(locked)
         Divider()
         Menu("Change Speaker") {
             ForEach(model.speakers) { speaker in
@@ -335,12 +370,13 @@ struct SegmentContextMenu: View {
             Divider()
             Button("No Speaker") { model.setSpeaker(nil, for: targets) }
         }
+        .disabled(locked)
         Menu("Change Speaker From Playhead") {
             ForEach(model.speakers) { speaker in
                 Button(speaker.name) { model.reassignWordsFromPlayhead(in: segment.id, to: speaker.id) }
             }
         }
-        .disabled(!model.playheadIsInside(segment.id))
+        .disabled(locked || !model.playheadIsInside(segment.id))
         Menu("Change Language") {
             ForEach(model.languageChoices, id: \.self) { code in
                 Button(Locale.current.localizedString(forLanguageCode: code.rawValue).map { "\($0) (\(code.rawValue))" } ?? code.rawValue) {
@@ -348,6 +384,7 @@ struct SegmentContextMenu: View {
                 }
             }
         }
+        .disabled(locked)
         if model.canRetranscribe {
             Menu("Re-transcribe As") {
                 ForEach(model.languageChoices, id: \.self) { code in
@@ -362,6 +399,7 @@ struct SegmentContextMenu: View {
         Button("Add Bookmark") { model.addBookmark(at: segment.start) }
         Button("Highlight Segment") { model.addHighlight(segmentID: segment.id) }
         Button(segment.isIgnored ? "Stop Ignoring" : "Ignore Segment") { model.setIgnored(!segment.isIgnored, for: targets) }
+            .disabled(locked)
         Divider()
         Button("Copy Text") {
             NSPasteboard.general.clearContents()
@@ -409,7 +447,7 @@ struct ParagraphRowView: View {
                     }
                 }
                 if allIgnored {
-                    Button("Stop ignoring") { model.setIgnored(false, for: ids) }
+                    Button("Stop ignoring") { model.setIgnored(false, for: ids) }.disabled(model.isLockedByJob)
                         .buttonStyle(.link).font(DSTypography.caption)
                 }
             }

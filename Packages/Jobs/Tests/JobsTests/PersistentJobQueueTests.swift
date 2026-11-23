@@ -204,6 +204,47 @@ struct PersistentJobQueueTests {
         #expect(try await h.segments(of: done).map(\.start) == [0, 10, 20, 30])
     }
 
+    @Test("SCR-015: the transcript row and every finalized chunk are readable while the job is still running")
+    func segmentsAreVisibleProgressively() async throws {
+        let h = try Harness()
+        h.engine.hold(true, afterChunks: 2)
+        let id = try #require(try await h.queue.enqueue(files: [try h.makeFile()], settings: JobSettings(), recursive: false).first)
+        #expect(await h.until { await h.job(id)?.checkpoint?.mediaTime == 20 })
+        let running = try #require(await h.job(id))
+        #expect(running.state == .running)
+        // The job already points at its transcript, the header exists, and the first two chunks are stored with the checkpoint.
+        let header = try await h.transcript(of: running)
+        #expect(header.source == .file && header.duration == 40)
+        #expect(try await h.segments(of: running).map(\.text) == ["seg 0", "seg 10"])
+
+        h.engine.hold(false)
+        #expect(await h.waitFor(id, .completed))
+        let done = try #require(await h.job(id))
+        #expect(done.transcriptID == running.transcriptID, "the same row is completed, not replaced")
+        #expect(try await h.segments(of: done).map(\.text) == ["seg 0", "seg 10", "seg 20", "seg 30"])
+    }
+
+    @Test("SCR-015: a paused job keeps its partial segments readable and resuming does not duplicate them")
+    func pausedJobKeepsPartialSegments() async throws {
+        let h = try Harness()
+        h.engine.hold(true, afterChunks: 2)
+        let id = try #require(try await h.queue.enqueue(files: [try h.makeFile()], settings: JobSettings(), recursive: false).first)
+        #expect(await h.until { await h.job(id)?.checkpoint?.mediaTime == 20 })
+        await h.queue.pause(id)
+        #expect(await h.waitFor(id, .paused))
+        let paused = try #require(await h.job(id))
+        let partial = try await h.segments(of: paused)
+        #expect(partial.map(\.start) == [0, 10])
+        h.engine.hold(false)
+        await h.queue.resume(id)
+        #expect(await h.waitFor(id, .completed))
+        let done = try #require(await h.job(id))
+        let final = try await h.segments(of: done)
+        #expect(final.map(\.start) == [0, 10, 20, 30])
+        #expect(Set(final.map(\.id)).count == final.count, "no duplicated rows")
+        #expect(Array(final.prefix(2)).map(\.id) == partial.map(\.id), "already-saved chunks are kept, not rewritten")
+    }
+
     @Test("FILE-AC-08: resume from the last checkpoint after a simulated crash, without duplicates")
     func crashResume() async throws {
         let db = try AppDatabase.inMemory()

@@ -52,6 +52,31 @@ public enum QueueFormatting {
         }
     }
 
+    /// The transcript a row opens: the finished one, or the one being written while the job runs (its row exists from the
+    /// moment the job starts). `nil` while a job has not started yet (no transcript exists).
+    public static func transcriptToOpen(for job: Job) -> TranscriptID? { job.transcriptID }
+
+    /// Whether the job is still producing its transcript (the editor then opens in its read-only live mode).
+    public static func isOngoing(_ state: JobState) -> Bool { state == .pending || state == .running || state == .paused }
+
+    /// Tooltip and VoiceOver hint of the whole-row action; `nil` when the row has nothing to open yet.
+    public static func openHint(for job: Job) -> String? {
+        guard transcriptToOpen(for: job) != nil else { return nil }
+        switch job.state {
+        case .completed: return "Open transcript"
+        case .pending, .running, .paused: return "Open the transcript. It is read-only and fills in as the file is transcribed."
+        case .failed, .cancelled: return "Open the partial transcript"
+        }
+    }
+
+    /// Tooltip for the Remove button; it is unavailable while the job runs (Cancel stops it).
+    public static func removeHelp(for state: JobState) -> String {
+        switch state {
+        case .running, .pending: "Cancel this job first to remove it from the queue"
+        default: "Remove from queue"
+        }
+    }
+
     /// Engine, language and ETA summary shown under the file name.
     public static func detail(for job: Job) -> String {
         var parts: [String] = []

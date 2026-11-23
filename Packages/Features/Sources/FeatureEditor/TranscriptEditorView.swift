@@ -111,6 +111,7 @@ private struct EditorContent: View {
                 }
                 .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.xs).background(DSColor.solidChrome)
             }
+            TranscriptionBanner(model: model).dsTransition(.glide)
             if model.isRerunning {
                 // The editor is read-only while the merge runs; say so wherever the user is, not only inside the popover.
                 HStack(spacing: DSSpacing.sm) {
@@ -143,6 +144,7 @@ private struct EditorContent: View {
         .background(DSColor.paper)
         .dsAnimation(.glide, value: find.isVisible)
         .dsAnimation(.glide, value: find.showsReplace)
+        .dsAnimation(.glide, value: model.transcriptionJob?.state)
         .navigationTitle(model.transcript?.title ?? "Transcript")
         .toolbar { editorToolbar }
     }
@@ -168,15 +170,20 @@ private struct EditorContent: View {
             Button { presentTool(.speakers) } label: { DSToolbarLabel("Speakers", symbol: .speaker) }
                 .labelStyle(.titleAndIcon)
                 .dsToolbarControl()
+                .disabled(model.isLockedByJob)
+                .help(model.lockedHelp ?? "Name, add or merge speakers")
                 .accessibilityIdentifier("editor.speakers")
             Button { presentTool(.translation) } label: { DSToolbarLabel("Translate", symbol: .translate) }
                 .labelStyle(.titleAndIcon)
                 .dsToolbarControl()
+                .disabled(model.isLockedByJob)
+                .help(model.lockedHelp ?? "Translate this transcript")
                 .accessibilityIdentifier("editor.translation")
             Button { presentTool(.retranscribe) } label: { DSToolbarLabel("Re-transcribe", symbol: .retry, iconOnly: true) }
                 .labelStyle(.iconOnly)
-                .help("Re-transcribe, identify speakers again, or set the transcript language")
+                .help(model.lockedHelp ?? "Re-transcribe, identify speakers again, or set the transcript language")
                 .dsToolbarControl()
+                .disabled(model.isLockedByJob)
                 .accessibilityIdentifier("editor.retranscribe")
         }
         ToolbarSpacer(.fixed)
@@ -190,6 +197,8 @@ private struct EditorContent: View {
                     findFocused = true
                 }
                 .keyboardShortcut("f", modifiers: [.command, .option])
+                .disabled(model.isLockedByJob)
+                .help(model.lockedHelp ?? "")
                 Button("Next Match") { find.next() }.keyboardShortcut("g", modifiers: .command)
                 Button("Previous Match") { find.previous() }.keyboardShortcut("g", modifiers: [.command, .shift])
                 Divider()
@@ -214,6 +223,8 @@ private struct EditorContent: View {
                 .labelStyle(.titleAndIcon)
                 .buttonStyle(.borderedProminent).tint(DSColor.accent)
                 .dsToolbarControl()
+                .disabled(model.isLockedByJob)
+                .help(model.lockedHelp ?? "Export this transcript")
                 .accessibilityIdentifier("editor.export")
         }
     }
@@ -266,7 +277,17 @@ private struct EditorContent: View {
 
     @ViewBuilder
     private var transcriptArea: some View {
-        if model.visibleSegments.isEmpty {
+        if model.visibleSegments.isEmpty && model.isTranscribing {
+            EmptyState(
+                systemImage: "text.bubble", title: "Transcribing",
+                message: "Text appears here as each part of the recording is transcribed. You can already play the recording.")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if model.visibleSegments.isEmpty && model.transcriptionInterrupted {
+            EmptyState(
+                systemImage: "text.bubble", title: "Nothing transcribed yet",
+                message: "The job stopped before any text was saved. Retry it, or remove it from the queue.")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if model.visibleSegments.isEmpty {
             VStack(spacing: DSSpacing.sm) {
                 EmptyState(
                     systemImage: "text.bubble", title: model.hiddenIgnoredCount > 0 ? "Everything here is ignored" : "No speech detected",

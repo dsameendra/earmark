@@ -10,6 +10,8 @@ public struct QueueView: View {
     private let onOpenTranscript: (TranscriptID) -> Void
     @State private var isImporterPresented = false
     @State private var confirmsClearQueue = false
+    /// The keyboard-selected row; Return opens its transcript.
+    @State private var selectedJobID: JobID?
 
     public init(model: QueueModel, onOpenTranscript: @escaping (TranscriptID) -> Void = { _ in }) {
         self.model = model
@@ -66,17 +68,17 @@ public struct QueueView: View {
             VStack(spacing: 0) {
                 concurrencyHeader
                 errorBanner
-                List {
+                List(selection: $selectedJobID) {
                     ForEach(model.visibleGroups) { group in
                         Section {
                             if group == .pending {
                                 ForEach(model.jobs(in: group)) { job in
-                                    QueueRow(job: job, model: model, onOpenTranscript: onOpenTranscript)
+                                    QueueRow(job: job, model: model, isSelected: selectedJobID == job.id, onOpenTranscript: onOpenTranscript).tag(job.id)
                                 }
                                 .onMove { source, destination in Task { await model.movePending(from: source, to: destination) } }
                             } else {
                                 ForEach(model.jobs(in: group)) { job in
-                                    QueueRow(job: job, model: model, onOpenTranscript: onOpenTranscript)
+                                    QueueRow(job: job, model: model, isSelected: selectedJobID == job.id, onOpenTranscript: onOpenTranscript).tag(job.id)
                                 }
                             }
                         } header: {
@@ -89,8 +91,18 @@ public struct QueueView: View {
                 .scrollContentBackground(.hidden)
                 .listRowSeparator(.hidden)
                 .accessibilityLabel("Transcription queue")
+                .onKeyPress(.return) { openSelectedRow() ? .handled : .ignored }
             }
         }
+    }
+
+    /// Return on the selected row opens its transcript (the same action as clicking it).
+    private func openSelectedRow() -> Bool {
+        guard let id = selectedJobID, let job = model.jobs.first(where: { $0.id == id }),
+            let transcriptID = QueueFormatting.transcriptToOpen(for: job)
+        else { return false }
+        onOpenTranscript(transcriptID)
+        return true
     }
 
     @ViewBuilder private var errorBanner: some View {
@@ -172,7 +184,11 @@ extension BatchSettingsModel: Identifiable {
 private struct QueueRow: View {
     let job: Job
     let model: QueueModel
+    var isSelected = false
     let onOpenTranscript: (TranscriptID) -> Void
+
+    private var openTarget: TranscriptID? { QueueFormatting.transcriptToOpen(for: job) }
+    private var isBusy: Bool { model.removingIDs.contains(job.id) || model.isClearing }
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -194,21 +210,57 @@ private struct QueueRow: View {
                     Spacer()
                     actionButtons
                     removeButton
+                    openChevron
                 }
             }
         }
-        .disabled(model.removingIDs.contains(job.id) || model.isClearing)
+        .disabled(isBusy)
         .padding(DSSpacing.md)
+        .background { openButton }
         .background(
             job.state == .failed ? DSColor.danger.opacity(0.08) : DSColor.insetBackground,
             in: RoundedRectangle(cornerRadius: DSRadius.medium)
         )
         .listRowSeparator(.hidden)
         .listRowBackground(DSColor.contentBackground)
+        .overlay {
+            if isSelected {
+                RoundedRectangle(cornerRadius: DSRadius.medium).strokeBorder(DSColor.accent, lineWidth: 2).allowsHitTesting(false)
+            }
+        }
         .accessibilityIdentifier("queue.job.\(job.id)")
         .accessibilityElement(children: .contain)
         .accessibilityLabel(job.input?.lastPathComponent ?? "Job")
         .accessibilityValue(accessibilityValue)
+        .accessibilityHint(QueueFormatting.openHint(for: job) ?? "")
+        .modifier(OpenRowAccessibility(target: openTarget, onOpen: onOpenTranscript))
+    }
+
+    /// The whole row is the button: it sits behind the content, so the Pause, Cancel and Remove buttons on top keep working.
+    @ViewBuilder private var openButton: some View {
+        if let target = openTarget {
+            Button {
+                onOpenTranscript(target)
+            } label: {
+                Color.clear
+            }
+            .buttonStyle(.dsHover(shape: .rounded(DSRadius.medium), horizontalPadding: 0))
+            .disabled(isBusy)
+            .pointerStyle(.link)
+            .help(QueueFormatting.openHint(for: job) ?? "")
+            .accessibilityHidden(true)
+            .accessibilityIdentifier("queue.open.\(job.id)")
+        } else if job.state == .pending {
+            Color.clear.contentShape(Rectangle()).help("The transcript is created when this job starts.")
+        }
+    }
+
+    /// Chevron on rows that open a transcript.
+    @ViewBuilder private var openChevron: some View {
+        if openTarget != nil {
+            Image(systemName: "chevron.right").font(DSTypography.caption.weight(.semibold)).foregroundStyle(DSColor.secondaryText)
+                .accessibilityHidden(true)
+        }
     }
 
     private var fileIcon: some View {
@@ -248,6 +300,7 @@ private struct QueueRow: View {
             StatusPill(state: job.state)
             actionButtons
             removeButton
+            openChevron
         }
         .fixedSize(horizontal: true, vertical: false)
     }
@@ -259,8 +312,10 @@ private struct QueueRow: View {
             Image(systemName: "minus.circle")
         }
         .buttonStyle(.dsHoverIcon)
-        .help(job.state == .running || job.state == .pending ? "Cancel and remove from queue" : "Remove from queue")
-        .accessibilityLabel(job.state == .running || job.state == .pending ? "Cancel and remove from queue" : "Remove from queue")
+        .disabled(job.state == .running || job.state == .pending)
+        .help(QueueFormatting.removeHelp(for: job.state))
+        .accessibilityLabel("Remove from queue")
+        .accessibilityHint(job.state == .running || job.state == .pending ? QueueFormatting.removeHelp(for: job.state) : "")
         .accessibilityIdentifier("queue.remove.\(job.id)")
     }
 
@@ -287,7 +342,21 @@ private struct QueueRow: View {
             Button("Retry", symbol: .retry) { Task { await model.retry(job.id) } }.labelStyle(.iconOnly).buttonStyle(.dsHoverIcon)
                 .help("Try this file again").accessibilityIdentifier("queue.retry.\(job.id)")
         case .completed:
-            if let id = job.transcriptID { Button("Open Transcript") { onOpenTranscript(id) }.buttonStyle(.dsHover) }
+            EmptyView()
+        }
+    }
+}
+
+/// VoiceOver and keyboard: the row is a button; activating it opens the transcript.
+private struct OpenRowAccessibility: ViewModifier {
+    let target: TranscriptID?
+    let onOpen: (TranscriptID) -> Void
+
+    func body(content: Content) -> some View {
+        if let target {
+            content.accessibilityAddTraits(.isButton).accessibilityAction(named: "Open transcript") { onOpen(target) }
+        } else {
+            content
         }
     }
 }

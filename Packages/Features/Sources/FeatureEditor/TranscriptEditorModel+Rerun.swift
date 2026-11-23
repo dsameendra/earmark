@@ -80,7 +80,7 @@ extension TranscriptEditorModel {
     /// editor can never overwrite the merged result.
     public func rerun(_ request: RerunRequest) async {
         // A second Start while one is running or starting would capture the locked state as the one to restore.
-        guard !isRerunning, !rerunStarting else { return }
+        guard !isRerunning, !rerunStarting, !isLockedByJob else { return }
         rerunStatus = nil
         guard let jobQueue, let job = rerunJob(for: request) else {
             rerunStatus = request.scope == .selection && selectedRanges().isEmpty ? "Select some segments first." : nil
@@ -88,7 +88,7 @@ extension TranscriptEditorModel {
         }
         rerunStarting = true
         defer { rerunStarting = false }
-        rerunRestoreReadOnly = isReadOnly
+        rerunRestoreReadOnly = explicitReadOnly
         setReadOnly(true)  // before the flush suspends: nothing can slip in between
         await flush()
         rerunJob = job

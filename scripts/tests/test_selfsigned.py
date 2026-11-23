@@ -9,6 +9,7 @@ import importlib.util
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -103,6 +104,7 @@ class SignatureTests(unittest.TestCase):
             release.verify_app(Path("/nonexistent.app"), True, True)
 
 
+@unittest.skipUnless(sys.platform == "darwin", "release.sh needs the macOS toolchain (xcodegen, security, codesign)")
 class ReleaseScriptTests(unittest.TestCase):
     """The shell front end must fail before building anything when inputs are wrong."""
 

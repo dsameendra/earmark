@@ -207,6 +207,13 @@ class ShellToolTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("EARMARK_SPARKLE_BIN", result.stderr)
 
+    def test_make_appcast_rejects_missing_backup_before_signing(self) -> None:
+        env = {**os.environ, "EARMARK_SPARKLE_KEY_FILE": "/nonexistent/earmark-key"}
+        result = subprocess.run(["/bin/bash", str(SCRIPTS / "make-appcast.sh"), "appcast", "/nonexistent"],
+                                text=True, capture_output=True, env=env, check=False)
+        self.assertEqual(result.returncode, 64)
+        self.assertIn("readable key backup", result.stderr)
+
     def test_make_appcast_usage(self) -> None:
         self.assertEqual(subprocess.run(["/bin/bash", str(SCRIPTS / "make-appcast.sh")], capture_output=True, check=False).returncode, 64)
 

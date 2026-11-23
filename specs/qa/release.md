@@ -61,6 +61,8 @@ scripts/make-appcast.sh appcast dist/Earmark-selfsigned-…
 
 `scripts/make-appcast.sh appcast RELEASE_DIR` uses the pinned Sparkle release's tools (`EARMARK_SPARKLE_BIN`, or the package artifacts in the build cache) to sign the DMG with the Keychain EdDSA key and writes `appcast.xml`, then `scripts/verify-appcast.py` checks the HTTPS enclosure, length, EdDSA signature shape and version/build against `app-manifest.json`. Set `EARMARK_PREVIOUS_APPCAST` so earlier versions stay in the feed, and `EARMARK_DOWNLOAD_URL_PREFIX` to override the default `https://github.com/dsameendra/earmark/releases/download/v<version>/`.
 
+If Keychain authorization is unavailable, set `EARMARK_SPARKLE_KEY_FILE` to an existing private-key backup exported by `generate_keys -x`. Both signing tools read that file instead of Keychain. Keep it outside the repository with restricted permissions; never regenerate the release key. Confirm the resulting signature against the public key embedded in the previous release before publishing.
+
 Hosting (manual, after release approval; the scripts upload nothing): create the GitHub release `v<version>` for `github.com/dsameendra/earmark`, attach the DMG, its `.sha256` and `appcast.xml`. The feed URL above then always resolves to the newest release's appcast. GitHub Pages is an alternative home for `appcast.xml` if a stable non-release URL is preferred; the feed URL baked into the app cannot be changed without shipping a new build, so choose it once.
 
 Fixture tests: `python3 -m unittest discover -s scripts/tests`.

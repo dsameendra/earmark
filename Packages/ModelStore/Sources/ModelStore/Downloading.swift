@@ -143,6 +143,16 @@ public struct HuggingFaceManifestResolver: ManifestResolving {
     }
 
     public func files(for model: ModelDescriptor) async throws -> [RemoteFile] {
+        let primary = try await primaryFiles(for: model)
+        let additional = QwenSpeechDetectorFiles.files(for: model.id)
+        let paths = (primary + additional).map(\.relativePath)
+        guard Set(paths).count == paths.count else {
+            throw AppError.modelDownloadFailed(model.id, reason: "The model manifest contains conflicting destination paths.")
+        }
+        return primary + additional
+    }
+
+    private func primaryFiles(for model: ModelDescriptor) async throws -> [RemoteFile] {
         guard let source = model.sourceURL, HostAllowList.models.permits(source), let location = Self.location(of: source) else {
             throw AppError.modelDownloadFailed(model.id, reason: "No allow-listed download source")
         }

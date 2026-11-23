@@ -18,6 +18,26 @@ private actor LanguageAwareRecognizer: SinhalaRecognizing {
 
 @Suite("Qwen multilingual checkpoint profiles")
 struct QwenMultilingualTests {
+    @Test("incomplete general-model installations fail before decoding instead of silently using the energy gate")
+    func missingSpeechDetector() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let engine = QwenSinhalaEngine(
+            locate: { _ in folder }, defaultModel: QwenModelProfile.multilingual06, vad: nil,
+            loader: { _ in
+                Issue.record("An incomplete installation must not load the heavy recognizer")
+                return LanguageAwareRecognizer(detected: nil, text: "unexpected")
+            })
+        do {
+            try await engine.prepare(model: QwenModelProfile.multilingual06)
+            Issue.record("Missing detector was accepted")
+        } catch let AppError.engineFailure(engine, reason) {
+            #expect(engine == "qwen3-asr")
+            #expect(reason.contains("Reinstall"))
+        }
+    }
+
     private func recognize(model: ModelID, mode: LanguageMode, recognizer: LanguageAwareRecognizer) async throws -> [Segment] {
         let engine = QwenSinhalaEngine(
             locate: { _ in FileManager.default.temporaryDirectory }, defaultModel: model,

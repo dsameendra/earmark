@@ -22,6 +22,8 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
     private let locate: ModelLocator
     private let defaultModel: ModelID
     private let vad: any VoiceActivityDetector
+    private let hasCustomVAD: Bool
+    private var generalDetector: (model: ModelID, detector: SileroVoiceActivityDetector)?
     private let loader: @Sendable (URL) async throws -> any SinhalaRecognizing
     private var loaded: (model: ModelID, recognizer: any SinhalaRecognizing)?
     private var loading: (model: ModelID, task: Task<any SinhalaRecognizing, any Error>)?
@@ -36,23 +38,24 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
     /// Creates an engine that locates the model through a closure.
     public init(
         locate: @escaping ModelLocator, defaultModel: ModelID = QwenSinhalaTargets.model,
-        vad: any VoiceActivityDetector = EnergyVoiceActivityDetector()
+        vad: (any VoiceActivityDetector)? = nil
     ) {
         self.init(locate: locate, defaultModel: defaultModel, vad: vad, loader: { try await MLXQwenRecognizer.load(folder: $0) })
     }
 
     /// Creates an engine that loads models installed by `models`.
-    public init(models: any ModelManaging, vad: any VoiceActivityDetector = EnergyVoiceActivityDetector()) {
+    public init(models: any ModelManaging, vad: (any VoiceActivityDetector)? = nil) {
         self.init(locate: { try await models.location(of: $0) }, vad: vad)
     }
 
     init(
         locate: @escaping ModelLocator, defaultModel: ModelID = QwenSinhalaTargets.model,
-        vad: any VoiceActivityDetector, loader: @escaping @Sendable (URL) async throws -> any SinhalaRecognizing
+        vad: (any VoiceActivityDetector)?, loader: @escaping @Sendable (URL) async throws -> any SinhalaRecognizing
     ) {
         self.locate = locate
         self.defaultModel = defaultModel
-        self.vad = vad
+        self.vad = vad ?? EnergyVoiceActivityDetector()
+        self.hasCustomVAD = vad != nil
         self.loader = loader
     }
 
@@ -64,6 +67,7 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
         await acquire()
         defer { release() }
         try Task.checkCancellation()
+        _ = try await detectorLocked(for: model)
         _ = try await recognizer(for: model)
     }
 
@@ -73,6 +77,7 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
         loading?.task.cancel()
         loading = nil
         loaded = nil
+        generalDetector = nil
     }
 
     public nonisolated func transcribe(file: URL, options: TranscriptionOptions) -> AsyncThrowingStream<TranscriptionEvent, any Error> {
@@ -144,6 +149,26 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
 
     // MARK: - Recognition
 
+    private func detectorLocked(for model: ModelID) async throws -> any VoiceActivityDetector {
+        guard !hasCustomVAD, QwenModelProfile.profile(for: model)?.isSinhala == false else { return vad }
+        if let generalDetector, generalDetector.model == model { return generalDetector.detector }
+        let folder = try await locate(model)
+        let url = folder.appendingPathComponent(SileroVoiceActivityDetector.installedRelativePath)
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw AppError.engineFailure(id, reason: "This Qwen installation is missing its speech detector. Reinstall the model in Settings > Models.")
+        }
+        let detector = try SileroVoiceActivityDetector(modelURL: url)
+        generalDetector = (model, detector)
+        return detector
+    }
+
+    private func speechDetector(for model: ModelID) async throws -> any VoiceActivityDetector {
+        await acquire()
+        defer { release() }
+        try Task.checkCancellation()
+        return try await detectorLocked(for: model)
+    }
+
     /// Recognises one utterance. Returns `nil` text for empty/rejected output.
     ///
     /// The gate is held until the recognizer has completely finished (it only returns once the model is idle), so a cancelled
@@ -211,7 +236,7 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
         try await prepare(model: model)
         let decoder = AVFileDecoder()
         let total = try? await decoder.duration(of: file)
-        var segmenter = UtteranceSegmenter(vad: vad)
+        var segmenter = UtteranceSegmenter(vad: try await speechDetector(for: model))
         func progress(_ time: TimeInterval) {
             let fraction = (total ?? 0) > 0 ? min(1, max(0, time / (total ?? 1))) : 0
             continuation.yield(.progress(fraction: fraction, mediaTime: time))
@@ -227,10 +252,10 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
         for try await block in decoder.decode(file: file, chunkSeconds: 30, startingAt: 0) {
             try Task.checkCancellation()
             segmenter.append(block)
-            try await emit(await segmenter.drain(final: false))
+            try await emit(try await segmenter.drain(final: false))
             progress(segmenter.bufferEnd)
         }
-        try await emit(await segmenter.drain(final: true))
+        try await emit(try await segmenter.drain(final: true))
         progress(total ?? segmenter.bufferEnd)
     }
 
@@ -243,7 +268,7 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
         let language = try requestedLanguage(options)
         let model = options.modelID ?? defaultModel
         try await prepare(model: model)
-        var segmenter = UtteranceSegmenter(vad: vad)
+        var segmenter = UtteranceSegmenter(vad: try await speechDetector(for: model))
         let clock = ContinuousClock()
         let origin = clock.now
         var firstMedia: TimeInterval?
@@ -258,7 +283,7 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
             // Run the VAD at most every 0.25 s of audio.
             guard mediaElapsed - lastDrain >= 0.25 else { continue }
             lastDrain = mediaElapsed
-            for utterance in await segmenter.drain(final: false) {
+            for utterance in try await segmenter.drain(final: false) {
                 if let text = try await recognize(utterance, model: model, requestedLanguage: language) {
                     continuation.yield(.final(segment(for: utterance, text: text)))
                 }
@@ -266,7 +291,7 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
             let lag = (clock.now - origin).secondsValue - mediaElapsed
             let step = max(Self.partialStepSeconds, 1.5 * lastPartialCost)
             guard lag < Self.maxPartialLagSeconds, mediaElapsed - lastPartialAt >= step,
-                let open = await segmenter.openUtterance(), open.duration >= 1
+                let open = try await segmenter.openUtterance(), open.duration >= 1
             else { continue }
             lastPartialAt = mediaElapsed
             let began = clock.now
@@ -275,7 +300,7 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
             }
             lastPartialCost = (clock.now - began).secondsValue
         }
-        for utterance in await segmenter.drain(final: true) {
+        for utterance in try await segmenter.drain(final: true) {
             if let text = try await recognize(utterance, model: model, requestedLanguage: language) {
                 continuation.yield(.final(segment(for: utterance, text: text)))
             }

@@ -438,7 +438,7 @@ private func catalog() -> [ModelDescriptor] {
 
     @Test func theAppInstallsTheConsentHookOnTheModelManager() throws {
         let env = try String(contentsOf: Self.repoRoot.appendingPathComponent("App/AppEnvironment.swift"), encoding: .utf8)
-        let start = try #require(env.range(of: "ModelManager("))
+        let start = try #require(env.range(of: "let models = ModelManager("))
         let call = env[start.lowerBound...].prefix(400)
         #expect(call.contains("consent: PromptingModelConsent"), "ModelManager(...) must be created with the consent hook")
     }

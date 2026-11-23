@@ -358,6 +358,7 @@ public actor ModelManager: ModelManaging {
         guard persisted.installed[model.rawValue] != nil, fm.fileExists(atPath: folder(for: model).path) else {
             throw AppError.modelNotInstalled(model)
         }
+        if model == "fluidaudio/parakeet-tdt-v3" { try ParakeetVocabularyCompatibility.repair(in: folder(for: model)) }
         return folder(for: model)
     }
 

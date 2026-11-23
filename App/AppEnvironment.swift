@@ -215,7 +215,8 @@ final class AppEnvironment {
         let whisper = WhisperKitEngine(models: models, tokenizerFolder: models.tokenizerFolder)
         // Sinhala goes to Qwen3-ASR (MLX), never to stock Whisper (ADR-004). The model loads lazily on first use.
         let qwen = QwenSinhalaEngine(models: models)
-        let engines: [EngineID: any TranscriptionEngine] = [whisper.id: whisper, apple.id: apple, qwen.id: qwen]
+        let parakeet = ParakeetEngine(models: models)
+        let engines: [EngineID: any TranscriptionEngine] = [whisper.id: whisper, apple.id: apple, qwen.id: qwen, parakeet.id: parakeet]
         let translation = TranslationRuntime.make(models: models, settings: settings, nllbPython: nil)
         // Live and dictation leave Apple Speech for Whisper (with a notice) when it cannot be used on this Mac.
         let router = AppleAwareEngineRouter(readiness: appleReadiness, engine: apple)

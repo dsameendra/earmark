@@ -98,7 +98,7 @@ public actor ParakeetEngine: TranscriptionEngine {
         case .single(let value):
             guard Self.languages.contains(value.primary) else { throw AppError.unsupportedLanguage(value) }
             language = value.primary
-        case .autoDetect: language = nil
+        case .autoDetect: throw AppError.other("Choose the spoken language explicitly when using Parakeet.")
         case .multilingual:
             throw AppError.other("Choose one language per Parakeet recognition stream; multilingual routing resolves separate streams.")
         }

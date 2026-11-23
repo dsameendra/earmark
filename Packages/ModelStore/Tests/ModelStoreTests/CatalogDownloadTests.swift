@@ -15,6 +15,7 @@ private let listings: [ModelID: CatalogFixtures.Listing] = [
     "fluidaudio/ls-eend-ami": CatalogFixtures.lseend,
     "fluidaudio/sortformer-v2": CatalogFixtures.sortformer,
     "fluidaudio/parakeet-tdt-v3": CatalogFixtures.parakeet,
+    "mlx/qwen3-asr-0.6b-4bit": CatalogFixtures.qwenGeneral,
     "whisperkit/large-v3-v20240930_626MB": CatalogFixtures.whisperLarge,
     "whisperkit/large-v3-v20240930_turbo_632MB": CatalogFixtures.whisperTurbo,
     "whisperkit/small": CatalogFixtures.whisperSmall,
@@ -38,6 +39,18 @@ private func resolve(_ id: ModelID, dropping dropped: String? = nil) async throw
 
 @Suite("Catalog downloads: subpaths, pinned revisions and real sizes (SCR-011)")
 struct CatalogDownloadTests {
+    @Test("general Qwen atomically includes its pinned neural detector; the Sinhala specialist stays unchanged")
+    func qwenSpeechDetector() async throws {
+        let files = try await resolve("mlx/qwen3-asr-0.6b-4bit")
+        let support = files.filter { $0.relativePath.hasPrefix("EarmarkSupport/") }
+        #expect(support.count == 5)
+        #expect(support.allSatisfy { $0.sha256?.count == 64 && $0.sizeBytes != nil && $0.hasSafeRelativePath })
+        #expect(support.allSatisfy { $0.url.absoluteString.contains("/resolve/b419383c55c110e2c9271fa6ee0ea83d03c70d96/") })
+        #expect(files.compactMap(\.sizeBytes).reduce(0, +) == BuiltInCatalog.models.first { $0.id == "mlx/qwen3-asr-0.6b-4bit" }?.sizeBytes)
+        let specialist = try await resolve("mlx/qwen3-asr-0.6b-sinhala-8bit")
+        #expect(!specialist.contains { $0.relativePath.hasPrefix("EarmarkSupport/") })
+    }
+
     @Test("every tree-sourced entry has a recorded listing, and its real download size is within 15% of the catalog size")
     func sizesMatchManifests() async throws {
         let treeEntries = BuiltInCatalog.models.filter { $0.sourceURL?.absoluteString.contains("/tree/") == true }
@@ -151,24 +164,20 @@ struct CatalogCapabilityTests {
         ModelRecommender.recommendedModel(for: tier, useCase: use, language: language, in: catalog)?.id
     }
 
-    @Test("Parakeet is not advertised: no registered engine can run it")
-    func parakeetHidden() throws {
+    @Test("validated Parakeet is available for its languages and accurately describes buffered streaming")
+    func parakeetReady() throws {
         let parakeet = try #require(catalog.first { $0.id == "fluidaudio/parakeet-tdt-v3" })
-        #expect(!parakeet.isRunnable)
+        #expect(parakeet.isRunnable)
+        #expect(parakeet.capabilities.streaming == .buffered)
+        #expect(!parakeet.capabilities.autoDetectLanguage)
         let table = LanguageCapabilityTable(models: catalog)
-        for language: LanguageCode in ["sk", "hr", "mt", "bg", "et", "lv", "lt", "sl"] {
-            #expect(!table.languages().contains(language), "\(language) is only covered by Parakeet")
-        }
-        #expect(table.languages().contains("en") && table.languages().contains("si"))
-        #expect(table.models(coveringAll: ["sk"]).isEmpty)
-        #expect(
-            ModelCompatibility.evaluate(parakeet, for: ModelRequirement(useCase: .file, languages: ["de"]), tier: .tier16).reasons
-                .contains(.notRunnableInThisBuild))
+        #expect(table.models(coveringAll: ["sk"]).contains { $0.id == parakeet.id })
+        #expect(ModelCompatibility.evaluate(parakeet, for: ModelRequirement(useCase: .file, languages: ["de"]), tier: .tier16).isOK)
     }
 
     @Test("every ASR model that is runnable names an engine the app registers")
     func runnableModelsUseRegisteredEngines() {
-        let registered: Set<EngineID> = ["whisperkit", "apple.speech", "qwen3-asr"]  // App/AppEnvironment.swift
+        let registered: Set<EngineID> = ["whisperkit", "apple.speech", "qwen3-asr", "fluidaudio.parakeet"]  // App/AppEnvironment.swift
         for model in catalog where model.kind == .asr && model.isRunnable {
             #expect(model.engine.map(registered.contains) == true, "\(model.id) advertises an engine nobody registers")
         }

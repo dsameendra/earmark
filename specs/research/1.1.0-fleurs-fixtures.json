@@ -1,0 +1,50 @@
+[
+  {
+    "language": "fr",
+    "dataset": "google/fleurs",
+    "revision": "168de341b3db6859a9bac1c50a2ef5e3b47647e0",
+    "config": "fr_fr",
+    "id": 1987,
+    "license": "CC-BY-4.0",
+    "sourceAudioRepository": "handy-computer/transcribe.cpp",
+    "sourceAudioRevision": "cfa237c2551a4b2d3a56ff8fe5461e3c67c51772",
+    "audioSHA256": "f3bcc73d77ba26bb9c312383cc1a56a84a2c3a8eaa93ff321783c2353c6f9790",
+    "reference": "l'accident a eu lieu en terrain montagneux et il semblerait que cela ait été causé par un incendie malveillant"
+  },
+  {
+    "language": "de",
+    "dataset": "google/fleurs",
+    "revision": "168de341b3db6859a9bac1c50a2ef5e3b47647e0",
+    "config": "de_de",
+    "id": 1738,
+    "license": "CC-BY-4.0",
+    "sourceAudioRepository": "handy-computer/transcribe.cpp",
+    "sourceAudioRevision": "cfa237c2551a4b2d3a56ff8fe5461e3c67c51772",
+    "audioSHA256": "5ced4640ec223bd9f59601722534acbb2f47087c71167529c513741a86cdae01",
+    "reference": "er griff auch alles an was ins wasser kam selbst ein großer dinosaurier wie der t rex war ihm nicht gewachsen"
+  },
+  {
+    "language": "es",
+    "dataset": "google/fleurs",
+    "revision": "168de341b3db6859a9bac1c50a2ef5e3b47647e0",
+    "config": "es_419",
+    "id": 1764,
+    "license": "CC-BY-4.0",
+    "sourceAudioRepository": "handy-computer/transcribe.cpp",
+    "sourceAudioRevision": "cfa237c2551a4b2d3a56ff8fe5461e3c67c51772",
+    "audioSHA256": "24624100418fb70f3947df1912c4b64c6a7ae67a84936c98e3eb9e0162055a6f",
+    "reference": "fue tanta la cantidad de gente que se concentró que no todos pudieron acceder al funeral en la plaza de san pedro"
+  },
+  {
+    "language": "ja",
+    "dataset": "google/fleurs",
+    "revision": "168de341b3db6859a9bac1c50a2ef5e3b47647e0",
+    "config": "ja_jp",
+    "id": 1828,
+    "license": "CC-BY-4.0",
+    "sourceAudioRepository": "handy-computer/transcribe.cpp",
+    "sourceAudioRevision": "cfa237c2551a4b2d3a56ff8fe5461e3c67c51772",
+    "audioSHA256": "26b6cd491b5d52cf05d89207cb88499cdaba89749aebc29c8f216e834e3d9071",
+    "reference": "インターネットで 敵対的環境コース について検索すると おそらく現地企業の住所が出てくるでしょう"
+  }
+]

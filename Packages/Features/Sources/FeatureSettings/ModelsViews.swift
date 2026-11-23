@@ -138,24 +138,38 @@ struct ModelRowView: View {
     @ViewBuilder private var actions: some View {
         switch row.state {
         case .notInstalled:
-            Button("Download", symbol: .download, action: onDownload).accessibilityLabel(
-                "Download \(row.descriptor.displayName)"
-            ).accessibilityIdentifier("models.download.\(row.id.rawValue)")
+            if row.descriptor.isRunnable {
+                Button("Download", symbol: .download, action: onDownload).accessibilityLabel(
+                    "Download \(row.descriptor.displayName)"
+                ).accessibilityIdentifier("models.download.\(row.id.rawValue)")
+            } else {
+                unavailableLabel
+            }
         case .downloading:
             Button("Pause", systemImage: "pause.circle", action: onPause).labelStyle(.iconOnly).accessibilityLabel("Pause download").accessibilityIdentifier("models.pause.\(row.id.rawValue)")
             Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download").accessibilityIdentifier("models.cancel.\(row.id.rawValue)")
         case .paused:
-            Button("Resume", symbol: .play, action: onResume).labelStyle(.iconOnly).accessibilityLabel("Resume download").accessibilityIdentifier("models.resume.\(row.id.rawValue)")
+            if row.descriptor.isRunnable {
+                Button("Resume", symbol: .play, action: onResume).labelStyle(.iconOnly).accessibilityLabel("Resume download").accessibilityIdentifier("models.resume.\(row.id.rawValue)")
+            } else { unavailableLabel }
             Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download").accessibilityIdentifier("models.cancel.\(row.id.rawValue)")
         case .installed:
             Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)  // stock-chrome: destructive action
                 .labelStyle(.iconOnly)
                 .accessibilityLabel("Delete \(row.descriptor.displayName)").accessibilityIdentifier("models.delete.\(row.id.rawValue)")
         case .failed:
-            Button("Retry", symbol: .retry, action: onDownload).accessibilityIdentifier("models.retry.\(row.id.rawValue)")
+            if row.descriptor.isRunnable {
+                Button("Retry", symbol: .retry, action: onDownload).accessibilityIdentifier("models.retry.\(row.id.rawValue)")
+            } else { unavailableLabel }
             Button("Cancel", systemImage: "xmark.circle", action: onCancel).accessibilityLabel("Cancel and discard \(row.descriptor.displayName)")
                 .accessibilityIdentifier("models.cancel.\(row.id.rawValue)")
         }
+    }
+
+    private var unavailableLabel: some View {
+        Text("Unavailable").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+            .accessibilityLabel("\(row.descriptor.displayName) has no runtime in this build")
+            .accessibilityIdentifier("models.unavailable.\(row.id.rawValue)")
     }
 
     @ViewBuilder private var statusLine: some View {

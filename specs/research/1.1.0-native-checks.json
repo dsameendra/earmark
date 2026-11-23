@@ -1,10 +1,12 @@
 {
-  "recordedAt": "2026-11-23T22:01:36.295166+00:00",
+  "recordedAt": "2026-11-23T23:16:01.184178+00:00",
   "status": "partial native evidence; not release acceptance",
   "sources": {
-    "Packages/QwenASR/Sources/QwenASR/QwenSinhalaEngine.swift": "760fc4a1d02b0a43729441d843752c8ce6026fc42baed01b1db089c4a6882206",
+    "Packages/QwenASR/Sources/QwenASR/QwenSinhalaEngine.swift": "cc8e3409bc6628f190c9eca3e7881ca36d75c750628992156d7a9280d8141646",
     "Packages/QwenASR/Sources/QwenASR/MLXQwenRecognizer.swift": "68da9c683bf8fd635560f2e8e8e730bdec063d954754d74585cfcb4d01da863e",
-    "Packages/Transcription/Sources/Transcription/ParakeetEngine.swift": "9dc03aed00fe0d2275c9c6a6f0e25147f379ab7b2f1f0de1ace1fc78ce8dc09c"
+    "Packages/Transcription/Sources/Transcription/ParakeetEngine.swift": "816f7dc8d5ccbd2fe28adcbfed6bf8021ee39c74124dcf26fbaa9d4d7edfd1f6",
+    "Packages/QwenASR/Sources/QwenASR/UtteranceSegmenter.swift": "ab99594cfa026e4e5a816aaf79193c3c0ad0daf16b288e3e9923f604ecdc0fc6",
+    "Packages/AudioCapture/Sources/AudioCapture/SileroVoiceActivityDetector.swift": "99f5ca528baa050eebfe3e6911145922cffa73f66b4db15cbcec91dd9bba2884"
   },
   "checks": [
     {
@@ -37,6 +39,43 @@
       "wer": 0.045454545454545456,
       "acceptance": "WER < 0.25 and alignment bounds passed",
       "scope": "native English file path; other languages, Live capture and lifecycle acceptance remain pending"
+    },
+    {
+      "model": "mlx/qwen3-asr-0.6b-4bit",
+      "checkpointRevision": "313d850181767edf09f00a9c289becca70e58cd0",
+      "speechDetectorRevision": "b419383c55c110e2c9271fa6ee0ea83d03c70d96",
+      "test": "QwenMultilingualRealTests/multilingual(language:)",
+      "fixtures": "four pinned FLEURS clips; 1.1.0-fleurs-fixtures.json",
+      "cerByLanguage": {
+        "fr": 0.054945054945054944,
+        "de": 0.033707865168539325,
+        "es": 0.0,
+        "ja": 0.06666666666666667
+      },
+      "acceptance": "all CER < 0.35; real file adapter using default installed detector; language tags and no invented word times",
+      "scope": "small native smoke set, not language-wide quality; full app session and sustained performance remain pending",
+      "log": "/tmp/earmark110-qwen-managed-native2.log"
+    },
+    {
+      "model": "mlx/qwen3-asr-0.6b-sinhala-8bit",
+      "test": "QwenRealModelTests/readSpeech()",
+      "fixtures": "OpenSLR30 40 clips",
+      "cer": 0.0763,
+      "wer": 0.3522,
+      "rtf": 0.326,
+      "seconds": 77.557,
+      "acceptance": "existing CER < 0.12 passed after general-detector integration",
+      "scope": "specialist regression; warm local execution, not a hardware-tier claim",
+      "log": "/tmp/earmark110-qwen-sinhala-vad-regression.log"
+    },
+    {
+      "model": "fluidaudio/parakeet-tdt-v3",
+      "test": "NativeSpeechAcceptanceTests/parakeetBufferedCapture()",
+      "wer": 0.06198347107438017,
+      "segments": 18,
+      "acceptance": "WER < 0.25, nonempty word alignment and bounded timing; end-of-input flush",
+      "scope": "buffered stream fed in 0.5-second fixture chunks; no real-time microphone or sustained-latency claim",
+      "log": "/tmp/earmark110-parakeet-file-stream.log"
     }
   ]
 }

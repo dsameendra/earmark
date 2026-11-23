@@ -23,6 +23,10 @@ def main():
     selected = [x for x in checkpoint['files'] if any(x['path'] == prefix or x['path'].startswith(prefix + '/') for prefix in args.include)]
     if not selected:
         raise ValueError('No audited artifacts match the requested paths')
+    missing = [prefix for prefix in args.include if not any(
+        info['path'] == prefix or info['path'].startswith(prefix + '/') for info in selected)]
+    if missing:
+        raise ValueError('Audited checkpoint is missing requested artifacts: ' + ', '.join(missing))
     destination = args.destination.expanduser().resolve()
     destination.mkdir(parents=True, exist_ok=True)
 
@@ -46,15 +50,48 @@ def main():
         partial = target.with_name(target.name + '.earmark-partial')
         for attempt in range(3):
             try:
-                with urllib.request.urlopen(url, timeout=120) as response, partial.open('wb') as output:
-                    while block := response.read(1024 * 1024):
-                        output.write(block)
+                if info['size'] > 64 * 1024 * 1024:
+                    pieces = partial.with_name(partial.name + '.parts')
+                    pieces.mkdir(exist_ok=True)
+                    step = 16 * 1024 * 1024
+                    ranges = [(start, min(info['size'] - 1, start + step - 1)) for start in range(0, info['size'], step)]
+                    def fetch_range(bounds):
+                        start, end = bounds
+                        piece = pieces / (str(start) + '-' + str(end))
+                        if piece.is_file() and piece.stat().st_size == end - start + 1:
+                            return piece
+                        request = urllib.request.Request(url + '?earmark_range=' + str(start), headers={'Range': f'bytes={start}-{end}'})
+                        with urllib.request.urlopen(request, timeout=120) as response, piece.open('wb') as output:
+                            if response.status != 206 or response.headers.get('Content-Range') != f'bytes {start}-{end}/{info["size"]}':
+                                raise ValueError('Server did not honor the requested byte range')
+                            while block := response.read(1024 * 1024):
+                                output.write(block)
+                        if piece.stat().st_size != end - start + 1:
+                            raise ValueError('Incomplete byte range')
+                        return piece
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ranges_pool:
+                        paths = list(ranges_pool.map(fetch_range, ranges))
+                    with partial.open('wb') as output:
+                        for piece in paths:
+                            with piece.open('rb') as stream:
+                                while block := stream.read(1024 * 1024):
+                                    output.write(block)
+                    # Keep range pieces until the assembled artifact passes its full checksum.
+                else:
+                    with urllib.request.urlopen(url, timeout=120) as response, partial.open('wb') as output:
+                        while block := response.read(1024 * 1024):
+                            output.write(block)
                 if partial.stat().st_size != info['size']:
                     raise ValueError('Artifact size mismatch: ' + str(relative))
                 actual = digest(partial)
                 if expected and actual != expected:
                     raise ValueError('Artifact checksum mismatch: ' + str(relative))
                 partial.replace(target)
+                pieces = partial.with_name(partial.name + '.parts')
+                if pieces.is_dir():
+                    for piece in pieces.iterdir():
+                        piece.unlink()
+                    pieces.rmdir()
                 print('Verified', relative, info['size'], flush=True)
                 return dict(path=str(relative), size=info['size'], sha256=actual)
             except Exception:

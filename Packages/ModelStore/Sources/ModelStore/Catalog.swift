@@ -7,6 +7,10 @@ public enum BuiltInCatalog {
         "en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "uk", "tr", "ar", "he", "hi", "ta", "te", "bn", "ur", "ja", "ko", "zh",
         "id", "vi", "th", "sv", "da", "no", "fi", "cs", "el", "ro", "hu",
     ]
+    static let qwenLanguages: Set<LanguageCode> = [
+        "zh", "en", "yue", "ar", "de", "fr", "es", "pt", "id", "it", "ko", "ru", "th", "vi", "ja", "tr", "hi", "ms", "nl", "sv",
+        "da", "fi", "pl", "cs", "fil", "fa", "el", "hu", "mk", "ro"
+    ]
     static let appleSpeechLanguages: Set<LanguageCode> = [
         "en", "de", "es", "fr", "it", "ja", "ko", "pt", "zh", "yue", "hi", "ta", "te", "ml", "kn", "mr", "gu", "bn", "pa", "ur", "ne",
     ]
@@ -67,6 +71,19 @@ public enum BuiltInCatalog {
                     RecommendedUse(.file, maxTier: .tier8), RecommendedUse(.live, priority: 1),
                     RecommendedUse(.dictation, priority: 1),
                 ])),
+        ModelDescriptor(
+            id: "mlx/qwen3-asr-0.6b-4bit", displayName: "Qwen3-ASR 0.6B (multilingual)", kind: .asr, runtime: .mlx,
+            engine: "qwen3-asr", languages: qwenLanguages, sizeBytes: 712_778_752 + QwenSpeechDetectorFiles.sizeBytes,
+            license: LicenseInfo(spdx: "Apache-2.0 AND MIT", attribution: "Qwen3-ASR by Qwen; MLX conversion by mlx-community (Apache 2.0). Includes Silero VAD by the Silero Team, converted by FluidInference (MIT)."),
+            minTier: .tier16,
+            sourceURL: hf("mlx-community/Qwen3-ASR-0.6B-4bit/tree/313d850181767edf09f00a9c289becca70e58cd0"),
+            isExperimental: true,
+            notes: "30-language recognition with language detection. Includes a pinned neural speech detector. Buffered Live captions; no word timestamps. Choose the Sinhala specialist for Sinhala.",
+            capabilities: ModelCapabilities(live: true, file: true, autoDetectLanguage: true, streaming: .buffered),
+            downloadInclude: [
+                "chat_template.json", "config.json", "generation_config.json", "merges.txt", "model.safetensors",
+                "model.safetensors.index.json", "preprocessor_config.json", "tokenizer_config.json", "vocab.json"
+            ]),
         ModelDescriptor(
             id: "mlx/qwen3-asr-0.6b-sinhala-8bit", displayName: "Qwen3-ASR 0.6B Sinhala (8-bit, MLX)", kind: .asr, runtime: .mlx,
             engine: "qwen3-asr", languages: ["si"], sizeBytes: 1_015_560_793,
@@ -142,7 +159,7 @@ public enum BuiltInCatalog {
             ),
             minTier: .tier16, sourceURL: hf("JustFrederik/nllb-200-distilled-600M-ct2-int8/tree/\(Revision.nllb)"), isExperimental: true,
             notes:
-                "Sinhala translation for non-commercial builds. Download is 647 MB (measured from the repo listing: model.bin 623 MB, "
+                "27-language translation for non-commercial use. Download is 647 MB (measured from the repo listing: model.bin 623 MB, "
                 + "SentencePiece 4.9 MB, vocab 2.6 MB, tokenizer.json 17 MB). English to Sinhala is low confidence. Pinned to revision 302d78f.",
             capabilities: ModelCapabilities(live: false, file: true, translation: true)),
         ModelDescriptor(
@@ -151,21 +168,19 @@ public enum BuiltInCatalog {
             license: LicenseInfo(spdx: "Apache-2.0", attribution: "MADLAD-400 by Google, Apache-2.0."),
             minTier: .tier16, sourceURL: hf("jbochi/madlad400-3b-mt/resolve/\(Revision.madlad)/model-q4k.gguf"),
             sha256: "ea6e5531a3e95213c7f0635988d119e078a655c09306e47851e15d4c0c3f9c37", isExperimental: true,
-            notes: "Commercial-safe Sinhala translation option. Sinhala quality unmeasured. Pinned and checksummed.",
-            capabilities: ModelCapabilities(live: false, file: true, translation: true)),
+            notes: "Legacy GGUF download. This format has no translation runtime in this build; native MADLAD integration is in progress.",
+            capabilities: ModelCapabilities(live: false, file: false, translation: false)),
         ModelDescriptor(
-            id: "fluidaudio/parakeet-tdt-v3", displayName: "Parakeet TDT v3", kind: .asr, runtime: .coreML, engine: "fluidaudio",
+            id: "fluidaudio/parakeet-tdt-v3", displayName: "Parakeet TDT v3", kind: .asr, runtime: .coreML, engine: "fluidaudio.parakeet",
             languages: parakeetLanguages, sizeBytes: 483_105_645,
             license: LicenseInfo(spdx: "CC-BY-4.0", attribution: "NVIDIA Parakeet TDT 0.6B v3 via FluidInference, CC BY 4.0."),
             minTier: .tier8, sourceURL: hf("FluidInference/parakeet-tdt-0.6b-v3-coreml/tree/\(Revision.parakeet)"),
             isExperimental: true,
             notes:
-                "Planned fast engine for 25 European languages. NOT RUNNABLE YET: no `fluidaudio` ASR engine is registered, so it is "
-                + "hidden from language pickers and never recommended (capabilities.live and .file are false). Download is limited "
-                + "to the v3 preprocessor, encoder, decoder, joint and vocabulary (483 MB).",
-            capabilities: ModelCapabilities(live: false, file: false, wordTimestamps: false, autoDetectLanguage: true),
+                "Recognition for 25 European languages with word alignment. Buffered Live captions; choose the spoken language explicitly.",
+            capabilities: ModelCapabilities(live: true, file: true, wordTimestamps: true, autoDetectLanguage: false, streaming: .buffered),
             downloadInclude: [
-                "Preprocessor.mlmodelc", "Encoder.mlmodelc", "Decoder.mlmodelc", "JointDecisionv3.mlmodelc", "parakeet_v3_vocab.json",
+                "Preprocessor.mlmodelc", "Encoder.mlmodelc", "Decoder.mlmodelc", "JointDecisionv3.mlmodelc", "parakeet_vocab.json",
             ]),
     ]
 }

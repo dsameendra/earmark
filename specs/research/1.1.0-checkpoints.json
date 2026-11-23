@@ -2811,6 +2811,905 @@
           "sha256": null
         }
       ]
+    },
+    {
+      "repo": "Nextcloud-AI/madlad400-3b-mt-ct2-int8",
+      "revision": "aa32bbdeba7880eff2096ec044cb155a340a9400",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1570,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 10014,
+          "sha256": null
+        },
+        {
+          "path": "added_tokens.json",
+          "size": 4,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 224,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 142,
+          "sha256": null
+        },
+        {
+          "path": "model.bin",
+          "size": 2950208329,
+          "sha256": "77b9fd9ab97c1259d07089b5f854393dad81bc5fb5647d3f9a5d101c94f40daa"
+        },
+        {
+          "path": "shared_vocabulary.json",
+          "size": 5477099,
+          "sha256": null
+        },
+        {
+          "path": "special_tokens_map.json",
+          "size": 414,
+          "sha256": null
+        },
+        {
+          "path": "spiece.model",
+          "size": 4427844,
+          "sha256": "ef11ac9a22c7503492f56d48dce53be20e339b63605983e9f27d2cd0e0f3922c"
+        },
+        {
+          "path": "tokenizer.json",
+          "size": 16629031,
+          "sha256": "a2799ccc696b752ba00c34f58726bfe253a04921ceb6cfc620400f560474790b"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 830,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "gaudi/opus-mt-en-de-ctranslate2",
+      "revision": "3998844c0d44ff2aa5aaf5a1cf8365b6eb4fd783",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 433,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 6720,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 215,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 293,
+          "sha256": null
+        },
+        {
+          "path": "model.bin",
+          "size": 148423215,
+          "sha256": "ef19d4ddfd1d82f75b7469b33f754464c83f04ffb1691e33454561d7b816e8d3"
+        },
+        {
+          "path": "shared_vocabulary.json",
+          "size": 993828,
+          "sha256": null
+        },
+        {
+          "path": "source.spm",
+          "size": 768489,
+          "sha256": "678f2a1177d8389f67b66299762dcc4fc567e89b07e212ba91b0c56daecf47ce"
+        },
+        {
+          "path": "target.spm",
+          "size": 796845,
+          "sha256": "bbd1f495eea99c8e21ae086d9146e0fa7b096c3dfdd9ba07ab8b631889df5c9b"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 42,
+          "sha256": null
+        },
+        {
+          "path": "vocab.json",
+          "size": 1273232,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "gaudi/opus-mt-de-en-ctranslate2",
+      "revision": "7134d80efb6dbc284567cbeb55a517dc2974f722",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 387,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 6720,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 215,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 293,
+          "sha256": null
+        },
+        {
+          "path": "model.bin",
+          "size": 148423215,
+          "sha256": "3dbafb4ab375ba3a6e9057e0cec4910341e0b8aac57f5784508b474e7738d24a"
+        },
+        {
+          "path": "shared_vocabulary.json",
+          "size": 993828,
+          "sha256": null
+        },
+        {
+          "path": "source.spm",
+          "size": 796845,
+          "sha256": "bbd1f495eea99c8e21ae086d9146e0fa7b096c3dfdd9ba07ab8b631889df5c9b"
+        },
+        {
+          "path": "target.spm",
+          "size": 768489,
+          "sha256": "678f2a1177d8389f67b66299762dcc4fc567e89b07e212ba91b0c56daecf47ce"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 42,
+          "sha256": null
+        },
+        {
+          "path": "vocab.json",
+          "size": 1273232,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "gaudi/opus-mt-en-fr-ctranslate2",
+      "revision": "41c45279b2eadb4b5353de1f36f3826b5e0a5944",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 433,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 6720,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 215,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 293,
+          "sha256": null
+        },
+        {
+          "path": "shared_vocabulary.json",
+          "size": 1052697,
+          "sha256": null
+        },
+        {
+          "path": "source.spm",
+          "size": 778395,
+          "sha256": "173e9f493a668fe396d599e28d414a201193094e6ffd7a4678e5aab0f6d3d838"
+        },
+        {
+          "path": "target.spm",
+          "size": 802397,
+          "sha256": "78d0e717c77053f1c4b856d8661d9cb87c64f083a35418c087b9146300e4f585"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 42,
+          "sha256": null
+        },
+        {
+          "path": "vocab.json",
+          "size": 1339166,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "gaudi/opus-mt-fr-en-ctranslate2",
+      "revision": "b88efd065a8720e0beeaba2efd53b1dc9a29cfc0",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 433,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 6720,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 215,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 293,
+          "sha256": null
+        },
+        {
+          "path": "model.bin",
+          "size": 149872953,
+          "sha256": "0dbc6d68e18c1b502c920ff57c380d1f89a9a27cc76c32225934640642c99746"
+        },
+        {
+          "path": "shared_vocabulary.json",
+          "size": 1052697,
+          "sha256": null
+        },
+        {
+          "path": "source.spm",
+          "size": 802397,
+          "sha256": "78d0e717c77053f1c4b856d8661d9cb87c64f083a35418c087b9146300e4f585"
+        },
+        {
+          "path": "target.spm",
+          "size": 778395,
+          "sha256": "173e9f493a668fe396d599e28d414a201193094e6ffd7a4678e5aab0f6d3d838"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 42,
+          "sha256": null
+        },
+        {
+          "path": "vocab.json",
+          "size": 1339166,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "gaudi/opus-mt-en-es-ctranslate2",
+      "revision": "d32d375e1a081328c090e3747242b1246fb15050",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 433,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 6720,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 215,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 293,
+          "sha256": null
+        },
+        {
+          "path": "shared_vocabulary.json",
+          "size": 1276136,
+          "sha256": null
+        },
+        {
+          "path": "source.spm",
+          "size": 801636,
+          "sha256": "4dd547c24816a335e7b0b2e63376a8f1b3cbfc671eda5ab808dd44fdadaa8791"
+        },
+        {
+          "path": "target.spm",
+          "size": 825924,
+          "sha256": "e236ee6d866b635c0142114f8647f39831f9d92534aa2aad75c942f6a78ad0e3"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 44,
+          "sha256": null
+        },
+        {
+          "path": "vocab.json",
+          "size": 1590040,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "gaudi/opus-mt-es-en-ctranslate2",
+      "revision": "ef459fb7b0511ea2d1ec9279f8d6cf80661bf9f7",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 387,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 6720,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 215,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 293,
+          "sha256": null
+        },
+        {
+          "path": "model.bin",
+          "size": 155502615,
+          "sha256": "7e3a7b3c8c8b6c6e3a14b154cd5733b3dc543d7acf12371d2f9f6498069701c3"
+        },
+        {
+          "path": "shared_vocabulary.json",
+          "size": 1276136,
+          "sha256": null
+        },
+        {
+          "path": "source.spm",
+          "size": 825924,
+          "sha256": "e236ee6d866b635c0142114f8647f39831f9d92534aa2aad75c942f6a78ad0e3"
+        },
+        {
+          "path": "target.spm",
+          "size": 801636,
+          "sha256": "4dd547c24816a335e7b0b2e63376a8f1b3cbfc671eda5ab808dd44fdadaa8791"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 44,
+          "sha256": null
+        },
+        {
+          "path": "vocab.json",
+          "size": 1590040,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "handy-computer/multitalker-parakeet-streaming-0.6b-v1-gguf",
+      "revision": "d9ed2931bc10058f79809bd88139a27c2ef09a53",
+      "license": "other",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 2031,
+          "sha256": null
+        },
+        {
+          "path": "LICENSE",
+          "size": 10597,
+          "sha256": null
+        },
+        {
+          "path": "NOTICE",
+          "size": 486,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 22726,
+          "sha256": null
+        },
+        {
+          "path": "multitalker-parakeet-streaming-0.6b-v1-F16.gguf",
+          "size": 1482674272,
+          "sha256": "18116241c595891bccf44cd0207cd749e9ba9e6025ee73ab59606633ec730304"
+        },
+        {
+          "path": "multitalker-parakeet-streaming-0.6b-v1-F32.gguf",
+          "size": 2960100448,
+          "sha256": "1ae09d63777dc4ae061f1f92b8aa0f7336f51bd995860946cc1f120b7e010f16"
+        },
+        {
+          "path": "multitalker-parakeet-streaming-0.6b-v1-Q4_K_M.gguf",
+          "size": 617132160,
+          "sha256": "d24307ac22e9e691c146a7e2339891638a44a8492a765e4b6c11cff8960cd998"
+        },
+        {
+          "path": "multitalker-parakeet-streaming-0.6b-v1-Q5_K_M.gguf",
+          "size": 681209984,
+          "sha256": "38c98bc0715ee95b4271952630661050a8c3c37f64b8b178c62b8b699668cbdb"
+        },
+        {
+          "path": "multitalker-parakeet-streaming-0.6b-v1-Q6_K.gguf",
+          "size": 743197824,
+          "sha256": "d8db95ba257e370d910f42e8197dfc65fb5b879e09e4b13aefaac06af3555fa1"
+        },
+        {
+          "path": "multitalker-parakeet-streaming-0.6b-v1-Q8_0.gguf",
+          "size": 873443456,
+          "sha256": "cf83cedc6777d2528a4d2a8a4bf476174ef7e5c65b86bc6c955f4cc9f5951ac5"
+        }
+      ]
+    },
+    {
+      "repo": "handy-computer/nemotron-3.5-asr-streaming-0.6b-gguf",
+      "revision": "53ce288f69326b415aeef030cfcb02a08a8096dd",
+      "license": "other",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1989,
+          "sha256": null
+        },
+        {
+          "path": "LICENSE",
+          "size": 2619,
+          "sha256": null
+        },
+        {
+          "path": "NOTICE",
+          "size": 411,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 50786,
+          "sha256": null
+        },
+        {
+          "path": "nemotron-3.5-asr-streaming-0.6b-F16.gguf",
+          "size": 1277750240,
+          "sha256": "f21a0cea64d232981def7f8f2b7ab322459703a2e89359962c042c57159755b1"
+        },
+        {
+          "path": "nemotron-3.5-asr-streaming-0.6b-F32.gguf",
+          "size": 2552277984,
+          "sha256": "fbbc82e8e1084301a670fbc4d79c69c0c8980da506352fd83e74a182f38f5b78"
+        },
+        {
+          "path": "nemotron-3.5-asr-streaming-0.6b-Q4_K_M.gguf",
+          "size": 495831520,
+          "sha256": "41c99fa5fb6f3d35f68e79adc3e755eca2232a8d921178bd647b71194792b8fd"
+        },
+        {
+          "path": "nemotron-3.5-asr-streaming-0.6b-Q5_K_M.gguf",
+          "size": 559647200,
+          "sha256": "86429e8c4f7fdcf9b3312269ad1ca6669478ba7805331c4aea7a2e33e9910d65"
+        },
+        {
+          "path": "nemotron-3.5-asr-streaming-0.6b-Q6_K.gguf",
+          "size": 621356512,
+          "sha256": "4ff802c6207c4a7df23242003fd2aa849a1ab02bba6bc80c3db02e7e82606c28"
+        },
+        {
+          "path": "nemotron-3.5-asr-streaming-0.6b-Q8_0.gguf",
+          "size": 751094240,
+          "sha256": "b94545b313b3223fda7b2857a52681da813935c2127643d1e9ff0c23d988089c"
+        }
+      ]
+    },
+    {
+      "repo": "handy-computer/Voxtral-Mini-4B-Realtime-2602-gguf",
+      "revision": "7fd3d424fc558edca2c53808578b0541ef52a81a",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1978,
+          "sha256": null
+        },
+        {
+          "path": "LICENSE",
+          "size": 11358,
+          "sha256": null
+        },
+        {
+          "path": "NOTICE",
+          "size": 412,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 20272,
+          "sha256": null
+        },
+        {
+          "path": "Voxtral-Mini-4B-Realtime-2602-BF16.gguf",
+          "size": 8868301088,
+          "sha256": "dca6a7bece55858472e1b2df1f928642bdc1e964b1a91f3378c3a4e72fc5bc04"
+        },
+        {
+          "path": "Voxtral-Mini-4B-Realtime-2602-F16.gguf",
+          "size": 8879114528,
+          "sha256": "243258ae0ad80f748b18cfd9c8141998157d74eb32fbb131ba8f69e0c01564d7"
+        },
+        {
+          "path": "Voxtral-Mini-4B-Realtime-2602-Q4_K_M.gguf",
+          "size": 2830493984,
+          "sha256": "39dc1f65539373a406edea7490505822d77c12edff521744678717eef4da4723"
+        },
+        {
+          "path": "Voxtral-Mini-4B-Realtime-2602-Q5_K_M.gguf",
+          "size": 3281439008,
+          "sha256": "e20a7582c5cf8159454c909b7f57b184b287cb3d7c3ec85744727a2cec51b08f"
+        },
+        {
+          "path": "Voxtral-Mini-4B-Realtime-2602-Q6_K.gguf",
+          "size": 3661018912,
+          "sha256": "92038784cffa20ea8ee925f10fd28c110285124d94730eacce48bab6c214fa48"
+        },
+        {
+          "path": "Voxtral-Mini-4B-Realtime-2602-Q8_0.gguf",
+          "size": 4731791648,
+          "sha256": "6fb22249463c1e7a600d920ad732e2dd0a231510e9db59fb8061d3d1d48d0c67"
+        }
+      ]
+    },
+    {
+      "repo": "handy-computer/canary-1b-v2-gguf",
+      "revision": "692af661b140183b60e44f55ad03c59e1e77d078",
+      "license": "cc-by-4.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1875,
+          "sha256": null
+        },
+        {
+          "path": "LICENSE",
+          "size": 18657,
+          "sha256": null
+        },
+        {
+          "path": "NOTICE",
+          "size": 392,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 28800,
+          "sha256": null
+        },
+        {
+          "path": "canary-1b-v2-F16.gguf",
+          "size": 1966111456,
+          "sha256": "eadda53cd1652d65cd12ff7ac4b7dc64cba1ce9837aae0c86e4222e8db89e320"
+        },
+        {
+          "path": "canary-1b-v2-F32.gguf",
+          "size": 3920657120,
+          "sha256": "b0b48b62b2c68f2779c49481de102715c5eaadbe084bca7fdddc7912f9c20e8b"
+        },
+        {
+          "path": "canary-1b-v2-Q4_K_M.gguf",
+          "size": 735476448,
+          "sha256": "49e0a67e219bec95a254c2348460b6350e75a7ac6f93a131e48244b4c7cb53b9"
+        },
+        {
+          "path": "canary-1b-v2-Q5_K_M.gguf",
+          "size": 836664032,
+          "sha256": "9c3a893c93795438baf9b4b1c853c39b60316c3a0d259a3ba6e284712f5ddb71"
+        },
+        {
+          "path": "canary-1b-v2-Q6_K.gguf",
+          "size": 931986144,
+          "sha256": "6567c2d601fccacf9809fc230edefde05728340f65860bbe91cfd72d0a5eea9d"
+        },
+        {
+          "path": "canary-1b-v2-Q8_0.gguf",
+          "size": 1144290016,
+          "sha256": "224f83d1bc487b3303b495a7d6874912fdece93de19d1a04b550829c30a5d289"
+        }
+      ]
+    },
+    {
+      "repo": "handy-computer/cohere-transcribe-03-2026-gguf",
+      "revision": "7353b6040bdc1be9e5a3823d99d5fe12afe88264",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1954,
+          "sha256": null
+        },
+        {
+          "path": "LICENSE",
+          "size": 11358,
+          "sha256": null
+        },
+        {
+          "path": "NOTICE",
+          "size": 409,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 31907,
+          "sha256": null
+        },
+        {
+          "path": "cohere-transcribe-03-2026-BF16.gguf",
+          "size": 4105263104,
+          "sha256": "72e7625abc358da7b1a27348b18269b4a026eceb792e6ade53c6bb2280d0f3a7"
+        },
+        {
+          "path": "cohere-transcribe-03-2026-F16.gguf",
+          "size": 4106644992,
+          "sha256": "65ea095ba78ed938a613cc950da0599b29e16bb5a22a968d7b1fd99d71f13784"
+        },
+        {
+          "path": "cohere-transcribe-03-2026-Q4_K_M.gguf",
+          "size": 1558162944,
+          "sha256": "0ea56826d8bd5d74b7143a4a04e022dc1bb75452cfae49d98b6acb0c1d16a1fb"
+        },
+        {
+          "path": "cohere-transcribe-03-2026-Q5_K_M.gguf",
+          "size": 1770270208,
+          "sha256": "14d02f1ad6dd77b3a60f82639879012c3adb4fe25c50a5a47a2c4c661daf1558"
+        },
+        {
+          "path": "cohere-transcribe-03-2026-Q6_K.gguf",
+          "size": 1972524544,
+          "sha256": "094fb65b9d82d4a52db1d944152e4d7b6629f356bb3beaffdd0891eb527f24f3"
+        },
+        {
+          "path": "cohere-transcribe-03-2026-Q8_0.gguf",
+          "size": 2410655232,
+          "sha256": "931916663432fd895423a4291a8400221802b288967ca2d435fc5e3141c9e71e"
+        }
+      ]
+    },
+    {
+      "repo": "FluidInference/silero-vad-coreml",
+      "revision": "b419383c55c110e2c9271fa6ee0ea83d03c70d96",
+      "license": "mit",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 2563,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 2472,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 2,
+          "sha256": null
+        },
+        {
+          "path": "graphs/yc_256ms_comparison_20250915_205721_2c04b81.png",
+          "size": 581989,
+          "sha256": "a653353ecb575cbbc187d5ca4f3f3c45c36a362d8ba5c360811dfda114e48ce6"
+        },
+        {
+          "path": "graphs/yc_performance_20250915_205721_2c04b81.png",
+          "size": 251724,
+          "sha256": "23cbe5be12ac6a507691f771fd3fe977a0559f5efd8f63c32453fea82737a11f"
+        },
+        {
+          "path": "graphs/yc_standard_comparison_20250915_205721_2c04b81.png",
+          "size": 435802,
+          "sha256": "97b3eb4ec97a2af8f5233686f847b2eb532a4443b26d1a34a9122789359b3497"
+        },
+        {
+          "path": "silero-vad-unified-256ms-v6.0.0.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "30945d54e32c3f15ec35dc6ee32128a27a6cdc03b0a12ffab04434069c49dfb5"
+        },
+        {
+          "path": "silero-vad-unified-256ms-v6.0.0.mlmodelc/coremldata.bin",
+          "size": 625,
+          "sha256": "0c3063bd09ba71c26ede0308d7c33591d0770e971a3fcc603ccad7ba1e8fb88d"
+        },
+        {
+          "path": "silero-vad-unified-256ms-v6.0.0.mlmodelc/metadata.json",
+          "size": 3335,
+          "sha256": null
+        },
+        {
+          "path": "silero-vad-unified-256ms-v6.0.0.mlmodelc/model.mil",
+          "size": 176918,
+          "sha256": null
+        },
+        {
+          "path": "silero-vad-unified-256ms-v6.0.0.mlmodelc/weights/weight.bin",
+          "size": 882304,
+          "sha256": "853cf34740d3f5061f977ebe2976f7c921b064261c9c4753b3a1196f2dba42b4"
+        },
+        {
+          "path": "silero-vad-unified-256ms-v6.0.0.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 157925,
+          "sha256": "a996535cd1f1ac5f92bab1a66edb56bf054ef48c8742338b07ec5b892e2613c2"
+        },
+        {
+          "path": "silero-vad-unified-256ms-v6.0.0.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 882304,
+          "sha256": "853cf34740d3f5061f977ebe2976f7c921b064261c9c4753b3a1196f2dba42b4"
+        },
+        {
+          "path": "silero-vad-unified-256ms-v6.0.0.mlpackage/Manifest.json",
+          "size": 617,
+          "sha256": null
+        },
+        {
+          "path": "silero-vad-unified-256ms-v6.2.1.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "8067594eb3126ab8318af507f0c00cabfed40d5fedb8a0ee5075dd02e903d909"
+        },
+        {
+          "path": "silero-vad-unified-256ms-v6.2.1.mlmodelc/coremldata.bin",
+          "size": 625,
+          "sha256": "7db35a4fd995222a7fb0129713473b15d1462572ab4a2e5e4d56bcaad9e40f41"
+        },
+        {
+          "path": "silero-vad-unified-256ms-v6.2.1.mlmodelc/metadata.json",
+          "size": 3335,
+          "sha256": null
+        },
+        {
+          "path": "silero-vad-unified-256ms-v6.2.1.mlmodelc/model.mil",
+          "size": 176918,
+          "sha256": null
+        },
+        {
+          "path": "silero-vad-unified-256ms-v6.2.1.mlmodelc/weights/weight.bin",
+          "size": 882304,
+          "sha256": "53ecc8b5081146140ab654c89109cf001f2183abddd7a2411c5081feeffff063"
+        },
+        {
+          "path": "silero-vad-unified-v6.0.0.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "2141be60ea0adf7acb1232fbcfaffb2be308ae02e6672d3762aedf36611ea9fd"
+        },
+        {
+          "path": "silero-vad-unified-v6.0.0.mlmodelc/coremldata.bin",
+          "size": 593,
+          "sha256": "f460dcdf796b19c04bc38ab6e69601831f634e5e74d499487f0c8fe17ca12f0f"
+        },
+        {
+          "path": "silero-vad-unified-v6.0.0.mlmodelc/metadata.json",
+          "size": 3232,
+          "sha256": null
+        },
+        {
+          "path": "silero-vad-unified-v6.0.0.mlmodelc/model.mil",
+          "size": 25126,
+          "sha256": null
+        },
+        {
+          "path": "silero-vad-unified-v6.0.0.mlmodelc/weights/weight.bin",
+          "size": 882304,
+          "sha256": "853cf34740d3f5061f977ebe2976f7c921b064261c9c4753b3a1196f2dba42b4"
+        },
+        {
+          "path": "silero-vad-unified-v6.0.0.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 22122,
+          "sha256": "532a63e7db357d739761635285c295b6d440a07d081951e914351efc1f6fd8d9"
+        },
+        {
+          "path": "silero-vad-unified-v6.0.0.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 882304,
+          "sha256": "853cf34740d3f5061f977ebe2976f7c921b064261c9c4753b3a1196f2dba42b4"
+        },
+        {
+          "path": "silero-vad-unified-v6.0.0.mlpackage/Manifest.json",
+          "size": 617,
+          "sha256": null
+        },
+        {
+          "path": "silero_vad.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "35c6d0bd3f8dd431fed72221005853ffe3621af1b550951093c41d0b918d210e"
+        },
+        {
+          "path": "silero_vad.mlmodelc/coremldata.bin",
+          "size": 422,
+          "sha256": "ca7f6a0ab7a349477fed1864e6cf7cb6adf611f017c0c5f0218c694d25e1434a"
+        },
+        {
+          "path": "silero_vad.mlmodelc/metadata.json",
+          "size": 2047,
+          "sha256": null
+        },
+        {
+          "path": "silero_vad.mlmodelc/model.mil",
+          "size": 38137,
+          "sha256": null
+        },
+        {
+          "path": "silero_vad.mlmodelc/weights/weight.bin",
+          "size": 906240,
+          "sha256": "45846d0738d3bf5e4b6e9e7d2fddda7b1ad07da33d473f0405e51d3b6c4c11a9"
+        },
+        {
+          "path": "silero_vad_se_trained.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 32557,
+          "sha256": "74b401d76333292a0cafa1024f98f4e4e838427e67f215b65c95ddeed6a2d16e"
+        },
+        {
+          "path": "silero_vad_se_trained.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 906240,
+          "sha256": "45846d0738d3bf5e4b6e9e7d2fddda7b1ad07da33d473f0405e51d3b6c4c11a9"
+        },
+        {
+          "path": "silero_vad_se_trained.mlpackage/Manifest.json",
+          "size": 617,
+          "sha256": null
+        },
+        {
+          "path": "silero_vad_se_trained_4bit.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "ed0b15a6463ed93cf4e8ee8ad21d5df4e6c54e1db074b646bcd88b9acfa517a4"
+        },
+        {
+          "path": "silero_vad_se_trained_4bit.mlmodelc/coremldata.bin",
+          "size": 422,
+          "sha256": "9d430fe5a090b2ae6424d79b458c3ecc7899d65b84df6ad0455df0bb0b378822"
+        },
+        {
+          "path": "silero_vad_se_trained_4bit.mlmodelc/metadata.json",
+          "size": 2200,
+          "sha256": null
+        },
+        {
+          "path": "silero_vad_se_trained_4bit.mlmodelc/model.mil",
+          "size": 39842,
+          "sha256": null
+        },
+        {
+          "path": "silero_vad_se_trained_4bit.mlmodelc/weights/weight.bin",
+          "size": 182976,
+          "sha256": "9f3db1305052551cd81139f0a0de3d5555fa42de357164888f470e2547bb120c"
+        }
+      ]
     }
   ]
 }

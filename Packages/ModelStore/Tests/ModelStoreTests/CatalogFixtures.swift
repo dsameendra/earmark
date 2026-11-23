@@ -78,6 +78,20 @@ enum CatalogFixtures {
             ("SortformerNvidiaLow_v2.mlmodelc/model1/weights/1-weight.bin", 235580992),
         ])
 
+    static let qwenGeneral = Listing(
+        repo: "mlx-community/Qwen3-ASR-0.6B-4bit", revision: "313d850181767edf09f00a9c289becca70e58cd0",
+        files: [
+            ("chat_template.json", 1161),
+            ("config.json", 7187),
+            ("generation_config.json", 142),
+            ("merges.txt", 1671853),
+            ("model.safetensors", 708236945),
+            ("model.safetensors.index.json", 71814),
+            ("preprocessor_config.json", 330),
+            ("tokenizer_config.json", 12487),
+            ("vocab.json", 2776833),
+        ])
+
     static let parakeet = Listing(
         repo: "FluidInference/parakeet-tdt-0.6b-v3-coreml", revision: "7dd20fe6b1797d35f5e3307e8b1732d9a178edfe",
         files: [
@@ -101,7 +115,7 @@ enum CatalogFixtures {
             ("JointDecisionv3.mlmodelc/metadata.json", 3453),
             ("JointDecisionv3.mlmodelc/model.mil", 11775),
             ("JointDecisionv3.mlmodelc/weights/weight.bin", 12642764),
-            ("parakeet_v3_vocab.json", 151122),
+            ("parakeet_vocab.json", 151122),
         ])
 
     static let whisperLarge = Listing(

@@ -1,4 +1,5 @@
 import AppCore
+import AudioCapture
 import Foundation
 import Testing
 @testable import Transcription
@@ -8,23 +9,45 @@ private let cohereFolder = ProcessInfo.processInfo.environment["EARMARK_COHERE_M
 
 @Suite("Native speech checkpoint acceptance", .serialized)
 struct NativeSpeechAcceptanceTests {
-    private func evaluate(_ engine: any TranscriptionEngine, model: ModelID) async throws {
+    private func evaluate(_ engine: any TranscriptionEngine, model: ModelID, streamed: Bool = false) async throws {
         let file = try #require(LocalAssets.fixtureWAV)
         let reference = try String(contentsOf: #require(LocalAssets.fixtureText), encoding: .utf8)
         var segments: [Segment] = []
-        for try await event in engine.transcribe(file: file, options: TranscriptionOptions(languageMode: .single("en"), useCase: .file, modelID: model)) {
+        let options = TranscriptionOptions(languageMode: .single("en"), useCase: streamed ? .live : .file, modelID: model)
+        let events: AsyncThrowingStream<TranscriptionEvent, any Error>
+        if streamed {
+            var chunks: [AppCore.AudioChunk] = []
+            for try await chunk in AVFileDecoder().decode(file: file, chunkSeconds: 0.5, startingAt: 0) { chunks.append(chunk) }
+            let input = chunks
+            events = engine.stream(audio: AsyncStream { continuation in
+                for chunk in input { continuation.yield(chunk) }
+                continuation.finish()
+            }, options: options)
+        } else {
+            events = engine.transcribe(file: file, options: options)
+        }
+        for try await event in events {
             if case .final(let segment) = event { segments.append(segment) }
         }
         let text = segments.map(\.text).joined(separator: " ")
         let wer = wordErrorRate(reference: reference, hypothesis: text)
-        print("NATIVE ASR \(model) segments=\(segments.count) WER=\(wer): \(text)")
+        print("NATIVE ASR \(model) streamed=\(streamed) segments=\(segments.count) WER=\(wer): \(text)")
         #expect(!segments.isEmpty)
+        if model == ParakeetEngine.modelV3 {
+            #expect(!segments.flatMap(\.words).isEmpty)
+        }
         #expect(wer < 0.25)
         #expect(segments.allSatisfy { $0.languageCode == "en" && $0.start >= 0 && $0.end >= $0.start })
         for segment in segments {
             #expect(segment.words.allSatisfy { $0.start >= segment.start && $0.end <= segment.end && $0.end >= $0.start })
         }
         await engine.unload()
+    }
+
+    @Test("Parakeet buffered capture flushes real speech with word alignment", .enabled(if: parakeetFolder != nil), .timeLimit(.minutes(5)))
+    func parakeetBufferedCapture() async throws {
+        let folder = URL(fileURLWithPath: try #require(parakeetFolder))
+        try await evaluate(ParakeetEngine(locate: { _ in folder }), model: ParakeetEngine.modelV3, streamed: true)
     }
 
     @Test("Parakeet v3 transcribes the real file with useful alignment", .enabled(if: parakeetFolder != nil), .timeLimit(.minutes(5)))

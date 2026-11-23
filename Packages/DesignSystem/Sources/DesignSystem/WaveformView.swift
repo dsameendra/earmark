@@ -324,10 +324,24 @@ enum WaveformDrawing {
         case (.loading, _):
             // Smooth, calm placeholder shape.
             let first = Int((grid.startFraction / max(grid.pitchFraction, .leastNonzeroMagnitude)).rounded())
-            return (grid, (0..<grid.count).map { Float(0.22 + 0.12 * sin(Double(first + $0) * 0.19) + 0.06 * sin(Double(first + $0) * 0.53)) })
+            return (grid, placeholderBars(first: first, count: grid.count))
         default:
             return (grid, [Float](repeating: 0, count: grid.count))
         }
+    }
+
+    /// The calm loading shape. Written with explicit types and steps: one long arithmetic closure made the Swift 6.3
+    /// type-checker give up ("unable to type-check this expression in reasonable time").
+    private static func placeholderBars(first: Int, count: Int) -> [Float] {
+        var bars: [Float] = []
+        bars.reserveCapacity(count)
+        for offset in 0..<count {
+            let x: Double = Double(first + offset)
+            let slow: Double = 0.12 * sin(x * 0.19)
+            let fast: Double = 0.06 * sin(x * 0.53)
+            bars.append(Float(0.22 + slow + fast))
+        }
+        return bars
     }
 
     static func trackPath(metrics: WaveformMetrics, upTo x: CGFloat) -> Path {

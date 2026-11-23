@@ -34,16 +34,16 @@ Earmark turns audio and video into searchable, editable transcripts on your Mac.
 
 <table>
   <tr>
-    <td width="50%" align="center"><img src="specs/design/m8-shots/polish/home-dark-1440x900.png" width="480" alt="Earmark Home in dark mode with quick actions and recent transcripts"><br><b>Your workbench</b><br><sub>Files, meetings, captions and recent work in one place.</sub></td>
-    <td width="50%" align="center"><img src="specs/design/m8-shots/polish/editor-dark-1440x900.png" width="480" alt="Transcript editor with speaker labels, earmarks and audio playback"><br><b>Listen and edit</b><br><sub>Transcript, speakers and playback stay together.</sub></td>
+    <td width="50%" align="center"><img src="specs/design/m8-shots/final/home-dark.png" width="480" alt="Earmark Home in dark mode with quick actions and recent transcripts"><br><b>Your workbench</b><br><sub>Files, meetings, captions and recent work in one place.</sub></td>
+    <td width="50%" align="center"><img src="specs/design/m8-shots/final/editor-dark.png" width="480" alt="Transcript editor with speaker labels, earmarks and audio playback"><br><b>Listen and edit</b><br><sub>Transcript, speakers and playback stay together.</sub></td>
   </tr>
   <tr>
-    <td width="50%" align="center"><img src="specs/design/m8-shots/polish/live-light-1440x900.png" width="480" alt="Live captions screen in light mode with audio-source and language controls"><br><b>Follow live audio</b><br><sub>Choose a source, language and floating caption overlay.</sub></td>
-    <td width="50%" align="center"><img src="specs/design/m8-shots/polish/settings-general.png" width="480" alt="Settings with grouped vertical navigation and the General pane"><br><b>Make it yours</b><br><sub>Models, languages, audio, shortcuts and appearance.</sub></td>
+    <td width="50%" align="center"><img src="specs/design/m8-shots/final/live-dark.png" width="480" alt="Live captions with source and language controls in their own side panel"><br><b>Follow live audio</b><br><sub>Choose a source, language and floating caption overlay.</sub></td>
+    <td width="50%" align="center"><img src="specs/design/m8-shots/final/settings-general.png" width="480" alt="Settings with grouped vertical navigation and the General pane"><br><b>Make it yours</b><br><sub>Models, languages, audio, shortcuts and appearance.</sub></td>
   </tr>
 </table>
 
-Screenshots use demo content. See the [full gallery and validation record](specs/qa/ui-refinement-2026-11-22.md) for coverage and remaining checks.
+Screenshots use demo content. More captures, light and dark, are in [`specs/design/m8-shots/final`](specs/design/m8-shots/final).
 
 ## Privacy and permissions
 

@@ -189,6 +189,14 @@ struct NoteRow: View {
     var onNote: (String) -> Void
     var onDelete: () -> Void
     @State private var text = ""
+    @FocusState private var noteFocused: Bool
+
+    /// Saves the typed note when it changed. Called on Return, when the field loses focus and when the popover closes, so
+    /// clicking outside the popover never discards an edit.
+    private func commitNote() {
+        guard text != note else { return }
+        onNote(text)
+    }
 
     var body: some View {
         HStack {
@@ -196,13 +204,18 @@ struct NoteRow: View {
                 Label(TimeFormat.clock(time), systemImage: icon).font(DSTypography.timestamp)
             }
             .buttonStyle(.borderless)
-            TextField("Note", text: $text, prompt: Text("Add a note")).textFieldStyle(.plain).onSubmit { onNote(text) }
+            TextField("Note", text: $text, prompt: Text("Add a note")).textFieldStyle(.plain)
+                .focused($noteFocused)
+                .onSubmit { commitNote() }
+                .onChange(of: noteFocused) { _, focused in if !focused { commitNote() } }
             Button(role: .destructive, action: onDelete) {
                 Image(systemName: "trash")  // stock-chrome: destructive action
             }.buttonStyle(.dsHoverIcon).help("Delete")
                 .accessibilityLabel("Delete")
         }
         .onAppear { text = note }
+        .onDisappear { commitNote() }
+        .onChange(of: note) { if !noteFocused { text = note } }
     }
 }
 

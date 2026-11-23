@@ -30,7 +30,7 @@ if [ "$mode" = all ] || [ "$mode" = build ] || [ "$mode" = ui ]; then
         signing=(CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual)
     fi
     xcodebuild -project "$project" -scheme "$scheme" -configuration "$configuration" -destination 'platform=macOS' \
-        -disableAutomaticPackageResolution -skipPackageUpdates "${signing[@]}" "$action" > "$report_root/xcode-$action.log" 2>&1 || {
+        -disableAutomaticPackageResolution -skipPackageUpdates "${signing[@]}" ${EARMARK_XCODEBUILD_EXTRA:-} "$action" > "$report_root/xcode-$action.log" 2>&1 || {
         printf '%s\n' '--- compiler and test errors ---'
         sed 's/\x1b\[[0-9;]*m//g' "$report_root/xcode-$action.log" | grep -aE '(error|warning: unre)[: ]|\*\* .* FAILED' | sort -u | head -40 || true
         printf '%s\n' '--- end of log ---'

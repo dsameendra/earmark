@@ -53,6 +53,9 @@ jobs:
           swift --version
           brew install xcodegen
       - name: Build the app (Debug, unsigned)
+        env:
+          # Hosted Xcode 26.x trips over a clang module configuration check in a dependency (libzstd) in explicit-module mode.
+          EARMARK_XCODEBUILD_EXTRA: SWIFT_ENABLE_EXPLICIT_MODULES=NO
         run: scripts/check.sh build
       - name: Package unit tests
         run: scripts/check.sh unit

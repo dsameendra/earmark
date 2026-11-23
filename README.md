@@ -51,7 +51,7 @@ Earmark asks for permissions only when a feature needs them: microphone, system 
 
 ## Getting started
 
-1. Open the Earmark DMG, drag **Earmark** into **Applications**, then launch it. Because the app is self-signed and not notarized, macOS blocks the first launch. Either:
+1. Download the latest DMG from the [Releases page](https://github.com/dsameendra/earmark/releases/latest), open it, drag **Earmark** into **Applications**, then launch it. Because the app is self-signed and not notarized, macOS blocks the first launch. Either:
    - open **System Settings → Privacy & Security**, scroll to the Earmark message and click **Open Anyway** (then confirm); or
    - run `xattr -dr com.apple.quarantine /Applications/Earmark.app` in Terminal, then open it normally.
 

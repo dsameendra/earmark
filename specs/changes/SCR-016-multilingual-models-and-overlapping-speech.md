@@ -10,6 +10,7 @@ Plan: [Earmark 1.1.0 implementation and release](../releases/1.1.0-plan.md).
 - PartialSegment carries text/time/language but no speaker/stream identity. Concurrent target-speaker partials must not overwrite each other; finalized segments already have speakerID and time ranges, but overlap retention throughout Live/editor/jobs/exports is not proven.
 - Live translation is activated through caption appearance flags and the target setting. Translation engine preference is stored but not passed into the composed runtime router.
 - Existing model/preference/queue/transcript data must continue decoding and behaving correctly during the expansion.
+- A larger catalog needs a compact Recommended/Installed page, a separate supported-model browser and validated imports; arbitrary Hugging Face weights cannot be treated as executable model support.
 
 ## Proposed contract work
 
@@ -18,6 +19,8 @@ Plan: [Earmark 1.1.0 implementation and release](../releases/1.1.0-plan.md).
 3. Define explicit live translation configuration independent of appearance, with engine selection, supported pair/readiness, status/failure behavior and migration from existing presets/settings. Keep original transcripts when translation fails.
 4. Specify resource ownership and lifecycle coordination for simultaneous jobs/Live/translation. Avoid engine unload races and unsupported concurrent access.
 5. Require backward-compatible Codable defaults and migration fixtures before changing persisted payloads. Add database migrations only if the proven representation requires them; preserve old jobs and user edits.
+6. Define versioned import-profile compatibility/validation results and immutable source provenance separately from quality verification. Accept supported Hugging Face and local-folder sources through one staged, cancellable, atomic acquisition pipeline; preserve legacy WhisperKit imports and stable custom IDs.
+7. Represent directional translation packs and shared dependency ownership explicitly. Use the same availability/selection/routing rules for curated and imported models; distinguish implemented curated-only families from families with an accepted import profile.
 
 ## Acceptance
 
@@ -26,3 +29,6 @@ Plan: [Earmark 1.1.0 implementation and release](../releases/1.1.0-plan.md).
 - Pickers, preflight, routing and actual engine execution agree on supported tasks/languages and explicit engine choice.
 - New models require actual native-model acceptance reports; no descriptor-only support.
 - Every model family in the release work register has a verified outcome or an explicit owner-approved scope change.
+- Models UI remains compact with Recommended and Installed areas; broader families, variants and translation directions are discoverable through Add models/Browse all.
+- Every advertised import profile has actual native inference acceptance, rejection fixtures, pinned provenance, correct capabilities and complete lifecycle integration. File-format recognition and a successful load do not establish full support or quality.
+- User imports cannot execute remote repository code or silently alter language/direction/license capabilities; failed imports never replace existing working models.

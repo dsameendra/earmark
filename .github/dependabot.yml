@@ -17,3 +17,7 @@ updates:
     directory: /scripts/dmg
     schedule:
       interval: monthly
+    # The installer layout is verified against pinned dmgbuild behaviour; take major bumps deliberately, not automatically.
+    ignore:
+      - dependency-name: "dmgbuild"
+        update-types: ["version-update:semver-major"]

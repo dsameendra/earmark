@@ -42,7 +42,7 @@ struct EditorWaveformView: View {
     var body: some View {
         let playback = model.playback
         let zoom = playback.zoom
-        let loadState: WaveformLoadState = playback.mediaState == .missing ? .unavailable : model.waveformState
+        let loadState: WaveformLoadState = playback.mediaState.isUnavailable ? .unavailable : model.waveformState
         WaveformView(
             peaks: model.waveformPyramid, loadState: loadState, duration: max(playback.duration, model.waveform?.duration ?? 0),
             segments: model.waveformSegments, bookmarks: model.waveformBookmarks,

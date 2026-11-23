@@ -609,8 +609,22 @@ import Testing
         #expect(PlaybackSpeed.steps.first == 0.5 && PlaybackSpeed.steps.last == 3)
     }
 
-    @MainActor @Test func missingMediaDisablesPlaybackButKeepsTextEditable() async {
+    /// A transcript that never had a recording (a meeting or live session saved without audio) is "absent", not a broken
+    /// link: the editor must not offer Relink for it.
+    @MainActor @Test func transcriptWithoutAnyRecordingIsAbsentNotMissing() async {
         let (model, _) = await Fixtures.model()
+        #expect(model.playback.mediaState == .absent && model.playback.mediaState.isUnavailable)
+        #expect(!model.playback.canPlay)
+    }
+
+    /// An existing media asset whose file cannot be found is "missing": that is where Relink belongs.
+    @MainActor @Test func missingMediaFileOffersRelinkState() async {
+        let (model, _) = await Fixtures.model(transcript: Fixtures.transcript(mediaAssetID: MediaAssetID()))
+        #expect(model.playback.mediaState == .missing && model.playback.mediaState.isUnavailable)
+    }
+
+    @MainActor @Test func missingMediaDisablesPlaybackButKeepsTextEditable() async {
+        let (model, _) = await Fixtures.model(transcript: Fixtures.transcript(mediaAssetID: MediaAssetID()))
         #expect(model.playback.mediaState == .missing && !model.playback.canPlay)
         model.editText(model.segments[0].id, to: "still editable")
         #expect(model.segments[0].text == "still editable")

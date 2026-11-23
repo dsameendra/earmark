@@ -35,6 +35,8 @@ struct PlayerPanelView: View {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
             case .missing:
                 MediaMissingView(onRelink: onRelink)
+            case .absent:
+                NoRecordingView()
             case .ready(let isVideo):
                 if isVideo, let engine = playback.engine as? AVPlayerEngine {
                     VideoPanel(model: model, player: engine.player)
@@ -111,6 +113,22 @@ private struct VideoPanel: View {
         let limitX = size.width * CGFloat(scale - 1) / 2
         let limitY = size.height * CGFloat(scale - 1) / 2
         return CGSize(width: min(limitX, max(-limitX, offset.width)), height: min(limitY, max(-limitY, offset.height)))
+    }
+}
+
+/// A transcript that never had audio or video (for example a meeting transcribed without recording): informational only.
+struct NoRecordingView: View {
+    var body: some View {
+        VStack(spacing: DSSpacing.sm) {
+            Image(systemName: "waveform.slash").font(.title2).foregroundStyle(DSColor.secondaryText)
+            Text("No recording").font(DSTypography.headline)
+            Text("This transcript was saved without audio or video, so there is nothing to play. It stays fully editable.")
+                .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText).multilineTextAlignment(.center)
+        }
+        .padding(DSSpacing.lg)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("editor.noRecording")
     }
 }
 

@@ -33,8 +33,13 @@ extension PlayerControlling {
 public enum MediaState: Sendable, Equatable {
     case loading
     case ready(isVideo: Bool)
-    /// No media is associated, or its file cannot be opened (EDIT-AC-19).
+    /// A media file is associated but cannot be opened (EDIT-AC-19): offer Relink.
     case missing
+    /// The transcript never had audio or video (a meeting or live session saved without a recording): nothing to relink.
+    case absent
+
+    /// True when there is nothing to play, for either reason.
+    public var isUnavailable: Bool { self == .missing || self == .absent }
 }
 
 /// Allowed playback speeds (EDIT-AC-05).
@@ -105,6 +110,14 @@ public final class PlaybackModel {
         engine.onTick = { [weak self] time in self?.handleTick(time) }
         engine.onPlayingChanged = { [weak self] playing in self?.isPlaying = playing }
         engine.setSpeed(speed)
+    }
+
+    /// The transcript has no recording at all. Unlike ``markMissing()`` this offers no Relink.
+    public func markAbsent() {
+        if let engine { Self.tearDown(engine) }
+        engine = nil
+        mediaState = .absent
+        isPlaying = false
     }
 
     public func markMissing() {

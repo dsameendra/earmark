@@ -28,7 +28,7 @@ public final class PlaybackSession {
     @ObservationIgnored private var waveformRequested = false
 
     /// What the scrubber shows: a missing file draws the flat unavailable line whatever the decoder said.
-    public var waveformLoadState: WaveformLoadState { playback.mediaState == .missing ? .unavailable : waveformState }
+    public var waveformLoadState: WaveformLoadState { playback.mediaState.isUnavailable ? .unavailable : waveformState }
 
     /// Index into ``waveformSegments`` of the segment being spoken, for the highlighted ribbon piece.
     public var waveformActiveIndex: Int? {

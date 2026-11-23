@@ -296,7 +296,8 @@ public final class TranscriptEditorModel {
         waveformPyramid = nil
         guard let url = resolved else {
             playbackCenter?.stop(transcriptID: transcriptID)
-            playback.markMissing()
+            // Never had media (no asset) is not a broken link: only an existing asset whose file is gone offers Relink.
+            if transcript.mediaAssetID == nil { playback.markAbsent() } else { playback.markMissing() }
             waveformState = .unavailable
             return
         }

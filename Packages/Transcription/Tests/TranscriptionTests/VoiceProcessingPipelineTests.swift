@@ -64,13 +64,18 @@ struct VoiceProcessingPipelineTests {
         #expect(processed.progress.last == plain.progress.last)
         #expect(processedEngine.calls.map(\.duration).count == plainEngine.calls.map(\.duration).count)
         // Cut points follow the (similar) pauses; the media time covered is the same.
-        #expect(abs((processedEngine.calls.map(\.duration).reduce(0, +)) - plainEngine.calls.map(\.duration).reduce(0, +)) < 1e-6)
+        let processedTotal: Double = processedEngine.calls.map(\.duration).reduce(0, +)
+        let plainTotal: Double = plainEngine.calls.map(\.duration).reduce(0, +)
+        #expect(abs(processedTotal - plainTotal) < 1e-6)
     }
 
     @Test("the engine and VAD see processed samples when enabled, originals when off")
     func engineSeesProcessedAudio() async throws {
         // A DC offset plus a tone: the high-pass removes the offset, so processed audio has a different mean.
-        let audio = (0..<(16_000 * 8)).map { 0.2 + 0.1 * Float(sin(2 * Double.pi * 440 * Double($0) / 16_000)) }
+        let audio: [Float] = (0..<(16_000 * 8)).map { (i: Int) -> Float in
+            let phase: Double = 2 * Double.pi * 440 * Double(i) / 16_000
+            return 0.2 + 0.1 * Float(sin(phase))
+        }
         let seen = SampleLog()
         let vad = ScriptedVAD { chunk in
             seen.record(chunk.samples)

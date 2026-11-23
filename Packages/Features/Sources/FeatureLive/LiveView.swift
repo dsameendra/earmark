@@ -46,7 +46,7 @@ public struct LiveView: View {
             .clipShape(RoundedRectangle(cornerRadius: DSRadius.panel))
             .dsSolidSurface(.sheet, radius: DSRadius.panel)
         }
-        .padding(DSSpacing.md)
+        .dsPanelInset()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DSColor.paper)
         .accessibilityElement(children: .contain)

@@ -34,7 +34,7 @@ public struct MeetingsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(DSSpacing.lg)
         .dsSolidSurface(.sheet, radius: DSRadius.panel)
-        .padding(DSSpacing.md)
+        .dsPanelInset()
         .background(DSColor.paper)
         .navigationTitle("Meetings")
         .toolbar { policyToolbar }

@@ -21,7 +21,7 @@ public struct QueueView: View {
             .padding(DSSpacing.xl)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .dsSolidSurface(.sheet, radius: DSRadius.panel)
-            .padding(DSSpacing.md)
+            .dsPanelInset()
             .background(DSColor.paper)
             .navigationTitle("Queue")
             .toolbar { toolbarContent }

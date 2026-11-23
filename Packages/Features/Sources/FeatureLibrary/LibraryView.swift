@@ -48,7 +48,7 @@ public struct LibraryView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .dsSolidSurface(.sheet, radius: DSRadius.panel)
-        .padding(DSSpacing.md)
+        .dsPanelInset()
         .background(DSColor.paper)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("library.surface")

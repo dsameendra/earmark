@@ -113,7 +113,7 @@ public struct MeetingsView: View {
                     Label("\(app.badgeTitle) · \(model.policy(for: app).behavior.title)", symbol: MeetingsSymbol.policy)
                 }
                 .labelStyle(.titleAndIcon)
-                .controlSize(.large)
+                .dsToolbarControl()
                 .accessibilityIdentifier("meetings.policy.\(app.rawValue)")
                 .help("What Earmark does when a \(app.title) meeting starts")
             }

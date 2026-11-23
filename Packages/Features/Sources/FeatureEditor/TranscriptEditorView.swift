@@ -157,7 +157,7 @@ private struct EditorContent: View {
                 findFocused = true
             }
             .labelStyle(.titleAndIcon)
-            .controlSize(.large)
+            .dsToolbarControl()
             .keyboardShortcut("f", modifiers: .command)
             .accessibilityIdentifier("editor.find")
         }
@@ -165,15 +165,15 @@ private struct EditorContent: View {
         ToolbarItemGroup {
             Button("Speakers", symbol: .speaker) { presentTool(.speakers) }
                 .labelStyle(.titleAndIcon)
-                .controlSize(.large)
+                .dsToolbarControl()
                 .accessibilityIdentifier("editor.speakers")
             Button("Translate", symbol: .translate) { presentTool(.translation) }
                 .labelStyle(.titleAndIcon)
-                .controlSize(.large)
+                .dsToolbarControl()
                 .accessibilityIdentifier("editor.translation")
             Button("Re-transcribe", symbol: .retry) { presentTool(.retranscribe) }
                 .help("Re-transcribe, identify speakers again, or set the transcript language")
-                .controlSize(.large)
+                .dsToolbarControl()
                 .accessibilityIdentifier("editor.retranscribe")
         }
         ToolbarSpacer(.fixed)
@@ -198,7 +198,7 @@ private struct EditorContent: View {
                 Button("Bookmarks and highlights", symbol: .earmark) { presentTool(.bookmarks) }
                 Button("View options", systemImage: "textformat.size") { presentTool(.options) }
             }
-            .controlSize(.large)
+            .dsToolbarControl()
             .accessibilityIdentifier("editor.more")
         }
         ToolbarSpacer(.fixed)
@@ -207,7 +207,7 @@ private struct EditorContent: View {
             Button { showExport = true } label: { Label("Export", symbol: .export) }
                 .labelStyle(.titleAndIcon)
                 .buttonStyle(.borderedProminent).tint(DSColor.accent)
-                .controlSize(.large)
+                .dsToolbarControl()
                 .accessibilityIdentifier("editor.export")
         }
     }

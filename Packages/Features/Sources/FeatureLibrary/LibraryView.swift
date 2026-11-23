@@ -241,7 +241,7 @@ public struct LibraryView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelStyle(.iconOnly)
-                .controlSize(.large)
+                .dsToolbarControl()
                 .help("Show the library as a list or a grid")
                 .accessibilityLabel("Layout")
             }
@@ -255,7 +255,7 @@ public struct LibraryView: View {
                     Text("Recently modified").tag(LibrarySort.modifiedDesc)
                 }
                 .pickerStyle(.menu)
-                .controlSize(.large)
+                .dsToolbarControl()
                 .help("Choose how the library is ordered")
                 .accessibilityLabel("Sort by")
             }
@@ -263,7 +263,7 @@ public struct LibraryView: View {
             ToolbarItem {
                 Button("Delete", systemImage: "trash") { Task { await model.deleteSelected() } }  // stock-chrome: destructive action
                     .labelStyle(.titleAndIcon)
-                    .controlSize(.large)
+                    .dsToolbarControl()
                     .disabled(model.selection.isEmpty)
                     .help(model.selection.isEmpty ? "Select transcripts to delete" : "Move the selected transcripts to Recently Deleted")
                     .accessibilityIdentifier("library.delete")
@@ -280,7 +280,7 @@ public struct LibraryView: View {
                         }
                     }
                 }
-                .controlSize(.large)
+                .dsToolbarControl()
                 .help("How long deleted items are kept before they are removed")
                 .accessibilityHint("How long deleted items are kept before they are removed")
             }
@@ -288,14 +288,14 @@ public struct LibraryView: View {
             ToolbarItem {
                 Button("Restore", systemImage: "arrow.uturn.backward") { Task { await model.restoreSelected() } }
                     .labelStyle(.titleAndIcon)
-                    .controlSize(.large)
+                    .dsToolbarControl()
                     .disabled(model.selection.isEmpty)
                     .help(model.selection.isEmpty ? "Select transcripts to restore" : "Move the selected transcripts back to the Library")
             }
             ToolbarItem {
                 Button("Delete Permanently", systemImage: "trash.slash") { confirmPurge = true }
                     .labelStyle(.titleAndIcon)
-                    .controlSize(.large)
+                    .dsToolbarControl()
                     .disabled(model.selection.isEmpty)
                     .help(model.selection.isEmpty ? "Select transcripts to delete for good" : "Permanently delete the selected transcripts")
             }

@@ -105,7 +105,7 @@ public struct LiveView: View {
                         Task { await model.togglePause() }
                     }
                     .labelStyle(.titleAndIcon)
-                    .controlSize(.large)
+                    .dsToolbarControl()
                     .help(model.isPaused ? "Resume live captions" : "Pause live captions")
                     .accessibilityIdentifier("live.pause")
                 }
@@ -113,7 +113,7 @@ public struct LiveView: View {
             ToolbarItem(placement: .primaryAction) {
                 Button("Stop", systemImage: LiveSymbol.stop) { Task { await model.stop() } }
                     .labelStyle(.titleAndIcon)
-                    .controlSize(.large)
+                    .dsToolbarControl()
                     .keyboardShortcut(.return, modifiers: [.command])
                     .help("Stop live captions")
                     .accessibilityIdentifier("live.stop")
@@ -123,7 +123,7 @@ public struct LiveView: View {
                 Button { Task { await model.start() } } label: { Label("Start", systemImage: LiveSymbol.start) }
                     .labelStyle(.titleAndIcon)
                     .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                    .dsToolbarControl()
                     .tint(DSColor.accent)
                     .keyboardShortcut(.return, modifiers: [.command])
                     .disabled(model.startDisabledReason != nil)
@@ -141,7 +141,7 @@ public struct LiveView: View {
             Text("Both").tag(LiveSourceChoice.micAndSystem)
         }
         .pickerStyle(.segmented)
-        .controlSize(.large)
+        .dsToolbarControl()
         .labelsHidden()
         .help("Caption source: microphone, system audio or both")
         .disabled(model.isRunning)

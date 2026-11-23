@@ -93,7 +93,7 @@ public struct ShellView: View {
         if model.openedTranscript != nil {
             ToolbarItem(placement: .navigation) {
                 Button("Back", systemImage: "chevron.backward") { model.closeTranscript() }
-                    .controlSize(.large)
+                    .dsToolbarControl()
                     .help("Back to \(model.selection.title)")
                     .keyboardShortcut("[", modifiers: [.command])
                     .accessibilityIdentifier("toolbar.back")
@@ -103,7 +103,7 @@ public struct ShellView: View {
             ToolbarItem {
                 Button("Search transcripts", symbol: .search) { model.presentQuickOpen() }
                     .labelStyle(.iconOnly)
-                    .controlSize(.large)
+                    .dsToolbarControl()
                     .help("Quick Open (⌘K)")
                     .accessibilityLabel("Quick Open")
                     .accessibilityHint("Search transcripts by title and text")
@@ -119,7 +119,7 @@ public struct ShellView: View {
         if model.openedTranscript != nil && model.layout.inspectorCollapsed {
             ToolbarItem {
                 Toggle(isOn: $model.isInspectorToggledOn) { Label("Inspector", systemImage: "sidebar.trailing") }
-                    .controlSize(.large)
+                    .dsToolbarControl()
                     .help("Show or hide the inspector")
                     .accessibilityIdentifier("toolbar.inspector")
             }
@@ -131,7 +131,7 @@ public struct ShellView: View {
                 Button { model.presentImporter() } label: { Label("Transcribe", systemImage: "plus") }
                     .labelStyle(.titleAndIcon)
                     .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                    .dsToolbarControl()
                     .tint(DSColor.accent)
                     .help("Choose audio or video files to transcribe (⌘O)")
                     .accessibilityIdentifier("toolbar.transcribe")

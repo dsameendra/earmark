@@ -8,10 +8,13 @@ public struct DSSegmentedControl<Value: Hashable>: View {
     public struct Option: Identifiable {
         public let value: Value
         public let title: String
+        /// When set the segment shows only this symbol; `title` is still the accessibility label and tooltip.
+        public let systemImage: String?
         public var id: Value { value }
-        public init(_ title: String, value: Value) {
+        public init(_ title: String, value: Value, systemImage: String? = nil) {
             self.value = value
             self.title = title
+            self.systemImage = systemImage
         }
     }
 
@@ -34,12 +37,18 @@ public struct DSSegmentedControl<Value: Hashable>: View {
                 Button {
                     selection = option.value
                 } label: {
-                    Text(option.title)
-                        .font(DSTypography.body.weight(selected ? .semibold : .regular))
-                        .foregroundStyle(selected ? DSColor.primaryText : DSColor.secondaryText)
-                        .padding(.horizontal, DSSpacing.md)
-                        .frame(maxHeight: .infinity)
-                        .contentShape(Capsule())
+                    Group {
+                        if let symbol = option.systemImage {
+                            Image(systemName: symbol)  // stock-chrome: layout glyphs
+                                .font(DSTypography.body.weight(selected ? .semibold : .regular))
+                        } else {
+                            Text(option.title).font(DSTypography.body.weight(selected ? .semibold : .regular))
+                        }
+                    }
+                    .foregroundStyle(selected ? DSColor.primaryText : DSColor.secondaryText)
+                    .padding(.horizontal, option.systemImage == nil ? DSSpacing.md : DSSpacing.lg)
+                    .frame(maxHeight: .infinity)
+                    .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 .background {
@@ -47,6 +56,8 @@ public struct DSSegmentedControl<Value: Hashable>: View {
                         Capsule().fill(DSColor.selectionPill).matchedGeometryEffect(id: "pill", in: pillSpace)
                     }
                 }
+                .help(option.title)
+                .accessibilityLabel(option.title)
                 .accessibilityAddTraits(selected ? .isSelected : [])
                 .accessibilityIdentifier("\(identifier).\(option.id)")
             }

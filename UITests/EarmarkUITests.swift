@@ -150,6 +150,33 @@ final class EarmarkUITests: XCTestCase {
         }
     }
 
+    /// The navigation pane is persistent: no sidebar toggle in the main window or in Settings, including after Settings is closed
+    /// and opened again (SwiftUI rebuilds the window toolbar on reopen and used to bring the toggle back).
+    func testNavigationPaneHasNoToggleInMainOrReopenedSettings() throws {
+        let app = launch(appearance: "dark")
+        defer { app.terminate() }
+        let toggleLabels = ["Toggle Sidebar", "Hide Sidebar", "Show Sidebar"]
+        for label in toggleLabels {
+            XCTAssertFalse(app.windows.firstMatch.buttons[label].exists, "Main window must not offer \(label)")
+        }
+        for pass in 1...2 {
+            app.typeKey(",", modifierFlags: .command)
+            XCTAssertTrue(app.buttons["settings.section.general"].waitForExistence(timeout: 5))
+            let window = app.windows.containing(.button, identifier: "settings.section.general").firstMatch
+            Thread.sleep(forTimeInterval: 0.8)
+            for label in toggleLabels {
+                XCTAssertFalse(window.buttons[label].exists, "Settings (open #\(pass)) must not offer \(label)")
+            }
+            capture(app, "settings-general-dark-open\(pass)", window: window)
+            if pass == 1 {
+                app.buttons["settings.section.models"].click()
+                capture(app, "settings-models-dark", window: window)
+            }
+            app.typeKey("w", modifierFlags: .command)
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+    }
+
     func testExpandedLightWorkspace() { expandedWorkspace(appearance: "light") }
     func testExpandedDarkWorkspace() { expandedWorkspace(appearance: "dark") }
 

@@ -235,16 +235,16 @@ public struct LibraryView: View {
         // segmented picker or menu never nests inside another control's glass capsule.
         if model.mode == .library {
             ToolbarItem {
-                // Segmented: segments are the highlight, so size via controlSize(.large) with no outside padding.
-                Picker("Layout", selection: Binding(get: { model.layout }, set: { value in Task { await model.setLayout(value) } })) {
-                    Label("List", systemImage: "list.bullet").tag(LibraryLayout.list)
-                    Label("Grid", systemImage: "square.grid.2x2").tag(LibraryLayout.grid)
-                }
-                .pickerStyle(.segmented)
-                .labelStyle(.iconOnly)
-                .dsToolbarControl()
+                DSSegmentedControl(
+                    selection: Binding(get: { model.layout }, set: { value in Task { await model.setLayout(value) } }),
+                    options: [
+                        .init("List", value: LibraryLayout.list, systemImage: "list.bullet"),
+                        .init("Grid", value: LibraryLayout.grid, systemImage: "square.grid.2x2"),
+                    ],
+                    identifier: "library.layout"
+                )
+                .padding(.horizontal, DSSpacing.xs)
                 .help("Show the library as a list or a grid")
-                .accessibilityLabel("Layout")
             }
             ToolbarSpacer(.fixed)
             ToolbarItem {

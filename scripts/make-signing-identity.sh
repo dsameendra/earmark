@@ -62,6 +62,14 @@ CONF
 $openssl_bin req -x509 -newkey rsa:2048 -nodes -days "$days" -sha256 -config "$work/openssl.cnf" \
     -keyout "$work/key.pem" -out "$work/cert.pem" 2>/dev/null
 $openssl_bin pkcs12 -export -inkey "$work/key.pem" -in "$work/cert.pem" -name "$name" -passout "pass:$password" -out "$work/identity.p12"
+# Optional backup of exactly this identity (not every identity in the Keychain): EARMARK_IDENTITY_BACKUP_DIR=/some/private/dir
+if [ -n "${EARMARK_IDENTITY_BACKUP_DIR:-}" ]; then
+    mkdir -p "$EARMARK_IDENTITY_BACKUP_DIR" && chmod 700 "$EARMARK_IDENTITY_BACKUP_DIR"
+    cp "$work/identity.p12" "$EARMARK_IDENTITY_BACKUP_DIR/Earmark-Release-Signing.p12"
+    (umask 077; printf '%s\n' "$password" > "$EARMARK_IDENTITY_BACKUP_DIR/Earmark-Release-Signing.passphrase")
+    chmod 600 "$EARMARK_IDENTITY_BACKUP_DIR/Earmark-Release-Signing.p12"
+    printf 'Backup written to %s (move it, with its passphrase, to a password manager or offline drive).\n' "$EARMARK_IDENTITY_BACKUP_DIR"
+fi
 /usr/bin/security import "$work/identity.p12" -k "$keychain" -P "$password" -T /usr/bin/codesign -T /usr/bin/security >/dev/null
 # Trust for code signing in the user domain only (no sudo, no system-wide change). Without it the identity is not "valid".
 /usr/bin/security add-trusted-cert -r trustRoot -p codeSign -k "$keychain" "$work/cert.pem"
@@ -74,7 +82,8 @@ Next steps
   2. The first signing run may ask Keychain for access to the private key; choose "Always Allow".
   3. BACK IT UP NOW. If the private key is lost, the next release cannot match this designated requirement:
        Keychain Access > login > My Certificates > "$name" > right-click > Export... > .p12 (set a strong passphrase)
-     or:  security export -k "$keychain" -t identities -f pkcs12 -o ~/Earmark-Release-Signing.p12
+     or re-create with EARMARK_IDENTITY_BACKUP_DIR set (writes a backup of only this identity). Do not use
+     `security export -t identities`: it exports every identity in the Keychain, not just this one.
      Store the .p12 and its passphrase in a password manager or offline vault. Never put it in this repository
      (verify-release.py rejects .p12/.pem/.key files inside the app).
   4. Restore on another Mac:  security import Earmark-Release-Signing.p12 -k login.keychain-db -T /usr/bin/codesign

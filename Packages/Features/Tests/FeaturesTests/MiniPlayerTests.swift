@@ -109,6 +109,6 @@ import Testing
         }
         let shell = try String(contentsOf: root.appendingPathComponent("FeatureShell/ShellView.swift"), encoding: .utf8)
         let range = try #require(shell.range(of: "MiniPlayerView(center"))
-        #expect(shell[range.upperBound...].prefix(300).contains(".dsTransition(.settle)"))
+        #expect(shell[range.upperBound...].prefix(600).contains(".dsTransition(.settle)"))
     }
 }

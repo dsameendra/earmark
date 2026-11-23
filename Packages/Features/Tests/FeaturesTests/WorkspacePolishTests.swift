@@ -22,11 +22,11 @@ struct WorkspacePolishTests {
     }
 
     @Test func liveKeepsControlsBesideReadableCaptionsOrStacksWhenNecessary() {
-        let narrow = LiveWorkspaceLayout(width: 728)
-        #expect(!narrow.stacksPanels && narrow.sidePanelWidth == 280)
-        #expect(narrow.width - narrow.sidePanelWidth >= 440)
-        #expect(LiveWorkspaceLayout(width: 640).stacksPanels)
-        #expect(LiveWorkspaceLayout(width: 2100).sidePanelWidth == 320)
+        let narrow = LiveWorkspaceLayout(width: 840)
+        #expect(!narrow.stacksPanels && narrow.sidePanelWidth == 308)
+        #expect(narrow.width - narrow.sidePanelWidth - 12 >= 440)  // 12 pt gap between the two panels
+        #expect(LiveWorkspaceLayout(width: 780).stacksPanels)
+        #expect(LiveWorkspaceLayout(width: 2100).sidePanelWidth == 340)
     }
 
     @Test func librarySearchCommandsFocusTheOnlySearchForThatRoute() {

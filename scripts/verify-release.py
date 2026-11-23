@@ -76,7 +76,8 @@ def designated_requirement_leaf(requirement_output: str, bundle_identifier: str 
     text = match[1]
     require('identifier "' in text and (bundle_identifier is None or f'identifier "{bundle_identifier}"' in text),
             "designated requirement does not name the code identifier")
-    leaf = re.search(r'certificate leaf = H"([0-9a-fA-F]{40})"', text)
+    # A self-signed certificate is its own chain, so macOS describes it as the "root"; a longer chain names the "leaf".
+    leaf = re.search(r'certificate (?:leaf|root) = H"([0-9a-fA-F]{40})"', text)
     require(leaf is not None and "cdhash" not in text,
             "designated requirement is not anchored to the signing certificate; permissions and updates would not survive a new build")
     return leaf[1].lower()

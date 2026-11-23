@@ -70,6 +70,11 @@ class SignatureTests(unittest.TestCase):
         self.assertEqual(release.designated_requirement_leaf(good, "lk.dumindu.earmark.Earmark"), LEAF)
         self.assertEqual(release.designated_requirement_leaf(good.replace("lk.dumindu.earmark.Earmark", "EarmarkNLLBWorker"), None), LEAF)
 
+    def test_self_signed_certificate_is_described_as_root(self) -> None:
+        # A one-certificate chain is reported by codesign as `certificate root = H"..."` (observed on a real build).
+        text = f'designated => identifier "lk.dumindu.earmark.Earmark" and certificate root = H"{LEAF.upper()}"\n'
+        self.assertEqual(release.designated_requirement_leaf(text, "lk.dumindu.earmark.Earmark"), LEAF)
+
     def test_unstable_requirements_are_rejected(self) -> None:
         for text, phrase in [
             ('designated => cdhash H"0123456789abcdef0123456789abcdef01234567"\n', "not anchored|identifier"),

@@ -9,10 +9,15 @@ func reply(_ value: [String: Any]) throws {
 
 guard CommandLine.arguments.count >= 2 else { exit(64) }
 do {
+    let requestedProfile = CommandLine.arguments.count > 3 ? CommandLine.arguments[3] : "nllb"
+    guard let profile = NativeTranslationProfile(rawValue: requestedProfile) else {
+        throw NativeNLLBError(message: "Unsupported translation model profile.")
+    }
     let model = try NativeNLLBModel(
         folder: URL(fileURLWithPath: CommandLine.arguments[1]),
-        threads: CommandLine.arguments.count > 2 ? Int(CommandLine.arguments[2]) ?? 4 : 4)
-    try reply(["ready": true])
+        threads: CommandLine.arguments.count > 2 ? Int(CommandLine.arguments[2]) ?? 4 : 4,
+        profile: profile)
+    try reply(["ready": true, "profile": profile.rawValue])
     while let line = readLine() {
         var id = -1
         do {

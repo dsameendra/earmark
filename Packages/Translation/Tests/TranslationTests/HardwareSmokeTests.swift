@@ -36,7 +36,8 @@ struct HardwareSmokeTests {
             let start2 = clock.now
             _ = try await collect(engine.translate(items: items(english), from: "en", to: target))
             print(String(format: "SMOKE apple en->%@ warm: %.0f ms", target.rawValue, ms(clock.now - start2)))
-            #expect(out.count == english.count && out.allSatisfy { !$0.text.isEmpty && $0.text != english[0] || true })
+            #expect(out.count == english.count)
+            #expect(zip(english, out).allSatisfy { source, output in !output.text.isEmpty && output.text != source })
         }
         // Sinhala is unsupported by Apple
         #expect(await !engine.supports(pair("en", "si")))

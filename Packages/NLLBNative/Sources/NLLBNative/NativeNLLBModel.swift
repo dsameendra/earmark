@@ -1,13 +1,18 @@
 import EarmarkNLLBCore
 import Foundation
 
+public enum NativeTranslationProfile: String, Sendable {
+    case nllb, madlad, marian
+    var bridgeCode: Int32 { switch self { case .nllb: 1; case .madlad: 2; case .marian: 3 } }
+}
+
 /// CTranslate2 and SentencePiece behind the stable C bridge. Confined to the native worker's serial request loop.
 public final class NativeNLLBModel {
     private let handle: UnsafeMutableRawPointer
 
-    public init(folder: URL, threads: Int = 4) throws {
+    public init(folder: URL, threads: Int = 4, profile: NativeTranslationProfile = .nllb) throws {
         var error: UnsafeMutablePointer<CChar>?
-        let loaded = folder.path.withCString { earmark_nllb_load($0, Int32(threads), &error) }
+        let loaded = folder.path.withCString { earmark_translation_load($0, profile.bridgeCode, Int32(threads), &error) }
         defer { earmark_nllb_free_text(error) }
         guard let loaded else {
             throw NativeNLLBError(message: error.map { String(cString: $0) } ?? "Could not load the translation model.")

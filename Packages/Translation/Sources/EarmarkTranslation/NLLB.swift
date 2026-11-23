@@ -17,7 +17,8 @@ public enum NLLBLanguages {
 /// can be swapped (see ``CTranslate2WorkerRuntime`` for the verified runtime and the notes on a shippable in-process one).
 public protocol NLLBRuntime: Sendable {
     func load(modelFolder: URL) async throws
-    /// `source` / `target` are FLORES codes such as `sin_Sinh`.
+    /// Tags follow the configured runtime profile: FLORES for NLLB, target codes
+    /// for MADLAD, or the validated fixed pair for Marian.
     func translate(_ texts: [String], source: String, target: String) async throws -> [String]
     func unload() async
 }
@@ -110,6 +111,8 @@ public actor NLLBEngine: TranslationEngine, PairSupportChecking {
 /// The shipping backend launches the bundled Swift/C++ helper, which owns CTranslate2 and SentencePiece.
 /// A Python reference backend is retained for explicit Debug development overrides and parity checks.
 /// Both use the same serial JSON-lines protocol; cancellation terminates the helper to release inference promptly.
+public enum CTranslate2ModelProfile: String, Sendable { case nllb, madlad, marian }
+
 public actor CTranslate2WorkerRuntime: NLLBRuntime {
     public static let workerScript = #"""
         import sys, json
@@ -124,8 +127,13 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
             try:
                 req = json.loads(line)
                 src, tgt, texts = req["src"], req["tgt"], req["texts"]
-                toks = [[src] + sp.encode(t, out_type=str)[:500] + ["</s>"] for t in texts]
+                pieces = [sp.encode(t, out_type=str) for t in texts]
+                if any(len(t) > 500 for t in pieces):
+                    raise ValueError("Text exceeds this model's input limit; split it into shorter segments")
+                toks = [[src] + t + ["</s>"] for t in pieces]
                 res = tr.translate_batch(toks, target_prefix=[[tgt]] * len(toks), beam_size=4, max_decoding_length=256)
+                if any(len(r.hypotheses[0]) >= 256 for r in res):
+                    raise ValueError("Translation reached the decoding limit; split the source into shorter segments")
                 out = [sp.decode(r.hypotheses[0][1:]) for r in res]
                 sys.stdout.write(json.dumps({"id": req["id"], "out": out}, ensure_ascii=False) + "\n")
             except Exception as e:
@@ -136,6 +144,7 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
 
     private let executable: URL
     private let isNative: Bool
+    private let profile: CTranslate2ModelProfile
     private var modelFolder: URL?
     private let threads: Int
     private var process: Process?
@@ -148,13 +157,15 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
     public init(pythonExecutable: URL, threads: Int = 0) {
         self.executable = pythonExecutable
         self.isNative = false
+        self.profile = .nllb
         self.threads = threads
     }
 
     /// Uses the same framed transport with the app's bundled Swift/C++ executable.
-    public init(nativeExecutable: URL, threads: Int = 4) {
+    public init(nativeExecutable: URL, threads: Int = 4, profile: CTranslate2ModelProfile = .nllb) {
         self.executable = nativeExecutable
         self.isNative = true
+        self.profile = profile
         self.threads = threads
     }
 
@@ -177,7 +188,7 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
         }
         let p = Process()
         p.executableURL = executable
-        p.arguments = isNative ? [modelFolder.path, String(threads)] : ["-I", "-c", Self.workerScript, modelFolder.path, String(threads)]
+        p.arguments = isNative ? [modelFolder.path, String(threads), profile.rawValue] : ["-I", "-c", Self.workerScript, modelFolder.path, String(threads)]
         let inPipe = Pipe()
         let outPipe = Pipe()
         // A worker that died between requests must surface as a thrown EPIPE, never as a process-killing SIGPIPE (QA B6).
@@ -208,6 +219,14 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
         else {
             stopWorker()
             throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "The translation worker could not load its model.")
+        }
+        if isNative, profile != .nllb {
+            guard let value = try JSONSerialization.jsonObject(with: Data(first.utf8)) as? [String: Any],
+                value["profile"] as? String == profile.rawValue
+            else {
+                stopWorker()
+                throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "The bundled helper does not support the selected translation model profile.")
+            }
         }
         lines = reader
     }

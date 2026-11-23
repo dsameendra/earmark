@@ -57,6 +57,9 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
     /// Provisional speaker turns of the most recent session, for `SpeakerReconciler` once the offline pass exists.
     public func liveSpeakerTurns() -> [SpeakerTurn] { session?.timeline.turns ?? lastTurns }
 
+    /// Whether the active session requested translation (independent of its appearance preset).
+    public var translatesCaptions: Bool { session?.config.translateTo != nil }
+
     // MARK: Control
 
     public func start(_ config: LiveSessionConfig) async throws {
@@ -298,16 +301,19 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
     private func cancelAll(_ ctx: SessionContext) {
         for t in ctx.pumpTasks + ctx.engineTasks + ctx.auxTasks { t.cancel() }
         ctx.checkpointTask?.cancel()
+        ctx.translationTask?.cancel()
         ctx.translationWake?.finish()
     }
 
     /// Final promotion and flush shared by stop, natural completion and failure. Returns the saved transcript id.
     private func finish(_ ctx: SessionContext, graceful: Bool) async -> TranscriptID? {
         for t in ctx.auxTasks { t.cancel() }
-        ctx.translationWake?.finish()
         ctx.checkpointTask?.cancel()
         await ctx.checkpointTask?.value
         if graceful { await promoteVolatile(ctx) }
+        ctx.volatileTranslations.removeAll()
+        ctx.translationWake?.finish()
+        if graceful { await drainTranslations(ctx) } else { ctx.translationTask?.cancel() }
         linesBus.send(ctx.store.lines)
         // Unstructured on purpose: a cancelled caller (view teardown, app quit) must not drop the last flush.
         _ = await Task { await self.checkpoint(ctx) }.value
@@ -316,6 +322,26 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         if session === ctx { session = nil }
         pauseGate.set(false)
         return ctx.transcriptID
+    }
+
+    /// Translation gets its own bounded flush after recognition has produced its final segments.
+    private func drainTranslations(_ ctx: SessionContext) async {
+        guard let worker = ctx.translationTask else { return }
+        let (outcomes, continuation) = AsyncStream.makeStream(of: Bool.self, bufferingPolicy: .bufferingNewest(1))
+        let completion = Task { await worker.value; continuation.yield(true); continuation.finish() }
+        let timeout = options.drainTimeout
+        let deadline = Task {
+            try? await Task.sleep(for: timeout)
+            guard !Task.isCancelled else { return }
+            continuation.yield(false); continuation.finish()
+        }
+        var iterator = outcomes.makeAsyncIterator()
+        let completed = await iterator.next() == true
+        deadline.cancel(); completion.cancel()
+        if !completed {
+            worker.cancel()
+            eventBus.send(.translationFailed(reason: "Translation did not finish before stopping. Original captions have been saved."))
+        }
     }
 
     /// Volatile text still on screen at stop becomes a final segment so the last words are never lost.
@@ -439,18 +465,19 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         guard ctx.config.translateTo != nil, translation != nil else { return }
         let job = SessionContext.TranslationJob(lineID: lineID, segmentID: segmentID, text: text, language: language)
         if volatile {
-            ctx.volatileTranslation = job
+            ctx.volatileTranslations[lineID] = job
         } else {
             ctx.pendingFinalTranslations.append(job)
-            if ctx.volatileTranslation?.lineID == lineID { ctx.volatileTranslation = nil }
+            ctx.volatileTranslations.removeValue(forKey: lineID)
         }
         ctx.translationWake?.yield()
     }
 
     private func nextTranslationJob(_ ctx: SessionContext) -> SessionContext.TranslationJob? {
         if !ctx.pendingFinalTranslations.isEmpty { return ctx.pendingFinalTranslations.removeFirst() }
-        defer { ctx.volatileTranslation = nil }
-        return ctx.volatileTranslation
+        guard let job = ctx.volatileTranslations.values.min(by: { $0.lineID.uuidString < $1.lineID.uuidString }) else { return nil }
+        ctx.volatileTranslations.removeValue(forKey: job.lineID)
+        return job
     }
 
     private func launchTranslation(_ ctx: SessionContext) {
@@ -458,8 +485,7 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         let (wake, continuation) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
         ctx.translationWake = continuation
         let minInterval = options.translationMinInterval
-        ctx.auxTasks.append(
-            Task {
+        ctx.translationTask = Task {
                 let clock = ContinuousClock()
                 for await _ in wake {
                     while !Task.isCancelled {
@@ -472,7 +498,7 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
                         await self.translate(job, to: target, router: router, ctx: ctx)
                     }
                 }
-            })
+            }
     }
 
     private func translate(
@@ -489,6 +515,11 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
                 break
             }
             guard let result, ctx.phase != .finished else { return }
+            if job.segmentID == nil {
+                guard let entry = ctx.store.entries.first(where: { $0.line.id == job.lineID }),
+                    entry.line.isVolatile, entry.line.text == CaptionLineStore.rollingTail(job.text)
+                else { return }
+            }
             // English to Sinhala is always flagged low-confidence, whatever the engine reports.
             let low = result.isLowConfidence || (source.primary == .english && target.primary == .sinhala)
             let shown = (low ? LiveCaptionMarkers.lowConfidenceTranslationPrefix : "") + result.text
@@ -501,6 +532,9 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
             }
             linesBus.send(ctx.store.lines)
         } catch {
+            if !(error is CancellationError), ctx.phase == .running {
+                eventBus.send(.translationFailed(reason: String(describing: error)))
+            }
             log.error("translation skipped: \(String(describing: error), privacy: .public)")
         }
     }

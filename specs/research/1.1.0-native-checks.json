@@ -1,0 +1,42 @@
+{
+  "recordedAt": "2026-11-23T22:01:36.295166+00:00",
+  "status": "partial native evidence; not release acceptance",
+  "sources": {
+    "Packages/QwenASR/Sources/QwenASR/QwenSinhalaEngine.swift": "760fc4a1d02b0a43729441d843752c8ce6026fc42baed01b1db089c4a6882206",
+    "Packages/QwenASR/Sources/QwenASR/MLXQwenRecognizer.swift": "68da9c683bf8fd635560f2e8e8e730bdec063d954754d74585cfcb4d01da863e",
+    "Packages/Transcription/Sources/Transcription/ParakeetEngine.swift": "9dc03aed00fe0d2275c9c6a6f0e25147f379ab7b2f1f0de1ace1fc78ce8dc09c"
+  },
+  "checks": [
+    {
+      "model": "mlx/qwen3-asr-0.6b-sinhala-8bit",
+      "checkpointRevision": "047217cb611ad5f51cb2284e4a3617a5eaa9b688",
+      "test": "QwenRealModelTests/readSpeech()",
+      "fixtures": "OpenSLR30 40 restored original clips",
+      "seconds": 173.045,
+      "cer": 0.0758,
+      "wer": 0.3522,
+      "rtf": 0.728,
+      "acceptance": "existing CER < 0.12 passed",
+      "scope": "Sinhala specialist regression only"
+    },
+    {
+      "model": "mlx/qwen3-asr-0.6b-4bit",
+      "checkpointRevision": "313d850181767edf09f00a9c289becca70e58cd0",
+      "test": "QwenMultilingualRealTests/english()",
+      "fixtures": "first 15 seconds of repository LibriSpeech English recording",
+      "seconds": 6.256,
+      "acceptance": "non-empty English words, correct language tags, no invented word alignment",
+      "scope": "native English smoke only; multilingual and quality benchmarks remain pending"
+    },
+    {
+      "model": "fluidaudio/parakeet-tdt-v3",
+      "checkpointRevision": "7dd20fe6b1797d35f5e3307e8b1732d9a178edfe",
+      "test": "NativeSpeechAcceptanceTests/parakeetV3()",
+      "fixtures": "repository LibriSpeech English recording and reference",
+      "seconds": 16.697,
+      "wer": 0.045454545454545456,
+      "acceptance": "WER < 0.25 and alignment bounds passed",
+      "scope": "native English file path; other languages, Live capture and lifecycle acceptance remain pending"
+    }
+  ]
+}

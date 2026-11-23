@@ -9,8 +9,8 @@ public enum NLLBLanguages {
         "de": "deu_Latn", "fr": "fra_Latn", "es": "spa_Latn", "it": "ita_Latn", "pt": "por_Latn", "nl": "nld_Latn", "ja": "jpn_Jpan",
         "ko": "kor_Hang", "zh": "zho_Hans", "ar": "arb_Arab", "ru": "rus_Cyrl", "id": "ind_Latn", "th": "tha_Thai", "vi": "vie_Latn",
     ]
-    /// Languages the engine offers by default: the catalog set (si, en, ta, hi) plus bn and ur, which Apple lacks.
-    public static let defaultLanguages: Set<LanguageCode> = ["si", "en", "ta", "hi", "bn", "ur"]
+    /// Every currently mapped language is available; licensing and installed-model checks still apply.
+    public static let defaultLanguages: Set<LanguageCode> = Set(codes.keys)
 }
 
 /// The inference part of NLLB (tokenise, beam-search decode, detokenise). Isolated so the engine is testable and so the runtime

@@ -48,6 +48,15 @@ private func descriptor(_ id: String, kind: ModelKind = .asr, caps: ModelCapabil
         #expect(model.rows(of: .diarization).map { $0.id.rawValue } == ["sd"])
     }
 
+    @Test func compactLandingPageKeepsRecommendationsAndInstalledModelsSeparate() async {
+        let (model, _) = await make(installed: ["installed", "best"])
+        #expect(model.recommendedRows.isEmpty)
+        #expect(Set(model.managedRows.map(\.id)) == ["best", "installed"])
+        #expect(model.browseRows(query: "English", kind: .asr).count == 3)
+        #expect(model.browseRows(query: "other", kind: .asr).map(\.id) == ["other"])
+        #expect(model.browseRows(query: "other", kind: .translation).isEmpty)
+    }
+
     @Test func tooLittleDiskIsRefusedClearlyAndNeverStarts() async {
         let (model, mock) = await make(free: 10)
         let outcome = await model.download("best")

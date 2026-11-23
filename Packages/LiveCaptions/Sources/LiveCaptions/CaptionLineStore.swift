@@ -44,6 +44,7 @@ struct CaptionLineStore: Sendable {
     ) -> UUID {
         let shown = Self.rollingTail(text)
         if let i = volatileIndex(lane: lane) {
+            if entries[i].line.text != shown { entries[i].line.translation = nil }
             entries[i].line.text = shown
             entries[i].line.language = language ?? entries[i].line.language
             return entries[i].line.id
@@ -61,6 +62,7 @@ struct CaptionLineStore: Sendable {
         segmentID: SegmentID, laneLabel: String?, reuseVolatile: Bool = true
     ) -> UUID {
         if reuseVolatile, let i = volatileIndex(lane: lane) {
+            if entries[i].line.text != text { entries[i].line.translation = nil }
             entries[i].line.text = text
             entries[i].line.isVolatile = false
             entries[i].line.language = language ?? entries[i].line.language

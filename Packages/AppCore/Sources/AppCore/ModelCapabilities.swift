@@ -70,11 +70,17 @@ public struct ModelCapabilities: Codable, Hashable, Sendable {
     public var memory: MemoryTier?
     /// Where this model is the recommended default (see ``ModelRecommender``).
     public var recommendedUse: [RecommendedUse]
+    public var translationPairs: Set<LanguagePair>?
+    public var speechTranslationPairs: Set<LanguagePair>
+    public var streaming: ModelStreamingImplementation?
+    public var overlapRecognitionSpeakers: Int?
 
     public init(
         live: Bool = false, file: Bool = true, wordTimestamps: Bool = false, autoDetectLanguage: Bool = false,
         speakerLabels: SpeakerSupport = .none, translation: Bool = false, speed: SpeedTier? = nil, memory: MemoryTier? = nil,
-        recommendedUse: [RecommendedUse] = []
+        recommendedUse: [RecommendedUse] = [], translationPairs: Set<LanguagePair>? = nil,
+        speechTranslationPairs: Set<LanguagePair> = [], streaming: ModelStreamingImplementation? = nil,
+        overlapRecognitionSpeakers: Int? = nil
     ) {
         self.live = live
         self.file = file
@@ -85,6 +91,10 @@ public struct ModelCapabilities: Codable, Hashable, Sendable {
         self.speed = speed
         self.memory = memory
         self.recommendedUse = recommendedUse
+        self.translationPairs = translationPairs
+        self.speechTranslationPairs = speechTranslationPairs
+        self.streaming = streaming
+        self.overlapRecognitionSpeakers = overlapRecognitionSpeakers
     }
 
     /// Conservative default for models with no recorded capabilities (custom imports, legacy state): file transcription only.
@@ -101,7 +111,11 @@ public struct ModelCapabilities: Codable, Hashable, Sendable {
             speakerLabels: try c.decodeIfPresent(SpeakerSupport.self, forKey: .speakerLabels) ?? base.speakerLabels,
             translation: try c.decodeIfPresent(Bool.self, forKey: .translation) ?? base.translation,
             speed: try c.decodeIfPresent(SpeedTier.self, forKey: .speed), memory: try c.decodeIfPresent(MemoryTier.self, forKey: .memory),
-            recommendedUse: try c.decodeIfPresent([RecommendedUse].self, forKey: .recommendedUse) ?? [])
+            recommendedUse: try c.decodeIfPresent([RecommendedUse].self, forKey: .recommendedUse) ?? [],
+            translationPairs: try c.decodeIfPresent(Set<LanguagePair>.self, forKey: .translationPairs),
+            speechTranslationPairs: try c.decodeIfPresent(Set<LanguagePair>.self, forKey: .speechTranslationPairs) ?? [],
+            streaming: try c.decodeIfPresent(ModelStreamingImplementation.self, forKey: .streaming),
+            overlapRecognitionSpeakers: try c.decodeIfPresent(Int.self, forKey: .overlapRecognitionSpeakers))
     }
 }
 
@@ -109,6 +123,14 @@ extension ModelDescriptor {
     /// `true` when this build can actually run the model. A listed model with neither `live` nor `file` capability is
     /// hidden from language pickers and never recommended (e.g. Parakeet, which has no registered engine yet).
     public var isRunnable: Bool { capabilities.live || capabilities.file }
+
+    public func supportsTranslation(_ pair: LanguagePair) -> Bool {
+        guard kind == .translation, isRunnable, capabilities.translation, pair.source != pair.target else { return false }
+        if let pairs = capabilities.translationPairs {
+            return pairs.contains(pair) || pairs.contains(LanguagePair(source: pair.source.primary, target: pair.target.primary))
+        }
+        return pair.source.primary != pair.target.primary && covers(pair.source) && covers(pair.target)
+    }
 
     /// `true` when the model covers `language` exactly or by its primary subtag.
     public func covers(_ language: LanguageCode) -> Bool { languages.contains(language) || languages.contains(language.primary) }

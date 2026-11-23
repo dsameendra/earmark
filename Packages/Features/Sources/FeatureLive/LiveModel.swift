@@ -78,6 +78,14 @@ public final class LiveModel {
     public var saveAsTranscript = false {
         didSet { if saveAsTranscript != oldValue { persist(SettingsKey.liveSaveAsTranscript, saveAsTranscript) } }
     }
+    public var translationEnabled = false { didSet { saveTranslationPreferences() } }
+    public var translationTarget = "" { didSet { saveTranslationPreferences() } }
+    public var translationEngine = "auto" { didSet { saveTranslationPreferences() } }
+    public private(set) var translationLanguages: [LanguageCode] = []
+    public private(set) var translationPreparation: TranslationReadiness?
+    @ObservationIgnored private let translation: (any TranslationPreparing)?
+    @ObservationIgnored private var translationSaveTask: Task<Void, Never>?
+
     public private(set) var overlayEnabled = true
     public private(set) var isPaused = false
     /// Smoothed 0...1 input level (0 when no session is running).
@@ -101,6 +109,7 @@ public final class LiveModel {
     @ObservationIgnored private var languageSaveTask: Task<Void, Never>?
 
     public init(services: AppServices) {
+        translation = services.translation
         live = services.live
         extras = services.liveExtras
         settings = services.settings
@@ -208,6 +217,14 @@ public final class LiveModel {
             presets = await extras.presets()
             preset = await extras.activePreset()
         }
+        let preferences = await LiveTranslationPreferences.load(settings: settings, legacyPreset: preset)
+        translationEnabled = preferences.isEnabled
+        translationTarget = preferences.target?.rawValue ?? ""
+        translationEngine = preferences.engine
+        let catalog = await models.catalog()
+        var languages = Set(catalog.filter { $0.kind == .translation && $0.isRunnable }.flatMap(\.languages))
+        if let target = preferences.target { languages.insert(target) }
+        translationLanguages = languages.sorted { LiveLanguageChoice.name($0) < LiveLanguageChoice.name($1) }
     }
 
     /// Follows model availability and shared language preference changes while Live is open.
@@ -259,12 +276,15 @@ public final class LiveModel {
     public func start() async {
         notice = nil
         savedTranscriptID = nil
-        // Live translation (LIVE-AC-13): lines are translated into the default target when the preset shows translations.
-        var target: LanguageCode?
-        if preset.showTranslation || preset.translatedOnly {
-            let raw = await settings.value(for: SettingsKey.translationTarget, as: String.self)
-            if let raw, !raw.isEmpty { target = LanguageCode(raw) }
+        await translationSaveTask?.value
+        let preferences = await LiveTranslationPreferences.load(settings: settings, legacyPreset: preset)
+        let readiness = await preferences.readiness(languageMode: language.mode, using: translation)
+        translationPreparation = readiness
+        if let message = await LiveTranslationPreferences.setupMessage(readiness, models: models) {
+            state = .failed(message)
+            return
         }
+        let target = preferences.isEnabled ? preferences.target : nil
         let config = LiveSessionConfig(
             source: source.captureSource(deviceUID: effectiveDeviceUID), languageMode: language.mode, diarize: source != .mic,
             translateTo: target, saveAsTranscript: saveAsTranscript, presetID: preset.id)
@@ -272,6 +292,30 @@ public final class LiveModel {
             try await live.start(config)
         } catch {
             state = .failed(Self.describe(error))
+        }
+    }
+
+    /// Installs only the explicitly requested Apple translation pair through the system sheet.
+    public func prepareTranslation() async {
+        guard let translation, case .needsApplePack(let source, let target) = translationPreparation else { return }
+        if await translation.prepareApplePack(source: source, target: target) {
+            translationPreparation = await translation.readiness(source: source, target: target)
+        }
+    }
+
+    private func saveTranslationPreferences() {
+        guard !isLoadingPreferences else { return }
+        translationPreparation = nil
+        let prior = translationSaveTask
+        let settings = settings
+        let enabled = translationEnabled
+        let target = translationTarget
+        let engine = translationEngine
+        translationSaveTask = Task {
+            await prior?.value
+            await settings.set(enabled, for: SettingsKey.liveTranslationEnabled)
+            await settings.set(target, for: SettingsKey.translationTarget)
+            await settings.set(engine, for: SettingsKey.translationEngine)
         }
     }
 

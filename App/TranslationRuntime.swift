@@ -17,7 +17,7 @@ struct TranslationRuntime: Sendable {
 
     /// - Parameter nllbPython: value of the `dev.nllbPython` setting (the `EARMARK_DEV_NLLB_PYTHON` environment variable also enables it).
     @MainActor
-    static func make(models: any ModelManaging, nllbPython: String?) -> TranslationRuntime {
+    static func make(models: any ModelManaging, settings: any SettingsStore, nllbPython: String?) -> TranslationRuntime {
         let apple = AppleTranslationEngine()
         // The native helper is bundled and signed with the app; Python remains an explicit development override.
         #if DEBUG
@@ -26,9 +26,24 @@ struct TranslationRuntime: Sendable {
             let runtime = BundledNLLBRuntime.runtime()
         #endif
         let nllb = runtime.map { NLLBEngine(models: models, runtime: $0) }
-        let router = DefaultTranslationRouter(apple: apple, nllb: nllb)
+        let router = DefaultTranslationRouter(
+            apple: apple, nllb: nllb,
+            selectedEngine: {
+                let choice = await settings.value(for: SettingsKey.translationEngine, as: String.self) ?? "auto"
+                switch choice {
+                case "auto", "": return nil
+                case "apple": return TranslationEngineIDs.apple
+                default: return EngineID(choice)
+                }
+            },
+            isAllowed: { engine in
+                if engine == TranslationEngineIDs.nllb {
+                    return await settings.value(for: SettingsKey.translationAllowNonCommercial, as: Bool.self) ?? false
+                }
+                return true
+            })
         let packs = ApplePackInstaller()
-        let service = AppTranslationService(models: models, nllb: nllb, packs: packs)
+        let service = AppTranslationService(models: models, nllb: nllb, packs: packs, settings: settings)
         return TranslationRuntime(router: router, service: service, packs: packs, nllbEnabled: nllb != nil)
     }
 }
@@ -41,11 +56,13 @@ final class AppTranslationService: TranslationPreparing, Sendable {
     private let nllb: NLLBEngine?
     private let packs: ApplePackInstaller
     private let backend = SystemAppleTranslationBackend()
+    private let settings: any SettingsStore
 
-    init(models: any ModelManaging, nllb: NLLBEngine?, packs: ApplePackInstaller) {
+    init(models: any ModelManaging, nllb: NLLBEngine?, packs: ApplePackInstaller, settings: any SettingsStore) {
         self.models = models
         self.nllb = nllb
         self.packs = packs
+        self.settings = settings
     }
 
     func targets(from source: LanguageCode) async -> [(language: LanguageCode, readiness: TranslationReadiness)] {
@@ -61,6 +78,24 @@ final class AppTranslationService: TranslationPreparing, Sendable {
     func readiness(source: LanguageCode, target: LanguageCode) async -> TranslationReadiness {
         let (s, t) = (source.primary, target.primary)
         guard s != t else { return .unavailable(reason: "The source and target language are the same.") }
+        let choice = await settings.value(for: SettingsKey.translationEngine, as: String.self) ?? "auto"
+        if choice == "nllb" {
+            guard await nllbAllowed else { return .unavailable(reason: "Enable non-commercial models in Settings > Translation to use NLLB.") }
+            guard let nllb, await nllb.supports(LanguagePair(source: s, target: t)) else {
+                return .unavailable(reason: "NLLB does not support this language pair in this build.")
+            }
+            return await nllbModelReadiness()
+        }
+        if choice == "apple" {
+            switch await backend.status(from: s, to: t) {
+            case .installed: return .ready
+            case .supported: return .needsApplePack(source: s, target: t)
+            case .unsupported: return .unavailable(reason: "Apple Translation does not support this language pair.")
+            }
+        }
+        guard choice == "auto" || choice.isEmpty else {
+            return .unavailable(reason: "The selected translation engine is not available in this build.")
+        }
         if s == .sinhala || t == .sinhala { return await sinhalaReadiness(s, t) }
         switch await backend.status(from: s, to: t) {
         case .installed: return .ready
@@ -89,7 +124,12 @@ final class AppTranslationService: TranslationPreparing, Sendable {
         return await nllbModelReadiness()
     }
 
+    private var nllbAllowed: Bool {
+        get async { await settings.value(for: SettingsKey.translationAllowNonCommercial, as: Bool.self) ?? false }
+    }
+
     private func nllbModelReadiness() async -> TranslationReadiness {
+        guard await nllbAllowed else { return .unavailable(reason: "Enable non-commercial models in Settings > Translation to use NLLB.") }
         if case .installed = await models.state(of: TranslationEngineIDs.nllbModel) { return .ready }
         return .needsModel(TranslationEngineIDs.nllbModel)
     }

@@ -286,7 +286,7 @@ struct MeetingFinalization: Sendable {
         let request = RoutingRequest(
             languageMode: mode, useCase: .file, tier: hardware.profile.tier, installedModels: await models.installedModels(),
             explicitModel: explicit)
-        let plan = try router.plan(for: request)
+        let plan = try await router.preparedPlan(for: request)
         let vocabulary = await settings.value(for: SettingsKey.customVocabulary, as: [String].self) ?? []
         guard let first = plan.assignments.first else { throw AppError.other("No engine is available to transcribe the meeting.") }
         var config = FinalizationConfig(languageMode: mode, modelID: first.model, vocabulary: vocabulary)

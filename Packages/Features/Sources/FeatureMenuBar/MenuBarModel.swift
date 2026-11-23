@@ -221,8 +221,16 @@ public final class MenuBarModel {
     public func startLive(_ choice: LiveSourceChoice) async {
         // Same defaults as the Live screen: "Save as transcript" and speaker labels for system audio.
         let save = await services.settings.value(for: SettingsKey.liveSaveAsTranscript, as: Bool.self) ?? false
+        let preset = await services.liveExtras?.activePreset()
+        let translation = await LiveTranslationPreferences.load(settings: services.settings, legacyPreset: preset)
+        let readiness = await translation.readiness(languageMode: language.mode, using: services.translation)
+        if let message = await LiveTranslationPreferences.setupMessage(readiness, models: services.models) {
+            errorMessage = message
+            return
+        }
         var config = LiveSessionConfig(
-            source: choice.captureSource, languageMode: language.mode, diarize: choice != .mic, saveAsTranscript: save)
+            source: choice.captureSource, languageMode: language.mode, diarize: choice != .mic,
+            translateTo: translation.isEnabled ? translation.target : nil, saveAsTranscript: save)
         let uid = await effectiveInputDeviceUID()
         switch choice {
         case .mic: config.source = .mic(deviceUID: uid)

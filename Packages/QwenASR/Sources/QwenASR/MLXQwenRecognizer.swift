@@ -1,3 +1,4 @@
+import AppCore
 import Dispatch
 import Foundation
 import MLX
@@ -12,6 +13,18 @@ protocol SinhalaRecognizing: Sendable {
     /// Recognises `samples` (16 kHz mono) with at most `maxTokens` generated tokens and returns the raw transcript (the model's
     /// `language ...<asr_text>` prefix already parsed off).
     func recognize(samples: [Float], maxTokens: Int) async throws -> String
+    func recognize(samples: [Float], maxTokens: Int, language: String?) async throws -> QwenRecognition
+}
+
+struct QwenRecognition: Sendable {
+    var text: String
+    var language: String?
+}
+
+extension SinhalaRecognizing {
+    func recognize(samples: [Float], maxTokens: Int, language: String?) async throws -> QwenRecognition {
+        QwenRecognition(text: try await recognize(samples: samples, maxTokens: maxTokens), language: language)
+    }
 }
 
 /// Owns the non-`Sendable` MLX model. It is an actor on its own serial queue, so the model is only ever touched by one
@@ -34,9 +47,12 @@ actor MLXQwenRecognizer: SinhalaRecognizing {
     }
 
     func recognize(samples: [Float], maxTokens: Int) async throws -> String {
+        try await recognize(samples: samples, maxTokens: maxTokens, language: nil).text
+    }
+
+    func recognize(samples: [Float], maxTokens: Int, language: String?) async throws -> QwenRecognition {
         try Task.checkCancellation()
-        // Language is left unset: the research measurements (and the model author's) were made that way.
-        let output = model.generate(audio: MLXArray(samples), maxTokens: maxTokens, temperature: 0, context: "", language: nil)
-        return output.text
+        let output = model.generate(audio: MLXArray(samples), maxTokens: maxTokens, temperature: 0, context: "", language: language)
+        return QwenRecognition(text: output.text, language: output.language)
     }
 }

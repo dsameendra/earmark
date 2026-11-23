@@ -1,6 +1,6 @@
 # SCR-016: Multilingual model support and overlapping speech
 
-Status: proposed contract design for the owner-requested 1.1.0 work; implementation pending. Exact API/schema changes must be reviewed before code changes. This document does not certify runtime feasibility or model quality.
+Status: owner approved the implementation plan. Foundation contract changes below are specified for implementation; remaining model and speaker contracts require their concrete designs here before implementation. This document does not certify runtime feasibility or model quality.
 
 Plan: [Earmark 1.1.0 implementation and release](../releases/1.1.0-plan.md).
 
@@ -32,3 +32,17 @@ Plan: [Earmark 1.1.0 implementation and release](../releases/1.1.0-plan.md).
 - Models UI remains compact with Recommended and Installed areas; broader families, variants and translation directions are discoverable through Add models/Browse all.
 - Every advertised import profile has actual native inference acceptance, rejection fixtures, pinned provenance, correct capabilities and complete lifecycle integration. File-format recognition and a successful load do not establish full support or quality.
 - User imports cannot execute remote repository code or silently alter language/direction/license capabilities; failed imports never replace existing working models.
+
+## Foundation contract specification
+
+- Add `EngineRouter.preparedPlan(for:) async throws` with a default implementation delegating to the existing synchronous `plan(for:)`. System-backed routers refresh readiness for the exact requested locale before planning. Existing conformers remain source compatible.
+- Add the additive `LiveSessionEvent.translationFailed(reason:)` notification. Translation failure retains captions and emits a visible warning; cancellation is not reported as failure. This event is transient, not persisted.
+- Persist Live translation enablement separately from caption appearance. Migrate the old preset translation flag once when no explicit enablement value exists. Target and engine reuse existing settings. Explicit engine selection cannot silently choose another engine, and licensing policy applies before cached results are served.
+- No persisted transcript, job, partial-segment or database schema changes in this foundation step.
+
+## Model metadata specification
+
+- Add optional `ModelCapabilities.translationPairs` for explicit text-translation directions. `nil` preserves the legacy all-distinct-pairs behavior within a translation descriptor's language set; an empty set means no supported directions. Add `speechTranslationPairs`, defaulting to empty, for direct speech-to-text translation without implying TTS.
+- Add optional `ModelCapabilities.streaming` (`buffered` or `native`) and `overlapRecognitionSpeakers`. Missing values make no implementation/overlap claim; ordinary speaker diarization remains distinct from recognition of simultaneously spoken text.
+- Add optional `ModelDescriptor.provenance`, containing an immutable repository revision, relative artifact digests/sizes, import profile identity/version and format/native-inference validation level. Missing provenance preserves legacy decoding. This metadata does not execute code or grant a model capabilities; acquisition/validation still enforces accepted profiles and hashes.
+- `ModelDescriptor.supportsTranslation` must enforce explicit direction sets before language-set fallback. Pair packs cannot advertise their reverse direction through a shared language set. Native acceptance and independent translation quality remain separate facts.

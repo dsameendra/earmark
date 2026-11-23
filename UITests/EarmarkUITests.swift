@@ -132,6 +132,30 @@ final class EarmarkUITests: XCTestCase {
         XCTAssertFalse(app.buttons["onboarding.finish"].waitForExistence(timeout: 1))
     }
 
+    func testCompactModelCatalogCanBeSearchedAndDismissed() throws {
+        let app = launch(appearance: "light")
+        defer { app.terminate() }
+        app.typeKey(",", modifierFlags: .command)
+        let models = app.buttons["settings.section.models"]
+        XCTAssertTrue(models.waitForExistence(timeout: 5))
+        models.click()
+        let browse = app.buttons["models.browse"]
+        XCTAssertTrue(browse.waitForExistence(timeout: 5))
+        browse.click()
+        let search = app.textFields["models.browse.search"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.click()
+        search.typeText("Whisper")
+        XCTAssertTrue(app.staticTexts["Whisper"].firstMatch.waitForExistence(timeout: 5))
+        capture(app, "models-browser-whisper-light")
+        search.typeKey("a", modifierFlags: .command)
+        search.typeText("no-such-language-model")
+        XCTAssertTrue(app.staticTexts["No models match this search."].waitForExistence(timeout: 5))
+        app.buttons["models.browse.done"].click()
+        XCTAssertTrue(browse.waitForExistence(timeout: 5))
+        capture(app, "models-compact-light")
+    }
+
     func testSettingsSectionsRemainAvailable() throws {
         let app = launch(appearance: "light")
         defer { app.terminate() }

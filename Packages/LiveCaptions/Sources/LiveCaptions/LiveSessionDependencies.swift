@@ -62,7 +62,7 @@ public struct RouterEngineProvider: LiveEngineProviding {
         let request = RoutingRequest(
             languageMode: languageMode, useCase: .live, tier: hardware.profile.tier,
             installedModels: await models.installedModels(), explicitModel: await explicitModel())
-        let plan = try router.plan(for: request)
+        let plan = try await router.preparedPlan(for: request)
         guard let assignment = plan.assignments.first else { throw AppError.other("No engine available for live captions") }
         if assignment.requiresDownload, let model = assignment.model { throw AppError.modelNotInstalled(model) }
         guard let engine = engine(assignment.engine) else {
@@ -112,6 +112,8 @@ public enum LiveSessionEvent: Sendable, Equatable {
     /// The engine router chose a fallback or has another note for the user (`EnginePlan.warnings`), for example that Apple
     /// Speech is unavailable and Whisper is used instead.
     case engineNotice(String)
+    /// Translation failed while recognition continues; retain the original caption and offer recovery.
+    case translationFailed(reason: String)
 }
 
 /// Shown on the translation line when the engine flags a weak direction (LIVE-AC-13). The contract's `CaptionLine`

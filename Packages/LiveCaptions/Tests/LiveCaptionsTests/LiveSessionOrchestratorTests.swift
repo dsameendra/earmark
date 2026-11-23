@@ -373,6 +373,22 @@ struct LiveSessionOrchestratorTests {
 
     // MARK: translation (LIVE-AC-13)
 
+    @Test("stopping drains queued final translations before saving")
+    func stopDrainsTranslationQueue() async throws {
+        let router = FakeTranslationRouter()
+        let rig = makeRig(
+            script: [Step.events((0..<4).map { .final(segment("sentence \($0)", Double($0), Double($0) + 1)) })],
+            translation: router, options: testOptions(translation: .milliseconds(80)))
+        let lines = Recorder(rig.orchestrator.lines())
+        try await rig.orchestrator.start(LiveSessionConfig(source: .mic(deviceUID: nil), translateTo: .sinhala, saveAsTranscript: true))
+        rig.source.send(chunk(0))
+        #expect(await waitUntil { lines.last?.count == 4 })
+        let id = try #require(await rig.orchestrator.stop())
+        let saved = rig.repo.stored(id)
+        #expect(saved.count == 4)
+        #expect(saved.allSatisfy { $0.translations.first?.language == .sinhala })
+    }
+
     @Test("Translation is throttled and English to Sinhala carries the low-confidence marker")
     func translationThrottleAndMarker() async throws {
         let router = FakeTranslationRouter()

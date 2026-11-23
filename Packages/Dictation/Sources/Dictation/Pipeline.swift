@@ -97,7 +97,7 @@ public struct RoutedEngineProvider: Sendable {
         let request = RoutingRequest(
             languageMode: settings.languageMode, useCase: .dictation, tier: await tier(),
             installedModels: await installedModels(), explicitModel: settings.modelID)
-        let plan = try router.plan(for: request)
+        let plan = try await router.preparedPlan(for: request)
         guard let assignment = plan.assignments.first else { throw AppError.other("No engine available for dictation") }
         if assignment.requiresDownload, let model = assignment.model { throw AppError.modelNotInstalled(model) }
         guard let engine = engines[assignment.engine] else {

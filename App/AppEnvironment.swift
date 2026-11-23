@@ -178,7 +178,9 @@ final class AppEnvironment {
         #if DEBUG
             if usesMocks {
                 let mocks = mockServices()
-                return Composition(services: mocks, settingsDependencies: .standalone(store: mocks.settings))
+                var settings = SettingsDependencies.standalone(store: mocks.settings)
+                settings.models = MockModelManager(descriptors: BuiltInCatalog.models, installed: [RoutingTargets.whisperSmall])
+                return Composition(services: mocks, settingsDependencies: settings)
             }
         #endif
         let database: AppDatabase
@@ -214,9 +216,9 @@ final class AppEnvironment {
         // Sinhala goes to Qwen3-ASR (MLX), never to stock Whisper (ADR-004). The model loads lazily on first use.
         let qwen = QwenSinhalaEngine(models: models)
         let engines: [EngineID: any TranscriptionEngine] = [whisper.id: whisper, apple.id: apple, qwen.id: qwen]
-        let translation = TranslationRuntime.make(models: models, nllbPython: nil)
+        let translation = TranslationRuntime.make(models: models, settings: settings, nllbPython: nil)
         // Live and dictation leave Apple Speech for Whisper (with a notice) when it cannot be used on this Mac.
-        let router = AppleAwareEngineRouter(readiness: appleReadiness)
+        let router = AppleAwareEngineRouter(readiness: appleReadiness, engine: apple)
 
         let live = makeLive(
             database: database, models: models, hardware: hardware, settings: settings, permissions: permissions,

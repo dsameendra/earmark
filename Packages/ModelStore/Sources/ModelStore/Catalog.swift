@@ -131,7 +131,10 @@ public enum BuiltInCatalog {
             capabilities: ModelCapabilities(live: false, file: true, translation: true)),
         ModelDescriptor(
             id: "nllb/200-distilled-600M", displayName: "NLLB-200 distilled 600M (CTranslate2 int8)", kind: .translation,
-            runtime: .other, engine: "nllb", languages: ["si", "en", "ta", "hi", "bn", "ur"], sizeBytes: 647 * mb,
+            runtime: .other, engine: "nllb", languages: [
+                "si", "en", "ta", "hi", "bn", "ur", "te", "ml", "kn", "mr", "gu", "pa", "ne", "de", "fr", "es", "it", "pt", "nl",
+                "ja", "ko", "zh", "ar", "ru", "id", "th", "vi"
+            ], sizeBytes: 647 * mb,
             license: LicenseInfo(
                 spdx: "CC-BY-NC-4.0", isNonCommercial: true,
                 attribution:

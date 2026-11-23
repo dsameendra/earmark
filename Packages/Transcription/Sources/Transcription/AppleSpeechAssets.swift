@@ -125,16 +125,16 @@ public final class AppleSpeechReadiness: @unchecked Sendable {
 
     public init() {}
 
-    /// The last known status for `language`, or `nil` when never checked (treated as usable).
+    /// The last known status for `language`, or `nil` when never checked (not safe to use until refreshed).
     public func status(for language: LanguageCode) -> AppleSpeechAssetStatus? {
         lock.lock()
         defer { lock.unlock() }
-        return statuses[language.primary]
+        return statuses[language]
     }
 
     public func set(_ status: AppleSpeechAssetStatus, for language: LanguageCode) {
         lock.lock()
-        statuses[language.primary] = status
+        statuses[language] = status
         lock.unlock()
     }
 
@@ -150,11 +150,30 @@ public struct AppleAwareEngineRouter: EngineRouter {
     private let full: DefaultEngineRouter
     private let withoutApple: DefaultEngineRouter
     private let readiness: AppleSpeechReadiness
+    private let engine: AppleSpeechEngine?
 
-    public init(catalog: [ModelDescriptor] = BuiltInCatalog.models, readiness: AppleSpeechReadiness) {
+    public init(
+        catalog: [ModelDescriptor] = BuiltInCatalog.models, readiness: AppleSpeechReadiness,
+        engine: AppleSpeechEngine? = nil
+    ) {
         full = DefaultEngineRouter(catalog: catalog)
         withoutApple = DefaultEngineRouter(catalog: catalog.filter { $0.id != RoutingTargets.appleSpeech })
         self.readiness = readiness
+        self.engine = engine
+    }
+
+    public func preparedPlan(for request: RoutingRequest) async throws -> EnginePlan {
+        if request.useCase != .file, let engine {
+            let languages: [LanguageCode]
+            switch request.languageMode {
+            case .single(let language): languages = [language]
+            case .multilingual(let set): languages = Array(set)
+            case .autoDetect: languages = []
+            }
+            await readiness.refresh(engine: engine, languages: languages)
+        }
+        try Task.checkCancellation()
+        return try plan(for: request)
     }
 
     public func plan(for request: RoutingRequest) throws -> EnginePlan {
@@ -178,7 +197,8 @@ public struct AppleAwareEngineRouter: EngineRouter {
         case .autoDetect: return nil
         }
         for language in languages where language.primary != .sinhala {
-            if let status = readiness.status(for: language), status != .installed { return status }
+            let status = readiness.status(for: language) ?? .notInstalled
+            if status != .installed { return status }
         }
         return nil
     }

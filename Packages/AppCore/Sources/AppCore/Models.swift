@@ -80,11 +80,12 @@ public struct ModelDescriptor: Hashable, Codable, Sendable, Identifiable {
     /// Repo-relative path prefixes to download when `sourceURL` points at a Hugging Face repository (or revision). Empty means
     /// everything under `sourceURL`. A prefix matches the file or directory of that exact path (SCR-011).
     public var downloadInclude: [String]
+    public var provenance: ModelProvenance?
     public init(
         id: ModelID, displayName: String, kind: ModelKind, runtime: ModelRuntime, engine: EngineID? = nil,
         languages: Set<LanguageCode>, sizeBytes: Int64, license: LicenseInfo, minTier: HardwareTier = .tier8,
         sourceURL: URL? = nil, sha256: String? = nil, isExperimental: Bool = false, notes: String = "", isCustom: Bool = false,
-        capabilities: ModelCapabilities = .standard, downloadInclude: [String] = []
+        capabilities: ModelCapabilities = .standard, downloadInclude: [String] = [], provenance: ModelProvenance? = nil
     ) {
         self.id = id
         self.displayName = displayName
@@ -102,11 +103,12 @@ public struct ModelDescriptor: Hashable, Codable, Sendable, Identifiable {
         self.isCustom = isCustom
         self.capabilities = capabilities
         self.downloadInclude = downloadInclude
+        self.provenance = provenance
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, displayName, kind, runtime, engine, languages, sizeBytes, license, minTier, sourceURL, sha256, isExperimental
-        case notes, isCustom, capabilities, downloadInclude
+        case notes, isCustom, capabilities, downloadInclude, provenance
     }
 
     public init(from decoder: any Decoder) throws {
@@ -121,7 +123,8 @@ public struct ModelDescriptor: Hashable, Codable, Sendable, Identifiable {
             isExperimental: try c.decode(Bool.self, forKey: .isExperimental), notes: try c.decode(String.self, forKey: .notes),
             isCustom: try c.decode(Bool.self, forKey: .isCustom),
             capabilities: try c.decodeIfPresent(ModelCapabilities.self, forKey: .capabilities) ?? .standard,
-            downloadInclude: try c.decodeIfPresent([String].self, forKey: .downloadInclude) ?? [])
+            downloadInclude: try c.decodeIfPresent([String].self, forKey: .downloadInclude) ?? [],
+            provenance: try c.decodeIfPresent(ModelProvenance.self, forKey: .provenance))
     }
 }
 

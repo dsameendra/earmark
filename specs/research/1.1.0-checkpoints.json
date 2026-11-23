@@ -1,0 +1,2816 @@
+{
+  "observedAt": "2026-11-23T17:45:36.621268+00:00",
+  "status": "metadata-only; native inference and redistribution acceptance not established",
+  "checkpoints": [
+    {
+      "repo": "mlx-community/Qwen3-ASR-0.6B-4bit",
+      "revision": "313d850181767edf09f00a9c289becca70e58cd0",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1519,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 1008,
+          "sha256": null
+        },
+        {
+          "path": "chat_template.json",
+          "size": 1161,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 7187,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 142,
+          "sha256": null
+        },
+        {
+          "path": "merges.txt",
+          "size": 1671853,
+          "sha256": null
+        },
+        {
+          "path": "model.safetensors",
+          "size": 708236945,
+          "sha256": "70c7e67e588062adce4f10796e47ad42ead51c6671eda61a0987eae38ca95ddf"
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "size": 71814,
+          "sha256": null
+        },
+        {
+          "path": "preprocessor_config.json",
+          "size": 330,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 12487,
+          "sha256": null
+        },
+        {
+          "path": "vocab.json",
+          "size": 2776833,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "mlx-community/Qwen3-ASR-1.7B-4bit",
+      "revision": "78a389c776a5483b2d0d4ea5494e11012e0d6159",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1519,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 1008,
+          "sha256": null
+        },
+        {
+          "path": "chat_template.json",
+          "size": 1161,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 7188,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 142,
+          "sha256": null
+        },
+        {
+          "path": "merges.txt",
+          "size": 1671853,
+          "sha256": null
+        },
+        {
+          "path": "model.safetensors",
+          "size": 1603081617,
+          "sha256": "9848eaf7a5c1589c671b35035ac27b72e248dd0c604eacae547e7e403d29db45"
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "size": 78968,
+          "sha256": null
+        },
+        {
+          "path": "preprocessor_config.json",
+          "size": 330,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 12487,
+          "sha256": null
+        },
+        {
+          "path": "vocab.json",
+          "size": 2776833,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "FluidInference/parakeet-tdt-0.6b-v3-coreml",
+      "revision": "7dd20fe6b1797d35f5e3307e8b1732d9a178edfe",
+      "license": "cc-by-4.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1519,
+          "sha256": null
+        },
+        {
+          "path": "Decoder.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "4238c4e81ecd0dc94bd7dfbb60f7e2cc824107c1ffe0387b8607b72833dba350"
+        },
+        {
+          "path": "Decoder.mlmodelc/coremldata.bin",
+          "size": 554,
+          "sha256": "18647af085d87bd8f3121c8a9b4d4564c1ede038dab63d295b4e745cf2d7fb99"
+        },
+        {
+          "path": "Decoder.mlmodelc/metadata.json",
+          "size": 3427,
+          "sha256": null
+        },
+        {
+          "path": "Decoder.mlmodelc/model.mil",
+          "size": 13110,
+          "sha256": null
+        },
+        {
+          "path": "Decoder.mlmodelc/weights/weight.bin",
+          "size": 23604992,
+          "sha256": "48adf0f0d47c406c8253d4f7fef967436a39da14f5a65e66d5a4b407be355d41"
+        },
+        {
+          "path": "Encoder.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "42e638870d73f26b332918a3496ce36793fbb413a81cbd3d16ba01328637a105"
+        },
+        {
+          "path": "Encoder.mlmodelc/coremldata.bin",
+          "size": 485,
+          "sha256": "d48034a167a82e88fc3df64f60af963ab3983538271175b8319e7d5720a0fb86"
+        },
+        {
+          "path": "Encoder.mlmodelc/metadata.json",
+          "size": 2921,
+          "sha256": null
+        },
+        {
+          "path": "Encoder.mlmodelc/model.mil",
+          "size": 959769,
+          "sha256": null
+        },
+        {
+          "path": "Encoder.mlmodelc/weights/weight.bin",
+          "size": 445187200,
+          "sha256": "e2020f323703477a5b21d7c2d282c403e371afb5962e79877e3033e73ba6f421"
+        },
+        {
+          "path": "EncoderInt4.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "c296e0229ab5e32412fda92f8dcf47f0e63f0c34e343c0e2654f6c37649d2d79"
+        },
+        {
+          "path": "EncoderInt4.mlmodelc/coremldata.bin",
+          "size": 512,
+          "sha256": "3e6539cd5d5f1c3bd5a01921cd94af85eab609d49d47e1436a16faac958754d6"
+        },
+        {
+          "path": "EncoderInt4.mlmodelc/metadata.json",
+          "size": 2954,
+          "sha256": null
+        },
+        {
+          "path": "EncoderInt4.mlmodelc/model.mil",
+          "size": 874445,
+          "sha256": null
+        },
+        {
+          "path": "EncoderInt4.mlmodelc/weights/weight.bin",
+          "size": 297912320,
+          "sha256": "6fcf5596562948c7482e116bdb3f364279bed970893b86737b67fe89f36367d9"
+        },
+        {
+          "path": "Encoder_v2.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "af98d71151609799efbbffc00112fcba4bd91adf0b01135a982c574e91822f9c"
+        },
+        {
+          "path": "Encoder_v2.mlmodelc/coremldata.bin",
+          "size": 478,
+          "sha256": "70628bd4fd25fb554cc0cebc31356723930c885480132bf3ecd1b5dbe71dd0a2"
+        },
+        {
+          "path": "Encoder_v2.mlmodelc/model.mil",
+          "size": 1002653,
+          "sha256": null
+        },
+        {
+          "path": "Encoder_v2.mlmodelc/weights/weight.bin",
+          "size": 594211328,
+          "sha256": "8d2c79e15a4545e08fe3a21fe741e42b8bf24329db81de8fdfacd92388ea5a66"
+        },
+        {
+          "path": "JointDecision.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "bc69ef031ed427e888b1f3889d13eb373655edd5ac9927de20b5dae281b636b7"
+        },
+        {
+          "path": "JointDecision.mlmodelc/coremldata.bin",
+          "size": 534,
+          "sha256": "f56ded0404498e666ffcd84dda0c393924fc3581345ad03e41429ff560cb97b6"
+        },
+        {
+          "path": "JointDecision.mlmodelc/metadata.json",
+          "size": 2936,
+          "sha256": null
+        },
+        {
+          "path": "JointDecision.mlmodelc/model.mil",
+          "size": 9723,
+          "sha256": null
+        },
+        {
+          "path": "JointDecision.mlmodelc/weights/weight.bin",
+          "size": 12642764,
+          "sha256": "4e0e63d840032f7f07ddb1d64446051166281e5491bf22da8a945c41f6eedb3e"
+        },
+        {
+          "path": "JointDecisionv2.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "1cb3cc9e583d3a9690e5d87611621b489c79eca8ae49a47b915f268f616e76b2"
+        },
+        {
+          "path": "JointDecisionv2.mlmodelc/coremldata.bin",
+          "size": 591,
+          "sha256": "331a558e8131f72f91c49d632f8f8276a01135b936aad2bd82473956dfafe33d"
+        },
+        {
+          "path": "JointDecisionv2.mlmodelc/metadata.json",
+          "size": 3587,
+          "sha256": null
+        },
+        {
+          "path": "JointDecisionv2.mlmodelc/model.mil",
+          "size": 11777,
+          "sha256": null
+        },
+        {
+          "path": "JointDecisionv2.mlmodelc/weights/weight.bin",
+          "size": 12642764,
+          "sha256": "4e0e63d840032f7f07ddb1d64446051166281e5491bf22da8a945c41f6eedb3e"
+        },
+        {
+          "path": "JointDecisionv3.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "26def4bf73dd56d29dee21c8ef97cb8969e62f6120ed1adc91e46828e2737b6c"
+        },
+        {
+          "path": "JointDecisionv3.mlmodelc/coremldata.bin",
+          "size": 521,
+          "sha256": "f5fc08b741400f0088492c9e839418b1e18522f19cba28d361dd030c5f398342"
+        },
+        {
+          "path": "JointDecisionv3.mlmodelc/metadata.json",
+          "size": 3453,
+          "sha256": null
+        },
+        {
+          "path": "JointDecisionv3.mlmodelc/model.mil",
+          "size": 11775,
+          "sha256": null
+        },
+        {
+          "path": "JointDecisionv3.mlmodelc/weights/weight.bin",
+          "size": 12642764,
+          "sha256": "4e0e63d840032f7f07ddb1d64446051166281e5491bf22da8a945c41f6eedb3e"
+        },
+        {
+          "path": "JointDecisionv3.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 10608,
+          "sha256": "c31044bcbcc2959ced2a59e8a0177b617aa359fa1ad613b57de5b63a430f9e31"
+        },
+        {
+          "path": "JointDecisionv3.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 12642764,
+          "sha256": "4e0e63d840032f7f07ddb1d64446051166281e5491bf22da8a945c41f6eedb3e"
+        },
+        {
+          "path": "JointDecisionv3.mlpackage/Manifest.json",
+          "size": 617,
+          "sha256": null
+        },
+        {
+          "path": "MelEncoder.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "811601924d9f2206d3c712cd37668ee728c865c9aadbbbc63742e424e02664a7"
+        },
+        {
+          "path": "MelEncoder.mlmodelc/coremldata.bin",
+          "size": 493,
+          "sha256": "10da3c056f8381d7447527718dc36e137439fffa4ce154f12b3656e8856bf96a"
+        },
+        {
+          "path": "MelEncoder.mlmodelc/metadata.json",
+          "size": 3178,
+          "sha256": null
+        },
+        {
+          "path": "MelEncoder.mlmodelc/model.mil",
+          "size": 1044136,
+          "sha256": null
+        },
+        {
+          "path": "MelEncoder.mlmodelc/weights/weight.bin",
+          "size": 595166912,
+          "sha256": "351c7a3bee2bf563472a5b09a2dde37b940d59aa23ef39a201c9885c7f010c61"
+        },
+        {
+          "path": "Melspectrogram_15s.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "69c14cb1c88f889264d81aaf34d927afd46a1fab42b762e2ca506e496f2b0f6b"
+        },
+        {
+          "path": "Melspectrogram_15s.mlmodelc/coremldata.bin",
+          "size": 400,
+          "sha256": "7bf5c6d29eefd6aca3a2775848fc13d169db0d2a399fc42f0d41505403de0c98"
+        },
+        {
+          "path": "Melspectrogram_15s.mlmodelc/metadata.json",
+          "size": 2804,
+          "sha256": null
+        },
+        {
+          "path": "Melspectrogram_15s.mlmodelc/model.mil",
+          "size": 26279,
+          "sha256": null
+        },
+        {
+          "path": "Melspectrogram_15s.mlmodelc/weights/weight.bin",
+          "size": 592384,
+          "sha256": "023c2303b7c3a1fafed92fc6ec46c1d43a48c0bbcdf33d6441d383a61747734c"
+        },
+        {
+          "path": "ParakeetDecoder.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "c88c077549fa8f428d30a75e3abeb031f3069fb4970e2ba34f451880c6526848"
+        },
+        {
+          "path": "ParakeetDecoder.mlmodelc/coremldata.bin",
+          "size": 438,
+          "sha256": "7b3f7039bd77de949917b8d1fe53d892a925e0cae1ad1b3cca2c5d57b922392c"
+        },
+        {
+          "path": "ParakeetDecoder.mlmodelc/model.mil",
+          "size": 13739,
+          "sha256": null
+        },
+        {
+          "path": "ParakeetDecoder.mlmodelc/weights/weight.bin",
+          "size": 36722432,
+          "sha256": "cae05619deee8995ff4532cb34a5ab63fbc14accf38f26479735933170159c9c"
+        },
+        {
+          "path": "ParakeetEncoder_15s.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "d9bc0e8a2ff995d47f651409dfe813571e2772292f22900a0c1c89cb62225ec3"
+        },
+        {
+          "path": "ParakeetEncoder_15s.mlmodelc/coremldata.bin",
+          "size": 387,
+          "sha256": "97d19e4d07164239ad1e566d4a6067c05d794996d6152f18b2dd75ac86bfc221"
+        },
+        {
+          "path": "ParakeetEncoder_15s.mlmodelc/metadata.json",
+          "size": 2765,
+          "sha256": null
+        },
+        {
+          "path": "ParakeetEncoder_15s.mlmodelc/model.mil",
+          "size": 957827,
+          "sha256": null
+        },
+        {
+          "path": "ParakeetEncoder_15s.mlmodelc/weights/weight.bin",
+          "size": 445187200,
+          "sha256": "fcf39b6d2ff41c623e5ec8c21fdca06100fc390adbbc926fa767d9fbaf35866d"
+        },
+        {
+          "path": "Preprocessor.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "c9beeb989c8d66f8be11df59bc6df277ec76cee404f6865b46243835ef562f6d"
+        },
+        {
+          "path": "Preprocessor.mlmodelc/coremldata.bin",
+          "size": 486,
+          "sha256": "dbde3f2300842c1fd51ef3ff948a0bcffe65ffd2dca10707f2509f32c1d65b1d"
+        },
+        {
+          "path": "Preprocessor.mlmodelc/metadata.json",
+          "size": 2841,
+          "sha256": null
+        },
+        {
+          "path": "Preprocessor.mlmodelc/model.mil",
+          "size": 28181,
+          "sha256": null
+        },
+        {
+          "path": "Preprocessor.mlmodelc/weights/weight.bin",
+          "size": 491072,
+          "sha256": "129b76e3aeafa8afa3ea76d995b964b145fe83700d579f6ff42c4c38fa0968ea"
+        },
+        {
+          "path": "README.md",
+          "size": 4285,
+          "sha256": null
+        },
+        {
+          "path": "RNNTJoint.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "6123e6464c990b52c62d86bd580a11c746cfcb5a01ae51b9ecbe92cfcef68852"
+        },
+        {
+          "path": "RNNTJoint.mlmodelc/coremldata.bin",
+          "size": 394,
+          "sha256": "8f1dc6e96c2f63c8636f5a09968abd2bff0ded029e5a205886c10228421a029b"
+        },
+        {
+          "path": "RNNTJoint.mlmodelc/metadata.json",
+          "size": 2703,
+          "sha256": null
+        },
+        {
+          "path": "RNNTJoint.mlmodelc/model.mil",
+          "size": 5508,
+          "sha256": null
+        },
+        {
+          "path": "RNNTJoint.mlmodelc/weights/weight.bin",
+          "size": 12642764,
+          "sha256": "4e0e63d840032f7f07ddb1d64446051166281e5491bf22da8a945c41f6eedb3e"
+        },
+        {
+          "path": "config.json",
+          "size": 475,
+          "sha256": null
+        },
+        {
+          "path": "mlpackages/.DS_Store",
+          "size": 6148,
+          "sha256": null
+        },
+        {
+          "path": "mlpackages/Decoder.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 11672,
+          "sha256": "8bfdcef9fb1b46a1ec2f3c1895c74ed90644a69105efda370e412a522bd5b353"
+        },
+        {
+          "path": "mlpackages/Decoder.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 23604992,
+          "sha256": "48adf0f0d47c406c8253d4f7fef967436a39da14f5a65e66d5a4b407be355d41"
+        },
+        {
+          "path": "mlpackages/Decoder.mlpackage/Manifest.json",
+          "size": 617,
+          "sha256": null
+        },
+        {
+          "path": "mlpackages/Encoder.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 661900,
+          "sha256": "cfec08b0fb04d25f7f61203e02571091e53d22fc85c47c5cc9699019d2ab0d2a"
+        },
+        {
+          "path": "mlpackages/Encoder.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 445187200,
+          "sha256": "e2020f323703477a5b21d7c2d282c403e371afb5962e79877e3033e73ba6f421"
+        },
+        {
+          "path": "mlpackages/Encoder.mlpackage/Manifest.json",
+          "size": 617,
+          "sha256": null
+        },
+        {
+          "path": "mlpackages/JointDecision.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 8820,
+          "sha256": "130d2712b827b8356667c02494efd117ac8aec2d1c563f169e9d4d350c346301"
+        },
+        {
+          "path": "mlpackages/JointDecision.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 12642764,
+          "sha256": "4e0e63d840032f7f07ddb1d64446051166281e5491bf22da8a945c41f6eedb3e"
+        },
+        {
+          "path": "mlpackages/JointDecision.mlpackage/Manifest.json",
+          "size": 617,
+          "sha256": null
+        },
+        {
+          "path": "mlpackages/MelEncoder.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 716613,
+          "sha256": "0e7ee9681979808688ac650b08349059f0526ebc3bb5ba73cc76e2b414046d72"
+        },
+        {
+          "path": "mlpackages/MelEncoder.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 595166912,
+          "sha256": "351c7a3bee2bf563472a5b09a2dde37b940d59aa23ef39a201c9885c7f010c61"
+        },
+        {
+          "path": "mlpackages/MelEncoder.mlpackage/Manifest.json",
+          "size": 617,
+          "sha256": null
+        },
+        {
+          "path": "mlpackages/Preprocessor.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 20454,
+          "sha256": "abc41e3d6c4f2d401ca445c85aa4884244eabed9bdec7b4ec7e60d691140cdfb"
+        },
+        {
+          "path": "mlpackages/Preprocessor.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 491072,
+          "sha256": "129b76e3aeafa8afa3ea76d995b964b145fe83700d579f6ff42c4c38fa0968ea"
+        },
+        {
+          "path": "mlpackages/Preprocessor.mlpackage/Manifest.json",
+          "size": 617,
+          "sha256": null
+        },
+        {
+          "path": "mlpackages/metadata.json",
+          "size": 9358,
+          "sha256": null
+        },
+        {
+          "path": "parakeet_v3_vocab.json",
+          "size": 151122,
+          "sha256": null
+        },
+        {
+          "path": "parakeet_vocab.json",
+          "size": 151122,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "FluidInference/parakeet-ultra-coreml",
+      "revision": "95eaa59a39d4394f047a4dc5cce480388a60d1b6",
+      "license": "cc-by-4.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1519,
+          "sha256": null
+        },
+        {
+          "path": "Decoder.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "fe92b6cfaa012abd5248c0bc877832f19807015abffc60d87b8ccc8ccb48b3b5"
+        },
+        {
+          "path": "Decoder.mlmodelc/coremldata.bin",
+          "size": 560,
+          "sha256": "3b06e66768f0df7e21795f50e2b29300e33eeb1a2579dc42c695279c2d308497"
+        },
+        {
+          "path": "Decoder.mlmodelc/model.mil",
+          "size": 13110,
+          "sha256": null
+        },
+        {
+          "path": "Decoder.mlmodelc/weights/weight.bin",
+          "size": 23604992,
+          "sha256": "02a0d219f281b9665bc10c8768649403b2eebbbf4b44c627041d948e0de11bb4"
+        },
+        {
+          "path": "Encoder.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "d87101d824d6723cf95304da33755c3c60e762663b9ef2b0c4bd0aa166a09a0d"
+        },
+        {
+          "path": "Encoder.mlmodelc/coremldata.bin",
+          "size": 514,
+          "sha256": "397a84a4062f563cbc5f56077c674f09a61d85be5090f61d2f1932afb92ac0fe"
+        },
+        {
+          "path": "Encoder.mlmodelc/model.mil",
+          "size": 1002653,
+          "sha256": null
+        },
+        {
+          "path": "Encoder.mlmodelc/weights/weight.bin",
+          "size": 594211328,
+          "sha256": "315ba01f33cadbf601d43ac7f5c86208b7aa75fdaa34705c9869d5abe3521c9b"
+        },
+        {
+          "path": "JointDecisionv3.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "68d38ca646aebafa7a9329e2efda50f5767c49e89fdb5f77f212072bb66f97c4"
+        },
+        {
+          "path": "JointDecisionv3.mlmodelc/coremldata.bin",
+          "size": 592,
+          "sha256": "5e3af5a4ce686f6c237cadbd9284e10d333bc0e1546633cd0e430e6194044bc4"
+        },
+        {
+          "path": "JointDecisionv3.mlmodelc/model.mil",
+          "size": 11777,
+          "sha256": null
+        },
+        {
+          "path": "JointDecisionv3.mlmodelc/weights/weight.bin",
+          "size": 12642764,
+          "sha256": "3f310b85b82341c53ec383025ab094a4e462ee1c592e1ad7c6bfe39cff66ca25"
+        },
+        {
+          "path": "Preprocessor.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "c9beeb989c8d66f8be11df59bc6df277ec76cee404f6865b46243835ef562f6d"
+        },
+        {
+          "path": "Preprocessor.mlmodelc/coremldata.bin",
+          "size": 486,
+          "sha256": "dbde3f2300842c1fd51ef3ff948a0bcffe65ffd2dca10707f2509f32c1d65b1d"
+        },
+        {
+          "path": "Preprocessor.mlmodelc/metadata.json",
+          "size": 2841,
+          "sha256": null
+        },
+        {
+          "path": "Preprocessor.mlmodelc/model.mil",
+          "size": 28181,
+          "sha256": null
+        },
+        {
+          "path": "Preprocessor.mlmodelc/weights/weight.bin",
+          "size": 491072,
+          "sha256": "129b76e3aeafa8afa3ea76d995b964b145fe83700d579f6ff42c4c38fa0968ea"
+        },
+        {
+          "path": "README.md",
+          "size": 2235,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 414,
+          "sha256": null
+        },
+        {
+          "path": "parakeet_v3_vocab.json",
+          "size": 151122,
+          "sha256": null
+        },
+        {
+          "path": "parakeet_vocab.json",
+          "size": 151122,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "FluidInference/parakeet-redux-coreml",
+      "revision": "8c5ef97a29cd120dc76b354b3f22b7fec3b486f9",
+      "license": "cc-by-4.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1519,
+          "sha256": null
+        },
+        {
+          "path": "Decoder.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "7f24e7248d57024c6f1c5a2ea306f4a6a89db45a363218523bb6410c4b1aecf0"
+        },
+        {
+          "path": "Decoder.mlmodelc/coremldata.bin",
+          "size": 560,
+          "sha256": "422da51d983e93a3e48cd6d46a17d6c32844452414c8e242fb0caaca2b8af5ed"
+        },
+        {
+          "path": "Decoder.mlmodelc/model.mil",
+          "size": 13110,
+          "sha256": null
+        },
+        {
+          "path": "Decoder.mlmodelc/weights/weight.bin",
+          "size": 23604992,
+          "sha256": "6c6c88c23ee5492a6b229e8cc636ddadb2b01ae0dd559d9cb63123bebf507d77"
+        },
+        {
+          "path": "Encoder.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "7862e972e09315df099d4bfd320743bf106acbf7fe4343317f9de45b0635d7b7"
+        },
+        {
+          "path": "Encoder.mlmodelc/coremldata.bin",
+          "size": 506,
+          "sha256": "ca0b212fe3c06c3ccd35e508fa61e4dfaad19dd0c55b82e4f5bf8711e7758fd9"
+        },
+        {
+          "path": "Encoder.mlmodelc/model.mil",
+          "size": 965906,
+          "sha256": null
+        },
+        {
+          "path": "Encoder.mlmodelc/weights/weight.bin",
+          "size": 182389312,
+          "sha256": "adbb5550dc6488717d3a1407b53122fbdb1af5e99c330ee20f8d8cfd9ec49252"
+        },
+        {
+          "path": "JointDecisionv3.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "fc857a756b8c9c9f31aa9e1062766cc0a82ac035ef369d6e1cbe97184921479c"
+        },
+        {
+          "path": "JointDecisionv3.mlmodelc/coremldata.bin",
+          "size": 592,
+          "sha256": "611ea653e2adede7cc1cfe70da36296844f97e95e2c7dd961d45230e5599389d"
+        },
+        {
+          "path": "JointDecisionv3.mlmodelc/model.mil",
+          "size": 11777,
+          "sha256": null
+        },
+        {
+          "path": "JointDecisionv3.mlmodelc/weights/weight.bin",
+          "size": 12642764,
+          "sha256": "73b0288acd115fc4c36038f66b6cbf49233182488febf5d8c787bea4009535f7"
+        },
+        {
+          "path": "Preprocessor.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "c9beeb989c8d66f8be11df59bc6df277ec76cee404f6865b46243835ef562f6d"
+        },
+        {
+          "path": "Preprocessor.mlmodelc/coremldata.bin",
+          "size": 486,
+          "sha256": "dbde3f2300842c1fd51ef3ff948a0bcffe65ffd2dca10707f2509f32c1d65b1d"
+        },
+        {
+          "path": "Preprocessor.mlmodelc/metadata.json",
+          "size": 2841,
+          "sha256": null
+        },
+        {
+          "path": "Preprocessor.mlmodelc/model.mil",
+          "size": 28181,
+          "sha256": null
+        },
+        {
+          "path": "Preprocessor.mlmodelc/weights/weight.bin",
+          "size": 491072,
+          "sha256": "129b76e3aeafa8afa3ea76d995b964b145fe83700d579f6ff42c4c38fa0968ea"
+        },
+        {
+          "path": "README.md",
+          "size": 4972,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 458,
+          "sha256": null
+        },
+        {
+          "path": "parakeet_v3_vocab.json",
+          "size": 151122,
+          "sha256": null
+        },
+        {
+          "path": "parakeet_vocab.json",
+          "size": 151122,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "CohereLabs/cohere-transcribe-03-2026",
+      "revision": "d552dadc2922ba6f6c1f994f8db904d52dcaf942",
+      "license": "apache-2.0",
+      "gated": "auto",
+      "files": [
+        {
+          "path": ".eval_results/open_asr_leaderboard.yaml",
+          "size": 2129,
+          "sha256": null
+        },
+        {
+          "path": ".gitattributes",
+          "size": 1610,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 21485,
+          "sha256": null
+        },
+        {
+          "path": "assets/260326_TranscribeLaunch_Plot1.png",
+          "size": 121147,
+          "sha256": "8a3ef775f04eb47e30288d661314d2c8280eff5f85591629c5ad985f2a6ca07c"
+        },
+        {
+          "path": "assets/HF_model_card_per-language-avg-plot.png",
+          "size": 150823,
+          "sha256": "f844247f90a164d085b1ef49d3acb940297b9039d24ff9818594736cdfc6ff24"
+        },
+        {
+          "path": "config.json",
+          "size": 3998,
+          "sha256": null
+        },
+        {
+          "path": "configuration_cohere_asr.py",
+          "size": 1795,
+          "sha256": null
+        },
+        {
+          "path": "demo/voxpopuli_test_en_demo.wav",
+          "size": 174124,
+          "sha256": "d52af604ec92ada2d05ef8d93ec63ab9309a39ef1f494a8f2da68522b5e3fa0b"
+        },
+        {
+          "path": "generation_config.json",
+          "size": 234,
+          "sha256": null
+        },
+        {
+          "path": "model.safetensors",
+          "size": 4131862976,
+          "sha256": "987bd3e141c7bfdb5a78f5db11397ee7737308357e6cc0a3f36a4979b158137a"
+        },
+        {
+          "path": "modeling_cohere_asr.py",
+          "size": 64648,
+          "sha256": null
+        },
+        {
+          "path": "preprocessor_config.json",
+          "size": 420,
+          "sha256": null
+        },
+        {
+          "path": "processing_cohere_asr.py",
+          "size": 20572,
+          "sha256": null
+        },
+        {
+          "path": "processor_config.json",
+          "size": 131,
+          "sha256": null
+        },
+        {
+          "path": "special_tokens_map.json",
+          "size": 4091,
+          "sha256": null
+        },
+        {
+          "path": "tokenization_cohere_asr.py",
+          "size": 6623,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer.json",
+          "size": 1816694,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer.model",
+          "size": 492827,
+          "sha256": "6d21e6a83b2d0d3e1241a7817e4bef8eb63bcb7cfe4a2675af9a35ff3bbf0e14"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 48138,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "FluidInference/cohere-transcribe-03-2026-coreml",
+      "revision": "e1ce10d4cae2ca9a8b36cef5786fa3660f070050",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1519,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 8441,
+          "sha256": null
+        },
+        {
+          "path": "cohere_mel_spectrogram.py",
+          "size": 3656,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 81,
+          "sha256": null
+        },
+        {
+          "path": "config.son",
+          "size": 2,
+          "sha256": null
+        },
+        {
+          "path": "example.py",
+          "size": 5915,
+          "sha256": null
+        },
+        {
+          "path": "export-cross-kv-projector.py",
+          "size": 6044,
+          "sha256": null
+        },
+        {
+          "path": "export-decoder-cached.py",
+          "size": 8286,
+          "sha256": null
+        },
+        {
+          "path": "export-decoder-with-cross-kv.py",
+          "size": 9986,
+          "sha256": null
+        },
+        {
+          "path": "export-encoder.py",
+          "size": 5193,
+          "sha256": null
+        },
+        {
+          "path": "metadata.json",
+          "size": 616,
+          "sha256": null
+        },
+        {
+          "path": "model_card.md",
+          "size": 1949,
+          "sha256": null
+        },
+        {
+          "path": "q8/.DS_Store",
+          "size": 8196,
+          "sha256": null
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "d1e653ad9967801fff2f70638bfdab3038feff1644c6e1fc77026d805f433c3c"
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external.mlmodelc/coremldata.bin",
+          "size": 1578,
+          "sha256": "18250d843f742e7bc0368555cd0edf251f2346e6b4b961e065ef5e98c6723714"
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external.mlmodelc/metadata.json",
+          "size": 13734,
+          "sha256": null
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external.mlmodelc/model.mil",
+          "size": 1010372,
+          "sha256": null
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external.mlmodelc/weights/weight.bin",
+          "size": 304453120,
+          "sha256": "86eac4bce6ca5d4ca49f5bf1078a1b42ab75f59d7c809678592a493742c29568"
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 515669,
+          "sha256": "8c188acb80f5903b6e7a04d264930a415da5cec17642a724cb3ca1c4eb7f4fc1"
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 304453120,
+          "sha256": "86eac4bce6ca5d4ca49f5bf1078a1b42ab75f59d7c809678592a493742c29568"
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external.mlpackage/Manifest.json",
+          "size": 617,
+          "sha256": null
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external_v2.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "c2f8083545d32e711223ccd852f9bf9a8b5714b7f46513c828ad60c1926d6e90"
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external_v2.mlmodelc/coremldata.bin",
+          "size": 1562,
+          "sha256": "dbd9290c1188f7e529f3c16a41428b7d0bc978e662a269385125d996e5516e8f"
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external_v2.mlmodelc/metadata.json",
+          "size": 13587,
+          "sha256": null
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external_v2.mlmodelc/model.mil",
+          "size": 207280,
+          "sha256": null
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external_v2.mlmodelc/weights/weight.bin",
+          "size": 304453120,
+          "sha256": "86eac4bce6ca5d4ca49f5bf1078a1b42ab75f59d7c809678592a493742c29568"
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external_v2.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 176203,
+          "sha256": "2fa37e633da0bea23a8b85c6717d00c2f6fc0d603de157613bf3c3a7bee456e5"
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external_v2.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 304453120,
+          "sha256": "86eac4bce6ca5d4ca49f5bf1078a1b42ab75f59d7c809678592a493742c29568"
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external_v2.mlpackage/Manifest.json",
+          "size": 617,
+          "sha256": null
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external_v3.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "cb638328d2252a3d59415d9173cffe3ee0b4afc98f8fc90feb27c6533318f1ff"
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external_v3.mlmodelc/coremldata.bin",
+          "size": 1688,
+          "sha256": "4dd714b7bcf84597341e7509dcda42b8581a7c5c73953e8c85a3bb723a89cc17"
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external_v3.mlmodelc/metadata.json",
+          "size": 13693,
+          "sha256": null
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external_v3.mlmodelc/model.mil",
+          "size": 203705,
+          "sha256": null
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external_v3.mlmodelc/weights/weight.bin",
+          "size": 304453120,
+          "sha256": "86eac4bce6ca5d4ca49f5bf1078a1b42ab75f59d7c809678592a493742c29568"
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external_v3.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 172820,
+          "sha256": "2805ba9ef6863cf02fc3887a0e939dfe440104efcb3a48225de7c519daee444c"
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external_v3.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 304453120,
+          "sha256": "86eac4bce6ca5d4ca49f5bf1078a1b42ab75f59d7c809678592a493742c29568"
+        },
+        {
+          "path": "q8/cohere_decoder_cache_external_v3.mlpackage/Manifest.json",
+          "size": 617,
+          "sha256": null
+        },
+        {
+          "path": "q8/cohere_encoder.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "b3144d7325a5c55145e5c46487379ad9fb0718f90f2a63fce63a6f0084b09a48"
+        },
+        {
+          "path": "q8/cohere_encoder.mlmodelc/coremldata.bin",
+          "size": 421,
+          "sha256": "2c677b62b835a6a7cd69499119df60c43e55eed1042063ede032ca5583802c9d"
+        },
+        {
+          "path": "q8/cohere_encoder.mlmodelc/metadata.json",
+          "size": 2587,
+          "sha256": null
+        },
+        {
+          "path": "q8/cohere_encoder.mlmodelc/model.mil",
+          "size": 2444649,
+          "sha256": null
+        },
+        {
+          "path": "q8/cohere_encoder.mlmodelc/weights/weight.bin",
+          "size": 1881964672,
+          "sha256": "f2992beb02730c9b751fe73c0fd898d83b013241531793e659776e5b3b9bc8a7"
+        },
+        {
+          "path": "q8/cohere_encoder.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 1375932,
+          "sha256": "d97b262ed37e7c55253519ddd05451dda6d8fc073655fd30d1b70281c1e3df34"
+        },
+        {
+          "path": "q8/cohere_encoder.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 1881964672,
+          "sha256": "f2992beb02730c9b751fe73c0fd898d83b013241531793e659776e5b3b9bc8a7"
+        },
+        {
+          "path": "q8/cohere_encoder.mlpackage/Manifest.json",
+          "size": 617,
+          "sha256": null
+        },
+        {
+          "path": "requirements.txt",
+          "size": 87,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer.model",
+          "size": 492827,
+          "sha256": "6d21e6a83b2d0d3e1241a7817e4bef8eb63bcb7cfe4a2675af9a35ff3bbf0e14"
+        },
+        {
+          "path": "vocab.json",
+          "size": 338520,
+          "sha256": null
+        },
+        {
+          "path": "wer_results_cache_external.json",
+          "size": 4092,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "nvidia/nemotron-3.5-asr-streaming-0.6b",
+      "revision": "ea30d66debe3740a08b573244286791d423d6b3e",
+      "license": "other",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1647,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 54239,
+          "sha256": null
+        },
+        {
+          "path": "arch_slide10.png",
+          "size": 87843,
+          "sha256": "2be5d8ccfcd8232c6fc57ffacda125221382ef181ec239e1b6fdd78cf0c1c020"
+        },
+        {
+          "path": "avg_wer_summary.png",
+          "size": 65515,
+          "sha256": "9a5474f81b64e0ce844c5907f073f7fab56a353d21db9196cd11aba22f787060"
+        },
+        {
+          "path": "bias.md",
+          "size": 2104,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 1376,
+          "sha256": null
+        },
+        {
+          "path": "explainability.md",
+          "size": 2388,
+          "sha256": null
+        },
+        {
+          "path": "fleurs_langid_vs_auto.png",
+          "size": 83849,
+          "sha256": "56c360a710c99cbf70c04006ec1f842b3796b72f5093178d438b2140049b3626"
+        },
+        {
+          "path": "fleurs_wer_vs_chunk_size.png",
+          "size": 92234,
+          "sha256": "9b340101e45a7ba6268f1b9c90037d9c2cf00c2c1768272bd3bdcaffd9b231ff"
+        },
+        {
+          "path": "generation_config.json",
+          "size": 193,
+          "sha256": null
+        },
+        {
+          "path": "latency_vs_parallel.png",
+          "size": 139167,
+          "sha256": "3e5636204786c68914f69c3f3158b4e698774b6e0dbd9120dbd996947e396638"
+        },
+        {
+          "path": "model.safetensors",
+          "size": 2552062944,
+          "sha256": "9eebdd6590289cb3030f310858f3df93256600a800a3e8200c5993d5f967e174"
+        },
+        {
+          "path": "model_architecture.png",
+          "size": 150586,
+          "sha256": "3146643d1a7c8dd424adcb221a5dabbda6951da1ef3937f7d15b29e46e5fa272"
+        },
+        {
+          "path": "model_overview.png",
+          "size": 114032,
+          "sha256": "075554d371b33de450cb7a13fa9886c3689855d4930b37edc1ecb954b01f33c5"
+        },
+        {
+          "path": "nemotron-3.5-asr-streaming-0.6b.nemo",
+          "size": 2368284501,
+          "sha256": "210214ed94039bf6bfbb9a047c7fa289628db75b103e2bf6381fa78285436a74"
+        },
+        {
+          "path": "nemotron-3.5-asr-streaming-0.6b.q8_0.gguf",
+          "size": 742090464,
+          "sha256": "3fc991d3badad7277c11030a7519832cddaf2057aafed6d4b25147e953a070b1"
+        },
+        {
+          "path": "privacy.md",
+          "size": 2097,
+          "sha256": null
+        },
+        {
+          "path": "processor_config.json",
+          "size": 2519,
+          "sha256": null
+        },
+        {
+          "path": "safety.md",
+          "size": 737,
+          "sha256": null
+        },
+        {
+          "path": "throughput_vs_chunk.png",
+          "size": 69454,
+          "sha256": "276b2f4e3dca6f5550f4215c8180ab244bc998401d65b54ce40400d228fee5da"
+        },
+        {
+          "path": "tokenizer.json",
+          "size": 752051,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 881,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "nvidia/multitalker-parakeet-streaming-0.6b-v1",
+      "revision": "8749fc71fd6e2d88ef230159bbf2aea69b524ee1",
+      "license": "other",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 2120,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 19703,
+          "sha256": null
+        },
+        {
+          "path": "README_expired.md",
+          "size": 189,
+          "sha256": null
+        },
+        {
+          "path": "bias.md",
+          "size": 542,
+          "sha256": null
+        },
+        {
+          "path": "example.py",
+          "size": 3641,
+          "sha256": null
+        },
+        {
+          "path": "explainability.md",
+          "size": 2889,
+          "sha256": null
+        },
+        {
+          "path": "figures/multi_instance.png",
+          "size": 838801,
+          "sha256": "608a4444100748c45dbc0f38d0382c0daabf2670c1fc53c1cdb2fa452ac86b22"
+        },
+        {
+          "path": "figures/speaker_injection.png",
+          "size": 336113,
+          "sha256": "d9401ded881c1104bebcac66db09464715eef1008f4911208f7918cf37a1c62e"
+        },
+        {
+          "path": "figures/test.txt",
+          "size": 5,
+          "sha256": null
+        },
+        {
+          "path": "multitalker-parakeet-streaming-0.6b-v1.nemo",
+          "size": 2489825280,
+          "sha256": "afaefe89829e201a0ee22c67a715eb5a467bd06c0704cc1579fbfb370fb5be73"
+        },
+        {
+          "path": "multitalker_transcript_config.py",
+          "size": 4524,
+          "sha256": null
+        },
+        {
+          "path": "privacy.md",
+          "size": 1902,
+          "sha256": null
+        },
+        {
+          "path": "safety.md",
+          "size": 782,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "animaslabs/multitalker-parakeet-streaming-0.6b-v1-mlx",
+      "revision": "0403e12e1557bfc907b846c4fdfeb2f45b8d9562",
+      "license": "other",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1519,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 1447,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 34414,
+          "sha256": null
+        },
+        {
+          "path": "model.safetensors",
+          "size": 2489187788,
+          "sha256": "a4593d105d331a45b06c4edadfc69ddaefb7f5793de0e496c6130ba716bb38ba"
+        },
+        {
+          "path": "model_config.yaml",
+          "size": 20650,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer.model",
+          "size": 251056,
+          "sha256": "07d4e5a63840a53ab2d4d106d2874768143fb3fbdd47938b3910d2da05bfb0a9"
+        },
+        {
+          "path": "tokenizer.vocab",
+          "size": 9961,
+          "sha256": null
+        },
+        {
+          "path": "vocab.txt",
+          "size": 4929,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "mistral-experimental/AudioCPP-Voxtral-Mini-4B-Realtime-2602-GGUF",
+      "revision": "4c3212f91349c32211172ce332f266a6e9501018",
+      "license": null,
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1671,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 9629,
+          "sha256": null
+        },
+        {
+          "path": "voxtral-mini-4b-realtime-2602-q4_k.gguf",
+          "size": 3097662432,
+          "sha256": "8cafef18ea3e4cad81da8ffc4e72b69d2eab2c159c2e68428e2e088accbfc7f8"
+        },
+        {
+          "path": "voxtral-mini-4b-realtime-2602-q8_0.gguf",
+          "size": 5104567264,
+          "sha256": "0312a5ceafc6ee4a19a32da458cab6485e3b86b1b563c7bb7150aeae295c1769"
+        }
+      ]
+    },
+    {
+      "repo": "nvidia/canary-1b-v2",
+      "revision": "d455706339a6b32e1aa40f82c713a482a0c938e2",
+      "license": "cc-by-4.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1615,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 72381,
+          "sha256": null
+        },
+        {
+          "path": "canary-1b-v2.nemo",
+          "size": 6358958080,
+          "sha256": "ae5ef1bf06812a95a1594a8f5f0ee9c51f35418e5ba96939fa6b98ab00431094"
+        },
+        {
+          "path": "chat_template.jinja",
+          "size": 534,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 1591,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 252,
+          "sha256": null
+        },
+        {
+          "path": "model.safetensors",
+          "size": 3916173816,
+          "sha256": "4f6d381f6a939b95e9f8516212148b701e9b3805d26462c4c3e9e34f3d89b6f8"
+        },
+        {
+          "path": "plots/asr.png",
+          "size": 146866,
+          "sha256": "eed9ca5867f6f6c24f992ad6ae246341c385404fc9d041fa21eab42115ae8d99"
+        },
+        {
+          "path": "plots/en_x.png",
+          "size": 128921,
+          "sha256": "387e159be99c2fdf4b2cc41a2e4c2ca07653558b6d2d139ec87dbf419de89fd7"
+        },
+        {
+          "path": "plots/x_en.png",
+          "size": 125547,
+          "sha256": "100590e221f77cbe51411f2627f72f9e2991a3a4811e36fa0b87c3ee1f40cf3e"
+        },
+        {
+          "path": "processor_config.json",
+          "size": 362,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer.json",
+          "size": 2189980,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 328,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "google/madlad400-3b-mt",
+      "revision": "fa184c675da0b5c9e1c8694fccd4e12e2d422094",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1723,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 9666,
+          "sha256": null
+        },
+        {
+          "path": "added_tokens.json",
+          "size": 4,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 749,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 142,
+          "sha256": null
+        },
+        {
+          "path": "model-q2k.gguf",
+          "size": 965486240,
+          "sha256": "abab3b4cf39c076b94517e5b7f53bf43a70e72032d787dde948c56a1c597df5d"
+        },
+        {
+          "path": "model-q3k.gguf",
+          "size": 1264101024,
+          "sha256": "6d9850c77c4610037085b2595f5cfde13a23a70296596209d8d61b7cc0d34e6e"
+        },
+        {
+          "path": "model-q4k.gguf",
+          "size": 1654597280,
+          "sha256": "ea6e5531a3e95213c7f0635988d119e078a655c09306e47851e15d4c0c3f9c37"
+        },
+        {
+          "path": "model.safetensors",
+          "size": 11761587872,
+          "sha256": "66ff5f8fcaf92291da486fdfbd4d5233cec90e1359348a56e3172c978b3a76d4"
+        },
+        {
+          "path": "special_tokens_map.json",
+          "size": 414,
+          "sha256": null
+        },
+        {
+          "path": "spiece.model",
+          "size": 4427844,
+          "sha256": "ef11ac9a22c7503492f56d48dce53be20e339b63605983e9f27d2cd0e0f3922c"
+        },
+        {
+          "path": "tokenizer.json",
+          "size": 16629031,
+          "sha256": "a2799ccc696b752ba00c34f58726bfe253a04921ceb6cfc620400f560474790b"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 830,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "jbochi/madlad400-3b-mt",
+      "revision": "bb45f1851bf13a0b8f4fcd9ecadf2cdb7cf22439",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1723,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 9675,
+          "sha256": null
+        },
+        {
+          "path": "added_tokens.json",
+          "size": 4,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 749,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 142,
+          "sha256": null
+        },
+        {
+          "path": "model-q2k.gguf",
+          "size": 965486240,
+          "sha256": "abab3b4cf39c076b94517e5b7f53bf43a70e72032d787dde948c56a1c597df5d"
+        },
+        {
+          "path": "model-q3k.gguf",
+          "size": 1264101024,
+          "sha256": "6d9850c77c4610037085b2595f5cfde13a23a70296596209d8d61b7cc0d34e6e"
+        },
+        {
+          "path": "model-q4k.gguf",
+          "size": 1654597280,
+          "sha256": "ea6e5531a3e95213c7f0635988d119e078a655c09306e47851e15d4c0c3f9c37"
+        },
+        {
+          "path": "model.safetensors",
+          "size": 11761587872,
+          "sha256": "66ff5f8fcaf92291da486fdfbd4d5233cec90e1359348a56e3172c978b3a76d4"
+        },
+        {
+          "path": "special_tokens_map.json",
+          "size": 414,
+          "sha256": null
+        },
+        {
+          "path": "spiece.model",
+          "size": 4427844,
+          "sha256": "ef11ac9a22c7503492f56d48dce53be20e339b63605983e9f27d2cd0e0f3922c"
+        },
+        {
+          "path": "tokenizer.json",
+          "size": 16629031,
+          "sha256": "a2799ccc696b752ba00c34f58726bfe253a04921ceb6cfc620400f560474790b"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 830,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "tencent/Hy-MT2-1.8B-GGUF",
+      "revision": "a0c709d9fac510f2c807aa3af52872340dc37a4a",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1874,
+          "sha256": null
+        },
+        {
+          "path": "Hy-MT2-1.8B-Q4_K_M.gguf",
+          "size": 1133080448,
+          "sha256": "dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699"
+        },
+        {
+          "path": "Hy-MT2-1.8B-Q6_K.gguf",
+          "size": 1474785120,
+          "sha256": "d98fe604dec1f28f58f80d7d560f7177e584d3b8e5835862687660e5ff97cb40"
+        },
+        {
+          "path": "Hy-MT2-1.8B-Q8_0.gguf",
+          "size": 1908528192,
+          "sha256": "5c3fe0b1408a5ceb0143184ef247b11b579c525f4b02b060e6c851bb76fef1a4"
+        },
+        {
+          "path": "LICENSE.txt",
+          "size": 11639,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 15305,
+          "sha256": null
+        },
+        {
+          "path": "README_CN.md",
+          "size": 14489,
+          "sha256": null
+        },
+        {
+          "path": "imgs/logo-en.png",
+          "size": 65860,
+          "sha256": null
+        },
+        {
+          "path": "imgs/logo-zh.png",
+          "size": 69906,
+          "sha256": null
+        },
+        {
+          "path": "imgs/main_result.png",
+          "size": 3840604,
+          "sha256": "b87606817fec4fbdaca939de433e4d2a8e92d65493f44222aaaefb381f5a8c6e"
+        },
+        {
+          "path": "train/README.md",
+          "size": 15424,
+          "sha256": null
+        },
+        {
+          "path": "train/README_CN.md",
+          "size": 14167,
+          "sha256": null
+        },
+        {
+          "path": "train/data/example_data.jsonl",
+          "size": 27750,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero2_no_offload.json",
+          "size": 528,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero2_offload.json",
+          "size": 676,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero3_no_offload.json",
+          "size": 1100,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero3_offload.json",
+          "size": 1099,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero3_offload_no_auto.json",
+          "size": 944,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/merge_lora_weight.py",
+          "size": 2512,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/merge_lora_weight.sh",
+          "size": 269,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/train.py",
+          "size": 25662,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/train.sh",
+          "size": 3471,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/train_dense.py",
+          "size": 14905,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/train_dense.sh",
+          "size": 4853,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/train_dense_lora.sh",
+          "size": 5081,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/train_lora.sh",
+          "size": 3603,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/convert_zero_to_hf.sh",
+          "size": 5925,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/dataset_info.json",
+          "size": 974,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/ds_zero2_offload.json",
+          "size": 892,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/ds_zero2_offload_lora.json",
+          "size": 795,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/ds_zero3_offload.json",
+          "size": 954,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_1_8b_full_sft.yaml",
+          "size": 1077,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_1_8b_lora_sft.yaml",
+          "size": 1193,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_7b_full_sft.yaml",
+          "size": 1071,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_7b_lora_sft.yaml",
+          "size": 1187,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_template.py",
+          "size": 3616,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_v3_full_sft.yaml",
+          "size": 1076,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_v3_lora_sft.yaml",
+          "size": 1231,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_v3_patches.py",
+          "size": 8783,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_v3_template.py",
+          "size": 1933,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/train_hy_dense.py",
+          "size": 2982,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/train_hy_v3.py",
+          "size": 2475,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/train_lf.sh",
+          "size": 3904,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/train_lf_dense.sh",
+          "size": 4197,
+          "sha256": null
+        },
+        {
+          "path": "train/requirements.txt",
+          "size": 159,
+          "sha256": null
+        },
+        {
+          "path": "train/tools/check_converted.py",
+          "size": 15567,
+          "sha256": null
+        },
+        {
+          "path": "train/tools/convert_ckpt_to_outer.py",
+          "size": 23540,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "tencent/Hy-MT2-7B-GGUF",
+      "revision": "ab8472660ac61fac25f1af43fac2599d52a8a775",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1868,
+          "sha256": null
+        },
+        {
+          "path": "HY-MT2-7B-Q6_K.gguf",
+          "size": 6164482720,
+          "sha256": "88ef0aba59952a4cfe4be36cb5baf797dbb370bc60e9dcbd7297036021e52831"
+        },
+        {
+          "path": "HY-MT2-7B-Q8_0.gguf",
+          "size": 7981928896,
+          "sha256": "58b3ad55dd6f6fa08c695cddc34fb5f8f708a844f78ae10508071914b0ed67c0"
+        },
+        {
+          "path": "Hy-MT2-7B-Q4_K_M.gguf",
+          "size": 4624648896,
+          "sha256": "9f96256500f3fc1ab4d64336b58f52a949a95ad7516b0c229476eef782f9f77b"
+        },
+        {
+          "path": "LICENSE.txt",
+          "size": 11635,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 15276,
+          "sha256": null
+        },
+        {
+          "path": "README_CN.md",
+          "size": 14489,
+          "sha256": null
+        },
+        {
+          "path": "imgs/logo-en.png",
+          "size": 65860,
+          "sha256": null
+        },
+        {
+          "path": "imgs/logo-zh.png",
+          "size": 69906,
+          "sha256": null
+        },
+        {
+          "path": "imgs/main_result.png",
+          "size": 3840604,
+          "sha256": "b87606817fec4fbdaca939de433e4d2a8e92d65493f44222aaaefb381f5a8c6e"
+        },
+        {
+          "path": "train/README.md",
+          "size": 15424,
+          "sha256": null
+        },
+        {
+          "path": "train/README_CN.md",
+          "size": 14167,
+          "sha256": null
+        },
+        {
+          "path": "train/data/example_data.jsonl",
+          "size": 27750,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero2_no_offload.json",
+          "size": 528,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero2_offload.json",
+          "size": 676,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero3_no_offload.json",
+          "size": 1100,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero3_offload.json",
+          "size": 1099,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero3_offload_no_auto.json",
+          "size": 944,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/merge_lora_weight.py",
+          "size": 2512,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/merge_lora_weight.sh",
+          "size": 269,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/train.py",
+          "size": 25662,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/train.sh",
+          "size": 3471,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/train_dense.py",
+          "size": 14905,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/train_dense.sh",
+          "size": 4853,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/train_dense_lora.sh",
+          "size": 5081,
+          "sha256": null
+        },
+        {
+          "path": "train/deepspeed_support/train_lora.sh",
+          "size": 3603,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/convert_zero_to_hf.sh",
+          "size": 5925,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/dataset_info.json",
+          "size": 974,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/ds_zero2_offload.json",
+          "size": 892,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/ds_zero2_offload_lora.json",
+          "size": 795,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/ds_zero3_offload.json",
+          "size": 954,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_1_8b_full_sft.yaml",
+          "size": 1077,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_1_8b_lora_sft.yaml",
+          "size": 1193,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_7b_full_sft.yaml",
+          "size": 1071,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_7b_lora_sft.yaml",
+          "size": 1187,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_template.py",
+          "size": 3616,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_v3_full_sft.yaml",
+          "size": 1076,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_v3_lora_sft.yaml",
+          "size": 1231,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_v3_patches.py",
+          "size": 8783,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/hy_v3_template.py",
+          "size": 1933,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/train_hy_dense.py",
+          "size": 2982,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/train_hy_v3.py",
+          "size": 2475,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/train_lf.sh",
+          "size": 3904,
+          "sha256": null
+        },
+        {
+          "path": "train/llama_factory_support/train_lf_dense.sh",
+          "size": 4197,
+          "sha256": null
+        },
+        {
+          "path": "train/requirements.txt",
+          "size": 159,
+          "sha256": null
+        },
+        {
+          "path": "train/tools/check_converted.py",
+          "size": 15567,
+          "sha256": null
+        },
+        {
+          "path": "train/tools/convert_ckpt_to_outer.py",
+          "size": 23540,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "google/translategemma-4b-it",
+      "revision": "10042cb0e6e7fdce748996a71dc3dc432a4e0c89",
+      "license": "gemma",
+      "gated": "manual",
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1570,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 17508,
+          "sha256": null
+        },
+        {
+          "path": "added_tokens.json",
+          "size": 35,
+          "sha256": null
+        },
+        {
+          "path": "chat_template.jinja",
+          "size": 16982,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 2618,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 156,
+          "sha256": null
+        },
+        {
+          "path": "model-00001-of-00002.safetensors",
+          "size": 4961251752,
+          "sha256": "6187566ec8d00990103cd9243b306aceaa352697abfa3bb6fcbc5ce7a64ce142"
+        },
+        {
+          "path": "model-00002-of-00002.safetensors",
+          "size": 3639026128,
+          "sha256": "40c6a896b2275866e8bf56abc1da85f37a0d1d8fee824ad3008ea3231f4a3b70"
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "size": 90594,
+          "sha256": null
+        },
+        {
+          "path": "preprocessor_config.json",
+          "size": 570,
+          "sha256": null
+        },
+        {
+          "path": "processor_config.json",
+          "size": 70,
+          "sha256": null
+        },
+        {
+          "path": "special_tokens_map.json",
+          "size": 662,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer.json",
+          "size": 33384570,
+          "sha256": "7d4046bf0505a327dd5a0abbb427ecd4fc82f99c2ceaa170bc61ecde12809b0c"
+        },
+        {
+          "path": "tokenizer.model",
+          "size": 4689074,
+          "sha256": "1299c11d7cf632ef3b4e11937501358ada021bbdf7c47638d13c0ee982f2e79c"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 1155415,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "google/translategemma-12b-it",
+      "revision": "d1b225e1caa17f1ddc7e62065d8637d0923f34e2",
+      "license": "gemma",
+      "gated": "manual",
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1570,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 17510,
+          "sha256": null
+        },
+        {
+          "path": "added_tokens.json",
+          "size": 35,
+          "sha256": null
+        },
+        {
+          "path": "chat_template.jinja",
+          "size": 16982,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 2988,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 156,
+          "sha256": null
+        },
+        {
+          "path": "model-00001-of-00005.safetensors",
+          "size": 4979902192,
+          "sha256": "a0aa409b89fc9d20ab61cef1e53452ea19740c97f186f3e4a25c63c320b9478b"
+        },
+        {
+          "path": "model-00002-of-00005.safetensors",
+          "size": 4931296592,
+          "sha256": "1bbc97175699b70b8e5a41e65161ed2d84bad21326e10711937fe80afcb5613e"
+        },
+        {
+          "path": "model-00003-of-00005.safetensors",
+          "size": 4931296656,
+          "sha256": "a38ccb9f007f6eebbe78e2e0956b9c7da85e3ca8988bd7289f83c8abed5a1881"
+        },
+        {
+          "path": "model-00004-of-00005.safetensors",
+          "size": 4931296656,
+          "sha256": "09ad5b66ae6c5387569d513d289b953d8dfe9064b5eed5c4556141d1b21ae29d"
+        },
+        {
+          "path": "model-00005-of-00005.safetensors",
+          "size": 4601000928,
+          "sha256": "e9eb9ff07215c525fc85e05e51335cc7a77e8baebef24aafb60ae769af5fdfa2"
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "size": 108642,
+          "sha256": null
+        },
+        {
+          "path": "preprocessor_config.json",
+          "size": 570,
+          "sha256": null
+        },
+        {
+          "path": "processor_config.json",
+          "size": 70,
+          "sha256": null
+        },
+        {
+          "path": "special_tokens_map.json",
+          "size": 662,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer.json",
+          "size": 33384570,
+          "sha256": "7d4046bf0505a327dd5a0abbb427ecd4fc82f99c2ceaa170bc61ecde12809b0c"
+        },
+        {
+          "path": "tokenizer.model",
+          "size": 4689074,
+          "sha256": "1299c11d7cf632ef3b4e11937501358ada021bbdf7c47638d13c0ee982f2e79c"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 1155415,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "facebook/seamless-m4t-v2-large",
+      "revision": "5f8cc790b19fc3f67a61c105133b20b34e3dcb76",
+      "license": "cc-by-nc-4.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1519,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 15788,
+          "sha256": null
+        },
+        {
+          "path": "added_tokens.json",
+          "size": 2066,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 2716,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 9906948,
+          "sha256": null
+        },
+        {
+          "path": "m4t_v2_multitask_unity2.pt",
+          "size": 11386771266,
+          "sha256": "2ebd8fe5fbf99dc2363f7da7fa6e318cf9317f682cfc0a252ade38e0a3fbacab"
+        },
+        {
+          "path": "model-00001-of-00002.safetensors",
+          "size": 4999163080,
+          "sha256": "85cab984fbc111f8713827c440499453b9e66f262862866eeed8725c302ba2ac"
+        },
+        {
+          "path": "model-00002-of-00002.safetensors",
+          "size": 4238114628,
+          "sha256": "9536dc05892a6ca8410bcfea763dde422e2430c3cc1f3acd26c55182c8989017"
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "size": 210713,
+          "sha256": null
+        },
+        {
+          "path": "preprocessor_config.json",
+          "size": 1776,
+          "sha256": null
+        },
+        {
+          "path": "seamlessM4T_v2_large.pt",
+          "size": 9070060243,
+          "sha256": "f2122cedcffc532d6048847092414e638cfb4db402881cb8146a606008e9ff56"
+        },
+        {
+          "path": "seamlessm4t_arch.svg",
+          "size": 50078,
+          "sha256": null
+        },
+        {
+          "path": "sentencepiece.bpe.model",
+          "size": 5165809,
+          "sha256": "026a76827537db9f1348e4d5aaa127bb10a2f2ff633243f3a52d16be82d73f9d"
+        },
+        {
+          "path": "special_tokens_map.json",
+          "size": 2337,
+          "sha256": null
+        },
+        {
+          "path": "spm_char_lang38_tc.model",
+          "size": 368901,
+          "sha256": "9e7f2075dbc38dbe11d2414bfa4fb8e900022e87bbff4f74c97817e32a7ab493"
+        },
+        {
+          "path": "tokenizer.model",
+          "size": 5165809,
+          "sha256": "026a76827537db9f1348e4d5aaa127bb10a2f2ff633243f3a52d16be82d73f9d"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 19667,
+          "sha256": null
+        },
+        {
+          "path": "vocoder_v2.pt",
+          "size": 167785015,
+          "sha256": "20c50c3edd3fb08704c10542bf3ec72e8a96aaba4ec09fb6ac1fa64172c8ca13"
+        }
+      ]
+    },
+    {
+      "repo": "Helsinki-NLP/opus-mt-en-de",
+      "revision": "6183067f769a302e3861815543b9f312c71b0ca4",
+      "license": "cc-by-4.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 391,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 3312,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 1335,
+          "sha256": null
+        },
+        {
+          "path": "flax_model.msgpack",
+          "size": 295786174,
+          "sha256": "1fcf707093bb204211b4e7f8b487896fc65623fd290565992b2105f759539520"
+        },
+        {
+          "path": "generation_config.json",
+          "size": 293,
+          "sha256": null
+        },
+        {
+          "path": "pytorch_model.bin",
+          "size": 297928209,
+          "sha256": "da068344b1b0c20e6d4a8f77f48e06646b90d679029006b18579e68977206bdd"
+        },
+        {
+          "path": "rust_model.ot",
+          "size": 535918988,
+          "sha256": "12ab05f28a060d0e72f3d530dfcc5ce972d63e6268bcc87c4affbfd63a137915"
+        },
+        {
+          "path": "source.spm",
+          "size": 768489,
+          "sha256": null
+        },
+        {
+          "path": "target.spm",
+          "size": 796845,
+          "sha256": null
+        },
+        {
+          "path": "tf_model.h5",
+          "size": 298394200,
+          "sha256": "2871ccde1f8c20501b0285dd97d757c5c3ad35291bf8711913501f7fdd90ec20"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 42,
+          "sha256": null
+        },
+        {
+          "path": "vocab.json",
+          "size": 1273232,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "Helsinki-NLP/opus-mt-de-en",
+      "revision": "1a922f3b32a8e809e17a47d4b32142d8105924e5",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 345,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 1372,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 1381,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 293,
+          "sha256": null
+        },
+        {
+          "path": "pytorch_model.bin",
+          "size": 297928209,
+          "sha256": "e743c3070f61f477cb62fe95ef2c9be2e77f3e488cb6b8030ff8a19e8295c87d"
+        },
+        {
+          "path": "rust_model.ot",
+          "size": 535918988,
+          "sha256": "746af06f6cf7d98a4136f869dac1a29181b635def59996d7f7a7e3ac819e9960"
+        },
+        {
+          "path": "source.spm",
+          "size": 796845,
+          "sha256": null
+        },
+        {
+          "path": "target.spm",
+          "size": 768489,
+          "sha256": null
+        },
+        {
+          "path": "tf_model.h5",
+          "size": 298394200,
+          "sha256": "48ef79c6060dc6695924eeb43c9fac3020d4db0511b60343ed24538a971e9650"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 42,
+          "sha256": null
+        },
+        {
+          "path": "vocab.json",
+          "size": 1273232,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "Helsinki-NLP/opus-mt-en-fr",
+      "revision": "dd7f6540a7a48a7f4db59e5c0b9c42c8eea67f18",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 391,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 1209,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 1416,
+          "sha256": null
+        },
+        {
+          "path": "flax_model.msgpack",
+          "size": 298685650,
+          "sha256": "7b7ebb1b554e24be9f05afbe805ad155e972695624f261c2328f420d880373bf"
+        },
+        {
+          "path": "generation_config.json",
+          "size": 293,
+          "sha256": null
+        },
+        {
+          "path": "pytorch_model.bin",
+          "size": 300827685,
+          "sha256": "cc1de10b49342ad2f33e06bc4474ddd6eaca278474903c4a8636ce15680d64de"
+        },
+        {
+          "path": "source.spm",
+          "size": 778395,
+          "sha256": null
+        },
+        {
+          "path": "target.spm",
+          "size": 802397,
+          "sha256": null
+        },
+        {
+          "path": "tf_model.h5",
+          "size": 301299328,
+          "sha256": "c860b5d50a25f2c6d063886cf36720016387b0ee94e7d33487bad4037b3e9ff6"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 42,
+          "sha256": null
+        },
+        {
+          "path": "vocab.json",
+          "size": 1339166,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "Helsinki-NLP/opus-mt-fr-en",
+      "revision": "c4aed37b318c763fd177aa449b44e3b783cc6c02",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 445,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 1250,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 1416,
+          "sha256": null
+        },
+        {
+          "path": "flax_model.msgpack",
+          "size": 298685650,
+          "sha256": "a791a29fc2ab8a0bc4103fa3ce432bc9911c809d824fea62cc065d3726fb1801"
+        },
+        {
+          "path": "generation_config.json",
+          "size": 293,
+          "sha256": null
+        },
+        {
+          "path": "model.safetensors",
+          "size": 300803608,
+          "sha256": "6e3837f34b903802c3d0d670362b997cee6e87584a1108eb3fa89e4625e4424a"
+        },
+        {
+          "path": "pytorch_model.bin",
+          "size": 300827685,
+          "sha256": "599b819e3488f0fb888fef09511370ce4c0388b6f0f6beeb49a1f4b19043bebc"
+        },
+        {
+          "path": "source.spm",
+          "size": 802397,
+          "sha256": null
+        },
+        {
+          "path": "target.spm",
+          "size": 778395,
+          "sha256": null
+        },
+        {
+          "path": "tf_model.h5",
+          "size": 301299328,
+          "sha256": "9ddf429085e46b20566df93a1417474c7f28e62245a8468554edb5abc8da7f92"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 42,
+          "sha256": null
+        },
+        {
+          "path": "vocab.json",
+          "size": 1339166,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "Helsinki-NLP/opus-mt-en-es",
+      "revision": "5bc4493d463cf000c1f0b50f8d56886a392ed4ab",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 391,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 2401,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 1473,
+          "sha256": null
+        },
+        {
+          "path": "flax_model.msgpack",
+          "size": 309944974,
+          "sha256": "14b5e0865da9b6764e18b637e7c7e34b04be927dc41a1ba97bff23962c2f5857"
+        },
+        {
+          "path": "generation_config.json",
+          "size": 293,
+          "sha256": null
+        },
+        {
+          "path": "metadata.json",
+          "size": 1090,
+          "sha256": null
+        },
+        {
+          "path": "pytorch_model.bin",
+          "size": 312087523,
+          "sha256": "befce0f620e8e63f83bbb7f0818eb51d541cba28057a7cc14b00466d85c4994c"
+        },
+        {
+          "path": "source.spm",
+          "size": 801636,
+          "sha256": null
+        },
+        {
+          "path": "target.spm",
+          "size": 825924,
+          "sha256": null
+        },
+        {
+          "path": "tf_model.h5",
+          "size": 312580600,
+          "sha256": "9c0f86262f3ac03867ced8dd0b8ed83f7f2a39972f7249f60bf34ff8ea9e8765"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 44,
+          "sha256": null
+        },
+        {
+          "path": "vocab.json",
+          "size": 1590040,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "Helsinki-NLP/opus-mt-es-en",
+      "revision": "c96e2c5399ebfae4fc43d9669556b9afa74bb69d",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 345,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 2427,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 1438,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 293,
+          "sha256": null
+        },
+        {
+          "path": "metadata.json",
+          "size": 1090,
+          "sha256": null
+        },
+        {
+          "path": "pytorch_model.bin",
+          "size": 312087523,
+          "sha256": "586a4e69e0804459ac7c176a5dc76852652100d9af1ee0db796de719899a5deb"
+        },
+        {
+          "path": "source.spm",
+          "size": 825924,
+          "sha256": null
+        },
+        {
+          "path": "target.spm",
+          "size": 801636,
+          "sha256": null
+        },
+        {
+          "path": "tf_model.h5",
+          "size": 312580600,
+          "sha256": "9a1bab8c96a2d60c3c88c82b98e61af23e6fbb74d5a0aa3927bcf110132b86ba"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 44,
+          "sha256": null
+        },
+        {
+          "path": "vocab.json",
+          "size": 1590040,
+          "sha256": null
+        }
+      ]
+    }
+  ]
+}

@@ -133,6 +133,43 @@ public final class ModelManagerModel {
         return ofKind.enumerated().sorted { (band($0.element), $0.offset) < (band($1.element), $1.offset) }.map(\.element)
     }
 
+    /// The compact landing page retains installed models, in-flight operations and failures needing recovery.
+    public var managedRows: [Row] {
+        rows.filter { row in if case .notInstalled = row.state { return false }; return true }
+    }
+
+    public var recommendedRows: [Row] {
+        let ids = Set(recommendations.map(\.model))
+        return Array(rows.filter { row in
+            guard case .notInstalled = row.state, row.descriptor.isRunnable else { return false }
+            return ids.contains(row.id) || row.id == "apple/translation"
+        }.prefix(5))
+    }
+
+    public static func familyName(for descriptor: ModelDescriptor) -> String {
+        switch descriptor.engine?.rawValue {
+        case "whisperkit": "Whisper"
+        case "qwen3-asr": "Qwen"
+        case "apple.speech", "apple.translation": "Apple"
+        case "nllb": "NLLB"
+        case "fluidaudio.parakeet": "Parakeet"
+        case "fluidaudio.cohere": "Cohere"
+        default: descriptor.kind == .diarization ? "Speaker models" : descriptor.displayName
+        }
+    }
+
+    public func browseRows(query: String, kind: ModelKind?) -> [Row] {
+        let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        return rows.filter { row in
+            guard kind == nil || row.descriptor.kind == kind else { return false }
+            guard !term.isEmpty else { return true }
+            let d = row.descriptor
+            let languageNames = d.languages.map { LanguageSelectionModel.displayName($0) }.joined(separator: " ")
+            return [d.displayName, Self.familyName(for: d), d.notes, languageNames, d.languages.map(\.rawValue).joined(separator: " ")]
+                .contains { $0.localizedCaseInsensitiveContains(term) }
+        }
+    }
+
     private func apply(state: ModelState, to id: ModelID) {
         guard let index = rows.firstIndex(where: { $0.id == id }) else { return }
         rows[index].state = state

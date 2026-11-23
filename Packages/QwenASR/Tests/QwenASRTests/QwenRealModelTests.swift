@@ -18,9 +18,13 @@ enum LocalSinhalaAssets {
     }
 
     /// The pinned Qwen3-ASR Sinhala snapshot in the HF cache (revision 047217cb).
-    static let modelFolder: URL? = search(
+    static func environmentURL(_ key: String) -> URL? {
+        guard let path = ProcessInfo.processInfo.environment[key], !path.isEmpty else { return nil }
+        return URL(fileURLWithPath: path)
+    }
+    static let modelFolder: URL? = environmentURL("EARMARK_QWEN_SINHALA_MODEL") ?? search(
         ".model-cache/hf/hub/models--Nerdstorm--Qwen3-ASR-0.6B-Sinhala-8bit/snapshots/047217cb611ad5f51cb2284e4a3617a5eaa9b688")
-    static let slr30: URL? = search(".model-cache/sinhala-eval/slr30_wav/manifest.jsonl")
+    static let slr30: URL? = environmentURL("EARMARK_QWEN_SINHALA_MANIFEST") ?? search(".model-cache/sinhala-eval/slr30_wav/manifest.jsonl")
     /// Unlicensed SPEAK-ASR YouTube clips: internal evaluation only; only aggregate numbers may leave this test.
     static let speak: URL? = search(".model-cache/sinhala-eval/speak/manifest.jsonl")
     static let available = modelFolder != nil && slr30 != nil

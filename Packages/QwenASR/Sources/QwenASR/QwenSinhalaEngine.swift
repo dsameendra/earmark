@@ -9,19 +9,11 @@ public enum QwenSinhalaTargets {
     public static let model: ModelID = "mlx/qwen3-asr-0.6b-sinhala-8bit"
 }
 
-/// Sinhala ASR engine: Qwen3-ASR-0.6B Sinhala (8-bit) on MLX via mlx-audio-swift (experimental, CC BY-SA 4.0 weights).
-///
-/// - Models are loaded from the folder `ModelManaging.location(of:)` reports; the engine never downloads (the user starts the
-///   download in Settings, LANG-AC-10).
-/// - Input is cut into utterances with a VAD; each utterance is one bounded model call (token cap `64 + 30 s`, repetition-loop
-///   guard, wrong-script rejection), emitted as a `.final` ``Segment`` tagged `si`. The model returns no word timings, so
-///   `Segment.words` is empty.
-/// - `transcribe(file:)` streams the file in bounded memory; `stream(audio:)` emits `.final` per finished utterance and
-///   throttled `.partial`s of the open one while decoding keeps up with real time.
-/// - Only Sinhala is accepted: `.single(other)` throws ``AppError/unsupportedLanguage(_:)`` (route other languages to
-///   WhisperKit/Apple through `EngineRouter`); `.autoDetect` and `.multilingual` are treated as Sinhala because the
-///   multilingual pipeline already restricts each call to one language.
-/// - Cancelling the consumer takes effect between utterances (a started decode runs to its token cap so the model is never used concurrently). Failures are mapped to ``AppError``.
+/// Native Qwen3-ASR engine with explicit checkpoint profiles. The existing public type name is retained for compatibility.
+/// The Sinhala specialist keeps its measured unforced-language prompt and script guard. General checkpoints accept their
+/// own language set and preserve detected language headers without applying Sinhala-only filtering. Models load only from
+/// installed folders. File and buffered Live recognition share bounded VAD utterances and serial native generation; no word
+/// timestamps are invented. Cancellation takes effect between bounded model calls.
 public actor QwenSinhalaEngine: TranscriptionEngine {
     public typealias ModelLocator = @Sendable (ModelID) async throws -> URL
 
@@ -66,11 +58,18 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
 
     // MARK: - TranscriptionEngine
 
-    public func supportedLanguages(model: ModelID?) async -> Set<LanguageCode> { [.sinhala] }
+    public func supportedLanguages(model: ModelID?) async -> Set<LanguageCode> { QwenModelProfile.profile(for: model ?? defaultModel)?.languages ?? [] }
 
-    public func prepare(model: ModelID) async throws { _ = try await recognizer(for: model) }
+    public func prepare(model: ModelID) async throws {
+        await acquire()
+        defer { release() }
+        try Task.checkCancellation()
+        _ = try await recognizer(for: model)
+    }
 
     public func unload() async {
+        await acquire()
+        defer { release() }
         loading?.task.cancel()
         loading = nil
         loaded = nil
@@ -105,6 +104,7 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
     // MARK: - Loading
 
     private func recognizer(for model: ModelID) async throws -> any SinhalaRecognizing {
+        guard QwenModelProfile.profile(for: model) != nil else { throw AppError.modelNotInstalled(model) }
         if let loaded, loaded.model == model { return loaded.recognizer }
         if let loading, loading.model == model { return try await loading.task.value }
         loading?.task.cancel()
@@ -148,15 +148,23 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
     ///
     /// The gate is held until the recognizer has completely finished (it only returns once the model is idle), so a cancelled
     /// or looping utterance can never overlap the next one on the shared model.
-    private func recognize(_ utterance: Utterance, model: ModelID) async throws -> RecognizedText? {
-        let recognizer = try await recognizer(for: model)
+    private func recognize(_ utterance: Utterance, model: ModelID, requestedLanguage: LanguageCode?) async throws -> RecognizedText? {
         await acquire()
         defer { release() }
         try Task.checkCancellation()
-        let raw = try await recognizer.recognize(
-            samples: utterance.samples, maxTokens: SinhalaOutputGuard.maxTokens(forSeconds: utterance.duration))
+        let recognizer = try await recognizer(for: model)
+        let profile = QwenModelProfile.profile(for: model)!
+        let forced = profile.isSinhala ? nil : requestedLanguage.flatMap { QwenModelProfile.languageNames[$0.primary] }
+        let output = try await recognizer.recognize(
+            samples: utterance.samples, maxTokens: SinhalaOutputGuard.maxTokens(forSeconds: utterance.duration), language: forced)
         try Task.checkCancellation()
-        return Self.clean(raw)
+        if profile.isSinhala { return Self.clean(output.text) }
+        let cleaned = SinhalaOutputGuard.truncateRepetition(SinhalaOutputGuard.normalise(output.text))
+        guard !cleaned.text.isEmpty else { return nil }
+        let detected = output.language.flatMap { name in
+            QwenModelProfile.languageNames.first { $0.value.caseInsensitiveCompare(name) == .orderedSame }?.key
+        }
+        return RecognizedText(text: cleaned.text, hitLoopGuard: cleaned.truncated, language: detected ?? requestedLanguage)
     }
 
     /// Normalises a raw transcript, cuts repetition loops and rejects empty or wrong-script output.
@@ -165,24 +173,31 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
         let cleaned = SinhalaOutputGuard.truncateRepetition(raw)
         let text = SinhalaOutputGuard.normalise(cleaned.text)
         guard !text.isEmpty, !SinhalaOutputGuard.isWrongScript(text) else { return nil }
-        return RecognizedText(text: text, hitLoopGuard: cleaned.truncated)
+        return RecognizedText(text: text, hitLoopGuard: cleaned.truncated, language: .sinhala)
     }
 
     struct RecognizedText: Sendable, Equatable {
         var text: String
         /// The output was cut by the repetition guard (or generation was stopped early): lower trust.
         var hitLoopGuard: Bool
+        var language: LanguageCode? = nil
     }
 
     private func segment(for utterance: Utterance, text: RecognizedText) -> Segment {
         Segment(
-            start: utterance.start, end: utterance.end, text: text.text, languageCode: .sinhala,
-            languageConfidence: 1, confidence: text.hitLoopGuard ? 0.3 : nil, words: [])
+            start: utterance.start, end: utterance.end, text: text.text, languageCode: text.language ?? "und",
+            languageConfidence: text.language == .sinhala ? 1 : nil, confidence: text.hitLoopGuard ? 0.3 : nil, words: [])
     }
 
-    private func checkLanguage(_ options: TranscriptionOptions) throws {
-        if case .single(let language) = options.languageMode, language.primary != .sinhala {
-            throw AppError.unsupportedLanguage(language)
+    private func requestedLanguage(_ options: TranscriptionOptions) throws -> LanguageCode? {
+        let model = options.modelID ?? defaultModel
+        guard let profile = QwenModelProfile.profile(for: model) else { throw AppError.modelNotInstalled(model) }
+        switch options.languageMode {
+        case .single(let language):
+            guard profile.languages.contains(language.primary) else { throw AppError.unsupportedLanguage(language) }
+            return profile.isSinhala ? .sinhala : language.primary
+        case .autoDetect, .multilingual:
+            return profile.isSinhala ? .sinhala : nil
         }
     }
 
@@ -191,9 +206,9 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
     private func runFile(
         _ file: URL, options: TranscriptionOptions, continuation: AsyncThrowingStream<TranscriptionEvent, any Error>.Continuation
     ) async throws {
-        try checkLanguage(options)
+        let language = try requestedLanguage(options)
         let model = options.modelID ?? defaultModel
-        _ = try await recognizer(for: model)
+        try await prepare(model: model)
         let decoder = AVFileDecoder()
         let total = try? await decoder.duration(of: file)
         var segmenter = UtteranceSegmenter(vad: vad)
@@ -204,7 +219,7 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
         func emit(_ utterances: [Utterance]) async throws {
             for utterance in utterances {
                 try Task.checkCancellation()
-                if let text = try await recognize(utterance, model: model) {
+                if let text = try await recognize(utterance, model: model, requestedLanguage: language) {
                     continuation.yield(.final(segment(for: utterance, text: text)))
                 }
             }
@@ -225,9 +240,9 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
         _ audio: AsyncStream<AudioChunk>, options: TranscriptionOptions,
         continuation: AsyncThrowingStream<TranscriptionEvent, any Error>.Continuation
     ) async throws {
-        try checkLanguage(options)
+        let language = try requestedLanguage(options)
         let model = options.modelID ?? defaultModel
-        _ = try await recognizer(for: model)
+        try await prepare(model: model)
         var segmenter = UtteranceSegmenter(vad: vad)
         let clock = ContinuousClock()
         let origin = clock.now
@@ -244,7 +259,7 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
             guard mediaElapsed - lastDrain >= 0.25 else { continue }
             lastDrain = mediaElapsed
             for utterance in await segmenter.drain(final: false) {
-                if let text = try await recognize(utterance, model: model) {
+                if let text = try await recognize(utterance, model: model, requestedLanguage: language) {
                     continuation.yield(.final(segment(for: utterance, text: text)))
                 }
             }
@@ -255,13 +270,13 @@ public actor QwenSinhalaEngine: TranscriptionEngine {
             else { continue }
             lastPartialAt = mediaElapsed
             let began = clock.now
-            if let text = try await recognize(open, model: model), !text.hitLoopGuard {
-                continuation.yield(.partial(PartialSegment(text: text.text, start: open.start, languageCode: .sinhala)))
+            if let text = try await recognize(open, model: model, requestedLanguage: language), !text.hitLoopGuard {
+                continuation.yield(.partial(PartialSegment(text: text.text, start: open.start, languageCode: text.language ?? language ?? "und")))
             }
             lastPartialCost = (clock.now - began).secondsValue
         }
         for utterance in await segmenter.drain(final: true) {
-            if let text = try await recognize(utterance, model: model) {
+            if let text = try await recognize(utterance, model: model, requestedLanguage: language) {
                 continuation.yield(.final(segment(for: utterance, text: text)))
             }
         }

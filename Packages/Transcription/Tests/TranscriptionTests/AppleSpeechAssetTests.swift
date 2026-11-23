@@ -146,13 +146,42 @@ struct AppleAwareEngineRouterTests {
         RoutingRequest(languageMode: .single(language), useCase: useCase, tier: .tier16, installedModels: [], explicitModel: model)
     }
 
-    @Test("usable or unknown readiness keeps Apple for live and dictation")
+    @Test("installed readiness keeps Apple for live and dictation")
     func appleKept() throws {
         let readiness = AppleSpeechReadiness()
         let router = AppleAwareEngineRouter(readiness: readiness)
-        #expect(try router.plan(for: request("en", .live)).assignments.first?.model == RoutingTargets.appleSpeech)
         readiness.set(.installed, for: "en")
+        #expect(try router.plan(for: request("en", .live)).assignments.first?.model == RoutingTargets.appleSpeech)
         #expect(try router.plan(for: request("en", .dictation)).assignments.first?.model == RoutingTargets.appleSpeech)
+    }
+
+    @Test("unchecked language does not assume installed assets")
+    func uncheckedLanguageFallsBack() throws {
+        let readiness = AppleSpeechReadiness()
+        readiness.set(.installed, for: "en")
+        let plan = try AppleAwareEngineRouter(readiness: readiness).plan(for: request("hi", .live))
+        #expect(plan.assignments.first?.model == RoutingTargets.whisperSmall)
+        #expect(plan.warnings.first == AppleSpeechMessages.notInstalledNotice)
+    }
+
+    @Test("execution checks the selected language and can recover after assets become installed")
+    func preparesSelectedLanguage() async throws {
+        let backend = FakeSpeechBackend()
+        let readiness = AppleSpeechReadiness()
+        let router = AppleAwareEngineRouter(readiness: readiness, engine: AppleSpeechEngine(backend: backend))
+        let missing = try await router.preparedPlan(for: request("fr", .live))
+        #expect(missing.assignments.first?.model == RoutingTargets.whisperSmall)
+        backend.installed.append(Locale(identifier: "fr_FR"))
+        let installed = try await router.preparedPlan(for: request("fr", .live))
+        #expect(installed.assignments.first?.model == RoutingTargets.appleSpeech)
+        #expect(readiness.status(for: "fr") == .installed)
+    }
+
+    @Test("readiness for one locale does not authorize a different region")
+    func localeReadinessIsSeparate() {
+        let readiness = AppleSpeechReadiness()
+        readiness.set(.installed, for: "en-US")
+        #expect(readiness.status(for: "en-GB") == nil)
     }
 
     @Test("unavailable Apple falls back to Whisper with a visible notice")

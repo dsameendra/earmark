@@ -100,7 +100,7 @@ final class LiveExtrasService: LiveSessionExtras, Sendable {
                 case .running:
                     isRunning.withLock { $0 = true }
                     overlay.model.isCaptioning = true
-                    if await isOverlayEnabled() { await overlay.show(preset: await presetStore.activeOrDefault()) }
+                    if await isOverlayEnabled() { await overlay.show(preset: await presentationPreset(await presetStore.activeOrDefault())) }
                 case .idle, .failed:
                     isRunning.withLock { $0 = false }
                     overlay.model.isCaptioning = false
@@ -137,8 +137,17 @@ final class LiveExtrasService: LiveSessionExtras, Sendable {
             }
         case .speakerLimitReached: LiveNotice(kind: .info, message: "More than four speakers. Extra voices are labelled More speakers.")
         case .engineNotice(let message): LiveNotice(kind: .info, message: message)
+        case .translationFailed(let reason):
+            LiveNotice(kind: .warning, message: "Translation could not finish: \(reason). Original captions are still available.")
         case .checkpointFailed(let reason): LiveNotice(kind: .warning, message: "Could not save the transcript so far: \(reason)")
         }
+    }
+
+    private func presentationPreset(_ base: CaptionPreset) async -> CaptionPreset {
+        var result = base
+        result.showTranslation = await session.translatesCaptions
+        if !result.showTranslation { result.translatedOnly = false }
+        return result
     }
 
     // MARK: LiveSessionExtras
@@ -153,7 +162,7 @@ final class LiveExtrasService: LiveSessionExtras, Sendable {
     func setOverlayEnabled(_ enabled: Bool) async {
         await settings.set(enabled, for: SettingsKey.liveOverlayEnabled)
         guard isRunning.withLock({ $0 }) else { return }
-        if enabled { await overlay.show(preset: await presetStore.activeOrDefault()) } else { await overlay.hide() }
+        if enabled { await overlay.show(preset: await presentationPreset(await presetStore.activeOrDefault())) } else { await overlay.hide() }
     }
 
     func isOverlayEnabled() async -> Bool { await settings.value(for: SettingsKey.liveOverlayEnabled, as: Bool.self) ?? true }
@@ -162,7 +171,7 @@ final class LiveExtrasService: LiveSessionExtras, Sendable {
     func activePreset() async -> CaptionPreset { await presetStore.activeOrDefault() }
     func setActivePreset(_ id: PresetID) async {
         await presetStore.setActive(id)
-        if isRunning.withLock({ $0 }), await isOverlayEnabled() { await overlay.show(preset: await presetStore.activeOrDefault()) }
+        if isRunning.withLock({ $0 }), await isOverlayEnabled() { await overlay.show(preset: await presentationPreset(await presetStore.activeOrDefault())) }
     }
 
     func commit(_ preset: CaptionPreset) async -> CaptionPreset {
@@ -177,7 +186,7 @@ final class LiveExtrasService: LiveSessionExtras, Sendable {
         } catch {
             AppLog.logger("liveExtras").error("Could not save caption preset: \(String(describing: error), privacy: .public)")
         }
-        if isRunning.withLock({ $0 }), await isOverlayEnabled() { await overlay.show(preset: result) }
+        if isRunning.withLock({ $0 }), await isOverlayEnabled() { await overlay.show(preset: await presentationPreset(result)) }
         return result
     }
 }

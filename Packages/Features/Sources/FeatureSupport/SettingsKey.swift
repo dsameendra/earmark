@@ -72,6 +72,8 @@ public enum SettingsKey {
     public static let liveOverlayEnabled = "liveCaptions.overlayEnabled"
     /// `Bool`; "Save as transcript" default for live sessions (default `false`).
     public static let liveSaveAsTranscript = "liveCaptions.saveAsTranscript"
+    /// `Bool`; explicit live translation choice, migrated once from the active appearance preset.
+    public static let liveTranslationEnabled = "liveCaptions.translationEnabled"
     /// `String` raw value of the last live source (`mic`, `system`, `micAndSystem`).
     public static let liveSource = "liveCaptions.source"
     /// `Bool`; caption overlay ignores the mouse (click-through, default `true`).

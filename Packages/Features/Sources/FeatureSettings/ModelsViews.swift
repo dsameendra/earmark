@@ -142,15 +142,15 @@ struct ModelRowView: View {
                 "Download \(row.descriptor.displayName)"
             ).accessibilityIdentifier("models.download.\(row.id.rawValue)")
         case .downloading:
-            Button("Pause", systemImage: "pause.circle", action: onPause).labelStyle(.iconOnly).accessibilityLabel("Pause download")
-            Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download")
+            Button("Pause", systemImage: "pause.circle", action: onPause).labelStyle(.iconOnly).accessibilityLabel("Pause download").accessibilityIdentifier("models.pause.\(row.id.rawValue)")
+            Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download").accessibilityIdentifier("models.cancel.\(row.id.rawValue)")
         case .paused:
-            Button("Resume", symbol: .play, action: onResume).labelStyle(.iconOnly).accessibilityLabel("Resume download")
-            Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download")
+            Button("Resume", symbol: .play, action: onResume).labelStyle(.iconOnly).accessibilityLabel("Resume download").accessibilityIdentifier("models.resume.\(row.id.rawValue)")
+            Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download").accessibilityIdentifier("models.cancel.\(row.id.rawValue)")
         case .installed:
             Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)  // stock-chrome: destructive action
                 .labelStyle(.iconOnly)
-                .accessibilityLabel("Delete \(row.descriptor.displayName)")
+                .accessibilityLabel("Delete \(row.descriptor.displayName)").accessibilityIdentifier("models.delete.\(row.id.rawValue)")
         case .failed:
             Button("Retry", symbol: .retry, action: onDownload).accessibilityIdentifier("models.retry.\(row.id.rawValue)")
             Button("Cancel", systemImage: "xmark.circle", action: onCancel).accessibilityLabel("Cancel and discard \(row.descriptor.displayName)")
@@ -196,17 +196,23 @@ struct ModelsSettingsView: View {
     let model: ModelManagerModel
     var kinds: Set<ModelKind>?
     @State private var pendingDownload: (id: ModelID, warnings: [DownloadWarning])?
+    @State private var showBrowser = false
+    @State private var browseQuery = ""
+    @State private var browseKind = "all"
     @State private var showImporter = false
     @State private var importFolder: URL?
     @State private var importName = ""
     @State private var importLanguages = "en"
 
-    private var visibleRows: [ModelManagerModel.Row] {
-        model.rows.filter { kinds?.contains($0.descriptor.kind) ?? true }
+    private var recommendedRows: [ModelManagerModel.Row] {
+        model.recommendedRows.filter(isVisible)
     }
-
-    private var visibleKinds: [ModelKind] {
-        [ModelKind.asr, .diarization, .translation, .languageID, .vad].filter { kind in visibleRows.contains { $0.descriptor.kind == kind } }
+    private var installedRows: [ModelManagerModel.Row] {
+        model.managedRows.filter(isVisible)
+    }
+    private func isVisible(_ row: ModelManagerModel.Row) -> Bool {
+        guard let kinds else { return true }
+        return kinds.contains(row.descriptor.kind)
     }
 
     static func title(for kind: ModelKind) -> LocalizedStringKey {
@@ -221,33 +227,23 @@ struct ModelsSettingsView: View {
 
     var body: some View {
         Form {
-            ForEach(visibleKinds, id: \.self) { kind in
-                Section {
-                    ForEach(model.rows(of: kind)) { row in
-                        ModelRowView(
-                            row: row, isActive: row.id == model.activeModelID, recommendations: model.recommendations(for: row.id),
-                            onDownload: { start(row.id) }, onPause: { Task { await model.pause(row.id) } },
-                            onResume: { Task { await model.resume(row.id) } }, onCancel: { Task { await model.cancel(row.id) } },
-                            onDelete: { Task { await model.requestDelete(row.id) } })
-                    }
-                } header: {
-                    HStack {
-                        Text(Self.title(for: kind))
-                        Spacer()
-                        if kind == visibleKinds.first {
-                            Text("Disk usage: \(ModelFormat.bytes(model.totalDiskUsage))").font(DSTypography.caption)
-                        }
-                    }
-                } footer: {
-                    if kind == visibleKinds.last {
-                        Text("Models are downloaded only when you choose to. Your audio stays on this Mac.")
-                    }
-                }
+            Section {
+                ForEach(recommendedRows) { row in modelRow(row) }
+                Button("Add models…", systemImage: "plus.circle") { showBrowser = true }
+                    .accessibilityIdentifier("models.browse")
+            } header: { Text("Recommended") } footer: {
+                Text("Browse speech models, translation models and language packs. Downloads start only when you choose them.")
             }
-            if visibleRows.isEmpty { Section { Text("No models available.").foregroundStyle(DSColor.secondaryText) } }
+            Section {
+                if installedRows.isEmpty { Text("No models installed yet.").foregroundStyle(DSColor.secondaryText) }
+                ForEach(installedRows) { row in modelRow(row) }
+            } header: { Text("Installed and downloads") } footer: {
+                Text("Disk usage: \(ModelFormat.bytes(model.totalDiskUsage)). Your audio stays on this Mac.")
+            }
             if kinds == nil {
-                Section("Custom model") {
+                Section("Import") {
                     Button("Import WhisperKit CoreML folder…", systemImage: "folder.badge.plus") { showImporter = true }
+                        .accessibilityIdentifier("models.import.whisperkit")
                 }
             }
             if let message = model.errorMessage {
@@ -259,6 +255,7 @@ struct ModelsSettingsView: View {
             await model.load()
             await model.observe()
         }
+        .sheet(isPresented: $showBrowser) { modelBrowser }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.folder]) { result in
             if case .success(let url) = result {
                 importName = url.lastPathComponent
@@ -269,7 +266,7 @@ struct ModelsSettingsView: View {
             importSheet(item.url)
         }
         .alert(
-            "Download model?", isPresented: Binding(get: { pendingDownload != nil }, set: { if !$0 { pendingDownload = nil } }),
+            "Download model?", isPresented: Binding(get: { !showBrowser && pendingDownload != nil }, set: { if !$0 && !showBrowser { pendingDownload = nil } }),
             presenting: pendingDownload?.id
         ) { id in
             Button("Download") {
@@ -282,13 +279,69 @@ struct ModelsSettingsView: View {
         }
         .alert(
             "Delete the default model?",
-            isPresented: Binding(get: { model.pendingDeletion != nil }, set: { if !$0 { model.pendingDeletion = nil } })
+            isPresented: Binding(get: { !showBrowser && model.pendingDeletion != nil }, set: { if !$0 && !showBrowser { model.pendingDeletion = nil } })
         ) {
             Button("Delete", role: .destructive) { Task { await model.confirmPendingDeletion() } }
             Button("Cancel", role: .cancel) { model.pendingDeletion = nil }
         } message: {
             Text("\(model.pendingDeletion?.displayName ?? "This model") is your default. Transcription will download it again when needed.")
         }
+    }
+
+    private func modelRow(_ row: ModelManagerModel.Row) -> some View {
+        ModelRowView(
+            row: row, isActive: row.id == model.activeModelID, recommendations: model.recommendations(for: row.id),
+            onDownload: { start(row.id) }, onPause: { Task { await model.pause(row.id) } },
+            onResume: { Task { await model.resume(row.id) } }, onCancel: { Task { await model.cancel(row.id) } },
+            onDelete: { Task { await model.requestDelete(row.id) } })
+    }
+
+    private var modelBrowser: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.md) {
+            HStack {
+                Text("Add models").font(DSTypography.title)
+                Spacer()
+                Button("Done") { showBrowser = false }.accessibilityIdentifier("models.browse.done")
+            }
+            TextField("Search models or languages", text: $browseQuery)
+                .accessibilityIdentifier("models.browse.search")
+            Picker("Task", selection: $browseKind) {
+                Text("All models").tag("all")
+                Text("Speech recognition").tag(ModelKind.asr.rawValue)
+                Text("Translation").tag(ModelKind.translation.rawValue)
+                Text("Speaker labels").tag(ModelKind.diarization.rawValue)
+            }.accessibilityIdentifier("models.browse.task")
+            let rows = model.browseRows(query: browseQuery, kind: ModelKind(rawValue: browseKind))
+                .filter(isVisible)
+            let families = Dictionary(grouping: rows) { ModelManagerModel.familyName(for: $0.descriptor) }
+            Form {
+                if rows.isEmpty { Text("No models match this search.").foregroundStyle(DSColor.secondaryText) }
+                ForEach(families.keys.sorted(), id: \.self) { family in
+                    Section(family) {
+                        ForEach(families[family] ?? []) { row in modelRow(row) }
+                    }
+                }
+            }.formStyle(.grouped)
+        }
+        .padding(DSSpacing.lg)
+        .frame(minWidth: 560, idealWidth: 680, minHeight: 500, idealHeight: 650)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("models.browser")
+        .alert(
+            "Download model?",
+            isPresented: Binding(get: { showBrowser && pendingDownload != nil }, set: { if !$0 && showBrowser { pendingDownload = nil } }),
+            presenting: pendingDownload?.id
+        ) { id in
+            Button("Download") { pendingDownload = nil; Task { await model.download(id, confirmed: true) } }
+            Button("Cancel", role: .cancel) { pendingDownload = nil }
+        } message: { _ in Text(ModelFormat.warningsMessage(pendingDownload?.warnings ?? [])) }
+        .alert(
+            "Delete the default model?",
+            isPresented: Binding(get: { showBrowser && model.pendingDeletion != nil }, set: { if !$0 && showBrowser { model.pendingDeletion = nil } })
+        ) {
+            Button("Delete", role: .destructive) { Task { await model.confirmPendingDeletion() } }
+            Button("Cancel", role: .cancel) { model.pendingDeletion = nil }
+        } message: { Text("This is your default model. Transcription will download it again when needed.") }
     }
 
     private func start(_ id: ModelID) {

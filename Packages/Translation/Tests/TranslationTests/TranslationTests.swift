@@ -441,3 +441,43 @@ final class FakeClock: @unchecked Sendable {
         }
     }
 }
+
+
+@Suite("Explicit translation engine selection")
+struct TranslationSelectionTests {
+    @Test("explicit NLLB choice is honored even when Apple supports the pair")
+    func honorsChoice() async throws {
+        let pair = LanguagePair(source: "en", target: "hi")
+        let apple = FakeEngine(id: "apple.translation", pairs: [pair])
+        let nllb = FakeEngine(id: "nllb", pairs: [pair])
+        let router = DefaultTranslationRouter(apple: apple, nllb: nllb, selectedEngine: { "nllb" })
+        #expect(try await router.engine(for: pair).id == "nllb")
+    }
+
+    @Test("explicit unsupported engine does not silently fall back")
+    func refusesFallback() async {
+        let pair = LanguagePair(source: "si", target: "en")
+        let router = DefaultTranslationRouter(
+            apple: FakeEngine(id: "apple.translation", pairs: []), nllb: FakeEngine(id: "nllb", pairs: [pair]),
+            selectedEngine: { "apple.translation" })
+        await #expect(throws: TranslationFailure.noEngine(pair)) { _ = try await router.engine(for: pair) }
+    }
+
+    @Test("engine policy is enforced before returning a cached engine")
+    func policy() async {
+        let pair = LanguagePair(source: "si", target: "en")
+        let router = DefaultTranslationRouter(
+            apple: FakeEngine(id: "apple.translation", pairs: []), nllb: FakeEngine(id: "nllb", pairs: [pair]),
+            isAllowed: { $0 != "nllb" })
+        await #expect(throws: TranslationFailure.noEngine(pair)) { _ = try await router.engine(for: pair) }
+    }
+
+    @Test("additional registered native engines participate in automatic and explicit routing")
+    func additionalEngine() async throws {
+        let pair = LanguagePair(source: "fr", target: "de")
+        let engine = FakeEngine(id: "test.native", pairs: [pair])
+        let router = DefaultTranslationRouter(
+            apple: FakeEngine(id: "apple.translation", pairs: []), nllb: nil, additional: [engine])
+        #expect(try await router.engine(for: pair).id == engine.id)
+    }
+}

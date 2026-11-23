@@ -1,22 +1,26 @@
 import AppCore
 import AudioCapture
 import Foundation
+import Speech
 import Testing
 
 @testable import Transcription
+
+/// Hosted CI machines are virtual and have no on-device speech engine; these checks need a real Mac.
+private let appleSpeechAvailable: Bool = SpeechTranscriber.isAvailable
 
 @Suite("AppleSpeechEngine")
 struct AppleSpeechEngineTests {
     private let silence = AsyncStream<AudioChunk> { $0.finish() }
 
-    @Test("supported languages come from SpeechTranscriber and exclude Sinhala")
+    @Test("supported languages come from SpeechTranscriber and exclude Sinhala", .enabled(if: appleSpeechAvailable, "needs the on-device speech engine"))
     func languages() async {
         let languages = await AppleSpeechEngine().supportedLanguages(model: nil)
         #expect(languages.contains("en"))
         #expect(!languages.contains("si"))
     }
 
-    @Test("Sinhala is reported unsupported (no Apple locale)")
+    @Test("Sinhala is reported unsupported (no Apple locale)", .enabled(if: appleSpeechAvailable, "needs the on-device speech engine"))
     func sinhalaUnsupported() async {
         let engine = AppleSpeechEngine()
         #expect(await engine.assetStatus(for: "si") == .unsupported)
@@ -35,7 +39,7 @@ struct AppleSpeechEngineTests {
         } catch { #expect(error is AppError) }
     }
 
-    @Test("English assets are either installed or the engine reports modelNotInstalled")
+    @Test("English assets are either installed or the engine reports modelNotInstalled", .enabled(if: appleSpeechAvailable, "needs the on-device speech engine"))
     func englishAssets() async throws {
         let engine = AppleSpeechEngine()
         let status = await engine.assetStatus(for: "en")

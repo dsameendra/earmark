@@ -243,6 +243,12 @@ public struct PermissionGateBanner: View {
                         .buttonStyle(.link).accessibilityIdentifier("\(base).resetToggle")
                 }
             }
+            if status == .denied, let stale = kind.staleEntryHint {
+                Text(stale)
+                    .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("\(base).staleEntryHint")
+            }
             if showsReset, status == .denied {
                 Text("Still stuck? Quit Earmark, run this in Terminal, then reopen it: \(kind.resetHint())")
                     .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText).textSelection(.enabled)

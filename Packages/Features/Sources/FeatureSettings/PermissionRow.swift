@@ -56,6 +56,9 @@ public struct PermissionRowState: Sendable, Equatable {
     /// change identity) and for getting the system prompt back. `nil` unless denied.
     public var helpNote: String? {
         guard status == .denied else { return nil }
+        if let stale = kind.staleEntryHint {
+            return stale + " Or quit Earmark and run \(kind.resetHint(bundleID: bundleID)) in Terminal, then reopen it."
+        }
         if kind.tccServiceName == nil { return kind.resetHint(bundleID: bundleID) }
         return "To be asked again, or if the toggle is on but Earmark still says access is needed, quit Earmark and run "
             + "\(kind.resetHint(bundleID: bundleID)) in Terminal, then reopen it."

@@ -88,7 +88,7 @@ public struct LiveView: View {
                     if model.isPaused {
                         StatusPill("Paused", systemImage: LiveSymbol.pause, tone: .warning)
                     } else {
-                        RecordingIndicator(label: "Live")
+                        RecordingIndicator(label: "Live").padding(.horizontal, DSSpacing.md)
                     }
                 }
                 .padding(.horizontal, DSSpacing.xs)
@@ -134,18 +134,18 @@ public struct LiveView: View {
 
     /// Short labels let the toolbar size the segmented control itself, at any window width.
     private var sourcePicker: some View {
-        Picker("Source", selection: $model.source) {
-            Text("Mic").tag(LiveSourceChoice.mic)
-            Text("System").tag(LiveSourceChoice.system)
-            Text("Both").tag(LiveSourceChoice.micAndSystem)
-        }
-        .pickerStyle(.segmented)
-        .dsToolbarControl()
-        .labelsHidden()
+        DSSegmentedControl(
+            selection: $model.source,
+            options: [
+                .init("Mic", value: LiveSourceChoice.mic), .init("System", value: LiveSourceChoice.system),
+                .init("Both", value: LiveSourceChoice.micAndSystem),
+            ],
+            identifier: "live.source"
+        )
+        .padding(.horizontal, DSSpacing.xs)
         .help(model.isRunning ? "Stop captioning to change the source" : "Caption source: microphone, system audio or both")
         .disabled(model.isRunning)
         .accessibilityLabel("Source")
-        .accessibilityIdentifier("live.source")
     }
 
     private func noticeBanner(_ notice: LiveNotice) -> some View {
@@ -242,25 +242,27 @@ public struct LiveView: View {
     @ViewBuilder private var inputCard: some View {
         if model.source.usesMicrophone {
             labeled("Microphone") {
-                Picker("Microphone", selection: $model.deviceUID) {
-                    Text("System Default").tag(String?.none)
-                    ForEach(model.devices) { Text($0.name).tag(String?.some($0.id)) }
+                DSMenuField(value: model.devices.first { $0.id == model.deviceUID }?.name ?? "System Default") {
+                    Picker("Microphone", selection: $model.deviceUID) {
+                        Text("System Default").tag(String?.none)
+                        ForEach(model.devices) { Text($0.name).tag(String?.some($0.id)) }
+                    }
+                    .pickerStyle(.inline)
+                    .labelsHidden()
                 }
-                .labelsHidden()
-                .controlSize(.large)
-                .frame(maxWidth: .infinity)
                 .disabled(model.isRunning)
                 .help(model.isRunning ? "Stop captioning to change the microphone" : "")
                 .accessibilityIdentifier("live.device")
             }
         }
         labeled("Language") {
-            Picker("Language", selection: $model.language) {
-                ForEach(model.languageChoices) { Text($0.title).tag($0) }
+            DSMenuField(value: model.language.title) {
+                Picker("Language", selection: $model.language) {
+                    ForEach(model.languageChoices) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.inline)
+                .labelsHidden()
             }
-            .labelsHidden()
-            .controlSize(.large)
-            .frame(maxWidth: .infinity)
             .disabled(model.isRunning)
             .help(model.isRunning ? "Stop captioning to change the language" : "")
             .accessibilityIdentifier("live.language")
@@ -324,15 +326,16 @@ public struct LiveView: View {
         .toggleStyle(.switch)
         .accessibilityIdentifier("live.overlay")
         labeled("Preset") {
-            Picker(
-                "Preset",
-                selection: Binding(get: { model.preset.id }, set: { id in Task { await model.selectPreset(id) } })
-            ) {
-                ForEach(model.presets) { Text($0.name).tag($0.id) }
+            DSMenuField(value: model.preset.name) {
+                Picker(
+                    "Preset",
+                    selection: Binding(get: { model.preset.id }, set: { id in Task { await model.selectPreset(id) } })
+                ) {
+                    ForEach(model.presets) { Text($0.name).tag($0.id) }
+                }
+                .pickerStyle(.inline)
+                .labelsHidden()
             }
-            .labelsHidden()
-            .controlSize(.large)
-            .frame(maxWidth: .infinity)
             .accessibilityIdentifier("live.preset")
         }
         CaptionPresetControls(preset: Binding(get: { model.preset }, set: { model.updatePreset($0) }), layout: .embedded)

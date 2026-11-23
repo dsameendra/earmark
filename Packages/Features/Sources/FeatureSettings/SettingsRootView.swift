@@ -137,6 +137,7 @@ public struct SettingsRootView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
             .navigationSplitViewColumnWidth(238)
+            .toolbar(removing: .sidebarToggle)  // also on the column: the outer modifier alone is ignored when the window reopens
             .accessibilityLabel("Settings navigation")
         } detail: {
             GeometryReader { _ in

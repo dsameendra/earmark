@@ -28,6 +28,7 @@ public struct ShellView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
             .navigationSplitViewColumnWidth(min: 220, ideal: DSLayout.sidebarWidth, max: 280)
+            .toolbar(removing: .sidebarToggle)  // also on the column: the outer modifier alone is ignored on first open
         } detail: {
             GeometryReader { _ in
                 VStack(spacing: 0) {
@@ -49,6 +50,7 @@ public struct ShellView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(DSColor.paper)
             }
+            .toolbar(removing: .sidebarToggle)
             .toolbar { shellToolbar }
         }
         .toolbar(removing: .sidebarToggle)

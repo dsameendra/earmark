@@ -158,6 +158,7 @@ final class EarmarkUITests: XCTestCase {
         let app = launch(appearance: "dark")
         defer { app.terminate() }
         Thread.sleep(forTimeInterval: 1.5)  // the toggle is hidden on the first window updates after launch
+        capture(app, "main-window-nav-toggle-check")
         let toggleLabels = ["Toggle Sidebar", "Hide Sidebar", "Show Sidebar"]
         for label in toggleLabels {
             XCTAssertFalse(app.windows.firstMatch.buttons[label].exists, "Main window must not offer \(label)")

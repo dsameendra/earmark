@@ -50,18 +50,30 @@ struct WorkspaceWindowChrome: NSViewRepresentable {
 
         private static let toggleLabels: Set<String> = ["toggle sidebar", "hide sidebar", "show sidebar"]
 
-        /// Hides every system sidebar toggle: toolbar items by identifier and, as a fallback, titlebar buttons by label.
+        /// Hides every system sidebar toggle: toolbar items matched by identifier, label or tooltip, and any titlebar view whose
+        /// accessibility label says "Hide/Show/Toggle Sidebar" (the toggle is not always an `NSButton`).
         private func hideSidebarToggles(in window: NSWindow) {
+            func isToggleText(_ text: String?) -> Bool { text.map { Self.toggleLabels.contains($0.lowercased()) } ?? false }
             for item in window.toolbar?.items ?? [] {
                 let id = item.itemIdentifier.rawValue.lowercased()
-                if item.itemIdentifier == .toggleSidebar || (id.contains("sidebar") && id.contains("toggle")) {
+                let matches =
+                    item.itemIdentifier == .toggleSidebar || (id.contains("sidebar") && id.contains("toggle"))
+                    || isToggleText(item.label) || isToggleText(item.paletteLabel) || isToggleText(item.toolTip)
+                if matches {
                     if !item.isHidden { item.isHidden = true }
+                    if let view = item.view, !view.isHidden { view.isHidden = true }
                 }
             }
             func scan(_ view: NSView) {
-                if let button = view as? NSButton {
-                    let label = (button.accessibilityLabel() ?? button.toolTip ?? "").lowercased()
-                    if Self.toggleLabels.contains(label), !button.isHidden { button.isHidden = true }
+                if isToggleText(view.accessibilityLabel()) || ((view as? NSControl) != nil && isToggleText(view.toolTip)) {
+                    if !view.isHidden { view.isHidden = true }
+                    // The toolbar draws this control inside a glass capsule/circle container that would stay on screen empty:
+                    // hide every small ancestor (one toolbar control, not the toolbar or the window).
+                    var ancestor = view.superview
+                    while let current = ancestor, current.frame.width <= 64, current.frame.height <= 80 {
+                        if !current.isHidden { current.isHidden = true }
+                        ancestor = current.superview
+                    }
                 }
                 for subview in view.subviews { scan(subview) }
             }

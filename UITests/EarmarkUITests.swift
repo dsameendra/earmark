@@ -142,16 +142,20 @@ final class EarmarkUITests: XCTestCase {
         let browse = app.buttons["models.browse"]
         XCTAssertTrue(browse.waitForExistence(timeout: 5))
         browse.click()
-        let search = app.textFields["models.browse.search"]
+        let browser = app.sheets.firstMatch
+        XCTAssertTrue(browser.waitForExistence(timeout: 5))
+        let search = browser.textFields["models.browse.search"]
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.click()
         search.typeText("Whisper")
-        XCTAssertTrue(app.staticTexts["Whisper"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(browser.buttons["models.delete.whisperkit/small"].waitForExistence(timeout: 5))
+        XCTAssertFalse(browser.buttons["models.download.apple/speech-analyzer"].exists)
         capture(app, "models-browser-whisper-light")
         search.typeKey("a", modifierFlags: .command)
         search.typeText("no-such-language-model")
-        XCTAssertTrue(app.staticTexts["No models match this search."].waitForExistence(timeout: 5))
-        app.buttons["models.browse.done"].click()
+        XCTAssertTrue(browser.staticTexts["models.browse.empty"].waitForExistence(timeout: 5))
+        XCTAssertFalse(browser.buttons["models.delete.whisperkit/small"].exists)
+        browser.buttons["models.browse.done"].click()
         XCTAssertTrue(browse.waitForExistence(timeout: 5))
         capture(app, "models-compact-light")
     }

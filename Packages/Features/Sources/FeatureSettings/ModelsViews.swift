@@ -329,7 +329,10 @@ struct ModelsSettingsView: View {
                 .filter(isVisible)
             let families = Dictionary(grouping: rows) { ModelManagerModel.familyName(for: $0.descriptor) }
             Form {
-                if rows.isEmpty { Text("No models match this search.").foregroundStyle(DSColor.secondaryText) }
+                if rows.isEmpty {
+                    Text("No models match this search.").foregroundStyle(DSColor.secondaryText)
+                        .accessibilityIdentifier("models.browse.empty")
+                }
                 ForEach(families.keys.sorted(), id: \.self) { family in
                     Section(family) {
                         ForEach(families[family] ?? []) { row in modelRow(row) }

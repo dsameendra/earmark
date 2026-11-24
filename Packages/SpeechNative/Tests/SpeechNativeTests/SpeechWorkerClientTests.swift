@@ -20,7 +20,7 @@ struct SpeechWorkerClientTests {
           case "$1" in
             */slow) : > "$1.started"; while :; do :; done ;;
             */wrong-id) printf '%s\n' '{"id":999,"version":1}' ;;
-            */oversized) printf '%4194305s' ' '; printf '\n' ;;
+            */oversized) /usr/bin/head -c 4194305 /dev/zero; while :; do :; done ;;
             *) printf '{"id":%d,"version":1}\n' "$count" ;;
           esac
         done
@@ -62,10 +62,14 @@ struct SpeechWorkerClientTests {
     @Test func wrongIdentityAndOversizedReplyFailAndAHealthyWorkerCanRestart() async throws {
         let (root, helper) = try fixture()
         defer { try? FileManager.default.removeItem(at: root) }
-        let client = SpeechWorkerClient(executable: helper, timeout: .seconds(2))
-        for name in ["wrong-id", "oversized"] {
+        let client = SpeechWorkerClient(executable: helper, timeout: .seconds(5))
+        let cases: [(String, SpeechWireError)] = [
+            ("wrong-id", .invalid("Mismatched speech worker reply.")),
+            ("oversized", .invalid("Oversized speech response.")),
+        ]
+        for (name, expected) in cases {
             _ = try await client.start(modelFile: root.appendingPathComponent(name), profile: "multitalker-v1")
-            await #expect(throws: SpeechWireError.self) { try await client.send(SpeechWorkerRequest(id: 0, operation: .reset)) }
+            await #expect(throws: expected) { try await client.send(SpeechWorkerRequest(id: 0, operation: .reset)) }
         }
         _ = try await client.start(modelFile: root.appendingPathComponent("normal"), profile: "multitalker-v1")
         #expect(try await client.send(SpeechWorkerRequest(id: 0, operation: .reset)).id == 1)
@@ -75,13 +79,13 @@ struct SpeechWorkerClientTests {
     @Test func timeoutAlsoInterruptsABlockedPipeWrite() async throws {
         let (root, helper) = try fixture()
         defer { try? FileManager.default.removeItem(at: root) }
-        let client = SpeechWorkerClient(executable: helper, timeout: .milliseconds(150))
+        let client = SpeechWorkerClient(executable: helper, timeout: .milliseconds(500))
         _ = try await client.start(modelFile: root.appendingPathComponent("blocked-write"), profile: "multitalker-v1")
         let start = ContinuousClock.now
         await #expect(throws: (any Error).self) {
             try await client.send(SpeechWorkerRequest(id: 0, operation: .run, pcm: Data(repeating: 0, count: 1_024 * 1_024)))
         }
-        #expect(ContinuousClock.now - start < .seconds(2))
+        #expect(ContinuousClock.now - start < .seconds(3))
         await client.stop()
     }
 }

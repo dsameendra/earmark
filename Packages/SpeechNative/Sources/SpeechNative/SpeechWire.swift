@@ -25,8 +25,9 @@ public enum SpeechWire {
     }
 }
 
-public enum SpeechWireError: Error, Equatable, Sendable {
+public enum SpeechWireError: Error, LocalizedError, Equatable, Sendable {
     case invalid(String)
+    public var errorDescription: String? { switch self { case .invalid(let reason): reason } }
 }
 
 public struct SpeechWorkerRequest: Codable, Sendable {

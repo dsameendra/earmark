@@ -37,3 +37,30 @@ struct SpeechWireTests {
         #expect(throws: (any Error).self) { try JSONDecoder().decode(SpeechWorkerRequest.self, from: bytes) }
     }
 }
+
+@Suite("Incremental native speech framing")
+struct SpeechLineFramerTests {
+    @Test func preservesSplitUTF8AndMultipleCompleteMessages() throws {
+        let first = Data(#"{"text":"සිංහල 日本語"}"#.utf8)
+        let second = Data(#"{"id":2}"#.utf8)
+        let source = first + Data([10]) + second + Data([10])
+        var framer = SpeechLineFramer()
+        var frames: [Data] = []
+        for byte in source { frames += try framer.append(Data([byte])) }
+        #expect(frames == [first, second])
+        #expect(!framer.hasPartialMessage)
+        _ = try framer.append(Data("partial".utf8))
+        #expect(framer.hasPartialMessage)
+    }
+
+    @Test func refusesUnterminatedOversizeAndMessageFloods() throws {
+        var framer = SpeechLineFramer()
+        #expect(throws: SpeechWireError.invalid("Oversized speech response.")) {
+            try framer.append(Data(repeating: 1, count: SpeechWire.maximumMessageBytes + 1))
+        }
+        var flood = SpeechLineFramer()
+        #expect(throws: SpeechWireError.self) { try flood.append(Data(String(repeating: "1\n", count: 33).utf8)) }
+        var empty = SpeechLineFramer()
+        #expect(throws: SpeechWireError.self) { try empty.append(Data([10])) }
+    }
+}

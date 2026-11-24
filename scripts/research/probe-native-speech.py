@@ -18,6 +18,11 @@ TEXTS = ["The blue train leaves the station at nine o'clock. Please keep the win
          "I need three red notebooks for the meeting tomorrow. The small package belongs on the wooden table beside the door."]
 
 
+def file_digest(path):
+    with path.open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
 def words(text):
     return re.findall(r"[a-z0-9]+(?:'[a-z]+)?", text.lower().replace('’', "'"))
 
@@ -96,10 +101,10 @@ class Worker:
             self.process.stdout.close()
 
 
-def check(snapshot, duration_ms):
+def check(snapshot, duration_ms, texts):
     segments = snapshot['segments']
     speakers = sorted({row['speaker'] for row in segments if row['speaker'] > 0})
-    references = [words(text) for text in TEXTS]
+    references = [words(text) for text in texts]
     hypotheses = [words(' '.join(row['text'] for row in segments if row['speaker'] == speaker)) for speaker in speakers]
     padded = hypotheses + [[]] * max(0, 2 - len(hypotheses))
     refs = references + [[]] * max(0, len(padded) - 2)
@@ -119,6 +124,7 @@ def main():
     parser.add_argument('--model', required=True, type=Path)
     parser.add_argument('--fixture', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--reference-manifest', type=Path)
     args = parser.parse_args()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with wave.open(str(args.fixture)) as audio:
@@ -126,13 +132,23 @@ def main():
             raise ValueError('Expected 16 kHz mono int16 WAV')
         raw = audio.readframes(audio.getnframes())
     pcm = b''.join(struct.pack('<f', sample[0] / 32768) for sample in struct.iter_unpack('<h', raw))
+    texts = TEXTS
+    scope = 'synthetic authored structural/semantic probe; not natural-meeting accuracy or real-time acceptance'
+    if args.reference_manifest:
+        reference = json.loads(args.reference_manifest.read_text())
+        if reference.get('fixtureSHA256') != hashlib.sha256(args.fixture.read_bytes()).hexdigest():
+            raise ValueError('The reference manifest does not match this frozen fixture')
+        texts = reference['texts']
+        if len(texts) != 2 or not all(isinstance(text, str) and 0 < len(text) <= 20000 for text in texts):
+            raise ValueError('Expected two bounded reference transcripts')
+        scope = reference['scope']
     mode = os.environ.get('TRANSCRIBE_MULTITALKER_MODE', 'kernel')
     if mode not in ('kernel', 'masked'):
         raise ValueError('Unsupported supervision mode')
     result = dict(protocol=1, supervisionMode=mode, fixtureSHA256=hashlib.sha256(args.fixture.read_bytes()).hexdigest(),
                   helperSHA256=hashlib.sha256(args.helper.read_bytes()).hexdigest(),
-                  modelSHA256=hashlib.sha256(args.model.read_bytes()).hexdigest(), texts=TEXTS,
-                  scope='synthetic authored structural/semantic probe; not natural-meeting accuracy or real-time acceptance')
+                  modelSHA256=file_digest(args.model), texts=texts,
+                  scope=scope)
     with args.output.with_suffix('.stderr.log').open('wb') as errors:
         worker = Worker(args.helper, args.model, errors)
         try:
@@ -142,7 +158,7 @@ def main():
             offline = worker.command('run', pcm=pcm, language='en', diarize=True)
             if 'error' in offline:
                 raise RuntimeError(offline['error'])
-            result['offline'] = check(offline['snapshot'], len(pcm) / 64)
+            result['offline'] = check(offline['snapshot'], len(pcm) / 64, texts)
             overlap = worker.ready['ready']['canStreamWithSpeakers']
             rejected = worker.command('begin', language='en', diarize=True)
             result['streamingOverlapSupported'] = overlap
@@ -163,7 +179,7 @@ def main():
             final = worker.command('finish')
             if 'error' in final:
                 raise RuntimeError(final['error'])
-            result['streaming'] = check(final['snapshot'], len(pcm) / 64)
+            result['streaming'] = check(final['snapshot'], len(pcm) / 64, texts)
             result['monotonicRevisions'] = revisions == sorted(revisions)
             result['resetSucceeded'] = 'error' not in worker.command('reset')
             args.output.with_suffix('.snapshots.json').write_text(json.dumps(dict(offline=offline, final=final), indent=2) + '\n')

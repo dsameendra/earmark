@@ -153,7 +153,7 @@ func runWorker() throws {
     }
     let worker = try SpeechWorker(path: args[1], profile: args[2], backend: backend)
     try write(SpeechWorkerReply(id: 0, ready: worker.ready))
-    var buffer = Data()
+    var framer = SpeechLineFramer()
     var chunk = [UInt8](repeating: 0, count: 65_536)
     while true {
         // FileHandle.read(upToCount:) may wait to fill a pipe read. POSIX read returns
@@ -162,25 +162,20 @@ func runWorker() throws {
         if count < 0, errno == EINTR { continue }
         guard count >= 0 else { throw SpeechWireError.invalid("Could not read the speech request pipe.") }
         if count == 0 { break }
-        buffer.append(contentsOf: chunk.prefix(count))
-        while let newline = buffer.firstIndex(of: 10) {
-            let line = Data(buffer[..<newline])
-            buffer.removeSubrange(...newline)
-            guard !line.isEmpty, line.count <= SpeechWire.maximumMessageBytes else { throw SpeechWireError.invalid("Invalid request size.") }
+        for line in try framer.append(Data(chunk.prefix(count))) {
             let request = try JSONDecoder().decode(SpeechWorkerRequest.self, from: line)
             do { try write(worker.respond(request)) }
             catch {
                 worker.stream?.reset(); worker.stream = nil
-                try write(SpeechWorkerReply(id: request.id, error: String(describing: error)))
+                try write(SpeechWorkerReply(id: request.id, error: error.localizedDescription))
             }
         }
-        guard buffer.count <= SpeechWire.maximumMessageBytes else { throw SpeechWireError.invalid("Oversized request.") }
     }
-    guard buffer.isEmpty else { throw SpeechWireError.invalid("Incomplete request at end of input.") }
+    guard !framer.hasPartialMessage else { throw SpeechWireError.invalid("Incomplete request at end of input.") }
 }
 
 do { try runWorker() }
 catch {
-    try? write(SpeechWorkerReply(id: 0, error: String(describing: error)))
+    try? write(SpeechWorkerReply(id: 0, error: error.localizedDescription))
     exit(1)
 }

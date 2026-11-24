@@ -144,19 +144,10 @@ public actor SpeechWorkerClient {
 
 private final class SpeechReplyBuffer: @unchecked Sendable {
     private let lock = NSLock()
-    private var pending = Data()
+    private var framer = SpeechLineFramer()
     func append(_ bytes: Data) throws -> [Data] {
         lock.lock(); defer { lock.unlock() }
-        pending.append(bytes)
-        var lines: [Data] = []
-        while let newline = pending.firstIndex(of: 10) {
-            let line = Data(pending[..<newline])
-            pending.removeSubrange(...newline)
-            guard !line.isEmpty, line.count <= SpeechWire.maximumMessageBytes else { throw SpeechWireError.invalid("Invalid speech response size.") }
-            lines.append(line)
-        }
-        guard pending.count <= SpeechWire.maximumMessageBytes else { throw SpeechWireError.invalid("Oversized speech response.") }
-        return lines
+        return try framer.append(bytes)
     }
 }
 

@@ -1,0 +1,127 @@
+{
+  "status": "failed initial natural-voice overlap diagnostic; no catalog activation",
+  "protocol": "1.1.0-native-speech-protocol.md",
+  "fixture": {
+    "dataset": "google/fleurs",
+    "revision": "168de341b3db6859a9bac1c50a2ef5e3b47647e0",
+    "config": "en_us",
+    "split": "test",
+    "license": "CC-BY-4.0",
+    "citation": "Conneau et al., FLEURS: Few-shot Learning Evaluation of Universal Representations of Speech (2022)",
+    "sourceURL": "https://huggingface.co/datasets/google/fleurs/resolve/168de341b3db6859a9bac1c50a2ef5e3b47647e0/en_us/test/0000.parquet",
+    "parquetSHA256": "6428a4d04d3aac29e16b45e039bb1470a8bd7aa334cf92f7984c9c520d1f234d",
+    "selection": "First male and female utterance in parquet order with duration 6-15 seconds",
+    "secondVoiceOffsetMS": 3000,
+    "maximumPeakPerVoice": 0.45,
+    "targetRMSPerVoice": 0.08,
+    "sources": [
+      {
+        "id": 1904,
+        "parquetRow": 0,
+        "gender": 0,
+        "transcription": "however due to the slow communication channels styles in the west could lag behind by 25 to 30 year",
+        "originalSHA256": "33aca50159ec2e3cbcc894eb26faa916d6badb1b49fb75994973561540a7f012",
+        "samples": 168960,
+        "gain": 11.853376205787782,
+        "inputRMS": 0.0037233532127220973,
+        "inputPeak": 0.0379638671875
+      },
+      {
+        "id": 1950,
+        "parquetRow": 2,
+        "gender": 1,
+        "transcription": "to the north and within easy reach is the romantic and fascinating town of sintra and which was made famous to foreigners after a glowing account of its splendours recorded by lord byron",
+        "originalSHA256": "260bdd1a15e1d35bcc5d91667516ca3bc659285e10f94872182715bcd7880398",
+        "samples": 183360,
+        "gain": 74.09849246231155,
+        "inputRMS": 0.0007914976688717847,
+        "inputPeak": 0.006072998046875
+      }
+    ],
+    "texts": [
+      "however due to the slow communication channels styles in the west could lag behind by 25 to 30 year",
+      "to the north and within easy reach is the romantic and fascinating town of sintra and which was made famous to foreigners after a glowing account of its splendours recorded by lord byron"
+    ],
+    "scope": "Licensed natural-voice synthetic mixture; a small diagnostic, not a natural meeting benchmark",
+    "fixtureSHA256": "94f59e01f99cfa90efae779af08263c9791ea61e0171604dd2780cc1960d3f84",
+    "durationSeconds": 14.46,
+    "files": [
+      {
+        "path": "mix.wav",
+        "bytes": 462764,
+        "sha256": "94f59e01f99cfa90efae779af08263c9791ea61e0171604dd2780cc1960d3f84"
+      },
+      {
+        "path": "source-1904.original",
+        "bytes": 675898,
+        "sha256": "33aca50159ec2e3cbcc894eb26faa916d6badb1b49fb75994973561540a7f012"
+      },
+      {
+        "path": "source-1904.wav",
+        "bytes": 337998,
+        "sha256": "5b65c1ef398ea8ce0580f5dc86dd1b16ee763024feda5e70cd9384eb6c7258ac"
+      },
+      {
+        "path": "source-1950.original",
+        "bytes": 733498,
+        "sha256": "260bdd1a15e1d35bcc5d91667516ca3bc659285e10f94872182715bcd7880398"
+      },
+      {
+        "path": "source-1950.wav",
+        "bytes": 366798,
+        "sha256": "e1fc893c3faa1c76a67cfb0bf9367a3ed9cb2f0cc00e644c62e470ab6fffa894"
+      }
+    ]
+  },
+  "probe": {
+    "protocol": 1,
+    "supervisionMode": "kernel",
+    "fixtureSHA256": "94f59e01f99cfa90efae779af08263c9791ea61e0171604dd2780cc1960d3f84",
+    "helperSHA256": "c3ef3c485a769d93eaa6667b32f65542c69b22b8740001076633682d3e165284",
+    "modelSHA256": "18116241c595891bccf44cd0207cd749e9ba9e6025ee73ab59606633ec730304",
+    "texts": [
+      "however due to the slow communication channels styles in the west could lag behind by 25 to 30 year",
+      "to the north and within easy reach is the romantic and fascinating town of sintra and which was made famous to foreigners after a glowing account of its splendours recorded by lord byron"
+    ],
+    "scope": "Licensed natural-voice synthetic mixture; a small diagnostic, not a natural meeting benchmark",
+    "ready": {
+      "ready": {
+        "canDetectLanguage": false,
+        "canStreamWithSpeakers": false,
+        "backend": "MTL0",
+        "variant": "multitalker-parakeet-streaming-0.6b-v1",
+        "languages": [
+          "en"
+        ],
+        "translationTargets": [],
+        "architecture": "parakeet",
+        "canStream": true,
+        "canTranslate": false,
+        "canDiarize": true,
+        "nativeVersion": "0.4.2"
+      },
+      "version": 1,
+      "id": 0
+    },
+    "offline": {
+      "cpWER": 0.5769230769230769,
+      "speakerCount": 2,
+      "maxCrossSpeakerSegmentOverlapMS": 5360,
+      "validInputRelativeTimes": true,
+      "passesInitialProbe": false,
+      "timestampKind": "token"
+    },
+    "streamingOverlapSupported": false,
+    "streaming": {
+      "cpWER": 1.0,
+      "speakerCount": 0,
+      "maxCrossSpeakerSegmentOverlapMS": 0,
+      "validInputRelativeTimes": true,
+      "passesInitialProbe": false,
+      "timestampKind": "token"
+    },
+    "monotonicRevisions": true,
+    "resetSucceeded": true
+  },
+  "finding": "F16 recovers two speaker labels and 5.36 seconds of cross-speaker segment overlap but fails the <=25% cpWER floor at 57.69%. Native speaker streaming remains explicitly unsupported. Reference/adapter investigation is still required."
+}

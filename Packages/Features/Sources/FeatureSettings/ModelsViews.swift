@@ -28,6 +28,7 @@ enum ModelFormat {
     static func licenseBadge(_ license: LicenseInfo) -> (text: String, tone: DSTone) {
         if license.isNonCommercial { return ("\(license.spdx) · non-commercial", .warning) }
         if license.spdx.uppercased().contains("-SA") { return ("\(license.spdx) · share-alike", .info) }
+        if license.needsAcknowledgement { return ("\(license.spdx) · review terms", .info) }
         return (license.spdx, .neutral)
     }
 }
@@ -161,7 +162,7 @@ struct ModelRowView: View {
         .popover(isPresented: $showsLanguages) {
             let names = ModelCapabilitySummary.languageNames(row.descriptor)
             VStack(alignment: .leading, spacing: DSSpacing.sm) {
-                Text("\(names.count) \(names.count == 1 ? "language" : "languages")").font(DSTypography.headline)
+                Text(ModelCapabilitySummary.languageCountLabel(row.descriptor)).font(DSTypography.headline)
                 ScrollView {
                     Text(names.joined(separator: ", ")).font(DSTypography.body)
                         .frame(maxWidth: .infinity, alignment: .leading)

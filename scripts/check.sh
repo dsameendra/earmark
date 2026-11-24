@@ -7,6 +7,7 @@ case "$mode" in all|unit|build|ui) ;; *) echo 'Usage: scripts/check.sh all|unit|
 report_root="${EARMARK_REPORT_ROOT:-$HOME/Library/Caches/EarmarkBuild/reports}"
 mkdir -p "$report_root"
 python3 "$repo_root/scripts/check-dependencies.py"
+python3 "$repo_root/scripts/verify-language-profiles.py"
 if [ "$mode" = all ] || [ "$mode" = unit ]; then
     for package in NativeWorkerKit AppCore Persistence DesignSystem ModelStore AudioCapture Processing Export Permissions Meetings Translation Transcription Diarization LiveCaptions Dictation Jobs QwenASR Features NLLBNative SpeechNative TextGenerationNative; do
         printf 'Testing %s\n' "$package"

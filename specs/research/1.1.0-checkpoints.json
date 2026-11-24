@@ -4052,6 +4052,452 @@
           "size": 1155413
         }
       ]
+    },
+    {
+      "repo": "tencent/Hy-MT2-1.8B",
+      "revision": "9a341cd1b679d3efd23b46e847b01745a71ed792",
+      "license": "apache-2.0",
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1777
+        },
+        {
+          "path": "LICENSE.txt",
+          "size": 11629
+        },
+        {
+          "path": "README.md",
+          "size": 14763
+        },
+        {
+          "path": "README_CN.md",
+          "size": 13767
+        },
+        {
+          "path": "chat_template.jinja",
+          "size": 654
+        },
+        {
+          "path": "config.json",
+          "size": 1348
+        },
+        {
+          "path": "generation_config.json",
+          "size": 221
+        },
+        {
+          "path": "imgs/logo-en.png",
+          "size": 65860
+        },
+        {
+          "path": "imgs/logo-zh.png",
+          "size": 69906
+        },
+        {
+          "path": "imgs/main_result.png",
+          "size": 3840604,
+          "sha256": "b87606817fec4fbdaca939de433e4d2a8e92d65493f44222aaaefb381f5a8c6e"
+        },
+        {
+          "path": "model.safetensors",
+          "size": 4077072784,
+          "sha256": "29e9117a44c79f81857613601968ff482d8a23c2d6736a1710bba9e5ca4762e5"
+        },
+        {
+          "path": "special_tokens_map.json",
+          "size": 488
+        },
+        {
+          "path": "tokenizer.json",
+          "size": 9527287
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 165815
+        },
+        {
+          "path": "train/README.md",
+          "size": 15424
+        },
+        {
+          "path": "train/README_CN.md",
+          "size": 14167
+        },
+        {
+          "path": "train/data/example_data.jsonl",
+          "size": 27750
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero2_no_offload.json",
+          "size": 528
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero2_offload.json",
+          "size": 676
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero3_no_offload.json",
+          "size": 1100
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero3_offload.json",
+          "size": 1099
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero3_offload_no_auto.json",
+          "size": 944
+        },
+        {
+          "path": "train/deepspeed_support/merge_lora_weight.py",
+          "size": 2512
+        },
+        {
+          "path": "train/deepspeed_support/merge_lora_weight.sh",
+          "size": 269
+        },
+        {
+          "path": "train/deepspeed_support/train.py",
+          "size": 25662
+        },
+        {
+          "path": "train/deepspeed_support/train.sh",
+          "size": 3471
+        },
+        {
+          "path": "train/deepspeed_support/train_dense.py",
+          "size": 14905
+        },
+        {
+          "path": "train/deepspeed_support/train_dense.sh",
+          "size": 4853
+        },
+        {
+          "path": "train/deepspeed_support/train_dense_lora.sh",
+          "size": 5081
+        },
+        {
+          "path": "train/deepspeed_support/train_lora.sh",
+          "size": 3603
+        },
+        {
+          "path": "train/llama_factory_support/convert_zero_to_hf.sh",
+          "size": 5925
+        },
+        {
+          "path": "train/llama_factory_support/dataset_info.json",
+          "size": 974
+        },
+        {
+          "path": "train/llama_factory_support/ds_zero2_offload.json",
+          "size": 892
+        },
+        {
+          "path": "train/llama_factory_support/ds_zero2_offload_lora.json",
+          "size": 795
+        },
+        {
+          "path": "train/llama_factory_support/ds_zero3_offload.json",
+          "size": 954
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_1_8b_full_sft.yaml",
+          "size": 1077
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_1_8b_lora_sft.yaml",
+          "size": 1193
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_7b_full_sft.yaml",
+          "size": 1071
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_7b_lora_sft.yaml",
+          "size": 1187
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_template.py",
+          "size": 3616
+        },
+        {
+          "path": "train/llama_factory_support/hy_v3_full_sft.yaml",
+          "size": 1076
+        },
+        {
+          "path": "train/llama_factory_support/hy_v3_lora_sft.yaml",
+          "size": 1231
+        },
+        {
+          "path": "train/llama_factory_support/hy_v3_patches.py",
+          "size": 8783
+        },
+        {
+          "path": "train/llama_factory_support/hy_v3_template.py",
+          "size": 1933
+        },
+        {
+          "path": "train/llama_factory_support/train_hy_dense.py",
+          "size": 2982
+        },
+        {
+          "path": "train/llama_factory_support/train_hy_v3.py",
+          "size": 2475
+        },
+        {
+          "path": "train/llama_factory_support/train_lf.sh",
+          "size": 3904
+        },
+        {
+          "path": "train/llama_factory_support/train_lf_dense.sh",
+          "size": 4197
+        },
+        {
+          "path": "train/requirements.txt",
+          "size": 159
+        },
+        {
+          "path": "train/tools/check_converted.py",
+          "size": 15567
+        },
+        {
+          "path": "train/tools/convert_ckpt_to_outer.py",
+          "size": 23540
+        }
+      ]
+    },
+    {
+      "repo": "tencent/Hy-MT2-7B",
+      "revision": "9b0eb4e8f001def3e5ff6469a0ac96fdb39ec223",
+      "license": "apache-2.0",
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1749
+        },
+        {
+          "path": "LICENSE.txt",
+          "size": 11625
+        },
+        {
+          "path": "README.md",
+          "size": 15470
+        },
+        {
+          "path": "README_CN.md",
+          "size": 14474
+        },
+        {
+          "path": "chat_template.jinja",
+          "size": 662
+        },
+        {
+          "path": "config.json",
+          "size": 1349
+        },
+        {
+          "path": "generation_config.json",
+          "size": 217
+        },
+        {
+          "path": "imgs/logo-en.png",
+          "size": 65860
+        },
+        {
+          "path": "imgs/logo-zh.png",
+          "size": 69906
+        },
+        {
+          "path": "imgs/main_result.png",
+          "size": 3840604,
+          "sha256": "b87606817fec4fbdaca939de433e4d2a8e92d65493f44222aaaefb381f5a8c6e"
+        },
+        {
+          "path": "model-00001-of-00004.safetensors",
+          "size": 4949503392,
+          "sha256": "eb51c57590920e9fe28116d26fdf4dd7945951849faabb3788dfafeef0bcfdc0"
+        },
+        {
+          "path": "model-00002-of-00004.safetensors",
+          "size": 4967588264,
+          "sha256": "ecdbc6cab7125d31f19ad540afc235b856bd6691679853b594b33d79e5eb3285"
+        },
+        {
+          "path": "model-00003-of-00004.safetensors",
+          "size": 4925662096,
+          "sha256": "1286f0a1d50f61e397211153d4d188ad67ef77733cf24557cd097d28f3119d97"
+        },
+        {
+          "path": "model-00004-of-00004.safetensors",
+          "size": 1216368504,
+          "sha256": "596bcdd619fddb7e5ef3ad8764b083f214556638c70fd81105cca96700b9fbb6"
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "size": 29790
+        },
+        {
+          "path": "special_tokens_map.json",
+          "size": 431
+        },
+        {
+          "path": "tokenizer.json",
+          "size": 16388221,
+          "sha256": "4185389a69284fdd3ebf737c6120bbeee36cbed9763151fa5bac5986a39e05d4"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 37763
+        },
+        {
+          "path": "train/README.md",
+          "size": 15424
+        },
+        {
+          "path": "train/README_CN.md",
+          "size": 14167
+        },
+        {
+          "path": "train/data/example_data.jsonl",
+          "size": 27750
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero2_no_offload.json",
+          "size": 528
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero2_offload.json",
+          "size": 676
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero3_no_offload.json",
+          "size": 1100
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero3_offload.json",
+          "size": 1099
+        },
+        {
+          "path": "train/deepspeed_support/ds_zero3_offload_no_auto.json",
+          "size": 944
+        },
+        {
+          "path": "train/deepspeed_support/merge_lora_weight.py",
+          "size": 2512
+        },
+        {
+          "path": "train/deepspeed_support/merge_lora_weight.sh",
+          "size": 269
+        },
+        {
+          "path": "train/deepspeed_support/train.py",
+          "size": 25662
+        },
+        {
+          "path": "train/deepspeed_support/train.sh",
+          "size": 3471
+        },
+        {
+          "path": "train/deepspeed_support/train_dense.py",
+          "size": 14905
+        },
+        {
+          "path": "train/deepspeed_support/train_dense.sh",
+          "size": 4853
+        },
+        {
+          "path": "train/deepspeed_support/train_dense_lora.sh",
+          "size": 5081
+        },
+        {
+          "path": "train/deepspeed_support/train_lora.sh",
+          "size": 3603
+        },
+        {
+          "path": "train/llama_factory_support/convert_zero_to_hf.sh",
+          "size": 5925
+        },
+        {
+          "path": "train/llama_factory_support/dataset_info.json",
+          "size": 974
+        },
+        {
+          "path": "train/llama_factory_support/ds_zero2_offload.json",
+          "size": 892
+        },
+        {
+          "path": "train/llama_factory_support/ds_zero2_offload_lora.json",
+          "size": 795
+        },
+        {
+          "path": "train/llama_factory_support/ds_zero3_offload.json",
+          "size": 954
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_1_8b_full_sft.yaml",
+          "size": 1077
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_1_8b_lora_sft.yaml",
+          "size": 1193
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_7b_full_sft.yaml",
+          "size": 1071
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_7b_lora_sft.yaml",
+          "size": 1187
+        },
+        {
+          "path": "train/llama_factory_support/hy_dense_template.py",
+          "size": 3616
+        },
+        {
+          "path": "train/llama_factory_support/hy_v3_full_sft.yaml",
+          "size": 1076
+        },
+        {
+          "path": "train/llama_factory_support/hy_v3_lora_sft.yaml",
+          "size": 1231
+        },
+        {
+          "path": "train/llama_factory_support/hy_v3_patches.py",
+          "size": 8783
+        },
+        {
+          "path": "train/llama_factory_support/hy_v3_template.py",
+          "size": 1933
+        },
+        {
+          "path": "train/llama_factory_support/train_hy_dense.py",
+          "size": 2982
+        },
+        {
+          "path": "train/llama_factory_support/train_hy_v3.py",
+          "size": 2475
+        },
+        {
+          "path": "train/llama_factory_support/train_lf.sh",
+          "size": 3904
+        },
+        {
+          "path": "train/llama_factory_support/train_lf_dense.sh",
+          "size": 4197
+        },
+        {
+          "path": "train/requirements.txt",
+          "size": 159
+        },
+        {
+          "path": "train/tools/check_converted.py",
+          "size": 15567
+        },
+        {
+          "path": "train/tools/convert_ckpt_to_outer.py",
+          "size": 23540
+        }
+      ]
     }
   ]
 }

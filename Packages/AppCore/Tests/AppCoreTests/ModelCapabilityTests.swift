@@ -15,6 +15,24 @@ private func model(
 
 @Suite("ModelCapabilities and ModelDescriptor decoding")
 struct ModelCapabilitiesDecodingTests {
+    @Test("finite mapped aliases preserve scripts, cannot chain, and survive persistence")
+    func mappedTranslationAliases() throws {
+        let capabilities = ModelCapabilities(translation: true, translationPairs: [LanguagePair(source: "en", target: "zh-Hant")], translationLanguageMatching: .mapped,
+            translationLanguageAliases: ["eng": "en", "en-Latn": "en", "zh-Hans": "zh", "bad": "unknown", "chain": "eng"])
+        let original = model("mapped", kind: .translation, languages: ["en", "zh", "zh-Hant"], capabilities: capabilities)
+        let restored = try JSONDecoder().decode(ModelDescriptor.self, from: JSONEncoder().encode(original))
+        #expect(restored == original)
+        #expect(restored.supportsTranslation(LanguagePair(source: "eng", target: "zh-TW")))
+        #expect(restored.supportsTranslation(LanguagePair(source: "en-US", target: "zh-Hant")))
+        #expect(!restored.supportsTranslation(LanguagePair(source: "zh-TW", target: "en")))
+        #expect(!restored.supportsTranslation(LanguagePair(source: "en-Cyrl", target: "zh-TW")))
+        #expect(!restored.supportsTranslation(LanguagePair(source: "en-Latn", target: "en")))
+        #expect(restored.canonicalTranslationLanguage("bad") == nil)
+        #expect(restored.canonicalTranslationLanguage("chain") == nil)
+        let legacy = try JSONDecoder().decode(ModelCapabilities.self, from: Data("{}".utf8))
+        #expect(legacy.translationLanguageAliases.isEmpty && legacy.translationLanguageMatching == .primary)
+    }
+
     @Test("a descriptor persisted before SCR-011 decodes with standard capabilities and no include list")
     func legacyDescriptorDecodes() throws {
         // Encode today's descriptor, then strip the SCR-011 keys to get exactly what an old state.json holds.

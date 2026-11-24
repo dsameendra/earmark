@@ -26,8 +26,8 @@ def digest(path):
 
 
 class Worker:
-    def __init__(self, executable, folder, profile, error_file):
-        self.process = subprocess.Popen([str(executable), str(folder), '4', profile],
+    def __init__(self, executable, folder, profile, error_file, threads=4):
+        self.process = subprocess.Popen([str(executable), str(folder), str(threads), profile],
                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=error_file)
         self.selector = selectors.DefaultSelector()
         self.selector.register(self.process.stdout, selectors.EVENT_READ)

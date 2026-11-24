@@ -1,5 +1,6 @@
 import AppCore
 import Foundation
+import ModelLanguageProfiles
 
 /// The built-in model catalog (ADR-004, ADR-006, ADR-007). Sizes marked "approx." in `notes` are estimates, not measurements.
 public enum BuiltInCatalog {
@@ -147,10 +148,7 @@ public enum BuiltInCatalog {
             capabilities: ModelCapabilities(live: false, file: true, translation: true)),
         ModelDescriptor(
             id: "nllb/200-distilled-600M", displayName: "NLLB-200 distilled 600M (CTranslate2 int8)", kind: .translation,
-            runtime: .other, engine: "nllb", languages: [
-                "si", "en", "ta", "hi", "bn", "ur", "te", "ml", "kn", "mr", "gu", "pa", "ne", "de", "fr", "es", "it", "pt", "nl",
-                "ja", "ko", "zh", "ar", "ru", "id", "th", "vi"
-            ], sizeBytes: 647 * mb,
+            runtime: .other, engine: "nllb", languages: Set(NLLBLanguageProfile.codes.keys.map { LanguageCode($0) }), sizeBytes: 647 * mb,
             license: LicenseInfo(
                 spdx: "CC-BY-NC-4.0", isNonCommercial: true,
                 attribution:
@@ -158,9 +156,10 @@ public enum BuiltInCatalog {
             ),
             minTier: .tier16, sourceURL: hf("JustFrederik/nllb-200-distilled-600M-ct2-int8/tree/\(Revision.nllb)"), isExperimental: true,
             notes:
-                "27-language translation for non-commercial use. Download is 647 MB (measured from the repo listing: model.bin 623 MB, "
+                "202 language/script token profiles for experimental, non-commercial translation. Coverage is tokenizer support, not independent quality certification for every direction. Download is 647 MB (measured from the repo listing: model.bin 623 MB, "
                 + "SentencePiece 4.9 MB, vocab 2.6 MB, tokenizer.json 17 MB). English to Sinhala is low confidence. Pinned to revision 302d78f.",
-            capabilities: ModelCapabilities(live: false, file: true, translation: true)),
+            capabilities: ModelCapabilities(live: false, file: true, translation: true, translationLanguageMatching: .mapped,
+                translationLanguageAliases: Dictionary(uniqueKeysWithValues: NLLBLanguageProfile.aliases.map { (LanguageCode($0.key), LanguageCode($0.value)) }))),
         ModelDescriptor(
             id: "madlad/400-3b-mt-q4k", displayName: "MADLAD-400 3B (q4k, optional)", kind: .translation, runtime: .gguf,
             engine: "madlad", languages: ["si", "en"], sizeBytes: 1_654_597_280,

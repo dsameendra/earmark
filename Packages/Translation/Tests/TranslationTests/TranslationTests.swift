@@ -120,17 +120,45 @@ struct NLLBEngineTests {
     func unsupportedScripts() async throws {
         let runtime = FakeNLLBRuntime()
         let e = engine(installed: true, runtime: runtime)
-        #expect(await !e.supports(pair("en", "zh-Hant")))
+        #expect(await !e.supports(pair("en", "zh-Cyrl")))
         #expect(await !e.supports(pair("en-Cyrl", "si")))
-        #expect(NLLBLanguages.code(for: "zh-TW") == nil)
+        #expect(NLLBLanguages.code(for: "zh-TW") == "zho_Hant")
         #expect(NLLBLanguages.code(for: "zh-Hans") == "zho_Hans")
         #expect(NLLBLanguages.code(for: "en-Latn") == "eng_Latn")
         do {
-            _ = try await collect(e.translate(items: items(["hello"]), from: "en", to: "zh-Hant"))
+            _ = try await collect(e.translate(items: items(["hello"]), from: "en", to: "zh-Cyrl"))
             Issue.record("unsupported script was translated")
         } catch {}
         #expect(await runtime.loadedFolder == nil)
         #expect(await runtime.requests.isEmpty)
+    }
+
+    @Test("all checkpoint language tokens are mapped once; ambiguous scripts and merged dialects remain distinct")
+    func completeInventory() async throws {
+        #expect(NLLBLanguages.codes.count == 202)
+        #expect(Set(NLLBLanguages.codes.values).count == 202)
+        #expect(NLLBLanguages.code(for: "ace") == nil)
+        #expect(NLLBLanguages.code(for: "sat") == nil)
+        #expect(NLLBLanguages.code(for: "sat-Olck") == nil)
+        #expect(NLLBLanguages.code(for: "sat-Beng") == "sat_Beng")
+        #expect(NLLBLanguages.code(for: "ks") == nil)
+        #expect(NLLBLanguages.code(for: "ks-Arab") == "kas_Arab")
+        #expect(NLLBLanguages.code(for: "ks-Deva") == "kas_Deva")
+        #expect(NLLBLanguages.code(for: "ajp") == "ajp_Arab")
+        #expect(NLLBLanguages.code(for: "apc") == "apc_Arab")
+        #expect(NLLBLanguages.code(for: "ak") == "aka_Latn")
+        #expect(NLLBLanguages.code(for: "tw") == "twi_Latn")
+        let runtime = FakeNLLBRuntime()
+        let restricted = NLLBEngine(models: MockModelManager(installed: ["nllb/200-distilled-600M"]), runtime: runtime, languages: ["en-Latn", "si"])
+        #expect(await restricted.supports(pair("en-US", "si")))
+        #expect(await !restricted.supports(pair("en", "de")))
+        let e = engine(installed: true, runtime: runtime)
+        #expect(await e.supports(pair("zh-Hans", "zh-Hant")))
+        #expect(await e.supports(pair("ks-Arab", "ks-Deva")))
+        #expect(await !e.supports(pair("en-Latn", "eng")))
+        _ = try await collect(e.translate(items: items(["test"]), from: "ks-Arab", to: "ks-Deva"))
+        #expect(await runtime.requests.first?.source == "kas_Arab")
+        #expect(await runtime.requests.first?.target == "kas_Deva")
     }
 
     @Test("unload releases the runtime")

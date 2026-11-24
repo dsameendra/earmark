@@ -25,12 +25,27 @@ public struct ModelCapabilityChip: Hashable, Identifiable, Sendable {
 
 public enum ModelCapabilitySummary {
     public static func languageName(_ code: LanguageCode) -> String {
-        Locale.current.localizedString(forLanguageCode: code.rawValue) ?? code.rawValue
+        if code.rawValue.contains("-") {
+            return Locale.current.localizedString(forIdentifier: code.rawValue) ?? code.rawValue
+        }
+        return Locale.current.localizedString(forLanguageCode: code.rawValue) ?? code.rawValue
     }
 
-    /// Distinct primary languages, sorted by display name.
+    /// Preserve script/locale options and disambiguate OS-localized names that
+    /// collapse two distinct model dialects to the same display name.
     public static func languageNames(_ model: ModelDescriptor) -> [String] {
-        Set(model.languages.map(\.primary)).map(languageName).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+        let names = Dictionary(grouping: model.languages, by: languageName)
+        return model.languages.map { code in
+            let name = languageName(code)
+            return names[name, default: []].count > 1 ? "\(name) (\(code.rawValue))" : name
+        }.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    public static func languageCountLabel(_ model: ModelDescriptor) -> String {
+        let count = model.languages.count
+        let hasVariants = Set(model.languages.map(\.primary)).count != count
+        if hasVariants { return "\(count) language options" }
+        return "\(count) \(count == 1 ? "language" : "languages")"
     }
 
     /// "English", "English, German, French" or "99 languages".
@@ -39,7 +54,7 @@ public enum ModelCapabilitySummary {
         switch names.count {
         case 0: return "No languages"
         case 1...3: return names.joined(separator: ", ")
-        default: return "\(names.count) languages"
+        default: return languageCountLabel(model)
         }
     }
 
@@ -65,9 +80,12 @@ public enum ModelCapabilitySummary {
                 id: "license", text: "\(license.spdx) · non-commercial", symbol: "exclamationmark.triangle", tone: .warning,
                 spoken: "Licence \(license.spdx), non-commercial use only")
         }
+        if license.spdx.uppercased().contains("-SA") {
+            return ModelCapabilityChip(id: "license", text: "\(license.spdx) · share-alike", tone: .info, spoken: "Licence \(license.spdx), share-alike terms")
+        }
         if license.needsAcknowledgement {
-            return ModelCapabilityChip(
-                id: "license", text: "\(license.spdx) · share-alike", tone: .info, spoken: "Licence \(license.spdx), share-alike terms")
+            let terms = license.spdx.uppercased() == "NOASSERTION" ? "unverified licence" : "custom terms"
+            return ModelCapabilityChip(id: "license", text: "\(license.spdx) · \(terms)", tone: .info, spoken: "Licence \(license.spdx), \(terms). Review before downloading.")
         }
         return ModelCapabilityChip(id: "license", text: license.spdx, spoken: "Licence \(license.spdx)")
     }
@@ -77,11 +95,11 @@ public enum ModelCapabilitySummary {
         let c = model.capabilities
         var chips: [ModelCapabilityChip] = []
         if model.kind == .asr || (model.kind == .translation && !model.languages.isEmpty) {
-            let count = Set(model.languages.map(\.primary)).count
+            let names = languageNames(model)
             chips.append(
                 ModelCapabilityChip(
                     id: "languages", text: languageSummary(model), symbol: "globe",
-                    spoken: "\(count) \(count == 1 ? "language" : "languages"): \(languageNames(model).joined(separator: ", "))"))
+                    spoken: names.count <= 5 ? "\(languageCountLabel(model)): \(names.joined(separator: ", "))" : languageCountLabel(model)))
         }
         if model.kind == .asr {
             if c.live {

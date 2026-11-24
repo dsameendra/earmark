@@ -5,7 +5,7 @@ import Foundation
 
 // MARK: - Capabilities
 
-public enum ModelTranslationLanguageMatching: String, Codable, Sendable, Hashable { case primary, exact }
+public enum ModelTranslationLanguageMatching: String, Codable, Sendable, Hashable { case primary, exact, mapped }
 
 /// Whether a model can label speakers, and how.
 public enum SpeakerSupport: String, Codable, Sendable, Hashable { case none, offline, streaming }
@@ -77,13 +77,15 @@ public struct ModelCapabilities: Codable, Hashable, Sendable {
     public var streaming: ModelStreamingImplementation?
     public var overlapRecognitionSpeakers: Int?
     public var translationLanguageMatching: ModelTranslationLanguageMatching
+    public var translationLanguageAliases: [LanguageCode: LanguageCode]
 
     public init(
         live: Bool = false, file: Bool = true, wordTimestamps: Bool = false, autoDetectLanguage: Bool = false,
         speakerLabels: SpeakerSupport = .none, translation: Bool = false, speed: SpeedTier? = nil, memory: MemoryTier? = nil,
         recommendedUse: [RecommendedUse] = [], translationPairs: Set<LanguagePair>? = nil,
         speechTranslationPairs: Set<LanguagePair> = [], streaming: ModelStreamingImplementation? = nil,
-        overlapRecognitionSpeakers: Int? = nil, translationLanguageMatching: ModelTranslationLanguageMatching = .primary
+        overlapRecognitionSpeakers: Int? = nil, translationLanguageMatching: ModelTranslationLanguageMatching = .primary,
+        translationLanguageAliases: [LanguageCode: LanguageCode] = [:]
     ) {
         self.live = live
         self.file = file
@@ -99,6 +101,7 @@ public struct ModelCapabilities: Codable, Hashable, Sendable {
         self.streaming = streaming
         self.overlapRecognitionSpeakers = overlapRecognitionSpeakers
         self.translationLanguageMatching = translationLanguageMatching
+        self.translationLanguageAliases = translationLanguageAliases
     }
 
     /// Conservative default for models with no recorded capabilities (custom imports, legacy state): file transcription only.
@@ -120,7 +123,8 @@ public struct ModelCapabilities: Codable, Hashable, Sendable {
             speechTranslationPairs: try c.decodeIfPresent(Set<LanguagePair>.self, forKey: .speechTranslationPairs) ?? [],
             streaming: try c.decodeIfPresent(ModelStreamingImplementation.self, forKey: .streaming),
             overlapRecognitionSpeakers: try c.decodeIfPresent(Int.self, forKey: .overlapRecognitionSpeakers),
-            translationLanguageMatching: try c.decodeIfPresent(ModelTranslationLanguageMatching.self, forKey: .translationLanguageMatching) ?? .primary)
+            translationLanguageMatching: try c.decodeIfPresent(ModelTranslationLanguageMatching.self, forKey: .translationLanguageMatching) ?? .primary,
+            translationLanguageAliases: try c.decodeIfPresent([LanguageCode: LanguageCode].self, forKey: .translationLanguageAliases) ?? [:])
     }
 }
 
@@ -131,6 +135,10 @@ extension ModelDescriptor {
 
     public func supportsTranslation(_ pair: LanguagePair) -> Bool {
         guard kind == .translation, isRunnable, capabilities.translation, pair.source != pair.target else { return false }
+        if capabilities.translationLanguageMatching == .mapped {
+            guard let source = canonicalTranslationLanguage(pair.source), let target = canonicalTranslationLanguage(pair.target), source != target else { return false }
+            return capabilities.translationPairs?.contains(LanguagePair(source: source, target: target)) ?? true
+        }
         if capabilities.translationLanguageMatching == .exact {
             guard languages.contains(pair.source), languages.contains(pair.target) else { return false }
             return capabilities.translationPairs?.contains(pair) ?? true
@@ -139,6 +147,16 @@ extension ModelDescriptor {
             return pairs.contains(pair) || pairs.contains(LanguagePair(source: pair.source.primary, target: pair.target.primary))
         }
         return pair.source.primary != pair.target.primary && covers(pair.source) && covers(pair.target)
+    }
+
+    /// Finite mapped translation identities. Aliases cannot create languages or
+    /// follow an untrusted chain to capabilities outside the descriptor.
+    public func canonicalTranslationLanguage(_ language: LanguageCode) -> LanguageCode? {
+        for candidate in [language, language.translationIdentity] {
+            if languages.contains(candidate) { return candidate }
+            if let canonical = capabilities.translationLanguageAliases[candidate], languages.contains(canonical) { return canonical }
+        }
+        return nil
     }
 
     /// `true` when the model covers `language` exactly or by its primary subtag.

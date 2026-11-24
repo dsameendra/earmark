@@ -1,27 +1,27 @@
 import AppCore
 import Foundation
 import NativeWorkerKit
+import ModelLanguageProfiles
 import TextModelProfiles
 
 /// FLORES-200 codes used by NLLB-200.
 public enum NLLBLanguages {
-    public static let codes: [LanguageCode: String] = [
-        "si": "sin_Sinh", "en": "eng_Latn", "ta": "tam_Taml", "hi": "hin_Deva", "bn": "ben_Beng", "ur": "urd_Arab",
-        "te": "tel_Telu", "ml": "mal_Mlym", "kn": "kan_Knda", "mr": "mar_Deva", "gu": "guj_Gujr", "pa": "pan_Guru", "ne": "npi_Deva",
-        "de": "deu_Latn", "fr": "fra_Latn", "es": "spa_Latn", "it": "ita_Latn", "pt": "por_Latn", "nl": "nld_Latn", "ja": "jpn_Jpan",
-        "ko": "kor_Hang", "zh": "zho_Hans", "ar": "arb_Arab", "ru": "rus_Cyrl", "id": "ind_Latn", "th": "tha_Thai", "vi": "vie_Latn",
-    ]
-    /// Every currently mapped language is available; licensing and installed-model checks still apply.
+    public static let codes: [LanguageCode: String] = Dictionary(uniqueKeysWithValues: NLLBLanguageProfile.codes.map { (LanguageCode($0.key), $0.value) })
+    public static let aliases: [LanguageCode: LanguageCode] = Dictionary(uniqueKeysWithValues: NLLBLanguageProfile.aliases.map { (LanguageCode($0.key), LanguageCode($0.value)) })
+    /// Tokenizer-supported execution remains experimental, with directional
+    /// quality acceptance recorded separately from the inventory.
     public static let defaultLanguages: Set<LanguageCode> = Set(codes.keys)
 
-    /// Region normalization is valid only for the FLORES writing system this
-    /// build actually maps. Never turn Traditional Chinese into Simplified.
+    public static func canonical(for language: LanguageCode) -> LanguageCode? {
+        for candidate in [language, language.translationIdentity] {
+            if codes[candidate] != nil { return candidate }
+            if let canonical = aliases[candidate], codes[canonical] != nil { return canonical }
+        }
+        return nil
+    }
+
     public static func code(for language: LanguageCode) -> String? {
-        if let code = codes[language] { return code }
-        guard let code = codes[language.primary], let script = code.split(separator: "_").last else { return nil }
-        let identity = language.translationIdentity.rawValue.split(separator: "-")
-        if identity.count > 1, identity[1] != script { return nil }
-        return code
+        canonical(for: language).flatMap { codes[$0] }
     }
 }
 
@@ -54,7 +54,7 @@ public actor NLLBEngine: TranslationEngine, PairSupportChecking {
         self.models = models
         self.runtime = runtime
         self.modelID = modelID
-        self.languages = languages
+        self.languages = Set(languages.compactMap { NLLBLanguages.canonical(for: $0) })
         self.maxItems = maxItems
         self.maxCharacters = maxCharacters
     }
@@ -62,9 +62,8 @@ public actor NLLBEngine: TranslationEngine, PairSupportChecking {
     public nonisolated static func isLowConfidence(to target: LanguageCode) -> Bool { target.primary == .sinhala }
 
     public func supports(_ pair: LanguagePair) async -> Bool {
-        let (s, t) = (pair.source.primary, pair.target.primary)
-        guard let source = NLLBLanguages.code(for: pair.source), let target = NLLBLanguages.code(for: pair.target) else { return false }
-        return source != target && languages.contains(s) && languages.contains(t)
+        guard let source = NLLBLanguages.canonical(for: pair.source), let target = NLLBLanguages.canonical(for: pair.target) else { return false }
+        return source != target && languages.contains(source) && languages.contains(target)
     }
 
     public func supportedPairs() async -> Set<LanguagePair> {
@@ -102,8 +101,8 @@ public actor NLLBEngine: TranslationEngine, PairSupportChecking {
     }
 
     private func runLocked(_ texts: [String], from: LanguageCode, to: LanguageCode) async throws -> [String] {
-        guard let src = NLLBLanguages.code(for: from), languages.contains(from.primary) else { throw AppError.unsupportedLanguage(from) }
-        guard let tgt = NLLBLanguages.code(for: to), languages.contains(to.primary) else { throw AppError.unsupportedLanguage(to) }
+        guard let source = NLLBLanguages.canonical(for: from), languages.contains(source), let src = NLLBLanguages.codes[source] else { throw AppError.unsupportedLanguage(from) }
+        guard let target = NLLBLanguages.canonical(for: to), languages.contains(target), let tgt = NLLBLanguages.codes[target] else { throw AppError.unsupportedLanguage(to) }
         guard src != tgt else { throw TranslationFailure.sameLanguage(from) }
         try Task.checkCancellation()
         try await ensureLoaded()

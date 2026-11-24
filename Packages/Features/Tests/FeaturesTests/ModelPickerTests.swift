@@ -150,6 +150,19 @@ private func catalog() -> [ModelDescriptor] {
         #expect(ModelCapabilitySummary.chips(for: catalog()[3]).map(\.id).contains("tier"))
     }
 
+    @Test func scriptChoicesAreVisibleAndCustomLicencesAreNeverCalledShareAlike() {
+        let variants = asr("variants", ["zh-Hans", "zh-Hant", "en-US", "en-GB"], caps: ModelCapabilities())
+        #expect(ModelCapabilitySummary.languageNames(variants).count == 4)
+        #expect(ModelCapabilitySummary.languageCountLabel(variants) == "4 language options")
+        #expect(ModelCapabilitySummary.languageNames(variants).contains(ModelCapabilitySummary.languageName("zh-Hant")))
+        #expect(ModelCapabilitySummary.languageName("zh-Hant") != ModelCapabilitySummary.languageName("zh-Hans"))
+        for identifier in ["LicenseRef-Gemma", "LicenseRef-OpenMDW", "NOASSERTION"] {
+            let chip = ModelCapabilitySummary.licenseChip(LicenseInfo(spdx: identifier))
+            #expect(!chip.text.contains("share-alike"))
+            #expect(chip.spoken.contains("Review"))
+        }
+    }
+
     @Test func languageSummaryListsFewAndCountsMany() {
         #expect(ModelCapabilitySummary.languageSummary(catalog()[2]) == ModelCapabilitySummary.languageName("si"))
         let many = asr("many", Set((0..<20).map { LanguageCode("x\($0)") }), caps: ModelCapabilities())

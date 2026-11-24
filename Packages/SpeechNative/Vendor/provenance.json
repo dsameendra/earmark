@@ -189,5 +189,12 @@
       "bytes": 4004,
       "sha256": "05e2d78b2a7d1ac4d3731da22ea3c19cc9ac24aca304ee6ae0c7bc2a1fe0c7fe"
     }
-  ]
+  ],
+  "symlinks": {
+    "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/CTranscribe": "Versions/Current/CTranscribe",
+    "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Headers": "Versions/Current/Headers",
+    "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Modules": "Versions/Current/Modules",
+    "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Resources": "Versions/Current/Resources",
+    "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Versions/Current": "A"
+  }
 }

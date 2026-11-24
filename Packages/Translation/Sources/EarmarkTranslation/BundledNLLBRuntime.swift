@@ -13,6 +13,10 @@ public enum BundledNLLBRuntime {
     }
 
     public static func pool(in bundle: Bundle = .main) -> CTranslate2RuntimePool? {
-        executable(in: bundle).map { CTranslate2RuntimePool(nativeExecutable: $0) }
+        executable(in: bundle).map {
+            let candidate = bundle.bundleURL.appendingPathComponent("Contents/Helpers/EarmarkTextWorker")
+            let generative = FileManager.default.isExecutableFile(atPath: candidate.path) ? candidate : nil
+            return CTranslate2RuntimePool(nativeExecutable: $0, generativeExecutable: generative)
+        }
     }
 }

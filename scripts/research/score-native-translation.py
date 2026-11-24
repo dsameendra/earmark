@@ -104,7 +104,7 @@ def main():
     parser.add_argument('--model-root', required=True, type=Path)
     parser.add_argument('--fixtures', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path)
-    parser.add_argument('--family', choices=['opus', 'madlad', 'nllb'], default='opus')
+    parser.add_argument('--family', choices=['opus', 'madlad', 'nllb', 'hymt2-1.8b', 'hymt2-7b', 'translategemma-4b', 'translategemma-12b'], default='opus')
     parser.add_argument('--model-folder', type=Path)
     parser.add_argument('--pairs', nargs='+', default=['en-de', 'de-en', 'en-fr', 'fr-en', 'en-es', 'es-en'])
     parser.add_argument('--samples', type=int, default=30)
@@ -127,13 +127,13 @@ def main():
             raise ValueError('Unexpected parallel fixture row count')
         texts = [inputs[i] for i in indices]
         gold = [references[i] for i in indices]
-        profile = {'opus': 'marian', 'madlad': 'madlad', 'nllb': 'nllb'}[args.family]
+        profile = {'opus': 'marian', 'madlad': 'madlad', 'nllb': 'nllb'}.get(args.family, args.family)
         folder = args.model_root / ('opus-' + pair) if args.family == 'opus' else args.model_folder
         if folder is None:
             raise ValueError('--model-folder is required for this family')
         receipt = folder / 'earmark-source.json'
         provenance = json.loads(receipt.read_text()) if receipt.exists() else None
-        if args.family == 'opus' and provenance is None:
+        if args.family not in {'madlad', 'nllb'} and provenance is None:
             raise ValueError('A verified checkpoint acquisition receipt is required')
         if provenance:
             for artifact in provenance['files']:
@@ -181,6 +181,9 @@ def main():
             row['float32ChrFPlusPlus'] = metric.corpus_score(reference_outputs, [gold]).score
             row['quantizedDelta'] = score - row['float32ChrFPlusPlus']
             del reference_model
+        if args.family.startswith(('hymt2-', 'translategemma-')):
+            # A frozen screening floor, not full precision parity or universal language coverage.
+            row['passesQualityScreen'] = row['empty'] == 0 and score >= 35 and preserved == shared
         if args.family == 'opus':
             row['passesInitialFloor'] = row['empty'] == 0 and score >= 35 and 'quantizedDelta' in row and row['quantizedDelta'] >= -2
         result['scores'].append(row)
@@ -188,6 +191,10 @@ def main():
             json.dumps(dict(indices=indices, source=texts, reference=gold, native=outputs), ensure_ascii=False, indent=2) + '\n')
         args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
         print(pair, 'chrF++', round(score, 2), 'delta', row.get('quantizedDelta'), 'empty', row['empty'], flush=True)
+    if args.family.startswith(('hymt2-', 'translategemma-')):
+        result['status'] = 'passed_quality_screen' if all(row['passesQualityScreen'] for row in result['scores']) else 'failed_quality_screen'
+        result['quantizationParity'] = 'not_evaluated'
+        args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
     if args.family == 'opus':
         passed = all(row['passesInitialFloor'] for row in result['scores'])
         result['status'] = 'passed_initial_floor' if passed else 'failed_or_incomplete_initial_floor'

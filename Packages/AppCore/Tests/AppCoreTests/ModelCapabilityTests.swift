@@ -240,6 +240,9 @@ struct ModelPreflightTypeTests {
     }
 
     @Test func licenceAcknowledgement() {
+        #expect(LicenseInfo(spdx: "LicenseRef-Gemma").needsAcknowledgement)
+        #expect(LicenseInfo(spdx: "LicenseRef-OpenMDW-1.1").needsAcknowledgement)
+        #expect(!LicenseInfo(spdx: "LicenseRef-Apple-System").needsAcknowledgement)
         #expect(LicenseInfo(spdx: "CC-BY-SA-4.0").needsAcknowledgement)
         #expect(LicenseInfo(spdx: "NOASSERTION").needsAcknowledgement)
         #expect(!LicenseInfo(spdx: "MIT").needsAcknowledgement)

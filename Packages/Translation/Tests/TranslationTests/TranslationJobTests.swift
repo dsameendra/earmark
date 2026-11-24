@@ -63,6 +63,19 @@ struct TranslationJobTests {
         #expect(await repo.upserts == 3)  // 2 + 2 + 1: partial results are persisted as they stream (TRN-AC-05)
     }
 
+    @Test("a translation job preserves an existing track in another Chinese writing system")
+    func scriptTracksPersistSeparately() async throws {
+        let (transcript, initial) = fixture(count: 1)
+        var segment = try #require(initial.first)
+        segment.translations = [SegmentTranslation(language: "zh-Hans", text: "简体", engine: "old")]
+        let repo = MemoryTranscripts(transcript, segments: [segment])
+        let engine = FakeEngine(id: "test", pairs: [pair("en", "zh-Hant")])
+        _ = try await TranslationJob(transcripts: repo, router: FixedRouter(engine: engine)).run(transcriptID: transcript.id, target: "zh-Hant")
+        let saved = try #require(try await repo.segments(for: transcript.id).first)
+        #expect(saved.translations.map(\.language) == ["zh-Hans", "zh-Hant"])
+        #expect(saved.translations.first?.text == "简体")
+    }
+
     @Test("TRN-AC-06: identical source and target is skipped with a message and changes nothing")
     func sameLanguage() async throws {
         let (transcript, segments) = fixture()

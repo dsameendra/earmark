@@ -4,6 +4,15 @@ import Testing
 
 @Suite("Multilingual model metadata migration")
 struct MultilingualModelContractTests {
+    @Test("written-language identity preserves scripts while retaining region-only skips")
+    func writtenLanguageIdentity() {
+        #expect(LanguagePair(source: "en-US", target: "en-GB").isSameWrittenLanguage)
+        #expect(!LanguagePair(source: "zh-Hans", target: "zh-Hant").isSameWrittenLanguage)
+        #expect(!LanguagePair(source: "zh-CN", target: "zh-TW").isSameWrittenLanguage)
+        #expect(LanguagePair(source: "zh-Hant-CN", target: "zh-TW").isSameWrittenLanguage)
+        #expect(!LanguagePair(source: "sr-Latn", target: "sr-Cyrl").isSameWrittenLanguage)
+        #expect(LanguageCode("zh_HK").translationIdentity == "zh-Hant")
+    }
     private func translation(_ capabilities: ModelCapabilities) -> ModelDescriptor {
         ModelDescriptor(
             id: "translation/test", displayName: "Test", kind: .translation, runtime: .other,

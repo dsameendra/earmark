@@ -42,6 +42,7 @@ packages:
   QwenASR: { path: Packages/QwenASR }
   NLLBNative: { path: Packages/NLLBNative }
   NativeWorkerKit: { path: Packages/NativeWorkerKit }
+  TextGenerationNative: { path: Packages/TextGenerationNative }
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     exactVersion: 2.10.1
@@ -74,6 +75,21 @@ targets:
     dependencies:
       - package: NLLBNative
         product: NLLBNative
+      - package: NativeWorkerKit
+  EarmarkTextWorker:
+    type: tool
+    platform: macOS
+    sources: [Packages/TextGenerationNative/Sources/EarmarkTextWorker]
+    settings:
+      base:
+        ARCHS: arm64
+        PRODUCT_BUNDLE_IDENTIFIER: lk.dumindu.earmark.text-worker
+        GENERATE_INFOPLIST_FILE: YES
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path @executable_path/../Frameworks"
+    dependencies:
+      - package: TextGenerationNative
+        product: TextGenerationNative
       - package: NativeWorkerKit
   Earmark:
     type: application
@@ -109,6 +125,8 @@ targets:
         NSAudioCaptureUsageDescription: Earmark captures meeting and system audio on this Mac for live captions and transcripts. Nothing leaves your device.
     dependencies:
       - target: EarmarkNLLBWorker
+        embed: false
+      - target: EarmarkTextWorker
         embed: false
       - package: Sparkle
       - package: AppCore
@@ -159,14 +177,22 @@ targets:
           set -eu
           destination="$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers"
           mkdir -p "$destination"
-          /usr/bin/ditto "$BUILT_PRODUCTS_DIR/EarmarkNLLBWorker" "$destination/EarmarkNLLBWorker"
+          frameworks="$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks"
+          mkdir -p "$frameworks"
+          /usr/bin/ditto "$SRCROOT/Packages/TextGenerationNative/Vendor/EarmarkLlama.xcframework/macos-arm64/EarmarkLlama.framework" "$frameworks/EarmarkLlama.framework"
+          for helper in EarmarkNLLBWorker EarmarkTextWorker; do
+            /usr/bin/ditto "$BUILT_PRODUCTS_DIR/$helper" "$destination/$helper"
+          done
           if [ "$CODE_SIGNING_ALLOWED" != "NO" ] && [ -n "${EXPANDED_CODE_SIGN_IDENTITY:-}" ]; then
-            if [ "$EXPANDED_CODE_SIGN_IDENTITY" = "-" ]; then
-              /usr/bin/codesign --force --sign - --options runtime --timestamp=none "$destination/EarmarkNLLBWorker"
-            else
-              /usr/bin/codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --options runtime --timestamp "$destination/EarmarkNLLBWorker"
-            fi
+            for code in "$frameworks/EarmarkLlama.framework" "$destination/EarmarkNLLBWorker" "$destination/EarmarkTextWorker"; do
+              if [ "$EXPANDED_CODE_SIGN_IDENTITY" = "-" ]; then
+                /usr/bin/codesign --force --sign - --options runtime --timestamp=none "$code"
+              else
+                /usr/bin/codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --options runtime --timestamp "$code"
+              fi
+            done
           fi
+
 schemes:
   Earmark:
     build:

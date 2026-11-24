@@ -11,13 +11,15 @@ public struct DefaultTranslationRouter: TranslationRouter {
     private let additional: [any TranslationEngine]
     private let selectedEngine: @Sendable () async -> EngineID?
     private let isAllowed: @Sendable (EngineID) async -> Bool
+    private let isReady: @Sendable (EngineID, LanguagePair) async -> Bool
 
     /// Explicit engine choice never silently falls back. Policy is evaluated at execution, including cache hits.
     public init(
         apple: any TranslationEngine, nllb: (any TranslationEngine)?, cache: TranslationCache? = TranslationCache(),
         additional: [any TranslationEngine] = [],
         selectedEngine: @escaping @Sendable () async -> EngineID? = { nil },
-        isAllowed: @escaping @Sendable (EngineID) async -> Bool = { _ in true }
+        isAllowed: @escaping @Sendable (EngineID) async -> Bool = { _ in true },
+        isReady: @escaping @Sendable (EngineID, LanguagePair) async -> Bool = { _, _ in true }
     ) {
         self.apple = apple
         self.nllb = nllb
@@ -25,13 +27,14 @@ public struct DefaultTranslationRouter: TranslationRouter {
         self.additional = additional
         self.selectedEngine = selectedEngine
         self.isAllowed = isAllowed
+        self.isReady = isReady
     }
 
     public func engine(for pair: LanguagePair) async throws -> any TranslationEngine {
         let source = pair.source.primary
         let target = pair.target.primary
         if source.rawValue.isEmpty || source.rawValue == "und" { throw TranslationFailure.unknownSource }
-        guard source != target else { throw TranslationFailure.sameLanguage(source) }
+        guard !pair.isSameWrittenLanguage else { throw TranslationFailure.sameLanguage(source) }
         // Preserve script/region identity for checkpoint-specific validation.
         // Each engine may normalize only the variants it actually supports.
         let normalized = pair
@@ -44,8 +47,8 @@ public struct DefaultTranslationRouter: TranslationRouter {
         }
         if let direct = await direct(normalized) { return wrap(direct) }
         if source != .english, target != .english,
-            let first = await direct(LanguagePair(source: source, target: .english)),
-            let second = await direct(LanguagePair(source: .english, target: target))
+            let first = await direct(LanguagePair(source: pair.source, target: .english)),
+            let second = await direct(LanguagePair(source: .english, target: pair.target))
         {
             return PivotEngine(first: wrap(first), second: wrap(second), via: .english)
         }
@@ -53,13 +56,17 @@ public struct DefaultTranslationRouter: TranslationRouter {
     }
 
     private func direct(_ pair: LanguagePair) async -> (any TranslationEngine)? {
-        let involvesSinhala = pair.source == .sinhala || pair.target == .sinhala
-        if !involvesSinhala, await isAllowed(apple.id), await supports(apple, pair) { return apple }
-        if let nllb, await isAllowed(nllb.id), await supports(nllb, pair) { return nllb }
-        for engine in additional where await isAllowed(engine.id) {
-            if await supports(engine, pair) { return engine }
+        let involvesSinhala = pair.source.primary == .sinhala || pair.target.primary == .sinhala
+        let candidates = (involvesSinhala ? [] : [apple]) + (nllb.map { [$0] } ?? []) + additional
+        var supported: (any TranslationEngine)?
+        for engine in candidates where await isAllowed(engine.id) {
+            guard await supports(engine, pair) else { continue }
+            if supported == nil { supported = engine }
+            if await isReady(engine.id, pair) { return engine }
         }
-        return nil
+        // Retain the first supported engine so the caller can explain/install
+        // its missing model when none of the matching engines is ready.
+        return supported
     }
 
     private func wrap(_ engine: any TranslationEngine) -> any TranslationEngine {

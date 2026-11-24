@@ -18,6 +18,12 @@ def main():
         raise ValueError('Unreviewed native speech revision or ABI')
     if metadata.get('architectures') != ['arm64'] or metadata.get('deploymentTarget') != '26.0' or metadata.get('embeddedMetal') is not True:
         raise ValueError('Unexpected native speech build configuration')
+    links = {str(p.relative_to(root)): str(p.readlink()) for p in root.rglob('*') if p.is_symlink()}
+    if links != metadata.get('symlinks'):
+        raise ValueError('Native framework symlink inventory changed')
+    for name in links:
+        if not (root / name).resolve(strict=True).is_relative_to(root.resolve()):
+            raise ValueError('Native framework symlink escaped its root')
     recorded = set()
     for entry in metadata['files']:
         relative = PurePosixPath(entry['path'])

@@ -380,8 +380,22 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         case .progress:
             break
         case .languageDetected(let scores):
-            if let best = scores.max(by: { $0.probability < $1.probability }) {
+            if let best = scores.filter({ $0.probability.isFinite && $0.probability > 0 && $0.probability <= 1 && Self.knownLanguage($0.language) != nil }).max(by: { $0.probability < $1.probability }) {
                 ctx.detectedLanguage = best.language
+                // Repair only unlabelled captions; a later language detection
+                // must never relabel a segment with an explicit source language.
+                for index in ctx.finals.indices where Self.knownLanguage(ctx.finals[index].languageCode) == nil {
+                    ctx.finals[index].languageCode = best.language
+                    ctx.dirty.insert(ctx.finals[index].id)
+                }
+                ctx.store.updateEntries { if Self.knownLanguage($0.line.language) == nil { $0.line.language = best.language } }
+                for index in ctx.pendingFinalTranslations.indices where Self.knownLanguage(ctx.pendingFinalTranslations[index].language) == nil {
+                    ctx.pendingFinalTranslations[index].language = best.language
+                }
+                for id in Array(ctx.volatileTranslations.keys) where Self.knownLanguage(ctx.volatileTranslations[id]?.language) == nil {
+                    ctx.volatileTranslations[id]?.language = best.language
+                }
+                linesBus.send(ctx.store.lines)
                 ctx.translationWake?.yield()
             }
         }
@@ -392,13 +406,14 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         guard ctx.phase != .finished else { return }
         if processed.isEmpty { ctx.store.removeVolatile(lane: lane) }
         for var p in processed {
-            p.languageCode = p.languageCode ?? ctx.detectedLanguage ?? ctx.fixedLanguage
+            p.languageCode = Self.knownLanguage(p.languageCode) ?? Self.knownLanguage(ctx.detectedLanguage) ?? Self.knownLanguage(ctx.fixedLanguage)
             let label = ctx.diarizedLanes.contains(lane) ? ctx.timeline.label(for: p.range) : nil
             if let index = label?.index { p.speakerID = ctx.speaker(forIndex: index).id }
+            let isRevision = ctx.finalIndex[p.id] != nil
             ctx.record(p)
             let hidden = p.isIgnored || p.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             if hidden {
-                ctx.store.removeVolatile(lane: lane)
+                if !isRevision { ctx.store.removeVolatile(lane: lane) }
                 ctx.store.removeFinal(p.id)
                 ctx.pendingFinalTranslations.removeAll { $0.segmentID == p.id }
                 continue
@@ -486,9 +501,14 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         ctx.translationWake?.yield()
     }
 
+    private static func knownLanguage(_ language: LanguageCode?) -> LanguageCode? {
+        guard let language, !language.primary.rawValue.isEmpty, language.primary.rawValue != "und" else { return nil }
+        return language
+    }
+
     private func nextTranslationJob(_ ctx: SessionContext) -> SessionContext.TranslationJob? {
         func hasSource(_ job: SessionContext.TranslationJob) -> Bool {
-            job.language != nil || ctx.detectedLanguage != nil || ctx.fixedLanguage != nil
+            Self.knownLanguage(job.language) != nil || Self.knownLanguage(ctx.detectedLanguage) != nil || Self.knownLanguage(ctx.fixedLanguage) != nil
         }
         // Keep unknown-source finals in the same bounded queue until language ID
         // arrives. "Waiting for language" must not mean silently dropping them.
@@ -534,7 +554,7 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
     private func translate(
         _ job: SessionContext.TranslationJob, to target: LanguageCode, router: any TranslationRouter, ctx: SessionContext
     ) async {
-        guard let source = job.language ?? ctx.detectedLanguage ?? ctx.fixedLanguage else {
+        guard let source = Self.knownLanguage(job.language) ?? Self.knownLanguage(ctx.detectedLanguage) ?? Self.knownLanguage(ctx.fixedLanguage) else {
             if !ctx.unknownTranslationSourceNoticeSent {
                 ctx.unknownTranslationSourceNoticeSent = true
                 eventBus.send(.translationFailed(reason: "Waiting for the spoken language before translating. Choose a source language if detection is unavailable."))
@@ -542,7 +562,7 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
             return
         }
         ctx.unknownTranslationSourceNoticeSent = false
-        guard source.primary != target.primary else { return }
+        guard !LanguagePair(source: source, target: target).isSameWrittenLanguage else { return }
         do {
             let engine = try await router.engine(for: LanguagePair(source: source, target: target))
             let item = TranslationItem(segmentID: job.segmentID ?? SegmentID(), text: job.text)

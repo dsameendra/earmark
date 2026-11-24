@@ -2,6 +2,14 @@ import Foundation
 import NLLBNative
 import NativeWorkerKit
 
+struct Request: Decodable {
+    let id: Int
+    let src: String?
+    let tgt: String?
+    let texts: [String]
+    let op: String?
+}
+
 // One persistent model, serial JSON-lines requests. The app terminates this isolated process on cancellation.
 func reply(_ value: [String: Any]) throws {
     let data = try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys, .withoutEscapingSlashes])
@@ -23,18 +31,19 @@ do {
     try WorkerInput.forEachLine { line in
         var id = -1
         do {
-            guard let request = try JSONSerialization.jsonObject(with: line) as? [String: Any],
-                let requestID = request["id"] as? Int, requestID >= 0, let texts = request["texts"] as? [String],
-                texts.count <= 8, texts.allSatisfy({ $0.utf8.count <= 100_000 })
+            let request = try JSONDecoder().decode(Request.self, from: line)
+            id = request.id
+            let texts = request.texts
+            guard id >= 0, texts.count <= 8, texts.allSatisfy({ $0.utf8.count <= 100_000 }),
+                  request.op == nil || request.op == "translate" || request.op == "tokens"
             else {
                 throw NativeNLLBError(message: "Invalid translation request.")
             }
-            id = requestID
-            if request["op"] as? String == "tokens" {
+            if request.op == "tokens" {
                 try reply(["id": id, "tokens": try texts.map { try model.tokens(for: $0) }])
             } else {
-                guard let source = request["src"] as? String, let target = request["tgt"] as? String,
-                    texts.count <= 8, texts.allSatisfy({ $0.utf8.count <= 100_000 })
+                guard let source = request.src, let target = request.tgt,
+                    source.utf8.count <= 128, target.utf8.count <= 128
                 else {
                     throw NativeNLLBError(message: "Missing language tags or oversized batch.")
                 }

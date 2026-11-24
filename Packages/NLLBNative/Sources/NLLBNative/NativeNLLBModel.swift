@@ -23,6 +23,9 @@ public final class NativeNLLBModel {
     deinit { earmark_nllb_unload(handle) }
 
     public func translate(_ text: String, source: String, target: String) throws -> String {
+        guard ![text, source, target].contains(where: { $0.utf8.contains(0) }) else {
+            throw NativeNLLBError(message: "Translation text and language tags cannot contain null characters.")
+        }
         var error: UnsafeMutablePointer<CChar>?
         let result = text.withCString { text in
             source.withCString { source in target.withCString { earmark_nllb_translate(handle, text, source, $0, &error) } }
@@ -37,6 +40,7 @@ public final class NativeNLLBModel {
 
     /// Exact SentencePiece output for parity tests, including its Unicode normalization.
     public func tokens(for text: String) throws -> [String] {
+        guard !text.utf8.contains(0) else { throw NativeNLLBError(message: "Tokenization text cannot contain null characters.") }
         var error: UnsafeMutablePointer<CChar>?
         let result = text.withCString { earmark_nllb_encode(handle, $0, &error) }
         defer {

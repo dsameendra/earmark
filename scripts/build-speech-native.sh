@@ -63,7 +63,7 @@ codesign --verify --strict "$framework"
 test "$(lipo -archs "$framework/Versions/A/CTranscribe")" = arm64
 /usr/bin/ditto "$artifact" "$repo_root/Packages/SpeechNative/Vendor/TranscribeCpp.xcframework"
 python3 - "$repo_root" "$source_root" "$revision" <<'PY'
-import hashlib, json, pathlib, sys
+import hashlib, json, os, pathlib, sys
 repo, source = map(pathlib.Path, sys.argv[1:3])
 root = repo / 'Packages/SpeechNative/Vendor'
 files = []
@@ -75,5 +75,6 @@ metadata = dict(repository='https://github.com/handy-computer/transcribe.cpp', r
                 version='0.4.2', abiHash=(source / 'include/transcribe.abihash').read_text().strip(),
                 deploymentTarget='26.0', architectures=['arm64'], backends=['metal', 'cpu'],
                 embeddedMetal=True, buildScript='scripts/build-speech-native.sh', files=files)
+metadata['symlinks'] = {str(p.relative_to(root)): str(p.readlink()) for p in sorted(root.rglob('*')) if p.is_symlink()}
 (root / 'provenance.json').write_text(json.dumps(metadata, indent=2) + '\n')
 PY

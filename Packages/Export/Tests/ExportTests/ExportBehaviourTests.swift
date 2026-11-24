@@ -105,6 +105,18 @@ struct ExportBehaviourTests {
         #expect(!none.contains("Hello, let's look"))
     }
 
+    @Test("translation export never substitutes a different Chinese writing system")
+    func translationScripts() throws {
+        var document = Fixture.document()
+        document.segments = [Segment(start: 0, end: 1, text: "Original", translations: [SegmentTranslation(language: "zh-Hans", text: "简体", engine: "test")])]
+        var options = ExportOptions(format: .srt)
+        options.translation = .replace
+        options.translationLanguage = "zh-TW"
+        #expect(ExportPipeline.entries(document, options: options).first?.text == "Original")
+        options.translationLanguage = "zh-CN"
+        #expect(ExportPipeline.entries(document, options: options).first?.text == "简体")
+    }
+
     @Test("EXP-AC-07: subtitle constraints hold for varied inputs; no overlaps")
     func constraints() async throws {
         var doc = Fixture.document()

@@ -281,7 +281,11 @@ public enum ModelRecommender {
 
 extension LicenseInfo {
     /// Licences that need an explicit acknowledgement before download: share-alike terms or an unverified licence.
-    public var needsAcknowledgement: Bool { spdx.uppercased().contains("-SA") || spdx.uppercased() == "NOASSERTION" }
+    public var needsAcknowledgement: Bool {
+        let identifier = spdx.uppercased()
+        return identifier.contains("-SA") || identifier == "NOASSERTION"
+            || (identifier.hasPrefix("LICENSEREF-") && identifier != "LICENSEREF-APPLE-SYSTEM")
+    }
 }
 
 public enum ModelPreflightIssue: Hashable, Sendable {

@@ -1,5 +1,11 @@
 import AppCore
 import Foundation
+import TextModelProfiles
+
+enum TranslationWorkerProfile: Sendable, Equatable {
+    case ctranslate2(CTranslate2ModelProfile)
+    case generative(GenerativeProfile)
+}
 
 /// Owns one heavy native translation worker across checkpoint families. A lease spans
 /// model selection and inference, including suspension points. Switching evicts the old
@@ -8,31 +14,51 @@ public actor CTranslate2RuntimePool {
     private struct Active {
         let owner: UUID
         let folder: URL
-        let profile: CTranslate2ModelProfile
+        let profile: TranslationWorkerProfile
         let runtime: any NLLBRuntime
     }
-    private let makeRuntime: @Sendable (CTranslate2ModelProfile) -> any NLLBRuntime
+    private let makeRuntime: @Sendable (TranslationWorkerProfile) -> any NLLBRuntime
     private var active: Active?
     private let gate = TranslationOperationGate()
 
-    public init(nativeExecutable: URL) {
-        makeRuntime = { CTranslate2WorkerRuntime(nativeExecutable: nativeExecutable, profile: $0) }
+    public init(nativeExecutable: URL, generativeExecutable: URL? = nil) {
+        makeRuntime = { profile in
+            switch profile {
+            case .ctranslate2(let profile): return CTranslate2WorkerRuntime(nativeExecutable: nativeExecutable, profile: profile)
+            case .generative(let profile):
+                guard let generativeExecutable else { return UnavailableGenerativeRuntime() }
+                return CTranslate2WorkerRuntime(nativeExecutable: generativeExecutable, generativeProfile: profile)
+            }
+        }
     }
 
     init(makeRuntime: @escaping @Sendable (CTranslate2ModelProfile) -> any NLLBRuntime) {
-        self.makeRuntime = makeRuntime
+        self.makeRuntime = { profile in
+            switch profile {
+            case .ctranslate2(let value): makeRuntime(value)
+            case .generative: UnavailableGenerativeRuntime()
+            }
+        }
+    }
+
+    init(makeTranslationRuntime: @escaping @Sendable (TranslationWorkerProfile) -> any NLLBRuntime) {
+        makeRuntime = makeTranslationRuntime
     }
 
     public nonisolated func runtime(profile: CTranslate2ModelProfile) -> PooledCTranslate2Runtime {
-        PooledCTranslate2Runtime(pool: self, profile: profile)
+        PooledCTranslate2Runtime(pool: self, profile: .ctranslate2(profile))
     }
 
-    fileprivate func prepare(owner: UUID, folder: URL, profile: CTranslate2ModelProfile) async throws {
+    public nonisolated func runtime(profile: GenerativeProfile) -> PooledCTranslate2Runtime {
+        PooledCTranslate2Runtime(pool: self, profile: .generative(profile))
+    }
+
+    fileprivate func prepare(owner: UUID, folder: URL, profile: TranslationWorkerProfile) async throws {
         try await gate.withLease { _ = try await self.select(owner: owner, folder: folder, profile: profile) }
     }
 
     fileprivate func translate(
-        owner: UUID, folder: URL, profile: CTranslate2ModelProfile, texts: [String], source: String, target: String
+        owner: UUID, folder: URL, profile: TranslationWorkerProfile, texts: [String], source: String, target: String
     ) async throws -> [String] {
         try await gate.withLease {
             try await self.translateLocked(owner: owner, folder: folder, profile: profile, texts: texts, source: source, target: target)
@@ -40,13 +66,13 @@ public actor CTranslate2RuntimePool {
     }
 
     private func translateLocked(
-        owner: UUID, folder: URL, profile: CTranslate2ModelProfile, texts: [String], source: String, target: String
+        owner: UUID, folder: URL, profile: TranslationWorkerProfile, texts: [String], source: String, target: String
     ) async throws -> [String] {
         let runtime = try await select(owner: owner, folder: folder, profile: profile)
         return try await runtime.translate(texts, source: source, target: target)
     }
 
-    private func select(owner: UUID, folder: URL, profile: CTranslate2ModelProfile) async throws -> any NLLBRuntime {
+    private func select(owner: UUID, folder: URL, profile: TranslationWorkerProfile) async throws -> any NLLBRuntime {
         try Task.checkCancellation()
         if let active, active.owner == owner, active.folder == folder, active.profile == profile { return active.runtime }
         if let previous = active {
@@ -79,12 +105,12 @@ public actor CTranslate2RuntimePool {
 /// reacquires the right checkpoint instead of using another family's worker.
 public actor PooledCTranslate2Runtime: NLLBRuntime {
     private let pool: CTranslate2RuntimePool
-    private let profile: CTranslate2ModelProfile
+    private let profile: TranslationWorkerProfile
     private let owner = UUID()
     private var folder: URL?
     private let gate = TranslationOperationGate()
 
-    fileprivate init(pool: CTranslate2RuntimePool, profile: CTranslate2ModelProfile) {
+    fileprivate init(pool: CTranslate2RuntimePool, profile: TranslationWorkerProfile) {
         self.pool = pool
         self.profile = profile
     }
@@ -116,4 +142,10 @@ public actor PooledCTranslate2Runtime: NLLBRuntime {
         await pool.unload(owner: owner)
     }
 
+}
+
+private struct UnavailableGenerativeRuntime: NLLBRuntime {
+    func load(modelFolder: URL) async throws { throw AppError.other("The native generative translation helper is unavailable in this build.") }
+    func translate(_ texts: [String], source: String, target: String) async throws -> [String] { throw AppError.other("The native generative translation helper is unavailable in this build.") }
+    func unload() async {}
 }

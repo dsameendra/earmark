@@ -7,12 +7,13 @@ let package = Package(
     products: [.library(name: "EarmarkTranslation", targets: ["EarmarkTranslation"])],
     dependencies: [
         .package(path: "../AppCore"),
-        .package(path: "../NativeWorkerKit")
+        .package(path: "../NativeWorkerKit"),
+        .package(path: "../TextGenerationNative")
     ],
     targets: [
         // The target is named EarmarkTranslation (not Translation) so it never collides with Apple's Translation module.
         .target(
-            name: "EarmarkTranslation", dependencies: [.product(name: "AppCore", package: "AppCore"), "NativeWorkerKit"],
+            name: "EarmarkTranslation", dependencies: [.product(name: "AppCore", package: "AppCore"), "NativeWorkerKit", .product(name: "TextModelProfiles", package: "TextGenerationNative")],
             swiftSettings: [.treatAllWarnings(as: .error)]),
         .testTarget(
             name: "TranslationTests",

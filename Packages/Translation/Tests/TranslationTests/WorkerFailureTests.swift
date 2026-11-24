@@ -1,6 +1,7 @@
 import AppCore
 import Foundation
 import Testing
+import TextModelProfiles
 @testable import EarmarkTranslation
 
 @Suite("Translation worker failure boundaries", .serialized, .timeLimit(.minutes(1)))
@@ -11,7 +12,11 @@ struct WorkerFailureTests {
         let executable = root.appendingPathComponent("worker.sh")
         let source = #"""
         #!/bin/sh
-        printf '{"ready":true,"profile":"%s"}\n' "$3"
+        case "$1" in
+          */wrong-profile) printf '%s\n' '{"ready":true,"profile":"nllb"}' ;;
+          */bool-ready) printf '%s\n' '{"ready":1,"profile":"nllb"}' ;;
+          *) printf '{"ready":true,"profile":"%s"}\n' "$3" ;;
+        esac
         case "$1" in
           */blocked) trap '' TERM; : > "$1.started"; while :; do :; done ;;
         esac
@@ -20,6 +25,8 @@ struct WorkerFailureTests {
           count=$((count + 1))
           case "$1" in
             */slow) : > "$1.started"; while :; do :; done ;;
+            */bool-id) printf '%s\n' '{"id":true,"out":["invalid"]}' ;;
+            */blank) printf '{"id":%d,"out":[" "]}\n' "$count" ;;
             */wrong-id) printf '%s\n' '{"id":999,"error":"do not accept this unrelated error"}' ;;
             */oversized) /usr/bin/head -c 4194305 /dev/zero; while :; do :; done ;;
             *) printf '{"id":%d,"out":["translated"]}\n' "$count" ;;
@@ -29,6 +36,23 @@ struct WorkerFailureTests {
         try source.write(to: executable, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
         return (root, executable)
+    }
+
+    @Test func generativeProfilesAreBoundAndBooleanIDsAndBlankOutputsFail() async throws {
+        let (root, helper) = try fixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let runtime = CTranslate2WorkerRuntime(nativeExecutable: helper, generativeProfile: .gemma4)
+        await #expect(throws: (any Error).self) { try await runtime.load(modelFolder: root.appendingPathComponent("wrong-profile")) }
+        try await runtime.load(modelFolder: root.appendingPathComponent("normal"))
+        #expect(try await runtime.translate(["hello"], source: "en", target: "de") == ["translated"])
+        for folder in ["bool-id", "blank"] {
+            try await runtime.load(modelFolder: root.appendingPathComponent(folder))
+            await #expect(throws: (any Error).self) { try await runtime.translate(["hello"], source: "en", target: "de") }
+        }
+        await runtime.unload()
+        let ct2 = CTranslate2WorkerRuntime(nativeExecutable: helper)
+        await #expect(throws: (any Error).self) { try await ct2.load(modelFolder: root.appendingPathComponent("bool-ready")) }
+        await ct2.unload()
     }
 
     @Test func deadlineIncludesBlockedPipeWriteAndHealthyReloadWorks() async throws {

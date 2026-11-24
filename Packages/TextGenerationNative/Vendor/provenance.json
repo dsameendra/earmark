@@ -1,0 +1,63 @@
+{
+  "repository": "https://github.com/ggml-org/llama.cpp",
+  "revision": "9578bd3fe48b793cf193c2e4615ec2f24a2ea92a",
+  "deploymentTarget": "26.0",
+  "architectures": [
+    "arm64"
+  ],
+  "backends": [
+    "metal",
+    "cpu"
+  ],
+  "embeddedMetal": true,
+  "networkRuntime": false,
+  "buildScript": "scripts/build-text-generation-native.sh",
+  "bridge": {
+    "EarmarkLlama.h": "5cbfba4407ab8b1341d01ae86cfb789a675b42adc2543e3b00c96a7dc652bdcb",
+    "EarmarkLlama.cpp": "1b3906c50574a78c537c65d8ce8f3f8e3b61018d58d8b6339d2d3dc736633410"
+  },
+  "files": [
+    {
+      "path": "EarmarkLlama.xcframework/Info.plist",
+      "bytes": 741,
+      "sha256": "82742c3efe8cf7bbba33292492fa7337ddc65ba8648b533510c71251a661f469"
+    },
+    {
+      "path": "EarmarkLlama.xcframework/macos-arm64/EarmarkLlama.framework/Versions/A/EarmarkLlama",
+      "bytes": 12014080,
+      "sha256": "73610e08b969fa03acd1730dd4679dad29edd935c4c09cc1b19cde6994545ea1"
+    },
+    {
+      "path": "EarmarkLlama.xcframework/macos-arm64/EarmarkLlama.framework/Versions/A/Headers/EarmarkLlama.h",
+      "bytes": 650,
+      "sha256": "5cbfba4407ab8b1341d01ae86cfb789a675b42adc2543e3b00c96a7dc652bdcb"
+    },
+    {
+      "path": "EarmarkLlama.xcframework/macos-arm64/EarmarkLlama.framework/Versions/A/Modules/module.modulemap",
+      "bytes": 71,
+      "sha256": "13b714f9d2b2d280fce3c997506de783408a0082fffcc5e8660d234e831b1081"
+    },
+    {
+      "path": "EarmarkLlama.xcframework/macos-arm64/EarmarkLlama.framework/Versions/A/Resources/Info.plist",
+      "bytes": 692,
+      "sha256": "35156e2f84cec44f59ccfad3de44cbc31052ecacf3a1614f18ecc364adcf862f"
+    },
+    {
+      "path": "EarmarkLlama.xcframework/macos-arm64/EarmarkLlama.framework/Versions/A/_CodeSignature/CodeResources",
+      "bytes": 2732,
+      "sha256": "1c2ae856241778ab3b8a826364651c536669943f8590ad6d920e862c5bc0d0bc"
+    },
+    {
+      "path": "Licences/llama.cpp-and-ggml-MIT.txt",
+      "bytes": 1078,
+      "sha256": "94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d"
+    }
+  ],
+  "symlinks": {
+    "EarmarkLlama.xcframework/macos-arm64/EarmarkLlama.framework/EarmarkLlama": "Versions/Current/EarmarkLlama",
+    "EarmarkLlama.xcframework/macos-arm64/EarmarkLlama.framework/Headers": "Versions/Current/Headers",
+    "EarmarkLlama.xcframework/macos-arm64/EarmarkLlama.framework/Modules": "Versions/Current/Modules",
+    "EarmarkLlama.xcframework/macos-arm64/EarmarkLlama.framework/Resources": "Versions/Current/Resources",
+    "EarmarkLlama.xcframework/macos-arm64/EarmarkLlama.framework/Versions/Current": "A"
+  }
+}

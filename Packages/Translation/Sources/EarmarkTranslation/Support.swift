@@ -58,6 +58,9 @@ func streamInBatches(
                     guard outputs.count == batch.count else {
                         throw AppError.engineFailure(engine, reason: "Engine returned \(outputs.count) results for \(batch.count) inputs.")
                     }
+                    guard outputs.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
+                        throw AppError.engineFailure(engine, reason: "The engine returned an empty translation. Original text has been kept.")
+                    }
                     for (item, out) in zip(batch, outputs) {
                         continuation.yield(TranslatedSegment(segmentID: item.segmentID, text: out, engine: engine, isLowConfidence: lowConfidence))
                     }

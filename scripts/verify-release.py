@@ -157,7 +157,20 @@ def verify_app(app: Path, developer_id: bool = False, self_signed: bool = False)
     require(isinstance(executable, str) and Path(executable).name == executable, "invalid executable name")
     main = app / "Contents/MacOS" / executable
     helper = app / "Contents/Helpers/EarmarkNLLBWorker"
-    for path in [main, helper]:
+    helpers = [helper]
+    native_frameworks = []
+    modern_text = tuple(int(part) for part in (info["CFBundleShortVersionString"].split(".") + ["0", "0"])[:3]) >= (1, 1, 0)
+    if modern_text:
+        helpers.append(app / "Contents/Helpers/EarmarkTextWorker")
+        native_frameworks.append(app / "Contents/Frameworks/EarmarkLlama.framework")
+        require(native_frameworks[0].is_dir(), "native text framework is absent")
+        require((app / "Contents/Resources/NativeTextRuntimeLicences.txt").is_file(), "native text licence notice is absent")
+        main_dependencies = command("/usr/bin/otool", "-L", str(main))
+        require("EarmarkLlama.framework" not in main_dependencies and "CTranscribe.framework" not in main_dependencies,
+                "isolated native model libraries must not be linked into the app executable")
+        require("@rpath/EarmarkLlama.framework/Versions/A/EarmarkLlama" in command("/usr/bin/otool", "-L", str(helpers[-1])),
+                "native text helper does not link the reviewed text framework")
+    for path in [main, *helpers]:
         require(is_macho(path), f"missing native executable: {path.relative_to(app)}")
         require(path.stat().st_mode & 0o111, f"native executable is not executable: {path.relative_to(app)}")
         require("arm64" in command("/usr/bin/lipo", "-archs", str(path)), f"not arm64: {path.relative_to(app)}")
@@ -188,7 +201,7 @@ def verify_app(app: Path, developer_id: bool = False, self_signed: bool = False)
     signing = command("/usr/bin/codesign", "-dv", "--verbose=4", str(app))
     if developer_id:
         validate_update_configuration(info.get("SUFeedURL", ""), info.get("SUPublicEDKey", ""))
-        for path in [app, helper]:
+        for path in [app, *helpers, *native_frameworks]:
             signature = command("/usr/bin/codesign", "-dv", "--verbose=4", str(path))
             require("Authority=Developer ID Application:" in signature, f"not Developer ID signed: {path.name}")
             require("runtime" in signature, f"hardened runtime absent: {path.name}")
@@ -201,7 +214,7 @@ def verify_app(app: Path, developer_id: bool = False, self_signed: bool = False)
         sparkle = app / "Contents/Frameworks/Sparkle.framework"
         authorities = {}
         leaves = {}
-        for path in [app, helper, sparkle]:
+        for path in [app, *helpers, *native_frameworks, sparkle]:
             authorities[path.name] = check_selfsigned_signature(command("/usr/bin/codesign", "-dv", "--verbose=4", str(path)), path.name)
             if path != sparkle:
                 leaves[path.name] = designated_requirement_leaf(command("/usr/bin/codesign", "-d", "-r-", str(path)),
@@ -211,7 +224,7 @@ def verify_app(app: Path, developer_id: bool = False, self_signed: bool = False)
     return {
         "bundleIdentifier": info["CFBundleIdentifier"], "version": info["CFBundleShortVersionString"],
         "build": info["CFBundleVersion"], "minimumMacOS": info["LSMinimumSystemVersion"],
-        "nativeHelper": True, "pythonRuntime": False, "machOBinaries": macho,
+        "nativeHelper": True, "nativeHelpers": [p.name for p in helpers], "pythonRuntime": False, "machOBinaries": macho,
         "files": entries, "developerID": developer_id, "selfSigned": self_signed,
     }
 

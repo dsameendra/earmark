@@ -29,6 +29,7 @@ if [ "$mode" = distribution ]; then
     public_key="$EARMARK_SPARKLE_PUBLIC_KEY"
 fi
 # Validate before building, signing, or submitting anything. Do not print credentials or environment contents.
+python3 "$repo_root/scripts/verify-text-generation-native.py"
 python3 - "$repo_root" "$mode" "$identity" "$feed" "$public_key" <<'PY'
 from pathlib import Path
 import hashlib,importlib.util,json,subprocess,sys

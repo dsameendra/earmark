@@ -1,6 +1,7 @@
 import AppCore
 import Foundation
 import NativeWorkerKit
+import TextModelProfiles
 
 /// FLORES-200 codes used by NLLB-200.
 public enum NLLBLanguages {
@@ -12,6 +13,16 @@ public enum NLLBLanguages {
     ]
     /// Every currently mapped language is available; licensing and installed-model checks still apply.
     public static let defaultLanguages: Set<LanguageCode> = Set(codes.keys)
+
+    /// Region normalization is valid only for the FLORES writing system this
+    /// build actually maps. Never turn Traditional Chinese into Simplified.
+    public static func code(for language: LanguageCode) -> String? {
+        if let code = codes[language] { return code }
+        guard let code = codes[language.primary], let script = code.split(separator: "_").last else { return nil }
+        let identity = language.translationIdentity.rawValue.split(separator: "-")
+        if identity.count > 1, identity[1] != script { return nil }
+        return code
+    }
 }
 
 /// The inference part of NLLB (tokenise, beam-search decode, detokenise). Isolated so the engine is testable and so the runtime
@@ -52,7 +63,8 @@ public actor NLLBEngine: TranslationEngine, PairSupportChecking {
 
     public func supports(_ pair: LanguagePair) async -> Bool {
         let (s, t) = (pair.source.primary, pair.target.primary)
-        return s != t && languages.contains(s) && languages.contains(t) && NLLBLanguages.codes[s] != nil && NLLBLanguages.codes[t] != nil
+        guard let source = NLLBLanguages.code(for: pair.source), let target = NLLBLanguages.code(for: pair.target) else { return false }
+        return source != target && languages.contains(s) && languages.contains(t)
     }
 
     public func supportedPairs() async -> Set<LanguagePair> {
@@ -90,8 +102,9 @@ public actor NLLBEngine: TranslationEngine, PairSupportChecking {
     }
 
     private func runLocked(_ texts: [String], from: LanguageCode, to: LanguageCode) async throws -> [String] {
-        guard let src = NLLBLanguages.codes[from.primary] else { throw AppError.unsupportedLanguage(from) }
-        guard let tgt = NLLBLanguages.codes[to.primary] else { throw AppError.unsupportedLanguage(to) }
+        guard let src = NLLBLanguages.code(for: from), languages.contains(from.primary) else { throw AppError.unsupportedLanguage(from) }
+        guard let tgt = NLLBLanguages.code(for: to), languages.contains(to.primary) else { throw AppError.unsupportedLanguage(to) }
+        guard src != tgt else { throw TranslationFailure.sameLanguage(from) }
         try Task.checkCancellation()
         try await ensureLoaded()
         do {
@@ -157,7 +170,8 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
 
     private let executable: URL
     private let isNative: Bool
-    private let profile: CTranslate2ModelProfile
+    private let profile: String
+    private let engineID: EngineID
     private let threads: Int
     private let timeout: Duration
     private let gate = TranslationOperationGate()
@@ -166,12 +180,18 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
     private var nextID = 0
 
     public init(pythonExecutable: URL, threads: Int = 0) {
-        executable = pythonExecutable; isNative = false; profile = .nllb
+        executable = pythonExecutable; isNative = false; profile = "nllb"; engineID = TranslationEngineIDs.nllb
         self.threads = max(1, min(threads == 0 ? 4 : threads, 64)); timeout = .seconds(120)
     }
 
     public init(nativeExecutable: URL, threads: Int = 4, profile: CTranslate2ModelProfile = .nllb, requestTimeout: Duration = .seconds(120)) {
-        executable = nativeExecutable; isNative = true; self.profile = profile
+        executable = nativeExecutable; isNative = true; self.profile = profile.rawValue; engineID = EngineID(profile.rawValue)
+        self.threads = max(1, min(threads, 64)); timeout = requestTimeout
+    }
+
+    public init(nativeExecutable: URL, generativeProfile: GenerativeProfile, threads: Int = 4, requestTimeout: Duration = .seconds(120)) {
+        executable = nativeExecutable; isNative = true; profile = generativeProfile.rawValue
+        engineID = GenerativeTranslationEngine.engineID(for: generativeProfile)
         self.threads = max(1, min(threads, 64)); timeout = requestTimeout
     }
 
@@ -191,16 +211,18 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
     private func startWorker() async throws {
         guard let modelFolder else { throw AppError.other("Load a translation model before translating.") }
         if transport == nil {
-            let arguments = isNative ? [modelFolder.path, String(threads), profile.rawValue]
+            let arguments = isNative ? [modelFolder.path, String(threads), profile]
                 : ["-I", "-c", Self.workerScript, modelFolder.path, String(threads)]
             transport = WorkerTransport(executable: executable, arguments: arguments, timeout: timeout)
             nextID = 0
         }
         guard let transport else { throw AppError.other("The translation worker is unavailable.") }
         let first = try await transport.start()
-        guard let value = try JSONSerialization.jsonObject(with: first) as? [String: Any], value["ready"] as? Bool == true,
-              !isNative || value["profile"] as? String == profile.rawValue else {
-            throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "The translation worker could not load the selected model profile.")
+        struct Ready: Decodable { let ready: Bool?; let profile: String?; let error: String? }
+        let value = try JSONDecoder().decode(Ready.self, from: first)
+        if let error = value.error { throw AppError.engineFailure(engineID, reason: error) }
+        guard value.ready == true, !isNative || value.profile == profile else {
+            throw AppError.engineFailure(engineID, reason: "The translation worker could not load the selected model profile.")
         }
     }
 
@@ -210,8 +232,9 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
 
     private func translateLocked(_ texts: [String], source: String, target: String) async throws -> [String] {
         try Task.checkCancellation()
-        guard texts.count <= 8, texts.allSatisfy({ $0.utf8.count <= 100_000 }),
-              !source.isEmpty, !target.isEmpty, source.utf8.count <= 128, target.utf8.count <= 128 else {
+        guard texts.count <= 8, texts.allSatisfy({ $0.utf8.count <= 100_000 && !$0.utf8.contains(0) }),
+              !source.isEmpty, !target.isEmpty, source.utf8.count <= 128, target.utf8.count <= 128,
+              !source.utf8.contains(0), !target.utf8.contains(0) else {
             throw AppError.other("Translation input exceeded the supported batch or language limits.")
         }
         if texts.isEmpty { return [] }
@@ -224,12 +247,15 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
             let data = try JSONSerialization.data(withJSONObject: payload)
             let reply = try await transport.request(data)
             try Task.checkCancellation()
-            guard let object = try JSONSerialization.jsonObject(with: reply) as? [String: Any], object["id"] as? Int == id else {
-                throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "Malformed translation worker reply.")
+            struct Reply: Decodable { let id: Int; let error: String?; let out: [String]? }
+            let object = try JSONDecoder().decode(Reply.self, from: reply)
+            guard object.id == id else {
+                throw AppError.engineFailure(engineID, reason: "Malformed translation worker reply.")
             }
-            if let error = object["error"] as? String { throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: error) }
-            guard let output = object["out"] as? [String], output.count == texts.count else {
-                throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "Malformed translation worker output.")
+            if let error = object.error { throw AppError.engineFailure(engineID, reason: error) }
+            guard let output = object.out, output.count == texts.count,
+                  output.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
+                throw AppError.engineFailure(engineID, reason: "Malformed translation worker output.")
             }
             return output
         } catch {

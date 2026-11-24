@@ -177,10 +177,10 @@ public final class FindReplaceModel {
         if view.includesTranslations, let target = view.target {
             // Search what is shown: the translation track of the target language, plus the original where the mode shows it.
             let translated = Set(
-                segments.filter { s in s.translations.contains { $0.language.primary == target.primary } }.map(\.id))
+                segments.filter { s in s.translations.contains { $0.language.translationIdentity == target.translationIdentity } }.map(\.id))
             matches = matches.filter { match in
                 switch match.field {
-                case .translation(let language): return language.primary == target.primary
+                case .translation(let language): return language.translationIdentity == target.translationIdentity
                 case .text: return view.mode == .bilingual || !translated.contains(match.segmentID)
                 }
             }

@@ -48,6 +48,21 @@ struct TranslationRuntime: Sendable {
                     return await settings.value(for: SettingsKey.translationAllowNonCommercial, as: Bool.self) ?? false
                 }
                 return true
+            },
+            isReady: { engine, pair in
+                if engine == TranslationEngineIDs.apple {
+                    return await SystemAppleTranslationBackend().status(from: pair.source.translationIdentity, to: pair.target.translationIdentity) == .installed
+                }
+                let model: ModelID?
+                switch engine {
+                case TranslationEngineIDs.nllb: model = TranslationEngineIDs.nllbModel
+                case "madlad": model = MADLADEngine.modelID
+                case "opus-mt": model = OPUSTranslationEngine.model(for: pair)
+                default: model = nil
+                }
+                guard let model else { return false }
+                if case .installed = await models.state(of: model) { return true }
+                return false
             })
         let packs = ApplePackInstaller()
         let service = AppTranslationService(models: models, nllb: nllb, madlad: madlad, opus: opus, packs: packs, settings: settings)
@@ -77,9 +92,9 @@ final class AppTranslationService: TranslationPreparing, Sendable {
     }
 
     func targets(from source: LanguageCode) async -> [(language: LanguageCode, readiness: TranslationReadiness)] {
-        var candidates = await backend.supportedLanguages().filter { $0.primary != source.primary }
-        candidates.formUnion(NLLBLanguages.defaultLanguages.filter { $0.primary != source.primary })
-        if madlad != nil { candidates.formUnion(MADLADLanguages.languages.filter { $0.primary != source.primary }) }
+        var candidates = await backend.supportedLanguages().filter { !LanguagePair(source: source, target: $0).isSameWrittenLanguage }
+        candidates.formUnion(NLLBLanguages.defaultLanguages.filter { !LanguagePair(source: source, target: $0).isSameWrittenLanguage })
+        if madlad != nil { candidates.formUnion(MADLADLanguages.languages.filter { !LanguagePair(source: source, target: $0).isSameWrittenLanguage }) }
         if opus != nil {
             candidates.formUnion(OPUSTranslationEngine.modelsByPair.keys.filter { $0.source == source }.map(\.target))
         }
@@ -91,8 +106,8 @@ final class AppTranslationService: TranslationPreparing, Sendable {
     }
 
     func readiness(source: LanguageCode, target: LanguageCode) async -> TranslationReadiness {
-        let (s, t) = (source.primary, target.primary)
-        guard s != t else { return .unavailable(reason: "The source and target language are the same.") }
+        let (s, t) = (source.translationIdentity, target.translationIdentity)
+        guard !LanguagePair(source: source, target: target).isSameWrittenLanguage else { return .unavailable(reason: "The source and target language are the same.") }
         let choice = await settings.value(for: SettingsKey.translationEngine, as: String.self) ?? "auto"
         if choice == "opus-mt" {
             let pair = LanguagePair(source: source, target: target)
@@ -109,7 +124,7 @@ final class AppTranslationService: TranslationPreparing, Sendable {
         }
         if choice == "nllb" {
             guard await nllbAllowed else { return .unavailable(reason: "Enable non-commercial models in Settings > Translation to use NLLB.") }
-            guard let nllb, await nllb.supports(LanguagePair(source: s, target: t)) else {
+            guard let nllb, await nllb.supports(LanguagePair(source: source, target: target)) else {
                 return .unavailable(reason: "NLLB does not support this language pair in this build.")
             }
             return await nllbModelReadiness()
@@ -124,13 +139,15 @@ final class AppTranslationService: TranslationPreparing, Sendable {
         guard choice == "auto" || choice.isEmpty else {
             return .unavailable(reason: "The selected translation engine is not available in this build.")
         }
-        if s == .sinhala || t == .sinhala {
+        if s.primary == .sinhala || t.primary == .sinhala {
             if let local = await localReadiness(source: source, target: target) { return local }
-            return await sinhalaReadiness(s, t)
+            return await sinhalaReadiness(source, target)
         }
         switch await backend.status(from: s, to: t) {
         case .installed: return .ready
-        case .supported: return .needsApplePack(source: s, target: t)
+        case .supported:
+            if let local = await localReadiness(source: source, target: target), case .ready = local { return local }
+            return .needsApplePack(source: s, target: t)
         case .unsupported:
             if let local = await localReadiness(source: source, target: target) { return local }
             return .unavailable(reason: "Apple Translation does not support this language pair.")
@@ -139,12 +156,14 @@ final class AppTranslationService: TranslationPreparing, Sendable {
 
     private func localReadiness(source: LanguageCode, target: LanguageCode) async -> TranslationReadiness? {
         let pair = LanguagePair(source: source, target: target)
-        if let nllb, await nllbAllowed, await nllb.supports(pair) { return await nllbModelReadiness() }
-        if let opus, await opus.supports(pair), let model = OPUSTranslationEngine.model(for: pair) {
-            return await modelReadiness(model)
+        var candidates: [ModelID] = []
+        if let nllb, await nllbAllowed, await nllb.supports(pair) { candidates.append(TranslationEngineIDs.nllbModel) }
+        if let opus, await opus.supports(pair), let model = OPUSTranslationEngine.model(for: pair) { candidates.append(model) }
+        if let madlad, await madlad.supports(pair) { candidates.append(MADLADEngine.modelID) }
+        for model in candidates {
+            if case .installed = await models.state(of: model) { return .ready }
         }
-        if let madlad, await madlad.supports(pair) { return await modelReadiness(MADLADEngine.modelID) }
-        return nil
+        return candidates.first.map { .needsModel($0) }
     }
 
     private func modelReadiness(_ model: ModelID) async -> TranslationReadiness {
@@ -155,12 +174,12 @@ final class AppTranslationService: TranslationPreparing, Sendable {
     /// Sinhala goes through NLLB (directly, or via English for other languages, where the English leg runs on Apple).
     private func sinhalaReadiness(_ s: LanguageCode, _ t: LanguageCode) async -> TranslationReadiness {
         guard let nllb else { return .unavailable(reason: Self.sinhalaUnavailable) }
-        let other = s == .sinhala ? t : s
+        let other = s.primary == .sinhala ? t : s
         if await !nllb.supports(LanguagePair(source: s, target: t)) {
             guard other != .english,
-                await nllb.supports(LanguagePair(source: s == .sinhala ? s : .english, target: s == .sinhala ? .english : t))
+                await nllb.supports(LanguagePair(source: s.primary == .sinhala ? s : .english, target: s.primary == .sinhala ? .english : t))
             else { return .unavailable(reason: "Sinhala to or from \(other.rawValue) is not supported.") }
-            let leg = s == .sinhala ? LanguagePair(source: .english, target: t) : LanguagePair(source: s, target: .english)
+            let leg = s.primary == .sinhala ? LanguagePair(source: .english, target: t) : LanguagePair(source: s, target: .english)
             switch await backend.status(from: leg.source, to: leg.target) {
             case .installed: break
             case .supported: return .needsApplePack(source: leg.source, target: leg.target)

@@ -67,12 +67,16 @@ public final class AppearanceSettingsModel {
 public final class TranslationSettingsModel {
     /// Empty string means "ask each time".
     public let targetLanguage: Pref<String>
-    /// `auto`, `apple` or `nllb`.
+    /// `auto`, `apple`, or a registered translation engine ID.
     public let engine: Pref<String>
+    public var engineChoices: [TranslationEngineChoice] { TranslationEngineChoice.choices(in: catalog, selected: engine.value) }
+    public private(set) var catalog: [ModelDescriptor] = []
+    @ObservationIgnored private let models: (any ModelManaging)?
     public let allowNonCommercial: Pref<Bool>
     public let parallelTrack: Pref<Bool>
 
-    public init(store: any SettingsStore) {
+    public init(store: any SettingsStore, models: (any ModelManaging)? = nil) {
+        self.models = models
         targetLanguage = Pref(SettingsKey.translationTarget, default: "", store: store)
         engine = Pref(SettingsKey.translationEngine, default: "auto", store: store)
         allowNonCommercial = Pref(SettingsKey.translationAllowNonCommercial, default: false, store: store)
@@ -82,6 +86,7 @@ public final class TranslationSettingsModel {
     public func load() async {
         await targetLanguage.load()
         await engine.load()
+        catalog = await models?.catalog() ?? []
         await allowNonCommercial.load()
         await parallelTrack.load()
     }

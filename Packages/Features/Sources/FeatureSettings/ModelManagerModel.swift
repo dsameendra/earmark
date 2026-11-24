@@ -152,6 +152,8 @@ public final class ModelManagerModel {
         case "qwen3-asr": "Qwen"
         case "apple.speech", "apple.translation": "Apple"
         case "nllb": "NLLB"
+        case "madlad": "MADLAD-400"
+        case "opus-mt": "OPUS language packs"
         case "fluidaudio.parakeet": "Parakeet"
         case "fluidaudio.cohere": "Cohere"
         default: descriptor.kind == .diarization ? "Speaker models" : descriptor.displayName

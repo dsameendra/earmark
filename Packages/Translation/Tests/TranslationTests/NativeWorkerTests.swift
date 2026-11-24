@@ -7,6 +7,7 @@ import Testing
 private let nativePath = ProcessInfo.processInfo.environment["EARMARK_NATIVE_NLLB_HELPER"]
 private let nativeModel = ProcessInfo.processInfo.environment["EARMARK_NLLB_MODEL_DIR"]
 private let marianModel = ProcessInfo.processInfo.environment["EARMARK_MARIAN_MODEL_DIR"]
+private let madladModel = ProcessInfo.processInfo.environment["EARMARK_MADLAD_MODEL_DIR"]
 
 @Suite("Native worker integration", .serialized, .enabled(if: nativePath != nil && nativeModel != nil))
 struct NativeWorkerTests {
@@ -34,6 +35,32 @@ struct NativeWorkerTests {
         let again = try await runtime.translate(["Good morning everyone."], source: "eng_Latn", target: "sin_Sinh")
         #expect(again == output, "Cancellation must not poison subsequent requests")
         await runtime.unload()
+    }
+}
+
+@Suite("Native model-family switching", .serialized,
+       .enabled(if: nativePath != nil && nativeModel != nil && madladModel != nil && marianModel != nil))
+struct NativeFamilySwitchingTests {
+    @Test func poolSwitchesAllThreeArchitecturesAndReloadsTheEvictedCheckpoint() async throws {
+        let pool = CTranslate2RuntimePool(nativeExecutable: URL(fileURLWithPath: try #require(nativePath)))
+        let nllb = pool.runtime(profile: .nllb)
+        let madladRuntime = pool.runtime(profile: .madlad)
+        let marian = pool.runtime(profile: .marian)
+        let folder = URL(fileURLWithPath: try #require(madladModel))
+        let madlad = MADLADEngine(models: FolderModelManager(folder: folder, modelID: MADLADEngine.modelID), runtime: madladRuntime)
+        try await nllb.load(modelFolder: URL(fileURLWithPath: #require(nativeModel)))
+        let original = try await nllb.translate(["Good morning everyone."], source: "eng_Latn", target: "sin_Sinh")
+        let translated = try await collect(madlad.translate(items: items(["The meeting starts tomorrow morning."]), from: "en", to: "fr"))
+        #expect(translated.first?.text == "La réunion commence demain matin.")
+        #expect(translated.first?.engine == "madlad")
+        try await marian.load(modelFolder: URL(fileURLWithPath: #require(marianModel)))
+        #expect(try await marian.translate(["Hello world."], source: "en", target: "de") == ["Hallo Welt."])
+        // This old owner has been evicted: its release must leave Marian usable.
+        await madlad.unload()
+        #expect(try await marian.translate(["Hello world."], source: "en", target: "de") == ["Hallo Welt."])
+        #expect(try await nllb.translate(["Good morning everyone."], source: "eng_Latn", target: "sin_Sinh") == original)
+        await marian.unload()
+        await nllb.unload()
     }
 }
 

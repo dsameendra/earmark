@@ -31,6 +31,7 @@ public actor NLLBEngine: TranslationEngine, PairSupportChecking {
     private let modelID: ModelID
     private let languages: Set<LanguageCode>
     private var loaded = false
+    private let gate = TranslationOperationGate()
     private let maxItems: Int
     private let maxCharacters: Int
 
@@ -61,6 +62,10 @@ public actor NLLBEngine: TranslationEngine, PairSupportChecking {
 
     /// Drops the loaded model (one heavy model resident at a time, per the translation spec).
     public func unload() async {
+        await gate.cleanup { await self.unloadLocked() }
+    }
+
+    private func unloadLocked() async {
         await runtime.unload()
         loaded = false
     }
@@ -80,8 +85,13 @@ public actor NLLBEngine: TranslationEngine, PairSupportChecking {
     }
 
     private func run(_ texts: [String], from: LanguageCode, to: LanguageCode) async throws -> [String] {
+        try await gate.withLease { try await self.runLocked(texts, from: from, to: to) }
+    }
+
+    private func runLocked(_ texts: [String], from: LanguageCode, to: LanguageCode) async throws -> [String] {
         guard let src = NLLBLanguages.codes[from.primary] else { throw AppError.unsupportedLanguage(from) }
         guard let tgt = NLLBLanguages.codes[to.primary] else { throw AppError.unsupportedLanguage(to) }
+        try Task.checkCancellation()
         try await ensureLoaded()
         do {
             return try await runtime.translate(texts, source: src, target: tgt)
@@ -93,6 +103,8 @@ public actor NLLBEngine: TranslationEngine, PairSupportChecking {
             throw AppError.engineFailure(id, reason: error.localizedDescription)
         }
     }
+
+
 
     public nonisolated func translate(
         items: [TranslationItem], from: LanguageCode, to: LanguageCode

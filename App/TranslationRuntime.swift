@@ -19,15 +19,18 @@ struct TranslationRuntime: Sendable {
     @MainActor
     static func make(models: any ModelManaging, settings: any SettingsStore, nllbPython: String?) -> TranslationRuntime {
         let apple = AppleTranslationEngine()
+        let nativePool = BundledNLLBRuntime.pool()
         // The native helper is bundled and signed with the app; Python remains an explicit development override.
         #if DEBUG
-            let runtime = NLLBDevRuntime.runtime(settingValue: nllbPython) ?? BundledNLLBRuntime.runtime()
+            let runtime = NLLBDevRuntime.runtime(settingValue: nllbPython) ?? nativePool?.runtime(profile: .nllb)
         #else
-            let runtime = BundledNLLBRuntime.runtime()
+            let runtime = nativePool?.runtime(profile: .nllb)
         #endif
         let nllb = runtime.map { NLLBEngine(models: models, runtime: $0) }
+        let madlad = nativePool.map { MADLADEngine(models: models, runtime: $0.runtime(profile: .madlad)) }
         let router = DefaultTranslationRouter(
             apple: apple, nllb: nllb,
+            additional: madlad.map { [$0 as any TranslationEngine] } ?? [],
             selectedEngine: {
                 let choice = await settings.value(for: SettingsKey.translationEngine, as: String.self) ?? "auto"
                 switch choice {
@@ -43,7 +46,7 @@ struct TranslationRuntime: Sendable {
                 return true
             })
         let packs = ApplePackInstaller()
-        let service = AppTranslationService(models: models, nllb: nllb, packs: packs, settings: settings)
+        let service = AppTranslationService(models: models, nllb: nllb, madlad: madlad, packs: packs, settings: settings)
         return TranslationRuntime(router: router, service: service, packs: packs, nllbEnabled: nllb != nil)
     }
 }
@@ -54,13 +57,15 @@ final class AppTranslationService: TranslationPreparing, Sendable {
 
     private let models: any ModelManaging
     private let nllb: NLLBEngine?
+    private let madlad: MADLADEngine?
     private let packs: ApplePackInstaller
     private let backend = SystemAppleTranslationBackend()
     private let settings: any SettingsStore
 
-    init(models: any ModelManaging, nllb: NLLBEngine?, packs: ApplePackInstaller, settings: any SettingsStore) {
+    init(models: any ModelManaging, nllb: NLLBEngine?, madlad: MADLADEngine? = nil, packs: ApplePackInstaller, settings: any SettingsStore) {
         self.models = models
         self.nllb = nllb
+        self.madlad = madlad
         self.packs = packs
         self.settings = settings
     }
@@ -68,6 +73,7 @@ final class AppTranslationService: TranslationPreparing, Sendable {
     func targets(from source: LanguageCode) async -> [(language: LanguageCode, readiness: TranslationReadiness)] {
         var candidates = await backend.supportedLanguages().filter { $0.primary != source.primary }
         candidates.formUnion(NLLBLanguages.defaultLanguages.filter { $0.primary != source.primary })
+        if madlad != nil { candidates.formUnion(MADLADLanguages.languages.filter { $0.primary != source.primary }) }
         var out: [(language: LanguageCode, readiness: TranslationReadiness)] = []
         for language in candidates.sorted() {
             out.append((language, await readiness(source: source, target: language)))
@@ -79,6 +85,12 @@ final class AppTranslationService: TranslationPreparing, Sendable {
         let (s, t) = (source.primary, target.primary)
         guard s != t else { return .unavailable(reason: "The source and target language are the same.") }
         let choice = await settings.value(for: SettingsKey.translationEngine, as: String.self) ?? "auto"
+        if choice == "madlad" {
+            guard let madlad, await madlad.supports(LanguagePair(source: source, target: target)) else {
+                return .unavailable(reason: "MADLAD does not support this language pair or language variant in this build.")
+            }
+            return await modelReadiness(MADLADEngine.modelID)
+        }
         if choice == "nllb" {
             guard await nllbAllowed else { return .unavailable(reason: "Enable non-commercial models in Settings > Translation to use NLLB.") }
             guard let nllb, await nllb.supports(LanguagePair(source: s, target: t)) else {
@@ -96,14 +108,29 @@ final class AppTranslationService: TranslationPreparing, Sendable {
         guard choice == "auto" || choice.isEmpty else {
             return .unavailable(reason: "The selected translation engine is not available in this build.")
         }
-        if s == .sinhala || t == .sinhala { return await sinhalaReadiness(s, t) }
+        if s == .sinhala || t == .sinhala {
+            if let local = await localReadiness(source: source, target: target) { return local }
+            return await sinhalaReadiness(s, t)
+        }
         switch await backend.status(from: s, to: t) {
         case .installed: return .ready
         case .supported: return .needsApplePack(source: s, target: t)
         case .unsupported:
-            if let nllb, await nllb.supports(LanguagePair(source: s, target: t)) { return await nllbModelReadiness() }
+            if let local = await localReadiness(source: source, target: target) { return local }
             return .unavailable(reason: "Apple Translation does not support this language pair.")
         }
+    }
+
+    private func localReadiness(source: LanguageCode, target: LanguageCode) async -> TranslationReadiness? {
+        let pair = LanguagePair(source: source, target: target)
+        if let nllb, await nllbAllowed, await nllb.supports(pair) { return await nllbModelReadiness() }
+        if let madlad, await madlad.supports(pair) { return await modelReadiness(MADLADEngine.modelID) }
+        return nil
+    }
+
+    private func modelReadiness(_ model: ModelID) async -> TranslationReadiness {
+        if case .installed = await models.state(of: model) { return .ready }
+        return .needsModel(model)
     }
 
     /// Sinhala goes through NLLB (directly, or via English for other languages, where the English leg runs on Apple).

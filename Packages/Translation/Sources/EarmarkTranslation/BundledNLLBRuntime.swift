@@ -11,4 +11,8 @@ public enum BundledNLLBRuntime {
     public static func runtime(in bundle: Bundle = .main) -> (any NLLBRuntime)? {
         executable(in: bundle).map { CTranslate2WorkerRuntime(nativeExecutable: $0) }
     }
+
+    public static func pool(in bundle: Bundle = .main) -> CTranslate2RuntimePool? {
+        executable(in: bundle).map { CTranslate2RuntimePool(nativeExecutable: $0) }
+    }
 }

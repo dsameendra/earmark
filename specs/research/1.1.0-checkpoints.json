@@ -3710,6 +3710,122 @@
           "sha256": "9f3db1305052551cd81139f0a0de3d5555fa42de357164888f470e2547bb120c"
         }
       ]
+    },
+    {
+      "repo": "michaelfeil/ct2fast-opus-mt-en-fr",
+      "revision": "55bcef18761227161433d86b81bbbcd9d813b429",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 391,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 2817,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 159,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 293,
+          "sha256": null
+        },
+        {
+          "path": "model.bin",
+          "size": 149872839,
+          "sha256": "636d926880a6e6e4b773403a5991b50d4dfdfabe49a230e148676a05e99f2bec"
+        },
+        {
+          "path": "shared_vocabulary.txt",
+          "size": 556777,
+          "sha256": null
+        },
+        {
+          "path": "source.spm",
+          "size": 778395,
+          "sha256": null
+        },
+        {
+          "path": "target.spm",
+          "size": 802397,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 42,
+          "sha256": null
+        },
+        {
+          "path": "vocab.json",
+          "size": 1339166,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "repo": "michaelfeil/ct2fast-opus-mt-en-es",
+      "revision": "76ec296588e2234f9b7dfad5254219a0f5ecb7af",
+      "license": "apache-2.0",
+      "gated": false,
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 391,
+          "sha256": null
+        },
+        {
+          "path": "README.md",
+          "size": 4027,
+          "sha256": null
+        },
+        {
+          "path": "config.json",
+          "size": 159,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "size": 293,
+          "sha256": null
+        },
+        {
+          "path": "model.bin",
+          "size": 155502501,
+          "sha256": "36cd9bcb181fc6d5832deeaf770ce183ff4edbbc5e4fe0f86cec92da4379f3b7"
+        },
+        {
+          "path": "shared_vocabulary.txt",
+          "size": 666435,
+          "sha256": null
+        },
+        {
+          "path": "source.spm",
+          "size": 801636,
+          "sha256": null
+        },
+        {
+          "path": "target.spm",
+          "size": 825924,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 44,
+          "sha256": null
+        },
+        {
+          "path": "vocab.json",
+          "size": 1590040,
+          "sha256": null
+        }
+      ]
     }
   ]
 }

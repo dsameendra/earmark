@@ -149,7 +149,31 @@ public struct HuggingFaceManifestResolver: ManifestResolving {
         guard Set(paths).count == paths.count else {
             throw AppError.modelDownloadFailed(model.id, reason: "The model manifest contains conflicting destination paths.")
         }
-        return primary + additional
+        let files = primary + additional
+        guard let provenance = model.provenance, !provenance.artifacts.isEmpty else { return files }
+        let artifacts = provenance.artifacts
+        let artifactPaths = artifacts.map(\.path)
+        guard Set(artifactPaths).count == artifactPaths.count, Set(artifactPaths) == Set(paths) else {
+            throw AppError.modelDownloadFailed(model.id, reason: "The download manifest does not match its pinned artifact inventory.")
+        }
+        var verified: [RemoteFile] = []
+        for var file in files {
+            guard let expected = artifacts.first(where: { $0.path == file.relativePath }), expected.bytes >= 0,
+                  expected.sha256.count == 64, expected.sha256.allSatisfy({ "0123456789abcdef".contains($0) }),
+                  file.hasSafeRelativePath else {
+                throw AppError.modelDownloadFailed(model.id, reason: "The pinned artifact metadata is invalid.")
+            }
+            if let size = file.sizeBytes, size != expected.bytes {
+                throw AppError.modelDownloadFailed(model.id, reason: "The model listing changed the pinned size of \(file.relativePath).")
+            }
+            if let digest = file.sha256, digest != expected.sha256 {
+                throw AppError.modelDownloadFailed(model.id, reason: "The model listing changed the pinned checksum of \(file.relativePath).")
+            }
+            file.sizeBytes = expected.bytes
+            file.sha256 = expected.sha256
+            verified.append(file)
+        }
+        return verified
     }
 
     private func primaryFiles(for model: ModelDescriptor) async throws -> [RemoteFile] {

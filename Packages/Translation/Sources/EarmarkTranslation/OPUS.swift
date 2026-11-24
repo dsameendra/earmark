@@ -18,8 +18,7 @@ public actor OPUSTranslationEngine: TranslationEngine, PairSupportChecking {
     private let runtime: any NLLBRuntime
     // Hold across load + inference + unload, including actor suspension points.
     // A single Marian worker must never change packs underneath another request.
-    private var busy = false
-    private var waiters: [CheckedContinuation<Void, Never>] = []
+    private let gate = TranslationOperationGate()
 
     public init(models: any ModelManaging, runtime: any NLLBRuntime) {
         self.locate = { model in
@@ -50,11 +49,13 @@ public actor OPUSTranslationEngine: TranslationEngine, PairSupportChecking {
     }
 
     private func run(_ texts: [String], from: LanguageCode, to: LanguageCode) async throws -> [String] {
+        try await gate.withLease { try await self.runLocked(texts, from: from, to: to) }
+    }
+
+    private func runLocked(_ texts: [String], from: LanguageCode, to: LanguageCode) async throws -> [String] {
         guard let model = Self.model(for: LanguagePair(source: from, target: to)) else {
             throw TranslationFailure.noEngine(LanguagePair(source: from, target: to))
         }
-        await acquire()
-        defer { release() }
         try Task.checkCancellation()
         let folder = try await locate(model)
         do {
@@ -72,16 +73,12 @@ public actor OPUSTranslationEngine: TranslationEngine, PairSupportChecking {
     }
 
     public func unload() async {
-        await acquire()
-        defer { release() }
+        await gate.cleanup { await self.unloadLocked() }
+    }
+
+    private func unloadLocked() async {
         await runtime.unload()
     }
 
-    private func acquire() async {
-        if !busy { busy = true; return }
-        await withCheckedContinuation { waiters.append($0) }
-    }
-    private func release() {
-        if waiters.isEmpty { busy = false } else { waiters.removeFirst().resume() }
-    }
+
 }

@@ -22,11 +22,21 @@ struct MultilingualModelContractTests {
         #expect(translation(ModelCapabilities(translation: true)).supportsTranslation(reverse))
     }
 
+    @Test("exact profiles never manufacture support by discarding a language variant")
+    func exactLanguageMatching() throws {
+        let model = translation(ModelCapabilities(translation: true, translationLanguageMatching: .exact))
+        #expect(model.supportsTranslation(LanguagePair(source: "en", target: "de")))
+        #expect(!model.supportsTranslation(LanguagePair(source: "en-US", target: "de")))
+        #expect(translation(ModelCapabilities(translation: true)).supportsTranslation(LanguagePair(source: "en-US", target: "de")))
+        #expect(try JSONDecoder().decode(ModelDescriptor.self, from: JSONEncoder().encode(model)) == model)
+    }
+
     @Test("legacy descriptors preserve behavior without inventing overlap, streaming or provenance")
     func legacyDescriptor() throws {
         let json = #"{"id":{"rawValue":"legacy"},"displayName":"Legacy","kind":"translation","runtime":"other","languages":[{"rawValue":"en"},{"rawValue":"de"}],"sizeBytes":1,"license":{"spdx":"MIT","isNonCommercial":false},"minTier":"tier8","isExperimental":false,"notes":"","isCustom":false,"capabilities":{"file":true,"translation":true}}"#
         let model = try JSONDecoder().decode(ModelDescriptor.self, from: Data(json.utf8))
         #expect(model.provenance == nil)
+        #expect(model.capabilities.translationLanguageMatching == .primary)
         #expect(model.capabilities.streaming == nil)
         #expect(model.capabilities.overlapRecognitionSpeakers == nil)
         #expect(model.capabilities.speechTranslationPairs.isEmpty)

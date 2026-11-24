@@ -81,6 +81,10 @@ public final class LiveModel {
     public var translationEnabled = false { didSet { saveTranslationPreferences() } }
     public var translationTarget = "" { didSet { saveTranslationPreferences() } }
     public var translationEngine = "auto" { didSet { saveTranslationPreferences() } }
+    public var translationEngineChoices: [TranslationEngineChoice] {
+        TranslationEngineChoice.choices(in: translationCatalog, selected: translationEngine)
+    }
+    private var translationCatalog: [ModelDescriptor] = []
     public private(set) var translationLanguages: [LanguageCode] = []
     public private(set) var translationPreparation: TranslationReadiness?
     @ObservationIgnored private let translation: (any TranslationPreparing)?
@@ -222,6 +226,7 @@ public final class LiveModel {
         translationTarget = preferences.target?.rawValue ?? ""
         translationEngine = preferences.engine
         let catalog = await models.catalog()
+        translationCatalog = catalog
         var languages = Set(catalog.filter { $0.kind == .translation && $0.isRunnable }.flatMap(\.languages))
         if let target = preferences.target { languages.insert(target) }
         translationLanguages = languages.sorted { LiveLanguageChoice.name($0) < LiveLanguageChoice.name($1) }
@@ -249,7 +254,9 @@ public final class LiveModel {
     }
 
     private func reloadLanguageChoices() async {
-        languageChoices = LiveLanguageChoice.options(catalog: await models.catalog(), including: language.mode)
+        let catalog = await models.catalog()
+        languageChoices = LiveLanguageChoice.options(catalog: catalog, including: language.mode)
+        translationCatalog = catalog
     }
 
     private func persistLanguage() {

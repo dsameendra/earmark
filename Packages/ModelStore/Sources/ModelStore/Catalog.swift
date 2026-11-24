@@ -168,8 +168,31 @@ public enum BuiltInCatalog {
             license: LicenseInfo(spdx: "Apache-2.0", attribution: "MADLAD-400 by Google, Apache-2.0."),
             minTier: .tier16, sourceURL: hf("jbochi/madlad400-3b-mt/resolve/\(Revision.madlad)/model-q4k.gguf"),
             sha256: "ea6e5531a3e95213c7f0635988d119e078a655c09306e47851e15d4c0c3f9c37", isExperimental: true,
-            notes: "Legacy GGUF download. This format has no translation runtime in this build; native MADLAD integration is in progress.",
+            notes: "Legacy GGUF download, unavailable in this runtime. Install the separate MADLAD native int8 model to translate.",
             capabilities: ModelCapabilities(live: false, file: false, translation: false)),
+        ModelDescriptor(
+            id: "madlad/400-3b-mt-ct2-int8", displayName: "MADLAD-400 3B (native int8)", kind: .translation, runtime: .other,
+            engine: "madlad", languages: [
+                "si", "en", "ta", "hi", "bn", "ur", "te", "ml", "kn", "mr", "gu", "pa", "ne", "de", "fr", "es", "it", "pt", "nl",
+                "ja", "ko", "zh", "ar", "ru", "id", "th", "vi"
+            ], sizeBytes: 2_960_123_510,
+            license: LicenseInfo(spdx: "Apache-2.0", attribution: "Google MADLAD-400, Apache 2.0; CTranslate2 int8 conversion by Nextcloud-AI."),
+            minTier: .tier16,
+            sourceURL: hf("Nextcloud-AI/madlad400-3b-mt-ct2-int8/tree/aa32bbdeba7880eff2096ec044cb155a340a9400"),
+            isExperimental: true,
+            notes: "Native T5 translation for 27 mapped base languages. Includes Sinhala, Tamil, Hindi, European and East Asian languages. Other upstream languages and script variants are not enabled here. Quality varies by direction.",
+            capabilities: ModelCapabilities(live: false, file: true, translation: true, translationLanguageMatching: .exact),
+            downloadInclude: ["model.bin", "config.json", "shared_vocabulary.json", "spiece.model", "README.md"],
+            provenance: ModelProvenance(
+                repository: "Nextcloud-AI/madlad400-3b-mt-ct2-int8", revision: "aa32bbdeba7880eff2096ec044cb155a340a9400",
+                profileID: "ct2.madlad.t5", profileVersion: 1,
+                artifacts: [
+                    ModelArtifactDigest(path: "model.bin", bytes: 2_950_208_329, sha256: "77b9fd9ab97c1259d07089b5f854393dad81bc5fb5647d3f9a5d101c94f40daa"),
+                    ModelArtifactDigest(path: "config.json", bytes: 224, sha256: "90fb54962455a4e0a0bc7235c0f063d7e46d9c1a1ae003af8059809abd6aeece"),
+                    ModelArtifactDigest(path: "shared_vocabulary.json", bytes: 5_477_099, sha256: "c327551ce3ca6efc7b437e11a267f79979893332dda8a1d146e2c950815193f8"),
+                    ModelArtifactDigest(path: "spiece.model", bytes: 4_427_844, sha256: "ef11ac9a22c7503492f56d48dce53be20e339b63605983e9f27d2cd0e0f3922c"),
+                    ModelArtifactDigest(path: "README.md", bytes: 10_014, sha256: "2eff7bccfc46f4d54591fcc34a0bed496407cfc104df5e5b883b4d5332ee62b0"),
+                ], validation: .nativeInferenceChecked)),
         ModelDescriptor(
             id: "fluidaudio/parakeet-tdt-v3", displayName: "Parakeet TDT v3", kind: .asr, runtime: .coreML, engine: "fluidaudio.parakeet",
             languages: parakeetLanguages, sizeBytes: 483_105_645,

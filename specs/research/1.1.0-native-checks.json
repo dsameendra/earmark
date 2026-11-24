@@ -76,6 +76,22 @@
       "acceptance": "WER < 0.25, nonempty word alignment and bounded timing; end-of-input flush",
       "scope": "buffered stream fed in 0.5-second fixture chunks; no real-time microphone or sustained-latency claim",
       "log": "/tmp/earmark110-parakeet-file-stream.log"
+    },
+    {
+      "model": "madlad/400-3b-mt-ct2-int8",
+      "checkpointRevision": "aa32bbdeba7880eff2096ec044cb155a340a9400",
+      "test": "MADLADNativeTests/tokenizerAndDecoderMatchPinnedReferenceAcrossScripts()",
+      "targets": [
+        "de",
+        "fr",
+        "es",
+        "si",
+        "ja",
+        "ta"
+      ],
+      "acceptance": "Exact native SentencePiece and beam-search parity with CTranslate2 4.6.0 / SentencePiece 0.2.1",
+      "scope": "Execution/parity, not independent translation-quality acceptance; 27 base languages are mapped, other variants are rejected",
+      "log": "/tmp/earmark110-all-translation-profiles.log"
     }
   ]
 }

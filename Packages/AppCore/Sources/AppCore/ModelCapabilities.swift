@@ -5,6 +5,8 @@ import Foundation
 
 // MARK: - Capabilities
 
+public enum ModelTranslationLanguageMatching: String, Codable, Sendable, Hashable { case primary, exact }
+
 /// Whether a model can label speakers, and how.
 public enum SpeakerSupport: String, Codable, Sendable, Hashable { case none, offline, streaming }
 
@@ -74,13 +76,14 @@ public struct ModelCapabilities: Codable, Hashable, Sendable {
     public var speechTranslationPairs: Set<LanguagePair>
     public var streaming: ModelStreamingImplementation?
     public var overlapRecognitionSpeakers: Int?
+    public var translationLanguageMatching: ModelTranslationLanguageMatching
 
     public init(
         live: Bool = false, file: Bool = true, wordTimestamps: Bool = false, autoDetectLanguage: Bool = false,
         speakerLabels: SpeakerSupport = .none, translation: Bool = false, speed: SpeedTier? = nil, memory: MemoryTier? = nil,
         recommendedUse: [RecommendedUse] = [], translationPairs: Set<LanguagePair>? = nil,
         speechTranslationPairs: Set<LanguagePair> = [], streaming: ModelStreamingImplementation? = nil,
-        overlapRecognitionSpeakers: Int? = nil
+        overlapRecognitionSpeakers: Int? = nil, translationLanguageMatching: ModelTranslationLanguageMatching = .primary
     ) {
         self.live = live
         self.file = file
@@ -95,6 +98,7 @@ public struct ModelCapabilities: Codable, Hashable, Sendable {
         self.speechTranslationPairs = speechTranslationPairs
         self.streaming = streaming
         self.overlapRecognitionSpeakers = overlapRecognitionSpeakers
+        self.translationLanguageMatching = translationLanguageMatching
     }
 
     /// Conservative default for models with no recorded capabilities (custom imports, legacy state): file transcription only.
@@ -115,7 +119,8 @@ public struct ModelCapabilities: Codable, Hashable, Sendable {
             translationPairs: try c.decodeIfPresent(Set<LanguagePair>.self, forKey: .translationPairs),
             speechTranslationPairs: try c.decodeIfPresent(Set<LanguagePair>.self, forKey: .speechTranslationPairs) ?? [],
             streaming: try c.decodeIfPresent(ModelStreamingImplementation.self, forKey: .streaming),
-            overlapRecognitionSpeakers: try c.decodeIfPresent(Int.self, forKey: .overlapRecognitionSpeakers))
+            overlapRecognitionSpeakers: try c.decodeIfPresent(Int.self, forKey: .overlapRecognitionSpeakers),
+            translationLanguageMatching: try c.decodeIfPresent(ModelTranslationLanguageMatching.self, forKey: .translationLanguageMatching) ?? .primary)
     }
 }
 
@@ -126,6 +131,10 @@ extension ModelDescriptor {
 
     public func supportsTranslation(_ pair: LanguagePair) -> Bool {
         guard kind == .translation, isRunnable, capabilities.translation, pair.source != pair.target else { return false }
+        if capabilities.translationLanguageMatching == .exact {
+            guard languages.contains(pair.source), languages.contains(pair.target) else { return false }
+            return capabilities.translationPairs?.contains(pair) ?? true
+        }
         if let pairs = capabilities.translationPairs {
             return pairs.contains(pair) || pairs.contains(LanguagePair(source: pair.source.primary, target: pair.target.primary))
         }

@@ -32,7 +32,9 @@ public struct DefaultTranslationRouter: TranslationRouter {
         let target = pair.target.primary
         if source.rawValue.isEmpty || source.rawValue == "und" { throw TranslationFailure.unknownSource }
         guard source != target else { throw TranslationFailure.sameLanguage(source) }
-        let normalized = LanguagePair(source: source, target: target)
+        // Preserve script/region identity for checkpoint-specific validation.
+        // Each engine may normalize only the variants it actually supports.
+        let normalized = pair
         if let selected = await selectedEngine() {
             let candidates = [apple] + (nllb.map { [$0] } ?? []) + additional
             guard let engine = candidates.first(where: { $0.id == selected }),

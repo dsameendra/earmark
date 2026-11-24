@@ -66,7 +66,7 @@ public final class SettingsEnvironment {
         ignored = IgnoredSegmentsModel(
             repository: deps.rules, store: deps.store, rederive: Self.rederiveAction(deps))
         replacements = ReplacementsModel(repository: deps.rules, store: deps.store)
-        translation = TranslationSettingsModel(store: deps.store)
+        translation = TranslationSettingsModel(store: deps.store, models: deps.models)
         exportDefaults = ExportDefaultsModel(repository: deps.presets, store: deps.store)
         storage = StorageSettingsModel(
             store: deps.store, models: deps.models, transcripts: deps.transcripts, purger: deps.mediaPurger, clearCaches: deps.clearCaches)

@@ -191,6 +191,22 @@ enum CatalogFixtures {
             ("openai_whisper-small_216MB/generation_config.json", 2779),
         ])
 
+    static let madladNative = Listing(
+        repo: "Nextcloud-AI/madlad400-3b-mt-ct2-int8", revision: "aa32bbdeba7880eff2096ec044cb155a340a9400",
+        files: [
+            (".gitattributes", 1570),
+            ("README.md", 10014),
+            ("added_tokens.json", 4),
+            ("config.json", 224),
+            ("generation_config.json", 142),
+            ("model.bin", 2950208329),
+            ("shared_vocabulary.json", 5477099),
+            ("special_tokens_map.json", 414),
+            ("spiece.model", 4427844),
+            ("tokenizer.json", 16629031),
+            ("tokenizer_config.json", 830),
+        ])
+
     static let nllb = Listing(
         repo: "JustFrederik/nllb-200-distilled-600M-ct2-int8", revision: "302d78f00e6fdb50a1064059df7c392b735e9d05",
         files: [

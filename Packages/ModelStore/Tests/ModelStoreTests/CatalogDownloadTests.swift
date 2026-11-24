@@ -20,6 +20,7 @@ private let listings: [ModelID: CatalogFixtures.Listing] = [
     "whisperkit/large-v3-v20240930_turbo_632MB": CatalogFixtures.whisperTurbo,
     "whisperkit/small": CatalogFixtures.whisperSmall,
     "nllb/200-distilled-600M": CatalogFixtures.nllb,
+    "madlad/400-3b-mt-ct2-int8": CatalogFixtures.madladNative,
     "mlx/qwen3-asr-0.6b-sinhala-8bit": CatalogFixtures.qwen,
 ]
 
@@ -160,6 +161,19 @@ struct CatalogDownloadTests {
 @Suite("Catalog capabilities, Parakeet and the shared recommender")
 struct CatalogCapabilityTests {
     private let catalog = BuiltInCatalog.models
+
+    @Test("native MADLAD is distinct from the legacy download and keeps exact language coverage")
+    func nativeMADLADRecipe() throws {
+        let native = try #require(catalog.first { $0.id == "madlad/400-3b-mt-ct2-int8" })
+        let legacy = try #require(catalog.first { $0.id == "madlad/400-3b-mt-q4k" })
+        #expect(native.isRunnable && native.engine == "madlad")
+        #expect(native.languages.count == 27)
+        #expect(native.supportsTranslation(LanguagePair(source: "ta", target: "si")))
+        #expect(!native.supportsTranslation(LanguagePair(source: "en-US", target: "si")))
+        #expect(!native.supportsTranslation(LanguagePair(source: "en", target: "zh-Hant")))
+        #expect(!legacy.isRunnable)
+        #expect(!native.license.isNonCommercial)
+    }
     private func recommend(_ tier: HardwareTier, _ use: UseCase, _ language: LanguageCode?) -> ModelID? {
         ModelRecommender.recommendedModel(for: tier, useCase: use, language: language, in: catalog)?.id
     }

@@ -306,9 +306,7 @@ public struct LiveView: View {
             .disabled(model.isRunning)
             .accessibilityIdentifier("live.translation.target")
             Picker("Engine", selection: $model.translationEngine) {
-                Text("Auto").tag("auto")
-                Text("Apple Translation").tag("apple")
-                Text("NLLB").tag("nllb")
+                ForEach(model.translationEngineChoices) { choice in Text(choice.title).tag(choice.id).disabled(choice.isUnavailable) }
             }
             .disabled(model.isRunning)
             .accessibilityIdentifier("live.translation.engine")

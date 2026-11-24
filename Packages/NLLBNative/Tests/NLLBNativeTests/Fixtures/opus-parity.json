@@ -1,0 +1,119 @@
+{
+  "ctranslate2": "4.6.0",
+  "sentencepiece": "0.2.1",
+  "beamSize": 4,
+  "maxDecodingLength": 256,
+  "scope": "native parity only, not translation quality acceptance",
+  "rows": [
+    {
+      "pair": "en-de",
+      "source": "en",
+      "target": "de",
+      "text": "The meeting starts tomorrow morning.",
+      "translation": "Das Treffen beginnt morgen früh.",
+      "sourcePieces": [
+        "▁The",
+        "▁meeting",
+        "▁starts",
+        "▁tomorrow",
+        "▁morning",
+        ".",
+        "</s>"
+      ],
+      "repo": "gaudi/opus-mt-en-de-ctranslate2",
+      "revision": "3998844c0d44ff2aa5aaf5a1cf8365b6eb4fd783"
+    },
+    {
+      "pair": "de-en",
+      "source": "de",
+      "target": "en",
+      "text": "Das Treffen beginnt morgen früh.",
+      "translation": "The meeting starts tomorrow morning.",
+      "sourcePieces": [
+        "▁Das",
+        "▁Treffen",
+        "▁beginnt",
+        "▁morgen",
+        "▁früh",
+        ".",
+        "</s>"
+      ],
+      "repo": "gaudi/opus-mt-de-en-ctranslate2",
+      "revision": "7134d80efb6dbc284567cbeb55a517dc2974f722"
+    },
+    {
+      "pair": "en-fr",
+      "source": "en",
+      "target": "fr",
+      "text": "The meeting starts tomorrow morning.",
+      "translation": "La réunion commence demain matin.",
+      "sourcePieces": [
+        "▁The",
+        "▁meeting",
+        "▁starts",
+        "▁tomorrow",
+        "▁morning",
+        ".",
+        "</s>"
+      ],
+      "repo": "michaelfeil/ct2fast-opus-mt-en-fr",
+      "revision": "55bcef18761227161433d86b81bbbcd9d813b429"
+    },
+    {
+      "pair": "fr-en",
+      "source": "fr",
+      "target": "en",
+      "text": "La réunion commence demain matin.",
+      "translation": "The meeting starts in the morning.",
+      "sourcePieces": [
+        "▁La",
+        "▁réunion",
+        "▁commence",
+        "▁demain",
+        "▁matin",
+        ".",
+        "</s>"
+      ],
+      "repo": "gaudi/opus-mt-fr-en-ctranslate2",
+      "revision": "b88efd065a8720e0beeaba2efd53b1dc9a29cfc0"
+    },
+    {
+      "pair": "en-es",
+      "source": "en",
+      "target": "es",
+      "text": "The meeting starts tomorrow morning.",
+      "translation": "La reunión comienza mañana por la mañana.",
+      "sourcePieces": [
+        "▁The",
+        "▁meeting",
+        "▁starts",
+        "▁tomorrow",
+        "▁morning",
+        ".",
+        "</s>"
+      ],
+      "repo": "michaelfeil/ct2fast-opus-mt-en-es",
+      "revision": "76ec296588e2234f9b7dfad5254219a0f5ecb7af"
+    },
+    {
+      "pair": "es-en",
+      "source": "es",
+      "target": "en",
+      "text": "La reunión empieza mañana por la mañana.",
+      "translation": "The meeting starts tomorrow morning.",
+      "sourcePieces": [
+        "▁La",
+        "▁reunión",
+        "▁empieza",
+        "▁mañana",
+        "▁por",
+        "▁la",
+        "▁mañana",
+        ".",
+        "</s>"
+      ],
+      "repo": "gaudi/opus-mt-es-en-ctranslate2",
+      "revision": "ef459fb7b0511ea2d1ec9279f8d6cf80661bf9f7"
+    }
+  ]
+}

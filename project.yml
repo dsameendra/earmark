@@ -41,6 +41,7 @@ packages:
   Translation: { path: Packages/Translation }
   QwenASR: { path: Packages/QwenASR }
   NLLBNative: { path: Packages/NLLBNative }
+  NativeWorkerKit: { path: Packages/NativeWorkerKit }
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     exactVersion: 2.10.1
@@ -73,6 +74,7 @@ targets:
     dependencies:
       - package: NLLBNative
         product: NLLBNative
+      - package: NativeWorkerKit
   Earmark:
     type: application
     platform: macOS

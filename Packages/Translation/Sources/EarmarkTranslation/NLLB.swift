@@ -1,5 +1,6 @@
 import AppCore
 import Foundation
+import NativeWorkerKit
 
 /// FLORES-200 codes used by NLLB-200.
 public enum NLLBLanguages {
@@ -157,192 +158,97 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
     private let executable: URL
     private let isNative: Bool
     private let profile: CTranslate2ModelProfile
-    private var modelFolder: URL?
     private let threads: Int
-    private var process: Process?
-    private var stdin: FileHandle?
-    private var lines: LineReader?
+    private let timeout: Duration
+    private let gate = TranslationOperationGate()
+    private var modelFolder: URL?
+    private var transport: WorkerTransport?
     private var nextID = 0
-    private var busy = false
-    private var waiters: [CheckedContinuation<Void, Never>] = []
 
     public init(pythonExecutable: URL, threads: Int = 0) {
-        self.executable = pythonExecutable
-        self.isNative = false
-        self.profile = .nllb
-        self.threads = threads
+        executable = pythonExecutable; isNative = false; profile = .nllb
+        self.threads = max(1, min(threads == 0 ? 4 : threads, 64)); timeout = .seconds(120)
     }
 
-    /// Uses the same framed transport with the app's bundled Swift/C++ executable.
-    public init(nativeExecutable: URL, threads: Int = 4, profile: CTranslate2ModelProfile = .nllb) {
-        self.executable = nativeExecutable
-        self.isNative = true
-        self.profile = profile
-        self.threads = threads
+    public init(nativeExecutable: URL, threads: Int = 4, profile: CTranslate2ModelProfile = .nllb, requestTimeout: Duration = .seconds(120)) {
+        executable = nativeExecutable; isNative = true; self.profile = profile
+        self.threads = max(1, min(threads, 64)); timeout = requestTimeout
     }
 
     public func load(modelFolder: URL) async throws {
-        await acquire()
-        defer { release() }
+        try await gate.withLease { try await self.loadLocked(modelFolder) }
+    }
+
+    private func loadLocked(_ folder: URL) async throws {
         try Task.checkCancellation()
-        if self.modelFolder != modelFolder { stopWorker() }
-        self.modelFolder = modelFolder
-        do { try await startWorker() } catch {
-            stopWorker()
-            throw error
-        }
+        guard folder.isFileURL else { throw AppError.other("Translation models must be local folders.") }
+        if modelFolder != folder { await stopWorker() }
+        modelFolder = folder
+        do { try await startWorker() }
+        catch { await stopWorker(); throw error }
     }
 
     private func startWorker() async throws {
-        if process?.isRunning == true, lines != nil { return }
-        guard let modelFolder else {
-            throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "The translation model has not been loaded.")
+        guard let modelFolder else { throw AppError.other("Load a translation model before translating.") }
+        if transport == nil {
+            let arguments = isNative ? [modelFolder.path, String(threads), profile.rawValue]
+                : ["-I", "-c", Self.workerScript, modelFolder.path, String(threads)]
+            transport = WorkerTransport(executable: executable, arguments: arguments, timeout: timeout)
+            nextID = 0
         }
-        let p = Process()
-        p.executableURL = executable
-        p.arguments = isNative ? [modelFolder.path, String(threads), profile.rawValue] : ["-I", "-c", Self.workerScript, modelFolder.path, String(threads)]
-        let inPipe = Pipe()
-        let outPipe = Pipe()
-        // A worker that died between requests must surface as a thrown EPIPE, never as a process-killing SIGPIPE (QA B6).
-        Self.suppressSIGPIPE(on: inPipe.fileHandleForWriting)
-        p.standardInput = inPipe
-        p.standardOutput = outPipe
-        p.standardError = FileHandle.nullDevice
-        let (stream, continuation) = AsyncStream<String>.makeStream()
-        let buffer = LineBuffer()
-        outPipe.fileHandleForReading.readabilityHandler = { handle in
-            let data = handle.availableData
-            if data.isEmpty {
-                handle.readabilityHandler = nil
-                continuation.finish()
-                return
-            }
-            for line in buffer.append(data) { continuation.yield(line) }
+        guard let transport else { throw AppError.other("The translation worker is unavailable.") }
+        let first = try await transport.start()
+        guard let value = try JSONSerialization.jsonObject(with: first) as? [String: Any], value["ready"] as? Bool == true,
+              !isNative || value["profile"] as? String == profile.rawValue else {
+            throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "The translation worker could not load the selected model profile.")
         }
-        try p.run()
-        process = p
-        stdin = inPipe.fileHandleForWriting
-        let reader = LineReader(stream)
-        let first = await read(from: reader, process: p, timeout: .seconds(30))
-        try Task.checkCancellation()
-        guard let first,
-            let value = try JSONSerialization.jsonObject(with: Data(first.utf8)) as? [String: Any],
-            value["ready"] as? Bool == true
-        else {
-            stopWorker()
-            throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "The translation worker could not load its model.")
-        }
-        if isNative, profile != .nllb {
-            guard let value = try JSONSerialization.jsonObject(with: Data(first.utf8)) as? [String: Any],
-                value["profile"] as? String == profile.rawValue
-            else {
-                stopWorker()
-                throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "The bundled helper does not support the selected translation model profile.")
-            }
-        }
-        lines = reader
-    }
-
-    /// Makes writes to `handle` fail with `EPIPE` instead of raising `SIGPIPE` when the reader has gone. Per-descriptor, so it
-    /// changes no process-wide signal disposition.
-    static func suppressSIGPIPE(on handle: FileHandle) {
-        _ = fcntl(handle.fileDescriptor, F_SETNOSIGPIPE, 1)
-    }
-
-    private func acquire() async {
-        if !busy {
-            busy = true
-            return
-        }
-        await withCheckedContinuation { waiters.append($0) }
-    }
-    private func release() {
-        if waiters.isEmpty { busy = false } else { waiters.removeFirst().resume() }
     }
 
     public func translate(_ texts: [String], source: String, target: String) async throws -> [String] {
-        await acquire()
-        defer { release() }
-        do { return try await translateLocked(texts, source: source, target: target) } catch {
-            stopWorker()
-            throw error
-        }
+        try await gate.withLease { try await self.translateLocked(texts, source: source, target: target) }
     }
 
     private func translateLocked(_ texts: [String], source: String, target: String) async throws -> [String] {
         try Task.checkCancellation()
-        try await startWorker()
-        guard let process, process.isRunning, let stdin, let reader = lines else {
-            throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "CTranslate2 worker is not running.")
+        guard texts.count <= 8, texts.allSatisfy({ $0.utf8.count <= 100_000 }),
+              !source.isEmpty, !target.isEmpty, source.utf8.count <= 128, target.utf8.count <= 128 else {
+            throw AppError.other("Translation input exceeded the supported batch or language limits.")
         }
-        nextID += 1
-        let id = nextID
-        let payload: [String: Any] = ["id": id, "src": source, "tgt": target, "texts": texts]
-        var data = try JSONSerialization.data(withJSONObject: payload)
-        data.append(0x0A)
-        try stdin.write(contentsOf: data)
-        let reply = await read(from: reader, process: process, timeout: .seconds(120))
-        try Task.checkCancellation()
-        guard let reply, let obj = try JSONSerialization.jsonObject(with: Data(reply.utf8)) as? [String: Any] else {
-            throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "CTranslate2 worker closed unexpectedly.")
-        }
-        if let error = obj["error"] as? String { throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: error) }
-        guard obj["id"] as? Int == id, let out = obj["out"] as? [String], out.count == texts.count else {
-            throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "Malformed worker reply.")
-        }
-        return out
-    }
-
-    private func read(from reader: LineReader, process: Process, timeout: Duration) async -> String? {
-        let watchdog = Task {
-            do { try await Task.sleep(for: timeout) } catch { return }
-            if process.isRunning { process.terminate() }
-        }
-        defer { watchdog.cancel() }
-        return await withTaskCancellationHandler {
-            await reader.next()
-        } onCancel: {
-            if process.isRunning { process.terminate() }
+        if texts.isEmpty { return [] }
+        do {
+            try await startWorker()
+            guard let transport else { throw AppError.other("The translation worker is unavailable.") }
+            nextID += 1
+            let id = nextID
+            let payload: [String: Any] = ["id": id, "src": source, "tgt": target, "texts": texts]
+            let data = try JSONSerialization.data(withJSONObject: payload)
+            let reply = try await transport.request(data)
+            try Task.checkCancellation()
+            guard let object = try JSONSerialization.jsonObject(with: reply) as? [String: Any], object["id"] as? Int == id else {
+                throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "Malformed translation worker reply.")
+            }
+            if let error = object["error"] as? String { throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: error) }
+            guard let output = object["out"] as? [String], output.count == texts.count else {
+                throw AppError.engineFailure(TranslationEngineIDs.nllb, reason: "Malformed translation worker output.")
+            }
+            return output
+        } catch {
+            await stopWorker()
+            throw error
         }
     }
 
     public func unload() async {
-        await acquire()
-        defer { release() }
-        stopWorker()
-        modelFolder = nil
-    }
-
-    private func stopWorker() {
-        if let process, process.isRunning {
-            try? stdin?.close()
-            process.terminate()
+        await gate.cleanup {
+            await self.stopWorker()
+            await self.clearFolder()
         }
-        process = nil
-        stdin = nil
-        lines = nil
     }
-}
 
-private final class LineBuffer: @unchecked Sendable {
-    private let lock = NSLock()
-    private var pending = Data()
-    func append(_ data: Data) -> [String] {
-        lock.lock()
-        defer { lock.unlock() }
-        pending.append(data)
-        var out: [String] = []
-        while let nl = pending.firstIndex(of: 0x0A) {
-            out.append(String(bytes: pending[pending.startIndex..<nl], encoding: .utf8) ?? "")
-            pending.removeSubrange(pending.startIndex...nl)
-        }
-        return out
+    private func clearFolder() { modelFolder = nil }
+
+    private func stopWorker() async {
+        await transport?.stop()
+        transport = nil
     }
-}
-
-/// Single-consumer line reader; callers are serialised by the runtime's gate.
-private final class LineReader: @unchecked Sendable {
-    private var iterator: AsyncStream<String>.Iterator
-    init(_ stream: AsyncStream<String>) { iterator = stream.makeAsyncIterator() }
-    func next() async -> String? { await iterator.next() }
 }

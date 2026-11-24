@@ -1,9 +1,11 @@
 import Foundation
 import NLLBNative
+import NativeWorkerKit
 
 // One persistent model, serial JSON-lines requests. The app terminates this isolated process on cancellation.
 func reply(_ value: [String: Any]) throws {
     let data = try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys, .withoutEscapingSlashes])
+    guard data.count <= WorkerTransport.maximumMessageBytes else { throw NativeNLLBError(message: "Translation response exceeded the message limit.") }
     try FileHandle.standardOutput.write(contentsOf: data + Data([10]))
 }
 
@@ -18,11 +20,12 @@ do {
         threads: CommandLine.arguments.count > 2 ? Int(CommandLine.arguments[2]) ?? 4 : 4,
         profile: profile)
     try reply(["ready": true, "profile": profile.rawValue])
-    while let line = readLine() {
+    try WorkerInput.forEachLine { line in
         var id = -1
         do {
-            guard let request = try JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
-                let requestID = request["id"] as? Int, let texts = request["texts"] as? [String]
+            guard let request = try JSONSerialization.jsonObject(with: line) as? [String: Any],
+                let requestID = request["id"] as? Int, requestID >= 0, let texts = request["texts"] as? [String],
+                texts.count <= 8, texts.allSatisfy({ $0.utf8.count <= 100_000 })
             else {
                 throw NativeNLLBError(message: "Invalid translation request.")
             }

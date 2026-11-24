@@ -5,6 +5,7 @@ import Testing
 @testable import QwenASR
 
 private let generalModel = ProcessInfo.processInfo.environment["EARMARK_QWEN_GENERAL_MODEL"]
+private let generalModelID = ModelID(ProcessInfo.processInfo.environment["EARMARK_QWEN_GENERAL_MODEL_ID"] ?? QwenModelProfile.multilingual06.rawValue)
 private let generalFixture = ProcessInfo.processInfo.environment["EARMARK_QWEN_GENERAL_FIXTURE"]
 private let multilingualFixtures = ProcessInfo.processInfo.environment["EARMARK_QWEN_MULTILINGUAL_FIXTURES"]
 
@@ -12,9 +13,10 @@ private let multilingualFixtures = ProcessInfo.processInfo.environment["EARMARK_
 struct QwenMultilingualRealTests {
     @Test("English audio produces real words with the requested model and language", .enabled(if: generalFixture != nil), .timeLimit(.minutes(5)))
     func english() async throws {
+        #expect(generalModelID == QwenModelProfile.multilingual06 || generalModelID == QwenModelProfile.multilingual17)
         let model = try #require(generalModel)
         let fixture = try #require(generalFixture)
-        let engine = QwenSinhalaEngine(locate: { _ in URL(fileURLWithPath: model) }, defaultModel: QwenModelProfile.multilingual06)
+        let engine = QwenSinhalaEngine(locate: { _ in URL(fileURLWithPath: model) }, defaultModel: generalModelID)
         let chunks = AsyncStream<AudioChunk> { continuation in
             let task = Task {
                 do {
@@ -45,9 +47,10 @@ struct QwenMultilingualRealTests {
           .timeLimit(.minutes(5)), arguments: ["fr", "de", "es", "ja"])
     func multilingual(language: String) async throws {
         let folder = URL(fileURLWithPath: try #require(multilingualFixtures))
+        #expect(generalModelID == QwenModelProfile.multilingual06 || generalModelID == QwenModelProfile.multilingual17)
         let model = URL(fileURLWithPath: try #require(generalModel))
         let reference = try String(contentsOf: folder.appendingPathComponent(language + ".txt"), encoding: .utf8)
-        let engine = QwenSinhalaEngine(locate: { _ in model }, defaultModel: QwenModelProfile.multilingual06)
+        let engine = QwenSinhalaEngine(locate: { _ in model }, defaultModel: generalModelID)
         var segments: [Segment] = []
         for try await event in engine.transcribe(
             file: folder.appendingPathComponent(language + ".wav"),

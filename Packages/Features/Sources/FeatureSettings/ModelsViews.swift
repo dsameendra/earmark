@@ -52,6 +52,7 @@ struct ModelRowView: View {
     let row: ModelManagerModel.Row
     let isActive: Bool
     var recommendations: [ModelRecommendation] = []
+    var compact = false
     let onDownload: () -> Void
     let onPause: () -> Void
     let onResume: () -> Void
@@ -64,7 +65,7 @@ struct ModelRowView: View {
             HStack(alignment: .top, spacing: DSSpacing.md) {
                 VStack(alignment: .leading, spacing: DSSpacing.xs) {
                     Text(row.descriptor.displayName).font(DSTypography.headline).fixedSize(horizontal: false, vertical: true)
-                    if !row.descriptor.notes.isEmpty {
+                    if !compact, !row.descriptor.notes.isEmpty {
                         Text(row.descriptor.notes).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -78,15 +79,28 @@ struct ModelRowView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("models.recommendedWhy.\(row.id.rawValue)")
             }
-            WrappingChips(spacing: DSSpacing.xs) {
-                if row.descriptor.kind == .asr { languagesButton }
-                ForEach(ModelCapabilitySummary.chips(for: row.descriptor).filter { $0.id != "languages" }) { CapabilityChipView($0) }
-            }
+            if compact {
+                DisclosureGroup("Model details") { details }
+                    .accessibilityIdentifier("models.details.\(row.id.rawValue)")
+            } else { details }
             statusLine
         }
         .padding(.vertical, DSSpacing.sm)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("models.row.\(row.id.rawValue)")
+    }
+
+    private var details: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.sm) {
+            if compact, !row.descriptor.notes.isEmpty {
+                Text(row.descriptor.notes).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            WrappingChips(spacing: DSSpacing.xs) {
+                if !row.descriptor.languages.isEmpty { languagesButton }
+                ForEach(ModelCapabilitySummary.chips(for: row.descriptor).filter { $0.id != "languages" }) { CapabilityChipView($0) }
+            }
+        }
     }
 
     private var badges: some View {
@@ -212,6 +226,7 @@ struct ModelsSettingsView: View {
     @State private var pendingDownload: (id: ModelID, warnings: [DownloadWarning])?
     @State private var showBrowser = false
     @State private var browseQuery = ""
+    @State private var installedQuery = ""
     @State private var browseKind = "all"
     @State private var showImporter = false
     @State private var importFolder: URL?
@@ -222,7 +237,9 @@ struct ModelsSettingsView: View {
         model.recommendedRows.filter(isVisible)
     }
     private var installedRows: [ModelManagerModel.Row] {
-        model.managedRows.filter(isVisible)
+        model.managedRows.filter(isVisible).filter { row in
+            installedQuery.isEmpty || model.browseRows(query: installedQuery, kind: nil).contains(where: { $0.id == row.id })
+        }
     }
     private func isVisible(_ row: ModelManagerModel.Row) -> Bool {
         guard let kinds else { return true }
@@ -242,7 +259,7 @@ struct ModelsSettingsView: View {
     var body: some View {
         Form {
             Section {
-                ForEach(recommendedRows) { row in modelRow(row) }
+                ForEach(recommendedRows) { row in modelRow(row, compact: true) }
                 Button("Add models…", systemImage: "plus.circle") { showBrowser = true }
                     .accessibilityIdentifier("models.browse")
             } header: { Text("Recommended") } footer: {
@@ -250,7 +267,17 @@ struct ModelsSettingsView: View {
             }
             Section {
                 if installedRows.isEmpty { Text("No models installed yet.").foregroundStyle(DSColor.secondaryText) }
-                ForEach(installedRows) { row in modelRow(row) }
+                if model.managedRows.filter(isVisible).count > 5 {
+                    TextField("Search installed models", text: $installedQuery)
+                        .accessibilityIdentifier("models.installed.search")
+                }
+                ForEach(installedRows.filter { $0.descriptor.engine != "opus-mt" }) { row in modelRow(row, compact: true) }
+                let packs = installedRows.filter { $0.descriptor.engine == "opus-mt" }
+                if !packs.isEmpty {
+                    DisclosureGroup("OPUS language packs (\(packs.count))") {
+                        ForEach(packs) { row in modelRow(row, compact: true) }
+                    }.accessibilityIdentifier("models.installed.opus")
+                }
             } header: { Text("Installed and downloads") } footer: {
                 Text("Disk usage: \(ModelFormat.bytes(model.totalDiskUsage)). Your audio stays on this Mac.")
             }
@@ -302,9 +329,9 @@ struct ModelsSettingsView: View {
         }
     }
 
-    private func modelRow(_ row: ModelManagerModel.Row) -> some View {
+    private func modelRow(_ row: ModelManagerModel.Row, compact: Bool = false) -> some View {
         ModelRowView(
-            row: row, isActive: row.id == model.activeModelID, recommendations: model.recommendations(for: row.id),
+            row: row, isActive: row.id == model.activeModelID, recommendations: model.recommendations(for: row.id), compact: compact,
             onDownload: { start(row.id) }, onPause: { Task { await model.pause(row.id) } },
             onResume: { Task { await model.resume(row.id) } }, onCancel: { Task { await model.cancel(row.id) } },
             onDelete: { Task { await model.requestDelete(row.id) } })
@@ -335,7 +362,11 @@ struct ModelsSettingsView: View {
                 }
                 ForEach(families.keys.sorted(), id: \.self) { family in
                     Section(family) {
-                        ForEach(families[family] ?? []) { row in modelRow(row) }
+                        if family == "OPUS language packs" {
+                            OPUSPairPackBrowser(model: model, rows: families[family] ?? []) { row in modelRow(row) }
+                        } else {
+                            ForEach(families[family] ?? []) { row in modelRow(row) }
+                        }
                     }
                 }
             }.formStyle(.grouped)

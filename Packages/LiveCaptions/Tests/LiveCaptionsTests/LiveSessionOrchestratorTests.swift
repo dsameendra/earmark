@@ -373,6 +373,46 @@ struct LiveSessionOrchestratorTests {
 
     // MARK: translation (LIVE-AC-13)
 
+    @Test("unknown source language never silently routes as English")
+    func unknownTranslationSource() async throws {
+        let router = FakeTranslationRouter()
+        var unknown = segment("bonjour", 0, 1)
+        unknown.languageCode = nil
+        let rig = makeRig(script: [.events([.final(unknown)])], translation: router)
+        let lines = Recorder(rig.orchestrator.lines())
+        let events = Recorder(rig.orchestrator.events())
+        try await rig.orchestrator.start(LiveSessionConfig(
+            source: .mic(deviceUID: nil), languageMode: .autoDetect, translateTo: .sinhala, saveAsTranscript: true))
+        rig.source.send(chunk(0))
+        #expect(await waitUntil { events.all.contains { if case .translationFailed = $0 { true } else { false } } })
+        #expect(router.callTimes.isEmpty)
+        #expect(lines.last?.first?.translation == nil)
+        let id = try #require(await rig.orchestrator.stop())
+        #expect(rig.repo.stored(id).first?.text == "bonjour")
+    }
+
+    @Test("slow translation has bounded backlog and keeps every original segment")
+    func boundedTranslationBacklog() async throws {
+        let router = FakeTranslationRouter()
+        let options = LiveSessionOptions(
+            checkpointInterval: .seconds(60), drainTimeout: .seconds(1),
+            translationMinInterval: .milliseconds(30), maxPendingTranslations: 2)
+        let rig = makeRig(
+            script: [.events((0..<20).map { .final(segment("sentence \($0)", Double($0), Double($0) + 1)) })],
+            translation: router, options: options)
+        let lines = Recorder(rig.orchestrator.lines())
+        let events = Recorder(rig.orchestrator.events())
+        try await rig.orchestrator.start(LiveSessionConfig(
+            source: .mic(deviceUID: nil), translateTo: .sinhala, saveAsTranscript: true))
+        rig.source.send(chunk(0))
+        #expect(await waitUntil { lines.last?.count == 20 })
+        let id = try #require(await rig.orchestrator.stop())
+        #expect(rig.repo.stored(id).count == 20)
+        #expect(router.callTimes.count < 20)
+        #expect(events.all.contains { if case .translationFailed(let reason) = $0 { reason.contains("falling behind") } else { false } })
+        #expect(rig.repo.stored(id).last?.translations.first?.language == .sinhala)
+    }
+
     @Test("stopping drains queued final translations before saving")
     func stopDrainsTranslationQueue() async throws {
         let router = FakeTranslationRouter()

@@ -52,6 +52,8 @@ final class SessionContext {
         var language: LanguageCode?
     }
     var pendingFinalTranslations: [TranslationJob] = []
+    var translationBacklogNoticeSent = false
+    var unknownTranslationSourceNoticeSent = false
     var volatileTranslations: [UUID: TranslationJob] = [:]
     var translationTask: Task<Void, Never>?
     var translationWake: AsyncStream<Void>.Continuation?

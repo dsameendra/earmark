@@ -207,6 +207,96 @@ enum CatalogFixtures {
             ("tokenizer_config.json", 830),
         ])
 
+    static let opusEnDe = Listing(
+        repo: "gaudi/opus-mt-en-de-ctranslate2", revision: "3998844c0d44ff2aa5aaf5a1cf8365b6eb4fd783",
+        files: [
+            (".gitattributes", 433),
+            ("README.md", 6720),
+            ("config.json", 215),
+            ("generation_config.json", 293),
+            ("model.bin", 148423215),
+            ("shared_vocabulary.json", 993828),
+            ("source.spm", 768489),
+            ("target.spm", 796845),
+            ("tokenizer_config.json", 42),
+            ("vocab.json", 1273232)
+        ])
+
+    static let opusDeEn = Listing(
+        repo: "gaudi/opus-mt-de-en-ctranslate2", revision: "7134d80efb6dbc284567cbeb55a517dc2974f722",
+        files: [
+            (".gitattributes", 387),
+            ("README.md", 6720),
+            ("config.json", 215),
+            ("generation_config.json", 293),
+            ("model.bin", 148423215),
+            ("shared_vocabulary.json", 993828),
+            ("source.spm", 796845),
+            ("target.spm", 768489),
+            ("tokenizer_config.json", 42),
+            ("vocab.json", 1273232)
+        ])
+
+    static let opusEnFr = Listing(
+        repo: "michaelfeil/ct2fast-opus-mt-en-fr", revision: "55bcef18761227161433d86b81bbbcd9d813b429",
+        files: [
+            (".gitattributes", 391),
+            ("README.md", 2817),
+            ("config.json", 159),
+            ("generation_config.json", 293),
+            ("model.bin", 149872839),
+            ("shared_vocabulary.txt", 556777),
+            ("source.spm", 778395),
+            ("target.spm", 802397),
+            ("tokenizer_config.json", 42),
+            ("vocab.json", 1339166)
+        ])
+
+    static let opusFrEn = Listing(
+        repo: "gaudi/opus-mt-fr-en-ctranslate2", revision: "b88efd065a8720e0beeaba2efd53b1dc9a29cfc0",
+        files: [
+            (".gitattributes", 433),
+            ("README.md", 6720),
+            ("config.json", 215),
+            ("generation_config.json", 293),
+            ("model.bin", 149872953),
+            ("shared_vocabulary.json", 1052697),
+            ("source.spm", 802397),
+            ("target.spm", 778395),
+            ("tokenizer_config.json", 42),
+            ("vocab.json", 1339166)
+        ])
+
+    static let opusEnEs = Listing(
+        repo: "michaelfeil/ct2fast-opus-mt-en-es", revision: "76ec296588e2234f9b7dfad5254219a0f5ecb7af",
+        files: [
+            (".gitattributes", 391),
+            ("README.md", 4027),
+            ("config.json", 159),
+            ("generation_config.json", 293),
+            ("model.bin", 155502501),
+            ("shared_vocabulary.txt", 666435),
+            ("source.spm", 801636),
+            ("target.spm", 825924),
+            ("tokenizer_config.json", 44),
+            ("vocab.json", 1590040)
+        ])
+
+    static let opusEsEn = Listing(
+        repo: "gaudi/opus-mt-es-en-ctranslate2", revision: "ef459fb7b0511ea2d1ec9279f8d6cf80661bf9f7",
+        files: [
+            (".gitattributes", 387),
+            ("README.md", 6720),
+            ("config.json", 215),
+            ("generation_config.json", 293),
+            ("model.bin", 155502615),
+            ("shared_vocabulary.json", 1276136),
+            ("source.spm", 825924),
+            ("target.spm", 801636),
+            ("tokenizer_config.json", 44),
+            ("vocab.json", 1590040)
+        ])
+
     static let nllb = Listing(
         repo: "JustFrederik/nllb-200-distilled-600M-ct2-int8", revision: "302d78f00e6fdb50a1064059df7c392b735e9d05",
         files: [

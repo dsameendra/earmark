@@ -14,6 +14,8 @@ struct OPUSTests {
         #expect(await !engine.supports(pair("de", "fr")))
         #expect(await !engine.supports(pair("en", "si")))
         #expect(await !engine.supports(pair("en", "en")))
+        #expect(await !engine.supports(pair("en", "de-Cyrl")))
+        #expect(await !engine.supports(pair("en-US", "de")))
     }
 
     @Test func missingDirectionDoesNotDownloadOrUseTheOppositePack() async throws {

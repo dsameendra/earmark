@@ -28,9 +28,13 @@ struct TranslationRuntime: Sendable {
         #endif
         let nllb = runtime.map { NLLBEngine(models: models, runtime: $0) }
         let madlad = nativePool.map { MADLADEngine(models: models, runtime: $0.runtime(profile: .madlad)) }
+        let opus = nativePool.map { OPUSTranslationEngine(models: models, runtime: $0.runtime(profile: .marian)) }
+        var additional: [any TranslationEngine] = []
+        if let opus { additional.append(opus) }
+        if let madlad { additional.append(madlad) }
         let router = DefaultTranslationRouter(
             apple: apple, nllb: nllb,
-            additional: madlad.map { [$0 as any TranslationEngine] } ?? [],
+            additional: additional,
             selectedEngine: {
                 let choice = await settings.value(for: SettingsKey.translationEngine, as: String.self) ?? "auto"
                 switch choice {
@@ -46,7 +50,7 @@ struct TranslationRuntime: Sendable {
                 return true
             })
         let packs = ApplePackInstaller()
-        let service = AppTranslationService(models: models, nllb: nllb, madlad: madlad, packs: packs, settings: settings)
+        let service = AppTranslationService(models: models, nllb: nllb, madlad: madlad, opus: opus, packs: packs, settings: settings)
         return TranslationRuntime(router: router, service: service, packs: packs, nllbEnabled: nllb != nil)
     }
 }
@@ -58,14 +62,16 @@ final class AppTranslationService: TranslationPreparing, Sendable {
     private let models: any ModelManaging
     private let nllb: NLLBEngine?
     private let madlad: MADLADEngine?
+    private let opus: OPUSTranslationEngine?
     private let packs: ApplePackInstaller
     private let backend = SystemAppleTranslationBackend()
     private let settings: any SettingsStore
 
-    init(models: any ModelManaging, nllb: NLLBEngine?, madlad: MADLADEngine? = nil, packs: ApplePackInstaller, settings: any SettingsStore) {
+    init(models: any ModelManaging, nllb: NLLBEngine?, madlad: MADLADEngine? = nil, opus: OPUSTranslationEngine? = nil, packs: ApplePackInstaller, settings: any SettingsStore) {
         self.models = models
         self.nllb = nllb
         self.madlad = madlad
+        self.opus = opus
         self.packs = packs
         self.settings = settings
     }
@@ -74,6 +80,9 @@ final class AppTranslationService: TranslationPreparing, Sendable {
         var candidates = await backend.supportedLanguages().filter { $0.primary != source.primary }
         candidates.formUnion(NLLBLanguages.defaultLanguages.filter { $0.primary != source.primary })
         if madlad != nil { candidates.formUnion(MADLADLanguages.languages.filter { $0.primary != source.primary }) }
+        if opus != nil {
+            candidates.formUnion(OPUSTranslationEngine.modelsByPair.keys.filter { $0.source == source }.map(\.target))
+        }
         var out: [(language: LanguageCode, readiness: TranslationReadiness)] = []
         for language in candidates.sorted() {
             out.append((language, await readiness(source: source, target: language)))
@@ -85,6 +94,13 @@ final class AppTranslationService: TranslationPreparing, Sendable {
         let (s, t) = (source.primary, target.primary)
         guard s != t else { return .unavailable(reason: "The source and target language are the same.") }
         let choice = await settings.value(for: SettingsKey.translationEngine, as: String.self) ?? "auto"
+        if choice == "opus-mt" {
+            let pair = LanguagePair(source: source, target: target)
+            guard let opus, await opus.supports(pair), let model = OPUSTranslationEngine.model(for: pair) else {
+                return .unavailable(reason: "Add an OPUS pack for this exact language direction in Settings > Models.")
+            }
+            return await modelReadiness(model)
+        }
         if choice == "madlad" {
             guard let madlad, await madlad.supports(LanguagePair(source: source, target: target)) else {
                 return .unavailable(reason: "MADLAD does not support this language pair or language variant in this build.")
@@ -124,6 +140,9 @@ final class AppTranslationService: TranslationPreparing, Sendable {
     private func localReadiness(source: LanguageCode, target: LanguageCode) async -> TranslationReadiness? {
         let pair = LanguagePair(source: source, target: target)
         if let nllb, await nllbAllowed, await nllb.supports(pair) { return await nllbModelReadiness() }
+        if let opus, await opus.supports(pair), let model = OPUSTranslationEngine.model(for: pair) {
+            return await modelReadiness(model)
+        }
         if let madlad, await madlad.supports(pair) { return await modelReadiness(MADLADEngine.modelID) }
         return nil
     }

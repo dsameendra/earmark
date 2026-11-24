@@ -202,6 +202,66 @@ public final class ModelManagerModel {
         return warnings
     }
 
+    /// Only curated, runnable, one-direction OPUS recipes participate in the pair chooser.
+    public var pairPackRows: [Row] {
+        rows.filter {
+            $0.descriptor.engine == "opus-mt" && $0.descriptor.isRunnable
+                && $0.descriptor.capabilities.translationPairs?.count == 1
+        }
+    }
+
+    public func pairPacks(source: LanguageCode, target: LanguageCode, bothDirections: Bool) -> [Row] {
+        let forward = LanguagePair(source: source, target: target)
+        let reverse = LanguagePair(source: target, target: source)
+        let packs = pairPackRows
+        guard let first = packs.first(where: { $0.descriptor.capabilities.translationPairs == [forward] }) else { return [] }
+        guard bothDirections else { return [first] }
+        guard let second = packs.first(where: { $0.descriptor.capabilities.translationPairs == [reverse] }) else { return [] }
+        return [first, second]
+    }
+
+    public private(set) var activePairPackIDs: [ModelID] = []
+    @ObservationIgnored private var pairPackCancelled = false
+    @ObservationIgnored private var currentPairPackID: ModelID?
+
+    /// Preflight the entire selection before starting either direction. Completed packs remain installed on cancellation.
+    public func downloadPairPacks(
+        source: LanguageCode, target: LanguageCode, bothDirections: Bool, confirmed: Bool = false
+    ) async -> DownloadOutcome {
+        guard activePairPackIDs.isEmpty else { return .failed("A language-pack download is already running.") }
+        let selection = pairPacks(source: source, target: target, bothDirections: bothDirections)
+        guard !selection.isEmpty else { return .failed("This language direction has no supported pack.") }
+        let needed = selection.filter { !$0.isInstalled }
+        let bytes = needed.reduce(Int64(0)) { $0 + $1.descriptor.sizeBytes }
+        if let free = freeDiskBytes(), free < bytes + bytes / 5 {
+            let reason = "There is not enough free disk space for the selected language packs. Free up space and try again."
+            errorMessage = reason
+            return .failed(reason)
+        }
+        let warnings = needed.flatMap { preflight($0.id) }.reduce(into: [DownloadWarning]()) { result, warning in
+            if !result.contains(warning) { result.append(warning) }
+        }
+        if !confirmed, !warnings.isEmpty { return .needsConfirmation(warnings) }
+        activePairPackIDs = needed.map(\.id)
+        pairPackCancelled = false
+        defer { activePairPackIDs = []; pairPackCancelled = false; currentPairPackID = nil }
+        for pack in needed {
+            guard !pairPackCancelled, !Task.isCancelled else { return .cancelled }
+            currentPairPackID = pack.id
+            let result = await download(pack.id, confirmed: confirmed)
+            guard result == .completed else { return result }
+        }
+        return pairPackCancelled || Task.isCancelled ? .cancelled : .completed
+    }
+
+    public func cancelPairPackDownloads() async {
+        guard !activePairPackIDs.isEmpty else { return }
+        pairPackCancelled = true
+        guard let id = currentPairPackID else { return }
+        if case .installed = await manager.state(of: id) { return }
+        await cancel(id)
+    }
+
     // MARK: Download
 
     /// Downloads `id` (inline progress on its row) and returns once installed. Unconfirmed warnings are returned, not ignored.

@@ -467,6 +467,14 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         if volatile {
             ctx.volatileTranslations[lineID] = job
         } else {
+            ctx.pendingFinalTranslations.removeAll { $0.segmentID == segmentID }
+            if ctx.pendingFinalTranslations.count >= options.maxPendingTranslations {
+                ctx.pendingFinalTranslations.removeFirst()
+                if !ctx.translationBacklogNoticeSent {
+                    ctx.translationBacklogNoticeSent = true
+                    eventBus.send(.translationFailed(reason: "Translation is falling behind. Some captions will keep their original text."))
+                }
+            }
             ctx.pendingFinalTranslations.append(job)
             ctx.volatileTranslations.removeValue(forKey: lineID)
         }
@@ -474,7 +482,13 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
     }
 
     private func nextTranslationJob(_ ctx: SessionContext) -> SessionContext.TranslationJob? {
-        if !ctx.pendingFinalTranslations.isEmpty { return ctx.pendingFinalTranslations.removeFirst() }
+        if !ctx.pendingFinalTranslations.isEmpty {
+            let job = ctx.pendingFinalTranslations.removeFirst()
+            if ctx.pendingFinalTranslations.count < options.maxPendingTranslations / 2 {
+                ctx.translationBacklogNoticeSent = false
+            }
+            return job
+        }
         guard let job = ctx.volatileTranslations.values.min(by: { $0.lineID.uuidString < $1.lineID.uuidString }) else { return nil }
         ctx.volatileTranslations.removeValue(forKey: job.lineID)
         return job
@@ -504,7 +518,14 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
     private func translate(
         _ job: SessionContext.TranslationJob, to target: LanguageCode, router: any TranslationRouter, ctx: SessionContext
     ) async {
-        let source = job.language ?? ctx.detectedLanguage ?? ctx.fixedLanguage ?? .english
+        guard let source = job.language ?? ctx.detectedLanguage ?? ctx.fixedLanguage else {
+            if !ctx.unknownTranslationSourceNoticeSent {
+                ctx.unknownTranslationSourceNoticeSent = true
+                eventBus.send(.translationFailed(reason: "Waiting for the spoken language before translating. Choose a source language if detection is unavailable."))
+            }
+            return
+        }
+        ctx.unknownTranslationSourceNoticeSent = false
         guard source.primary != target.primary else { return }
         do {
             let engine = try await router.engine(for: LanguagePair(source: source, target: target))

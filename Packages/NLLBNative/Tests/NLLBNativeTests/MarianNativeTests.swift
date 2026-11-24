@@ -51,3 +51,43 @@ struct OPUSNativeRecipesTests {
         }
     }
 }
+
+@Suite("OPUS authored semantic cases", .serialized, .enabled(if: opusRoot != nil))
+struct OPUSSemanticNativeTests {
+    private struct Fixture: Decodable {
+        struct Row: Decodable {
+            struct Case: Decodable {
+                let text: String
+                let requiredWordGroups: [[String]]?
+                let requiredIdentifier: String?
+            }
+            let pair: String
+            let source: String
+            let target: String
+            let cases: [Case]
+        }
+        let rows: [Row]
+    }
+
+    @Test func retainsNamesNumbersIdentifiersAndNegation() throws {
+        let fixture = try #require(Bundle.module.url(forResource: "opus-semantic-cases", withExtension: "json", subdirectory: "Fixtures"))
+        let cases = try JSONDecoder().decode(Fixture.self, from: Data(contentsOf: fixture))
+        let root = URL(fileURLWithPath: try #require(opusRoot))
+        for row in cases.rows {
+            let model = try NativeNLLBModel(folder: root.appendingPathComponent("opus-" + row.pair), profile: .marian)
+            for example in row.cases {
+                let text = try model.translate(example.text, source: row.source, target: row.target)
+                print("OPUS semantic \(row.pair): \(text)")
+                let normalized = text.lowercased().replacingOccurrences(of: "’", with: "'")
+                let words = Set(normalized.split { !$0.isLetter && !$0.isNumber && $0 != "'" }.map(String.init))
+                for alternatives in example.requiredWordGroups ?? [] {
+                    #expect(alternatives.contains { words.contains($0) }, "\(row.pair) lost a required semantic marker: \(alternatives)")
+                }
+                if let identifier = example.requiredIdentifier {
+                    let compact = String(normalized.unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) })
+                    #expect(compact.contains(identifier), "\(row.pair) changed the identifier")
+                }
+            }
+        }
+    }
+}

@@ -86,3 +86,36 @@ struct NativeOPUSWorkerTests {
         await engine.unload()
     }
 }
+
+@Suite("All directional packs through pooled native worker", .serialized,
+       .enabled(if: nativePath != nil && ProcessInfo.processInfo.environment["EARMARK_OPUS_MODEL_ROOT"] != nil))
+struct NativeOPUSPoolTests {
+    @Test func switchesAllSixPacksAndPreservesSegmentIdentity() async throws {
+        let root = URL(fileURLWithPath: try #require(ProcessInfo.processInfo.environment["EARMARK_OPUS_MODEL_ROOT"]))
+        let pool = CTranslate2RuntimePool(nativeExecutable: URL(fileURLWithPath: try #require(nativePath)))
+        let engine = OPUSTranslationEngine(runtime: pool.runtime(profile: .marian), locate: { model in
+            let pair = model.rawValue.replacingOccurrences(of: "opus/", with: "").replacingOccurrences(of: "-ct2-int8", with: "")
+            return root.appendingPathComponent("opus-" + pair)
+        })
+        let cases: [(String, LanguageCode, LanguageCode)] = [
+            ("Hello world.", "en", "de"),
+            ("Hallo Welt.", "de", "en"),
+            ("Hello world.", "en", "fr"),
+            ("Bonjour le monde.", "fr", "en"),
+            ("Hello world.", "en", "es"),
+            ("Hola mundo.", "es", "en"),
+        ]
+        for (text, source, target) in cases {
+            let input = items([text])
+            let output = try await collect(engine.translate(items: input, from: source, to: target))
+            #expect(output.count == 1)
+            #expect(output.first?.text.isEmpty == false)
+            #expect(output.first?.segmentID == input.first?.segmentID)
+            #expect(output.first?.engine == "opus-mt")
+        }
+        await engine.unload()
+        let restarted = try await collect(engine.translate(items: items(["Hello world."]), from: "en", to: "de"))
+        #expect(restarted.first?.text == "Hallo Welt.")
+        await engine.unload()
+    }
+}

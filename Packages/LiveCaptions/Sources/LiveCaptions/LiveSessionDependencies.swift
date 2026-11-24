@@ -81,18 +81,21 @@ public struct LiveSessionOptions: Sendable {
     public var drainTimeout: Duration
     /// Minimum gap between translation updates (LIVE-AC-13: at most 1 update per second).
     public var translationMinInterval: Duration
+    /// Pending finalized captions waiting for translation; older overflow retains its original text.
+    public var maxPendingTranslations: Int
     public var maxRetainedLines: Int
     public var vocabulary: [String]
     public var now: @Sendable () -> Date
 
     public init(
         checkpointInterval: Duration = .seconds(3), drainTimeout: Duration = .seconds(2),
-        translationMinInterval: Duration = .seconds(1), maxRetainedLines: Int = 200, vocabulary: [String] = [],
+        translationMinInterval: Duration = .seconds(1), maxPendingTranslations: Int = 32, maxRetainedLines: Int = 200, vocabulary: [String] = [],
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.checkpointInterval = checkpointInterval
         self.drainTimeout = drainTimeout
         self.translationMinInterval = translationMinInterval
+        self.maxPendingTranslations = max(1, maxPendingTranslations)
         self.maxRetainedLines = maxRetainedLines
         self.vocabulary = vocabulary
         self.now = now

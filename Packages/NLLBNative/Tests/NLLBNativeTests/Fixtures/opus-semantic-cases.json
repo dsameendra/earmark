@@ -1,0 +1,194 @@
+{
+  "scope": "Small authored semantic regression cases; not a general translation-quality guarantee",
+  "rows": [
+    {
+      "pair": "en-de",
+      "source": "en",
+      "target": "de",
+      "cases": [
+        {
+          "text": "Do not delete the files.",
+          "requiredWordGroups": [
+            [
+              "nicht",
+              "keine"
+            ]
+          ]
+        },
+        {
+          "text": "Anna has 12 files.",
+          "requiredWordGroups": [
+            [
+              "anna"
+            ],
+            [
+              "12"
+            ]
+          ]
+        },
+        {
+          "text": "The code is ZX-1042.",
+          "requiredIdentifier": "zx1042"
+        }
+      ]
+    },
+    {
+      "pair": "de-en",
+      "source": "de",
+      "target": "en",
+      "cases": [
+        {
+          "text": "Löschen Sie die Dateien nicht.",
+          "requiredWordGroups": [
+            [
+              "not",
+              "don't",
+              "never"
+            ]
+          ]
+        },
+        {
+          "text": "Anna hat 12 Dateien.",
+          "requiredWordGroups": [
+            [
+              "anna"
+            ],
+            [
+              "12"
+            ]
+          ]
+        },
+        {
+          "text": "Der Code lautet ZX-1042.",
+          "requiredIdentifier": "zx1042"
+        }
+      ]
+    },
+    {
+      "pair": "en-fr",
+      "source": "en",
+      "target": "fr",
+      "cases": [
+        {
+          "text": "Do not delete the files.",
+          "requiredWordGroups": [
+            [
+              "pas",
+              "jamais"
+            ]
+          ]
+        },
+        {
+          "text": "Anna has 12 files.",
+          "requiredWordGroups": [
+            [
+              "anna"
+            ],
+            [
+              "12"
+            ]
+          ]
+        },
+        {
+          "text": "The code is ZX-1042.",
+          "requiredIdentifier": "zx1042"
+        }
+      ]
+    },
+    {
+      "pair": "fr-en",
+      "source": "fr",
+      "target": "en",
+      "cases": [
+        {
+          "text": "Ne supprimez pas les fichiers.",
+          "requiredWordGroups": [
+            [
+              "not",
+              "don't",
+              "never"
+            ]
+          ]
+        },
+        {
+          "text": "Anna a 12 fichiers.",
+          "requiredWordGroups": [
+            [
+              "anna"
+            ],
+            [
+              "12"
+            ]
+          ]
+        },
+        {
+          "text": "Le code est ZX-1042.",
+          "requiredIdentifier": "zx1042"
+        }
+      ]
+    },
+    {
+      "pair": "en-es",
+      "source": "en",
+      "target": "es",
+      "cases": [
+        {
+          "text": "Do not delete the files.",
+          "requiredWordGroups": [
+            [
+              "no",
+              "nunca"
+            ]
+          ]
+        },
+        {
+          "text": "Anna has 12 files.",
+          "requiredWordGroups": [
+            [
+              "anna"
+            ],
+            [
+              "12"
+            ]
+          ]
+        },
+        {
+          "text": "The code is ZX-1042.",
+          "requiredIdentifier": "zx1042"
+        }
+      ]
+    },
+    {
+      "pair": "es-en",
+      "source": "es",
+      "target": "en",
+      "cases": [
+        {
+          "text": "No elimine los archivos.",
+          "requiredWordGroups": [
+            [
+              "not",
+              "don't",
+              "never"
+            ]
+          ]
+        },
+        {
+          "text": "Anna tiene 12 archivos.",
+          "requiredWordGroups": [
+            [
+              "anna"
+            ],
+            [
+              "12"
+            ]
+          ]
+        },
+        {
+          "text": "El código es ZX-1042.",
+          "requiredIdentifier": "zx1042"
+        }
+      ]
+    }
+  ]
+}

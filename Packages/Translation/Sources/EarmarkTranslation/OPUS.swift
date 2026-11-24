@@ -34,7 +34,7 @@ public actor OPUSTranslationEngine: TranslationEngine, PairSupportChecking {
     }
 
     public nonisolated static func model(for pair: LanguagePair) -> ModelID? {
-        modelsByPair[LanguagePair(source: pair.source.primary, target: pair.target.primary)]
+        modelsByPair[pair]
     }
 
     public func supportedPairs() async -> Set<LanguagePair> { Set(Self.modelsByPair.keys) }

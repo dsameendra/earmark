@@ -76,14 +76,22 @@ public enum ModelCapabilitySummary {
     public static func chips(for model: ModelDescriptor) -> [ModelCapabilityChip] {
         let c = model.capabilities
         var chips: [ModelCapabilityChip] = []
-        if model.kind == .asr {
+        if model.kind == .asr || model.kind == .translation {
             let count = Set(model.languages.map(\.primary)).count
             chips.append(
                 ModelCapabilityChip(
                     id: "languages", text: languageSummary(model), symbol: "globe",
                     spoken: "\(count) \(count == 1 ? "language" : "languages"): \(languageNames(model).joined(separator: ", "))"))
+        }
+        if model.kind == .asr {
             if c.live {
-                chips.append(ModelCapabilityChip(id: "live", text: "Live streaming", symbol: "waveform", tone: .positive))
+                let text: String
+                switch c.streaming {
+                case .native: text = "Native streaming"
+                case .buffered: text = "Buffered captions"
+                case nil: text = "Live captions"
+                }
+                chips.append(ModelCapabilityChip(id: "live", text: text, symbol: "waveform", tone: .positive))
             } else if c.file {
                 chips.append(
                     ModelCapabilityChip(

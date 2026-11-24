@@ -205,5 +205,5 @@ public enum BuiltInCatalog {
             downloadInclude: [
                 "Preprocessor.mlmodelc", "Encoder.mlmodelc", "Decoder.mlmodelc", "JointDecisionv3.mlmodelc", "parakeet_vocab.json",
             ]),
-    ]
+    ] + OPUSCatalog.models
 }

@@ -1,0 +1,427 @@
+{
+  "family": "opus",
+  "helperSHA256": "7642b5ed17497629e8324e4beb646b45d04b9fb43206fe8fef8fd56305744be3",
+  "dataset": {
+    "dataset": "FLORES-200",
+    "url": "https://dl.fbaipublicfiles.com/nllb/flores200_dataset.tar.gz",
+    "license": "CC-BY-SA-4.0",
+    "citation": "NLLB Team, No Language Left Behind: Scaling Human-Centered Machine Translation (2022)",
+    "archiveSHA256": "b8b0b76783024b85797e5cc75064eb83fc5288b41e9654dabc7be6ae944011f6",
+    "files": [
+      {
+        "path": "eng_Latn.devtest",
+        "bytes": 133108,
+        "sha256": "612e9fbe87997617c0fa8fa8929654a4f49b728d96738112c2b86ef6a1d78d88",
+        "lines": 1012
+      },
+      {
+        "path": "deu_Latn.devtest",
+        "bytes": 157370,
+        "sha256": "9a1bfa90d153fedb7ff80047f4a63d493998888eddb056e8a28e24592f26e5f2",
+        "lines": 1012
+      },
+      {
+        "path": "fra_Latn.devtest",
+        "bytes": 165038,
+        "sha256": "82f5b000db419ef9254eea7857cce82943b361090942f17ed696e3dce2944f42",
+        "lines": 1012
+      },
+      {
+        "path": "spa_Latn.devtest",
+        "bytes": 160955,
+        "sha256": "40fcb836b49b0a461a14c00b8bce1f03113f8d2668132af424e74b2421d18ce9",
+        "lines": 1012
+      },
+      {
+        "path": "sin_Sinh.devtest",
+        "bytes": 347068,
+        "sha256": "a34833ff5d4585c47e19aeafd30be737e785006bc7982f769d3d40c0092c4a93",
+        "lines": 1012
+      },
+      {
+        "path": "tam_Taml.devtest",
+        "bytes": 422653,
+        "sha256": "a18b26bf278e458f085c70173d6789d6108cb2e3346c81a1bd0f8aceb4ea30e4",
+        "lines": 1012
+      },
+      {
+        "path": "hin_Deva.devtest",
+        "bytes": 338106,
+        "sha256": "5f5fd39acadca29fb044a0398e81869e48f37de979df086f2fad4a7d1fd2d015",
+        "lines": 1012
+      },
+      {
+        "path": "ben_Beng.devtest",
+        "bytes": 345694,
+        "sha256": "6699aa77b4c93d520971868cd5ff06a1e3b5ddfde852da13337f5194bc23086f",
+        "lines": 1012
+      },
+      {
+        "path": "urd_Arab.devtest",
+        "bytes": 232713,
+        "sha256": "f177f18842696e56aa3928334a9bf2121383f023aa145f70661d57005748f1a1",
+        "lines": 1012
+      },
+      {
+        "path": "arb_Arab.devtest",
+        "bytes": 212288,
+        "sha256": "ff09a52e63884e9b5bb1083780b58f37d3d14acb0c58c6b1f1f2544ecea12ff8",
+        "lines": 1012
+      },
+      {
+        "path": "zho_Hans.devtest",
+        "bytes": 121818,
+        "sha256": "b30158b1b76f7cee08530d8127a9769f4512597c7eefe97ae1ccf630d5b6e7fd",
+        "lines": 1012
+      },
+      {
+        "path": "jpn_Jpan.devtest",
+        "bytes": 168121,
+        "sha256": "36b8e392ae9404a20e8448c731d16d957ac1b94588d97fb691128ae706b63606",
+        "lines": 1012
+      },
+      {
+        "path": "kor_Hang.devtest",
+        "bytes": 158811,
+        "sha256": "540972696230a56e888f1fbd04b7000135c436351f5e467f99ce67fdccd8df0f",
+        "lines": 1012
+      }
+    ]
+  },
+  "indices": [
+    13,
+    41,
+    76,
+    82,
+    119,
+    154,
+    253,
+    280,
+    323,
+    397,
+    421,
+    426,
+    452,
+    493,
+    513,
+    526,
+    541,
+    555,
+    557,
+    614,
+    647,
+    653,
+    705,
+    730,
+    763,
+    813,
+    835,
+    841,
+    934,
+    956
+  ],
+  "protocol": "1.1.0-translation-quality-protocol",
+  "scores": [
+    {
+      "pair": "en-de",
+      "samples": 30,
+      "chrfPlusPlus": 56.922930780901716,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+      "empty": 0,
+      "seconds": 5.358294875000865,
+      "sharedNumberTokens": 7,
+      "preservedNumberTokens": 6,
+      "model": {
+        "repository": "gaudi/opus-mt-en-de-ctranslate2",
+        "revision": "3998844c0d44ff2aa5aaf5a1cf8365b6eb4fd783",
+        "files": [
+          {
+            "path": "README.md",
+            "size": 6720,
+            "sha256": "c3948c012fe821597ba617ee7eda044cd75ae610568c1459285ab813d8dc6a65"
+          },
+          {
+            "path": "config.json",
+            "size": 215,
+            "sha256": "ce02c0c0d02f285d2ff34c80b0867ccb5c4a3b250a275e6d1d2884f5499a6e46"
+          },
+          {
+            "path": "model.bin",
+            "size": 148423215,
+            "sha256": "ef19d4ddfd1d82f75b7469b33f754464c83f04ffb1691e33454561d7b816e8d3"
+          },
+          {
+            "path": "shared_vocabulary.json",
+            "size": 993828,
+            "sha256": "fa4c8d666c582ad39892a2ae5d4ded1b0ddde4b49dc784a7fcbd73940f9fa13e"
+          },
+          {
+            "path": "source.spm",
+            "size": 768489,
+            "sha256": "678f2a1177d8389f67b66299762dcc4fc567e89b07e212ba91b0c56daecf47ce"
+          },
+          {
+            "path": "target.spm",
+            "size": 796845,
+            "sha256": "bbd1f495eea99c8e21ae086d9146e0fa7b096c3dfdd9ba07ab8b631889df5c9b"
+          }
+        ],
+        "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+      },
+      "float32ChrFPlusPlus": 55.98364451835987,
+      "quantizedDelta": 0.9392862625418488,
+      "passesInitialFloor": true
+    },
+    {
+      "pair": "de-en",
+      "samples": 30,
+      "chrfPlusPlus": 65.31101680538455,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+      "empty": 0,
+      "seconds": 5.051334375000806,
+      "sharedNumberTokens": 7,
+      "preservedNumberTokens": 7,
+      "model": {
+        "repository": "gaudi/opus-mt-de-en-ctranslate2",
+        "revision": "7134d80efb6dbc284567cbeb55a517dc2974f722",
+        "files": [
+          {
+            "path": "README.md",
+            "size": 6720,
+            "sha256": "b538669212cef113da47b0288c4191ff7ba2f28dc32aacc8902c8710f4f93562"
+          },
+          {
+            "path": "config.json",
+            "size": 215,
+            "sha256": "ce02c0c0d02f285d2ff34c80b0867ccb5c4a3b250a275e6d1d2884f5499a6e46"
+          },
+          {
+            "path": "model.bin",
+            "size": 148423215,
+            "sha256": "3dbafb4ab375ba3a6e9057e0cec4910341e0b8aac57f5784508b474e7738d24a"
+          },
+          {
+            "path": "shared_vocabulary.json",
+            "size": 993828,
+            "sha256": "fa4c8d666c582ad39892a2ae5d4ded1b0ddde4b49dc784a7fcbd73940f9fa13e"
+          },
+          {
+            "path": "source.spm",
+            "size": 796845,
+            "sha256": "bbd1f495eea99c8e21ae086d9146e0fa7b096c3dfdd9ba07ab8b631889df5c9b"
+          },
+          {
+            "path": "target.spm",
+            "size": 768489,
+            "sha256": "678f2a1177d8389f67b66299762dcc4fc567e89b07e212ba91b0c56daecf47ce"
+          }
+        ],
+        "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+      },
+      "float32ChrFPlusPlus": 64.75052493330755,
+      "quantizedDelta": 0.5604918720770087,
+      "passesInitialFloor": true
+    },
+    {
+      "pair": "en-fr",
+      "samples": 30,
+      "chrfPlusPlus": 67.89519335985173,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+      "empty": 0,
+      "seconds": 5.888045584000793,
+      "sharedNumberTokens": 7,
+      "preservedNumberTokens": 7,
+      "model": {
+        "repository": "michaelfeil/ct2fast-opus-mt-en-fr",
+        "revision": "55bcef18761227161433d86b81bbbcd9d813b429",
+        "files": [
+          {
+            "path": "README.md",
+            "size": 2817,
+            "sha256": "b8c2fc296bffdfb2ca8904c49d8639aedc9a083bceb1b2fc46a487d4f3b3fc73"
+          },
+          {
+            "path": "config.json",
+            "size": 159,
+            "sha256": "0c2f6fa2057c7264d052fb4a62ba3476eeae70487acddfa8e779a53a00cbf44c"
+          },
+          {
+            "path": "model.bin",
+            "size": 149872839,
+            "sha256": "636d926880a6e6e4b773403a5991b50d4dfdfabe49a230e148676a05e99f2bec"
+          },
+          {
+            "path": "shared_vocabulary.txt",
+            "size": 556777,
+            "sha256": "e87446c025bbe57cc4f9ef90fa6e28ab303a2e31479b7355c2a2d3a6a3a43a0a"
+          },
+          {
+            "path": "source.spm",
+            "size": 778395,
+            "sha256": "173e9f493a668fe396d599e28d414a201193094e6ffd7a4678e5aab0f6d3d838"
+          },
+          {
+            "path": "target.spm",
+            "size": 802397,
+            "sha256": "78d0e717c77053f1c4b856d8661d9cb87c64f083a35418c087b9146300e4f585"
+          }
+        ],
+        "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+      },
+      "float32ChrFPlusPlus": 68.03597248605114,
+      "quantizedDelta": -0.1407791261994049,
+      "passesInitialFloor": true
+    },
+    {
+      "pair": "fr-en",
+      "samples": 30,
+      "chrfPlusPlus": 68.42777387382878,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+      "empty": 0,
+      "seconds": 4.98078358299972,
+      "sharedNumberTokens": 7,
+      "preservedNumberTokens": 7,
+      "model": {
+        "repository": "gaudi/opus-mt-fr-en-ctranslate2",
+        "revision": "b88efd065a8720e0beeaba2efd53b1dc9a29cfc0",
+        "files": [
+          {
+            "path": "README.md",
+            "size": 6720,
+            "sha256": "2c2fa78085bccbe0abc804e3b5d8f87aa76c716ef6d907a8899a11ad1ec6e0c2"
+          },
+          {
+            "path": "config.json",
+            "size": 215,
+            "sha256": "ce02c0c0d02f285d2ff34c80b0867ccb5c4a3b250a275e6d1d2884f5499a6e46"
+          },
+          {
+            "path": "model.bin",
+            "size": 149872953,
+            "sha256": "0dbc6d68e18c1b502c920ff57c380d1f89a9a27cc76c32225934640642c99746"
+          },
+          {
+            "path": "shared_vocabulary.json",
+            "size": 1052697,
+            "sha256": "a157eb51a42817dd1ae4bc46cecf66e591ab32641df936da292bd09f2728631b"
+          },
+          {
+            "path": "source.spm",
+            "size": 802397,
+            "sha256": "78d0e717c77053f1c4b856d8661d9cb87c64f083a35418c087b9146300e4f585"
+          },
+          {
+            "path": "target.spm",
+            "size": 778395,
+            "sha256": "173e9f493a668fe396d599e28d414a201193094e6ffd7a4678e5aab0f6d3d838"
+          }
+        ],
+        "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+      },
+      "float32ChrFPlusPlus": 69.17995637189743,
+      "quantizedDelta": -0.7521824980686489,
+      "passesInitialFloor": true
+    },
+    {
+      "pair": "en-es",
+      "samples": 30,
+      "chrfPlusPlus": 51.94136223005164,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+      "empty": 0,
+      "seconds": 5.383331707998877,
+      "sharedNumberTokens": 6,
+      "preservedNumberTokens": 6,
+      "model": {
+        "repository": "michaelfeil/ct2fast-opus-mt-en-es",
+        "revision": "76ec296588e2234f9b7dfad5254219a0f5ecb7af",
+        "files": [
+          {
+            "path": "README.md",
+            "size": 4027,
+            "sha256": "7bfc8b3410f33eb9ded6513f3d16e8471aa50f38e19ef74fe736301c02d6e6cb"
+          },
+          {
+            "path": "config.json",
+            "size": 159,
+            "sha256": "0c2f6fa2057c7264d052fb4a62ba3476eeae70487acddfa8e779a53a00cbf44c"
+          },
+          {
+            "path": "model.bin",
+            "size": 155502501,
+            "sha256": "36cd9bcb181fc6d5832deeaf770ce183ff4edbbc5e4fe0f86cec92da4379f3b7"
+          },
+          {
+            "path": "shared_vocabulary.txt",
+            "size": 666435,
+            "sha256": "77aee99211b7b8e569e0fb5b95dac01aba9f31bca2d1380b1fc6050797825ec6"
+          },
+          {
+            "path": "source.spm",
+            "size": 801636,
+            "sha256": "4dd547c24816a335e7b0b2e63376a8f1b3cbfc671eda5ab808dd44fdadaa8791"
+          },
+          {
+            "path": "target.spm",
+            "size": 825924,
+            "sha256": "e236ee6d866b635c0142114f8647f39831f9d92534aa2aad75c942f6a78ad0e3"
+          }
+        ],
+        "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+      },
+      "float32ChrFPlusPlus": 53.158986705570484,
+      "quantizedDelta": -1.2176244755188463,
+      "passesInitialFloor": true
+    },
+    {
+      "pair": "es-en",
+      "samples": 30,
+      "chrfPlusPlus": 56.69158771928867,
+      "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+      "empty": 0,
+      "seconds": 5.227606207999997,
+      "sharedNumberTokens": 6,
+      "preservedNumberTokens": 6,
+      "model": {
+        "repository": "gaudi/opus-mt-es-en-ctranslate2",
+        "revision": "ef459fb7b0511ea2d1ec9279f8d6cf80661bf9f7",
+        "files": [
+          {
+            "path": "README.md",
+            "size": 6720,
+            "sha256": "3769193c4482ee9f266c292429be07d374f4777434ba20c8e418b0aed9fee70f"
+          },
+          {
+            "path": "config.json",
+            "size": 215,
+            "sha256": "ce02c0c0d02f285d2ff34c80b0867ccb5c4a3b250a275e6d1d2884f5499a6e46"
+          },
+          {
+            "path": "model.bin",
+            "size": 155502615,
+            "sha256": "7e3a7b3c8c8b6c6e3a14b154cd5733b3dc543d7acf12371d2f9f6498069701c3"
+          },
+          {
+            "path": "shared_vocabulary.json",
+            "size": 1276136,
+            "sha256": "040e48c9d00734f48506e052695837720bd1f6aa01c70636cde83038362baf19"
+          },
+          {
+            "path": "source.spm",
+            "size": 825924,
+            "sha256": "e236ee6d866b635c0142114f8647f39831f9d92534aa2aad75c942f6a78ad0e3"
+          },
+          {
+            "path": "target.spm",
+            "size": 801636,
+            "sha256": "4dd547c24816a335e7b0b2e63376a8f1b3cbfc671eda5ab808dd44fdadaa8791"
+          }
+        ],
+        "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+      },
+      "float32ChrFPlusPlus": 57.145792432084384,
+      "quantizedDelta": -0.4542047127957147,
+      "passesInitialFloor": true
+    }
+  ],
+  "status": "passed_initial_floor"
+}

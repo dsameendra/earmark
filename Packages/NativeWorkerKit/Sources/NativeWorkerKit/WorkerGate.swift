@@ -2,7 +2,8 @@ import Foundation
 
 /// FIFO leases with cancellable admission. A cancelled queued request must
 /// not terminate the child process owned by an admitted operation.
-actor WorkerGate {
+public actor WorkerGate {
+    public init() {}
     private enum Waiter {
         case operation(UUID, CheckedContinuation<Void, any Error>)
         case cleanup(CheckedContinuation<Void, Never>)
@@ -16,19 +17,19 @@ actor WorkerGate {
     private var busy = false
     private var waiters: [Waiter] = []
 
-    func withLease<T: Sendable>(_ operation: @Sendable () async throws -> T) async throws -> T {
+    public func withLease<T: Sendable>(_ operation: @Sendable () async throws -> T) async throws -> T {
         try await acquire()
         defer { release() }
         return try await operation()
     }
 
     /// Cleanup waits for an in-flight owner's lease even when its caller was cancelled.
-    func cleanup(_ operation: @Sendable () async -> Void) async {
+    public func cleanup<T: Sendable>(_ operation: @Sendable () async -> T) async -> T {
         if busy {
             await withCheckedContinuation { waiters.append(.cleanup($0)) }
         } else { busy = true }
         defer { release() }
-        await operation()
+        return await operation()
     }
 
     private func acquire() async throws {

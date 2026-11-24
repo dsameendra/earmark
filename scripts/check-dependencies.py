@@ -3,7 +3,7 @@ from pathlib import Path
 import re,sys
 root=Path(__file__).resolve().parent.parent
 approved={
- 'AppCore':set(),'Persistence':{'AppCore'},'DesignSystem':{'AppCore'},'ModelStore':{'AppCore'},
+ 'AppCore':set(),'Persistence':{'AppCore'},'DesignSystem':{'AppCore'},'ModelStore':{'AppCore','NativeWorkerKit'},
  'AudioCapture':{'AppCore'},'Permissions':{'AppCore'},'Processing':{'AppCore'},'Export':{'AppCore'},
  'Meetings':{'AppCore'},'Translation':{'AppCore','NativeWorkerKit','TextGenerationNative'},'NLLBNative':{'NativeWorkerKit'},'SpeechNative':{'NativeWorkerKit'},'NativeWorkerKit':set(),'TextGenerationNative':{'NativeWorkerKit'},
  'LiveCaptions':{'AppCore','DesignSystem'},'Dictation':{'AppCore','DesignSystem','Features'},

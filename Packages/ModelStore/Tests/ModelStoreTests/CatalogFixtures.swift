@@ -92,6 +92,21 @@ enum CatalogFixtures {
             ("vocab.json", 2776833),
         ])
 
+    static let qwenGeneral17 = Listing(
+        repo: "mlx-community/Qwen3-ASR-1.7B-4bit", revision: "78a389c776a5483b2d0d4ea5494e11012e0d6159",
+        files: [
+            ("README.md", 1008),
+            ("chat_template.json", 1161),
+            ("config.json", 7188),
+            ("generation_config.json", 142),
+            ("merges.txt", 1671853),
+            ("model.safetensors", 1603081617),
+            ("model.safetensors.index.json", 78968),
+            ("preprocessor_config.json", 330),
+            ("tokenizer_config.json", 12487),
+            ("vocab.json", 2776833),
+        ])
+
     static let parakeet = Listing(
         repo: "FluidInference/parakeet-tdt-0.6b-v3-coreml", revision: "7dd20fe6b1797d35f5e3307e8b1732d9a178edfe",
         files: [

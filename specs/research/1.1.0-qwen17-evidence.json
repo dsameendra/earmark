@@ -1,0 +1,143 @@
+{
+  "sourceCommit": "c10212fafd35330889dea2ca98140c05c0ce22d8",
+  "status": "native checkpoint smoke passed; experimental catalog; not release acceptance",
+  "modelID": "mlx/qwen3-asr-1.7b-4bit",
+  "model": {
+    "repository": "mlx-community/Qwen3-ASR-1.7B-4bit",
+    "revision": "78a389c776a5483b2d0d4ea5494e11012e0d6159",
+    "files": [
+      {
+        "path": "README.md",
+        "size": 1008,
+        "sha256": "4d7f16d0a01cd626a3d5291b77249f135eeedd9b1b259d17716cc6b3ef7365cb"
+      },
+      {
+        "path": "chat_template.json",
+        "size": 1161,
+        "sha256": "75a8cfca24f00de72d796fbfed6858fc9614ef3dabd8696684cc3bc03a9c58ff"
+      },
+      {
+        "path": "config.json",
+        "size": 7188,
+        "sha256": "539c6c9d482349066e2e740241e39896f3bf4de0866c245f6539c85dbb19d93c"
+      },
+      {
+        "path": "generation_config.json",
+        "size": 142,
+        "sha256": "1da527824d81e07118facff437e03f2e24a23311e3bdeb2368973fe77e5f275c"
+      },
+      {
+        "path": "merges.txt",
+        "size": 1671853,
+        "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5"
+      },
+      {
+        "path": "model.safetensors",
+        "size": 1603081617,
+        "sha256": "9848eaf7a5c1589c671b35035ac27b72e248dd0c604eacae547e7e403d29db45"
+      },
+      {
+        "path": "model.safetensors.index.json",
+        "size": 78968,
+        "sha256": "2612ab715223843b3dec0742737bc85f50914ca1484ade45955f99b4e012f2bb"
+      },
+      {
+        "path": "preprocessor_config.json",
+        "size": 330,
+        "sha256": "45e120a4eda2c20c5d7f2ea9354e63536bf35e27aa573fb7cdf78017b378770d"
+      },
+      {
+        "path": "tokenizer_config.json",
+        "size": 12487,
+        "sha256": "4942d005604266809309cabc9f4e9cb89ce855d59b14681fdc0e1cc62ea26c4c"
+      },
+      {
+        "path": "vocab.json",
+        "size": 2776833,
+        "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      }
+    ],
+    "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+  },
+  "detector": {
+    "repository": "FluidInference/silero-vad-coreml",
+    "revision": "b419383c55c110e2c9271fa6ee0ea83d03c70d96",
+    "layout": "EarmarkSupport/silero-vad-v6.2.1.mlmodelc"
+  },
+  "hardware": {
+    "model": "Mac15,6",
+    "processor": "Apple M3 Pro",
+    "memoryBytes": 19327352832,
+    "os": "27.2.1",
+    "xcode": "27.2 (27B52)"
+  },
+  "run": {
+    "methods": 3,
+    "inferenceCases": 9,
+    "seconds": 13.897,
+    "report": "reports/qwen17-native-explicit.log",
+    "metric": "Lowercase NFC alphanumeric-character error rate; punctuation and spaces excluded",
+    "normalPipelineCER": {
+      "fr": 0,
+      "de": 0,
+      "es": 0,
+      "ja": 0.1111111111111111
+    },
+    "unsegmentedDiagnosticCER": {
+      "fr": 0,
+      "de": 0,
+      "es": 0,
+      "ja": 0.044444444444444446
+    },
+    "english": "Non-empty real FLEURS English transcript, requested model ID, language=en, no invented word times or prompt markers",
+    "englishFixture": {
+      "dataset": "google/fleurs",
+      "config": "en_us",
+      "id": 1904,
+      "license": "CC-BY-4.0",
+      "audioRepository": "handy-computer/transcribe.cpp",
+      "audioRevision": "cfa237c2551a4b2d3a56ff8fe5461e3c67c51772",
+      "audioSHA256": "7835bd6ffb54ce38a2a9bcde3905ba424faed94d50a474f21a9cbe9209b869df"
+    },
+    "fixtures": [
+      {
+        "language": "fr",
+        "dataset": "google/fleurs",
+        "revision": "168de341b3db6859a9bac1c50a2ef5e3b47647e0",
+        "id": 1987,
+        "audioSHA256": "f3bcc73d77ba26bb9c312383cc1a56a84a2c3a8eaa93ff321783c2353c6f9790",
+        "license": "CC-BY-4.0"
+      },
+      {
+        "language": "de",
+        "dataset": "google/fleurs",
+        "revision": "168de341b3db6859a9bac1c50a2ef5e3b47647e0",
+        "id": 1738,
+        "audioSHA256": "5ced4640ec223bd9f59601722534acbb2f47087c71167529c513741a86cdae01",
+        "license": "CC-BY-4.0"
+      },
+      {
+        "language": "es",
+        "dataset": "google/fleurs",
+        "revision": "168de341b3db6859a9bac1c50a2ef5e3b47647e0",
+        "id": 1764,
+        "audioSHA256": "24624100418fb70f3947df1912c4b64c6a7ae67a84936c98e3eb9e0162055a6f",
+        "license": "CC-BY-4.0"
+      },
+      {
+        "language": "ja",
+        "dataset": "google/fleurs",
+        "revision": "168de341b3db6859a9bac1c50a2ef5e3b47647e0",
+        "id": 1828,
+        "audioSHA256": "26b6cd491b5d52cf05d89207cb88499cdaba89749aebc29c8f216e834e3d9071",
+        "license": "CC-BY-4.0"
+      }
+    ]
+  },
+  "limits": [
+    "Small checkpoint sample; not population-wide language accuracy or sustained capture acceptance.",
+    "Native test uses the normal recognizer plus bundled-model neural detector; app model-install and packaged-app gates remain.",
+    "No cold/warm latency, peak-memory or concurrency recommendation is established by this run.",
+    "The first xcodebuild test run skipped the environment-gated suite; it is excluded. The accepted run uses explicit xctestrun EnvironmentVariables."
+  ]
+}

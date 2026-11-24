@@ -26,8 +26,12 @@ enum LocalSinhalaAssets {
         ".model-cache/hf/hub/models--Nerdstorm--Qwen3-ASR-0.6B-Sinhala-8bit/snapshots/047217cb611ad5f51cb2284e4a3617a5eaa9b688")
     static let slr30: URL? = environmentURL("EARMARK_QWEN_SINHALA_MANIFEST") ?? search(".model-cache/sinhala-eval/slr30_wav/manifest.jsonl")
     /// Unlicensed SPEAK-ASR YouTube clips: internal evaluation only; only aggregate numbers may leave this test.
-    static let speak: URL? = search(".model-cache/sinhala-eval/speak/manifest.jsonl")
-    static let available = modelFolder != nil && slr30 != nil
+    static let speak: URL? = environmentURL("EARMARK_QWEN_SPEAK_MANIFEST")
+    // Existence can mean an evicted iCloud placeholder. Native evaluation is explicit,
+    // never an accidental side effect of a regular unit run discovering old local files.
+    static let explicitlyEnabled = ProcessInfo.processInfo.environment["EARMARK_RUN_QWEN_REAL_TESTS"] == "1"
+        || (environmentURL("EARMARK_QWEN_SINHALA_MODEL") != nil && environmentURL("EARMARK_QWEN_SINHALA_MANIFEST") != nil)
+    static let available = explicitlyEnabled && modelFolder != nil && slr30 != nil
 }
 
 struct EvalRow: Decodable {

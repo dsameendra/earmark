@@ -16,6 +16,7 @@ private let listings: [ModelID: CatalogFixtures.Listing] = [
     "fluidaudio/sortformer-v2": CatalogFixtures.sortformer,
     "fluidaudio/parakeet-tdt-v3": CatalogFixtures.parakeet,
     "mlx/qwen3-asr-0.6b-4bit": CatalogFixtures.qwenGeneral,
+    "mlx/qwen3-asr-1.7b-4bit": CatalogFixtures.qwenGeneral17,
     "whisperkit/large-v3-v20240930_626MB": CatalogFixtures.whisperLarge,
     "whisperkit/large-v3-v20240930_turbo_632MB": CatalogFixtures.whisperTurbo,
     "whisperkit/small": CatalogFixtures.whisperSmall,
@@ -48,12 +49,21 @@ private func resolve(_ id: ModelID, dropping dropped: String? = nil) async throw
 struct CatalogDownloadTests {
     @Test("general Qwen atomically includes its pinned neural detector; the Sinhala specialist stays unchanged")
     func qwenSpeechDetector() async throws {
-        let files = try await resolve("mlx/qwen3-asr-0.6b-4bit")
-        let support = files.filter { $0.relativePath.hasPrefix("EarmarkSupport/") }
-        #expect(support.count == 5)
-        #expect(support.allSatisfy { $0.sha256?.count == 64 && $0.sizeBytes != nil && $0.hasSafeRelativePath })
-        #expect(support.allSatisfy { $0.url.absoluteString.contains("/resolve/b419383c55c110e2c9271fa6ee0ea83d03c70d96/") })
-        #expect(files.compactMap(\.sizeBytes).reduce(0, +) == BuiltInCatalog.models.first { $0.id == "mlx/qwen3-asr-0.6b-4bit" }?.sizeBytes)
+        for id: ModelID in ["mlx/qwen3-asr-0.6b-4bit", "mlx/qwen3-asr-1.7b-4bit"] {
+            let files = try await resolve(id)
+            let support = files.filter { $0.relativePath.hasPrefix("EarmarkSupport/") }
+            #expect(support.count == 5)
+            #expect(support.allSatisfy { $0.sha256?.count == 64 && $0.sizeBytes != nil && $0.hasSafeRelativePath })
+            #expect(support.allSatisfy { $0.url.absoluteString.contains("/resolve/b419383c55c110e2c9271fa6ee0ea83d03c70d96/") })
+            let descriptor = try #require(BuiltInCatalog.models.first { $0.id == id })
+            #expect(files.compactMap(\.sizeBytes).reduce(0, +) == descriptor.sizeBytes)
+            if id == "mlx/qwen3-asr-1.7b-4bit" {
+                #expect(files.count == 15)
+                #expect(files.allSatisfy { $0.sha256?.count == 64 })
+                #expect(descriptor.provenance?.validation == .nativeInferenceChecked)
+                #expect(descriptor.isExperimental && !descriptor.languages.contains("si"))
+            }
+        }
         let specialist = try await resolve("mlx/qwen3-asr-0.6b-sinhala-8bit")
         #expect(!specialist.contains { $0.relativePath.hasPrefix("EarmarkSupport/") })
     }

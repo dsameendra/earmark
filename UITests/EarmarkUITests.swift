@@ -159,11 +159,11 @@ final class EarmarkUITests: XCTestCase {
         search.typeText("OPUS")
         XCTAssertTrue(browser.popUpButtons["models.opus.source"].waitForExistence(timeout: 5))
         XCTAssertTrue(browser.popUpButtons["models.opus.target"].exists)
-        let reverse = browser.checkBoxes["models.opus.reverse"]
-        XCTAssertTrue(reverse.exists)
+        let reverse = browser.descendants(matching: .any).matching(identifier: "models.opus.reverse").firstMatch
+        capture(app, "models-opus-pair-light")
+        XCTAssertTrue(reverse.exists, browser.debugDescription)
         XCTAssertTrue(browser.buttons["models.download.opus/en-de-ct2-int8"].exists)
         XCTAssertTrue(browser.buttons["models.download.opus/de-en-ct2-int8"].exists)
-        capture(app, "models-opus-pair-light")
         reverse.click()
         XCTAssertFalse(browser.buttons["models.download.opus/de-en-ct2-int8"].exists)
         XCTAssertTrue(browser.buttons["models.opus.add"].isEnabled)

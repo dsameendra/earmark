@@ -22,7 +22,9 @@ final class SpeechWorker {
             throw SpeechWireError.invalid("The model does not match the selected speech profile.")
         }
         capabilities = try model.capabilities
-        guard Set(capabilities.languages) == Set(selected.languages) else {
+        guard Set(capabilities.languages) == Set(selected.languages),
+              Set(capabilities.translateTargetLanguages) == Set(selected.translationTargets),
+              capabilities.supportsTranslate == !selected.translationTargets.isEmpty else {
             throw SpeechWireError.invalid("The model's language inventory does not match the selected profile.")
         }
         guard capabilities.nativeSampleRate == 16_000 else { throw SpeechWireError.invalid("Unsupported native sample rate.") }
@@ -47,7 +49,8 @@ final class SpeechWorker {
             throw SpeechWireError.invalid("Unsupported source language.")
         }
         if let target = request.targetLanguage {
-            guard capabilities.supportsTranslate, capabilities.translateTargetLanguages.contains(target) else {
+            guard capabilities.supportsTranslate, capabilities.translateTargetLanguages.contains(target),
+                  let language, profile.supportsTranslation(source: language, target: target) else {
                 throw SpeechWireError.invalid("Unsupported speech translation target.")
             }
         }

@@ -3,6 +3,28 @@ import Testing
 
 @Suite("Finite native speech profiles")
 struct NativeSpeechProfileTests {
+    @Test func canaryTranslationHasExplicitDirectionsSeparateFromRecognition() throws {
+        let profile = NativeSpeechProfile.canaryV2
+        #expect(profile.languages.count == 25)
+        #expect(try profile.resolveLanguage("lv") == "lv")
+        #expect(profile.translationTargets.count == 24)
+        #expect(profile.supportsTranslation(source: "de", target: "en"))
+        #expect(profile.supportsTranslation(source: "en", target: "fr"))
+        for pair in [("de", "fr"), ("en", "en"), ("en", "lv"), ("lv", "en"), ("en-US", "fr"), ("ja", "en")] {
+            #expect(!profile.supportsTranslation(source: pair.0, target: pair.1))
+        }
+        #expect(!NativeSpeechProfile.nemotron35.supportsTranslation(source: "en", target: "fr"))
+    }
+    @Test func cohereRequiresItsOwnArchitectureAndExplicitSupportedLanguage() throws {
+        let profile = NativeSpeechProfile.cohere202603
+        #expect(profile.matches(architecture: "cohere_asr", variant: "cohere-transcribe-03-2026"))
+        #expect(!profile.matches(architecture: "parakeet", variant: profile.variant))
+        #expect(profile.languages.count == 14)
+        #expect(try profile.resolveLanguage("el") == "el")
+        #expect(throws: SpeechWireError.self) { try profile.resolveLanguage("si") }
+        #expect(throws: SpeechWireError.self) { try profile.resolveLanguage("zh-Hant") }
+        #expect(profile.detectedLanguage(in: "<fr-FR>") == nil)
+    }
     @Test func rejectsTokenizerOnlyLanguagesAndUnsupportedVariants() throws {
         let profile = NativeSpeechProfile.nemotron35
         #expect(profile.languages.count == 32)

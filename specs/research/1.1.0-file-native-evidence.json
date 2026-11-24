@@ -1,0 +1,357 @@
+{
+  "status": "native execution diagnostics passed; not app activation, reference parity or broad quality acceptance",
+  "scope": "Frozen licensed FLEURS clips; Canary AST references matched to parallel FLORES sentences before decoding. English fixture is source 1904 from the existing normalized overlap sources.",
+  "hardware": {
+    "model": "Apple M3 Pro",
+    "memoryGiB": 18,
+    "macOS": "27.2.1",
+    "Xcode": "27.2"
+  },
+  "models": [
+    {
+      "family": "cohere",
+      "source": {
+        "repository": "handy-computer/cohere-transcribe-03-2026-gguf",
+        "revision": "7353b6040bdc1be9e5a3823d99d5fe12afe88264",
+        "files": [
+          {
+            "path": "LICENSE",
+            "size": 11358,
+            "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+          },
+          {
+            "path": "NOTICE",
+            "size": 409,
+            "sha256": "f271ef53db5284f96d1b6d8758579baf27cb563a3794dd832af4998f128dca1d"
+          },
+          {
+            "path": "README.md",
+            "size": 31907,
+            "sha256": "17017688bd6a2836d460d96b03c13884790110df3b02b889d0514272eea91343"
+          },
+          {
+            "path": "cohere-transcribe-03-2026-Q4_K_M.gguf",
+            "size": 1558162944,
+            "sha256": "0ea56826d8bd5d74b7143a4a04e022dc1bb75452cfae49d98b6acb0c1d16a1fb"
+          }
+        ],
+        "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+      },
+      "native": {
+        "canDetectLanguage": false,
+        "variant": "cohere-transcribe-03-2026",
+        "backend": "MTL0",
+        "canStream": false,
+        "canDiarize": false,
+        "canStreamWithSpeakers": false,
+        "translationTargets": [],
+        "canTranslate": false,
+        "architecture": "cohere_asr",
+        "languages": [
+          "en",
+          "fr",
+          "de",
+          "es",
+          "it",
+          "pt",
+          "nl",
+          "pl",
+          "el",
+          "ar",
+          "ja",
+          "zh",
+          "vi",
+          "ko"
+        ],
+        "nativeVersion": "0.4.2"
+      },
+      "helperSHA256": "b713a53b8e9bba748c21e27d62deabfff3899551fb4e14e4e28b6f2411ee1b86",
+      "cases": [
+        {
+          "language": "fr",
+          "audioSHA256": "f3bcc73d77ba26bb9c312383cc1a56a84a2c3a8eaa93ff321783c2353c6f9790",
+          "CER": 0.0,
+          "nativeTimestampKind": "none",
+          "finalWordCount": 0,
+          "seconds": 0.4256132080008683
+        },
+        {
+          "language": "de",
+          "audioSHA256": "5ced4640ec223bd9f59601722534acbb2f47087c71167529c513741a86cdae01",
+          "CER": 0.0,
+          "nativeTimestampKind": "none",
+          "finalWordCount": 0,
+          "seconds": 0.47364516699963133
+        },
+        {
+          "language": "es",
+          "audioSHA256": "24624100418fb70f3947df1912c4b64c6a7ae67a84936c98e3eb9e0162055a6f",
+          "CER": 0.0,
+          "nativeTimestampKind": "none",
+          "finalWordCount": 0,
+          "seconds": 0.4145210419992509
+        },
+        {
+          "language": "ja",
+          "audioSHA256": "26b6cd491b5d52cf05d89207cb88499cdaba89749aebc29c8f216e834e3d9071",
+          "CER": 0.06666666666666667,
+          "nativeTimestampKind": "none",
+          "finalWordCount": 0,
+          "seconds": 0.47393100000044797
+        }
+      ],
+      "unsupportedOperationsRejected": true
+    },
+    {
+      "family": "canary",
+      "source": {
+        "repository": "handy-computer/canary-1b-v2-gguf",
+        "revision": "692af661b140183b60e44f55ad03c59e1e77d078",
+        "files": [
+          {
+            "path": "LICENSE",
+            "size": 18657,
+            "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+          },
+          {
+            "path": "NOTICE",
+            "size": 392,
+            "sha256": "5cca40af7fa52c14821ca38e35d5758f70b81aca00afc81a9226a4577473144e"
+          },
+          {
+            "path": "README.md",
+            "size": 28800,
+            "sha256": "3d0253178516d65ca7af5ae78f4ccdf2074942a88b31bf80daea4ceb4a19b5e7"
+          },
+          {
+            "path": "canary-1b-v2-Q4_K_M.gguf",
+            "size": 735476448,
+            "sha256": "49e0a67e219bec95a254c2348460b6350e75a7ac6f93a131e48244b4c7cb53b9"
+          }
+        ],
+        "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+      },
+      "native": {
+        "architecture": "canary",
+        "backend": "MTL0",
+        "canDetectLanguage": false,
+        "canTranslate": true,
+        "canStreamWithSpeakers": false,
+        "nativeVersion": "0.4.2",
+        "canStream": false,
+        "variant": "canary-1b-v2",
+        "canDiarize": false,
+        "translationTargets": [
+          "bg",
+          "hr",
+          "cs",
+          "da",
+          "nl",
+          "en",
+          "et",
+          "fi",
+          "fr",
+          "de",
+          "el",
+          "hu",
+          "it",
+          "lt",
+          "mt",
+          "pl",
+          "pt",
+          "ro",
+          "sk",
+          "sl",
+          "es",
+          "sv",
+          "ru",
+          "uk"
+        ],
+        "languages": [
+          "bg",
+          "hr",
+          "cs",
+          "da",
+          "nl",
+          "en",
+          "et",
+          "fi",
+          "fr",
+          "de",
+          "el",
+          "hu",
+          "it",
+          "lv",
+          "lt",
+          "mt",
+          "pl",
+          "pt",
+          "ro",
+          "sk",
+          "sl",
+          "es",
+          "sv",
+          "ru",
+          "uk"
+        ]
+      },
+      "helperSHA256": "b713a53b8e9bba748c21e27d62deabfff3899551fb4e14e4e28b6f2411ee1b86",
+      "cases": [
+        {
+          "language": "fr",
+          "targetLanguage": null,
+          "translation": false,
+          "audioSHA256": "f3bcc73d77ba26bb9c312383cc1a56a84a2c3a8eaa93ff321783c2353c6f9790",
+          "CER": 0.0,
+          "floresIndex": 148,
+          "sourceReferenceSHA256": "82f5b000db419ef9254eea7857cce82943b361090942f17ed696e3dce2944f42",
+          "validInputRelativeTimes": true,
+          "nativeTimestampKind": "none",
+          "finalWordCount": 0,
+          "seconds": 0.25166933400032576
+        },
+        {
+          "language": "fr",
+          "targetLanguage": "en",
+          "translation": true,
+          "audioSHA256": "f3bcc73d77ba26bb9c312383cc1a56a84a2c3a8eaa93ff321783c2353c6f9790",
+          "floresIndex": 148,
+          "sourceReferenceSHA256": "82f5b000db419ef9254eea7857cce82943b361090942f17ed696e3dce2944f42",
+          "validInputRelativeTimes": true,
+          "nativeTimestampKind": "none",
+          "finalWordCount": 0,
+          "seconds": 0.22528616599811357
+        },
+        {
+          "language": "de",
+          "targetLanguage": null,
+          "translation": false,
+          "audioSHA256": "5ced4640ec223bd9f59601722534acbb2f47087c71167529c513741a86cdae01",
+          "CER": 0.0,
+          "floresIndex": 384,
+          "sourceReferenceSHA256": "9a1bfa90d153fedb7ff80047f4a63d493998888eddb056e8a28e24592f26e5f2",
+          "validInputRelativeTimes": true,
+          "nativeTimestampKind": "none",
+          "finalWordCount": 0,
+          "seconds": 0.2869056669987913
+        },
+        {
+          "language": "de",
+          "targetLanguage": "en",
+          "translation": true,
+          "audioSHA256": "5ced4640ec223bd9f59601722534acbb2f47087c71167529c513741a86cdae01",
+          "floresIndex": 384,
+          "sourceReferenceSHA256": "9a1bfa90d153fedb7ff80047f4a63d493998888eddb056e8a28e24592f26e5f2",
+          "validInputRelativeTimes": true,
+          "nativeTimestampKind": "none",
+          "finalWordCount": 0,
+          "seconds": 0.2651396670007671
+        },
+        {
+          "language": "es",
+          "targetLanguage": null,
+          "translation": false,
+          "audioSHA256": "24624100418fb70f3947df1912c4b64c6a7ae67a84936c98e3eb9e0162055a6f",
+          "CER": 0.0,
+          "floresIndex": 60,
+          "sourceReferenceSHA256": "40fcb836b49b0a461a14c00b8bce1f03113f8d2668132af424e74b2421d18ce9",
+          "validInputRelativeTimes": true,
+          "nativeTimestampKind": "none",
+          "finalWordCount": 0,
+          "seconds": 0.2397807500019553
+        },
+        {
+          "language": "es",
+          "targetLanguage": "en",
+          "translation": true,
+          "audioSHA256": "24624100418fb70f3947df1912c4b64c6a7ae67a84936c98e3eb9e0162055a6f",
+          "floresIndex": 60,
+          "sourceReferenceSHA256": "40fcb836b49b0a461a14c00b8bce1f03113f8d2668132af424e74b2421d18ce9",
+          "validInputRelativeTimes": true,
+          "nativeTimestampKind": "none",
+          "finalWordCount": 0,
+          "seconds": 0.22241725000276347
+        },
+        {
+          "language": "en",
+          "targetLanguage": null,
+          "translation": false,
+          "audioSHA256": "5b65c1ef398ea8ce0580f5dc86dd1b16ee763024feda5e70cd9384eb6c7258ac",
+          "CER": 0.012345679012345678,
+          "floresIndex": 494,
+          "sourceReferenceSHA256": "612e9fbe87997617c0fa8fa8929654a4f49b728d96738112c2b86ef6a1d78d88",
+          "validInputRelativeTimes": true,
+          "nativeTimestampKind": "none",
+          "finalWordCount": 0,
+          "seconds": 0.25795808299881173
+        },
+        {
+          "language": "en",
+          "targetLanguage": "fr",
+          "translation": true,
+          "audioSHA256": "5b65c1ef398ea8ce0580f5dc86dd1b16ee763024feda5e70cd9384eb6c7258ac",
+          "floresIndex": 494,
+          "sourceReferenceSHA256": "612e9fbe87997617c0fa8fa8929654a4f49b728d96738112c2b86ef6a1d78d88",
+          "validInputRelativeTimes": true,
+          "nativeTimestampKind": "none",
+          "finalWordCount": 0,
+          "seconds": 0.2681884999983595
+        },
+        {
+          "language": "en",
+          "targetLanguage": "de",
+          "translation": true,
+          "audioSHA256": "5b65c1ef398ea8ce0580f5dc86dd1b16ee763024feda5e70cd9384eb6c7258ac",
+          "floresIndex": 494,
+          "sourceReferenceSHA256": "612e9fbe87997617c0fa8fa8929654a4f49b728d96738112c2b86ef6a1d78d88",
+          "validInputRelativeTimes": true,
+          "nativeTimestampKind": "none",
+          "finalWordCount": 0,
+          "seconds": 0.2724927919989568
+        },
+        {
+          "language": "en",
+          "targetLanguage": "es",
+          "translation": true,
+          "audioSHA256": "5b65c1ef398ea8ce0580f5dc86dd1b16ee763024feda5e70cd9384eb6c7258ac",
+          "floresIndex": 494,
+          "sourceReferenceSHA256": "612e9fbe87997617c0fa8fa8929654a4f49b728d96738112c2b86ef6a1d78d88",
+          "validInputRelativeTimes": true,
+          "nativeTimestampKind": "none",
+          "finalWordCount": 0,
+          "seconds": 0.2655632499991043
+        }
+      ],
+      "unsupportedOperationsRejected": true
+    }
+  ],
+  "remaining": [
+    "Choose/validate the app Cohere backend and long-file stitching",
+    "Canary Latvian AST conversion discrepancy and full original-reference parity",
+    "Canary direct audio translation task and persistence contracts",
+    "Broader semantic quality, silence, sustained sessions and resource measurements",
+    "App integration, packaging and final release gates"
+  ],
+  "sourceFiles": [
+    {
+      "path": "Packages/SpeechNative/Sources/EarmarkSpeechWorker/main.swift",
+      "sha256": "ae167c3b5b9acca09fbc823bd99e9de06373d3e632fb54abe6508fec348d999e"
+    },
+    {
+      "path": "Packages/SpeechNative/Sources/SpeechNative/NativeSpeechProfile.swift",
+      "sha256": "523efae0122cb519db7e56fee31e83f7670e15235397fa8023002822c1ce9fd9"
+    },
+    {
+      "path": "Packages/SpeechNative/Sources/SpeechNative/SpeechWorkerClient.swift",
+      "sha256": "a4b8aab090e3815fb8fc271346271114342800c204bf1f0cf318e27982c265a9"
+    },
+    {
+      "path": "scripts/research/probe-cohere-native.py",
+      "sha256": "beda1809128646f523b4b61155ae1f8e71a68e946ad2a242fb95703568c9e9cf"
+    },
+    {
+      "path": "scripts/research/probe-canary-native.py",
+      "sha256": "d91ac0692cdd4bcd2d0e1fed4f9d70e25b3c809859bfc06388804fe6b1eda118"
+    }
+  ]
+}

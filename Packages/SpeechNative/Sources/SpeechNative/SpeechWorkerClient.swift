@@ -78,7 +78,9 @@ public actor SpeechWorkerClient {
             let reply = try await exchange(data: nil, expectedID: 0)
             guard let ready = reply.ready, ready.nativeVersion == "0.4.2",
                   selected.matches(architecture: ready.architecture, variant: ready.variant),
-                  Set(ready.languages) == Set(selected.languages) else {
+                  Set(ready.languages) == Set(selected.languages),
+                  Set(ready.translationTargets) == Set(selected.translationTargets),
+                  ready.canTranslate == !selected.translationTargets.isEmpty else {
                 throw SpeechWireError.invalid("The speech helper loaded an unexpected native profile.")
             }
             self.modelFile = modelFile; self.profile = profile; readiness = ready; nextID = 0

@@ -123,5 +123,23 @@
     "monotonicRevisions": true,
     "resetSucceeded": true
   },
-  "finding": "F16 recovers two speaker labels and 5.36 seconds of cross-speaker segment overlap but fails the <=25% cpWER floor at 57.69%. Native speaker streaming remains explicitly unsupported. Reference/adapter investigation is still required."
+  "finding": "F16 recovers two speaker labels and 5.36 seconds of cross-speaker segment overlap but fails the <=25% cpWER floor at 57.69%. Native speaker streaming remains explicitly unsupported. Reference/adapter investigation is still required.",
+  "maskedDiagnostic": {
+    "protocol": 1,
+    "supervisionMode": "masked",
+    "fixtureSHA256": "94f59e01f99cfa90efae779af08263c9791ea61e0171604dd2780cc1960d3f84",
+    "helperSHA256": "b713a53b8e9bba748c21e27d62deabfff3899551fb4e14e4e28b6f2411ee1b86",
+    "modelSHA256": "18116241c595891bccf44cd0207cd749e9ba9e6025ee73ab59606633ec730304",
+    "offline": {
+      "cpWER": 0.5961538461538461,
+      "speakerCount": 2,
+      "maxCrossSpeakerSegmentOverlapMS": 5360,
+      "validInputRelativeTimes": true,
+      "passesInitialProbe": false,
+      "timestampKind": "token"
+    },
+    "streamingOverlapSupported": false,
+    "monotonicRevisions": true,
+    "resetSucceeded": true
+  }
 }

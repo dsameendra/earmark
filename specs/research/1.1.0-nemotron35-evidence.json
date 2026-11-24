@@ -74,7 +74,7 @@
     "canTranslate": false,
     "translationTargets": []
   },
-  "helperSHA256": "43ba4bd330d22798cff29bc00b7ffb53b1be7039cdbc6754f5a9b1eef20ad85b",
+  "helperSHA256": "b713a53b8e9bba748c21e27d62deabfff3899551fb4e14e4e28b6f2411ee1b86",
   "hardware": {
     "model": "Apple M3 Pro",
     "memoryGiB": 18,
@@ -90,7 +90,7 @@
       "CER": 0.0,
       "validInputRelativeTimes": true,
       "languageTag": "fr-FR",
-      "seconds": 0.2236737909988733,
+      "seconds": 0.2388013339987083,
       "nativeTimestampKind": "token",
       "finalWordCount": 20,
       "nonemptyIncrementalUpdates": 0
@@ -103,7 +103,7 @@
       "CER": 0.0,
       "validInputRelativeTimes": true,
       "languageTag": "fr-FR",
-      "seconds": 0.33921720900252694,
+      "seconds": 0.39185012500092853,
       "nativeTimestampKind": "token",
       "finalWordCount": 0,
       "nonemptyIncrementalUpdates": 15
@@ -116,7 +116,7 @@
       "CER": 0.0,
       "validInputRelativeTimes": true,
       "languageTag": "fr-FR",
-      "seconds": 0.21150995800053352,
+      "seconds": 0.24969304200203624,
       "nativeTimestampKind": "token",
       "finalWordCount": 20,
       "nonemptyIncrementalUpdates": 0
@@ -129,7 +129,7 @@
       "CER": 0.0,
       "validInputRelativeTimes": true,
       "languageTag": "fr-FR",
-      "seconds": 0.33924641699923086,
+      "seconds": 0.4094467499999155,
       "nativeTimestampKind": "token",
       "finalWordCount": 0,
       "nonemptyIncrementalUpdates": 15
@@ -142,7 +142,7 @@
       "CER": 0.0,
       "validInputRelativeTimes": true,
       "languageTag": "de-DE",
-      "seconds": 0.2139945830022043,
+      "seconds": 0.2629084170002898,
       "nativeTimestampKind": "token",
       "finalWordCount": 21,
       "nonemptyIncrementalUpdates": 0
@@ -155,7 +155,7 @@
       "CER": 0.0,
       "validInputRelativeTimes": true,
       "languageTag": "de-DE",
-      "seconds": 0.3720490410014463,
+      "seconds": 0.4362510419996397,
       "nativeTimestampKind": "token",
       "finalWordCount": 0,
       "nonemptyIncrementalUpdates": 17
@@ -168,7 +168,7 @@
       "CER": 0.0,
       "validInputRelativeTimes": true,
       "languageTag": "de-DE",
-      "seconds": 0.21777212499728194,
+      "seconds": 0.23942870799874072,
       "nativeTimestampKind": "token",
       "finalWordCount": 21,
       "nonemptyIncrementalUpdates": 0
@@ -181,7 +181,7 @@
       "CER": 0.0,
       "validInputRelativeTimes": true,
       "languageTag": "de-DE",
-      "seconds": 0.3495727920017089,
+      "seconds": 0.3703009170021687,
       "nativeTimestampKind": "token",
       "finalWordCount": 0,
       "nonemptyIncrementalUpdates": 17
@@ -194,7 +194,7 @@
       "CER": 0.0,
       "validInputRelativeTimes": true,
       "languageTag": "es-US",
-      "seconds": 0.19734929100013687,
+      "seconds": 0.19103674999860232,
       "nativeTimestampKind": "token",
       "finalWordCount": 23,
       "nonemptyIncrementalUpdates": 0
@@ -207,7 +207,7 @@
       "CER": 0.0,
       "validInputRelativeTimes": true,
       "languageTag": "es-US",
-      "seconds": 0.3207023750001099,
+      "seconds": 0.31456912500289036,
       "nativeTimestampKind": "token",
       "finalWordCount": 0,
       "nonemptyIncrementalUpdates": 14
@@ -220,7 +220,7 @@
       "CER": 0.0,
       "validInputRelativeTimes": true,
       "languageTag": "es-ES",
-      "seconds": 0.1949873329976981,
+      "seconds": 0.19523333300094237,
       "nativeTimestampKind": "token",
       "finalWordCount": 23,
       "nonemptyIncrementalUpdates": 0
@@ -233,7 +233,7 @@
       "CER": 0.0,
       "validInputRelativeTimes": true,
       "languageTag": "es-ES",
-      "seconds": 0.31128904100114596,
+      "seconds": 0.3228558749979129,
       "nativeTimestampKind": "token",
       "finalWordCount": 0,
       "nonemptyIncrementalUpdates": 14
@@ -246,7 +246,7 @@
       "CER": 0.022222222222222223,
       "validInputRelativeTimes": true,
       "languageTag": "ja-JP",
-      "seconds": 0.21357058299690834,
+      "seconds": 0.20071741600258974,
       "nativeTimestampKind": "token",
       "finalWordCount": 2,
       "nonemptyIncrementalUpdates": 0
@@ -259,7 +259,7 @@
       "CER": 0.022222222222222223,
       "validInputRelativeTimes": true,
       "languageTag": "ja-JP",
-      "seconds": 0.3393756250006845,
+      "seconds": 0.3446077090011386,
       "nativeTimestampKind": "token",
       "finalWordCount": 0,
       "nonemptyIncrementalUpdates": 15
@@ -272,7 +272,7 @@
       "CER": 0.022222222222222223,
       "validInputRelativeTimes": true,
       "languageTag": "ja-JP",
-      "seconds": 0.2016479169978993,
+      "seconds": 0.20199287500145147,
       "nativeTimestampKind": "token",
       "finalWordCount": 2,
       "nonemptyIncrementalUpdates": 0
@@ -285,7 +285,7 @@
       "CER": 0.022222222222222223,
       "validInputRelativeTimes": true,
       "languageTag": "ja-JP",
-      "seconds": 0.34396195800218266,
+      "seconds": 0.33418683299896657,
       "nativeTimestampKind": "token",
       "finalWordCount": 0,
       "nonemptyIncrementalUpdates": 15
@@ -302,20 +302,20 @@
     "Fixed-language prompt can condition the emitted locale; the tag is not evidence of regional accent detection.",
     "Native encoder-frame timings can extend past final PCM; clip genuine alignment to the input duration.",
     "No catalog entry enabled.",
-    "The final source additionally clarifies that Nemotron has no integrated speaker support; the accepted 16 decoding cases never request speakers."
+    "Repeated all 16 probes after adding separate Cohere/Canary profiles and translation-capability handshake checks; all language/timing guards pass."
   ],
   "sourceFiles": [
     {
       "path": "Packages/SpeechNative/Sources/EarmarkSpeechWorker/main.swift",
-      "sha256": "2c1476cdadc98b6a9506c78bdb388ea646a635ef68e60b2167ed7059bbda0b4f"
+      "sha256": "ae167c3b5b9acca09fbc823bd99e9de06373d3e632fb54abe6508fec348d999e"
     },
     {
       "path": "Packages/SpeechNative/Sources/SpeechNative/NativeSpeechProfile.swift",
-      "sha256": "e95bd888ab00c0394a09f8526b1a03344266661bdf8ab018444169196cd46977"
+      "sha256": "523efae0122cb519db7e56fee31e83f7670e15235397fa8023002822c1ce9fd9"
     },
     {
       "path": "Packages/SpeechNative/Sources/SpeechNative/SpeechWorkerClient.swift",
-      "sha256": "77900788a8bf0c8520f167f38670903c8f9cd054466cbd2c416724c145953f67"
+      "sha256": "a4b8aab090e3815fb8fc271346271114342800c204bf1f0cf318e27982c265a9"
     },
     {
       "path": "scripts/research/probe-nemotron35.py",

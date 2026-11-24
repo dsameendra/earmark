@@ -3,18 +3,32 @@
 public enum NativeSpeechProfile: String, Sendable {
     case multitalkerV1 = "multitalker-v1"
     case nemotron35 = "nemotron-3.5"
+    case cohere202603 = "cohere-2026-03"
+    case canaryV2 = "canary-v2"
 
-    public var architecture: String { "parakeet" }
+    public var architecture: String {
+        switch self {
+        case .multitalkerV1, .nemotron35: "parakeet"
+        case .cohere202603: "cohere_asr"
+        case .canaryV2: "canary"
+        }
+    }
     public var variant: String {
         switch self {
         case .multitalkerV1: "multitalker-parakeet-streaming-0.6b-v1"
         case .nemotron35: "nemotron-3.5-asr-streaming-0.6b"
+        case .cohere202603: "cohere-transcribe-03-2026"
+        case .canaryV2: "canary-1b-v2"
         }
     }
 
     public var languages: [String] {
         switch self {
         case .multitalkerV1: ["en"]
+        case .cohere202603: ["en", "fr", "de", "es", "it", "pt", "nl", "pl", "el", "ar", "ja", "zh", "vi", "ko"]
+        case .canaryV2:
+            ["bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it",
+             "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"]
         case .nemotron35:
             ["en-US", "en-GB", "es-US", "es-ES", "fr-FR", "fr-CA", "it-IT",
              "pt-BR", "pt-PT", "nl-NL", "de-DE", "tr-TR", "ru-RU", "ar-AR",
@@ -37,6 +51,17 @@ public enum NativeSpeechProfile: String, Sendable {
 
     public func matches(architecture: String, variant: String) -> Bool {
         architecture == self.architecture && variant == self.variant
+    }
+
+    public var translationTargets: [String] {
+        // The pinned conversion excludes Latvian AST. This restriction needs
+        // separate upstream/reference investigation; do not infer it from ASR.
+        self == .canaryV2 ? languages.filter { $0 != "lv" } : []
+    }
+
+    public func supportsTranslation(source: String, target: String) -> Bool {
+        self == .canaryV2 && translationTargets.contains(source) && translationTargets.contains(target)
+            && ((source == "en") != (target == "en"))
     }
 
     /// The pinned Parakeet backend strips predicted locale tokens from display

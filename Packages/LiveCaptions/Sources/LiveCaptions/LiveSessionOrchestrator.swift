@@ -380,7 +380,10 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         case .progress:
             break
         case .languageDetected(let scores):
-            if let best = scores.max(by: { $0.probability < $1.probability }) { ctx.detectedLanguage = best.language }
+            if let best = scores.max(by: { $0.probability < $1.probability }) {
+                ctx.detectedLanguage = best.language
+                ctx.translationWake?.yield()
+            }
         }
     }
 
@@ -396,6 +399,8 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
             let hidden = p.isIgnored || p.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             if hidden {
                 ctx.store.removeVolatile(lane: lane)
+                ctx.store.removeFinal(p.id)
+                ctx.pendingFinalTranslations.removeAll { $0.segmentID == p.id }
                 continue
             }
             let id = ctx.store.finalize(
@@ -482,14 +487,25 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
     }
 
     private func nextTranslationJob(_ ctx: SessionContext) -> SessionContext.TranslationJob? {
-        if !ctx.pendingFinalTranslations.isEmpty {
-            let job = ctx.pendingFinalTranslations.removeFirst()
+        func hasSource(_ job: SessionContext.TranslationJob) -> Bool {
+            job.language != nil || ctx.detectedLanguage != nil || ctx.fixedLanguage != nil
+        }
+        // Keep unknown-source finals in the same bounded queue until language ID
+        // arrives. "Waiting for language" must not mean silently dropping them.
+        if let index = ctx.pendingFinalTranslations.firstIndex(where: hasSource) {
+            let job = ctx.pendingFinalTranslations.remove(at: index)
             if ctx.pendingFinalTranslations.count < options.maxPendingTranslations / 2 {
                 ctx.translationBacklogNoticeSent = false
             }
             return job
         }
-        guard let job = ctx.volatileTranslations.values.min(by: { $0.lineID.uuidString < $1.lineID.uuidString }) else { return nil }
+        guard let job = ctx.volatileTranslations.values.filter(hasSource).min(by: { $0.lineID.uuidString < $1.lineID.uuidString }) else {
+            if (!ctx.pendingFinalTranslations.isEmpty || !ctx.volatileTranslations.isEmpty), !ctx.unknownTranslationSourceNoticeSent {
+                ctx.unknownTranslationSourceNoticeSent = true
+                eventBus.send(.translationFailed(reason: "Waiting for the spoken language before translating. Choose a source language if detection is unavailable."))
+            }
+            return nil
+        }
         ctx.volatileTranslations.removeValue(forKey: job.lineID)
         return job
     }
@@ -535,11 +551,17 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
                 result = t
                 break
             }
-            guard let result, ctx.phase != .finished else { return }
+            guard !Task.isCancelled, let result, ctx.phase != .finished else { return }
+            guard result.segmentID == item.segmentID, !result.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw AppError.engineFailure(result.engine, reason: "Translation returned an invalid caption result.")
+            }
             if job.segmentID == nil {
                 guard let entry = ctx.store.entries.first(where: { $0.line.id == job.lineID }),
                     entry.line.isVolatile, entry.line.text == CaptionLineStore.rollingTail(job.text)
                 else { return }
+            } else if let id = job.segmentID {
+                guard let index = ctx.finalIndex[id], !ctx.finals[index].isIgnored,
+                      ctx.finals[index].text == job.text, ctx.finals[index].languageCode == job.language else { return }
             }
             // English to Sinhala is always flagged low-confidence, whatever the engine reports.
             let low = result.isLowConfidence || (source.primary == .english && target.primary == .sinhala)

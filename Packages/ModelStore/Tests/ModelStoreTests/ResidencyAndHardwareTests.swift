@@ -8,6 +8,18 @@ private let gib: UInt64 = 1_073_741_824
 
 @Suite("Residency")
 struct ResidencyTests {
+    @Test("removal blocks reloading and a late beginUse until filesystem work finishes")
+    func removalReservation() async throws {
+        let tracker = ModelResidencyTracker(maxHeavyResident: 1)
+        try await tracker.prepareToLoad("a", isHeavy: true)
+        try await tracker.beginRemoval("a")
+        await #expect(throws: AppError.self) { try await tracker.prepareToLoad("a", isHeavy: true) }
+        await #expect(throws: AppError.self) { try await tracker.beginUse("a") }
+        await tracker.endRemoval("a")
+        try await tracker.prepareToLoad("a", isHeavy: true)
+        try await tracker.beginUse("a")
+        #expect(await tracker.isResident("a"))
+    }
     @Test("LRU heavy model is evicted when the limit is reached")
     func lruEviction() async throws {
         let log = UnloadLog()
@@ -44,7 +56,7 @@ struct ResidencyTests {
     func busyModels() async throws {
         let tracker = ModelResidencyTracker(maxHeavyResident: 1)
         try await tracker.prepareToLoad("a", isHeavy: true)
-        await tracker.beginUse("a")
+        try await tracker.beginUse("a")
         await #expect(throws: AppError.outOfMemory) { try await tracker.prepareToLoad("b", isHeavy: true) }
         #expect(await tracker.handleMemoryPressure() == nil)
         await tracker.endUse("a")
@@ -58,7 +70,7 @@ struct ResidencyTests {
         let tracker = ModelResidencyTracker(maxHeavyResident: 3) { await log.record($0) }
         try await tracker.prepareToLoad("a", isHeavy: true)
         try await tracker.prepareToLoad("b", isHeavy: true)
-        await tracker.beginUse("a")
+        try await tracker.beginUse("a")
         await tracker.touch("b")
         #expect(await tracker.handleMemoryPressure() == "b", "a is busy so idle b goes")
         #expect(await log.ids == ["b"])

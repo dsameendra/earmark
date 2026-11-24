@@ -59,6 +59,10 @@ public enum NativeSpeechProfile: String, Sendable {
         self == .canaryV2 ? languages.filter { $0 != "lv" } : []
     }
 
+    public var canStream: Bool { self == .multitalkerV1 || self == .nemotron35 }
+    public var canDetectLanguage: Bool { self == .nemotron35 }
+    public var canDiarize: Bool { self == .multitalkerV1 }
+
     public func supportsTranslation(source: String, target: String) -> Bool {
         self == .canaryV2 && translationTargets.contains(source) && translationTargets.contains(target)
             && ((source == "en") != (target == "en"))

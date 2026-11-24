@@ -4,6 +4,33 @@ import Testing
 
 @Suite("Speech child transport lifecycle", .serialized)
 struct SpeechWorkerClientTests {
+    @Test func rejectsFalseOverlapReadinessAndMissingInferencePayload() async throws {
+        let (root, helper) = try fixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = SpeechWorkerClient(executable: helper)
+        _ = try await client.start(modelFile: root.appendingPathComponent("normal"), profile: "multitalker-v1")
+        await #expect(throws: SpeechWireError.invalid("Unexpected speech response payload.")) {
+            try await client.send(SpeechWorkerRequest(id: 0, operation: .run))
+        }
+        let text = try String(contentsOf: helper, encoding: .utf8)
+            .replacingOccurrences(of: "\"canStreamWithSpeakers\":false", with: "\"canStreamWithSpeakers\":true")
+        try text.write(to: helper, atomically: false, encoding: .utf8)
+        await #expect(throws: SpeechWireError.invalid("The speech helper loaded an unexpected native profile.")) {
+            try await client.start(modelFile: root.appendingPathComponent("normal"), profile: "multitalker-v1")
+        }
+    }
+
+    @Test func oversizedPCMIsRejectedBeforeEncodingAndDoesNotLoseTheHealthyChild() async throws {
+        let (root, helper) = try fixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let client = SpeechWorkerClient(executable: helper)
+        _ = try await client.start(modelFile: root.appendingPathComponent("normal"), profile: "multitalker-v1")
+        await #expect(throws: SpeechWireError.self) {
+            try await client.send(SpeechWorkerRequest(id: 0, operation: .feed, pcm: Data(repeating: 0, count: 64_001)))
+        }
+        #expect(try await client.send(SpeechWorkerRequest(id: 0, operation: .reset)).id == 1)
+        await client.stop()
+    }
     private func fixture() throws -> (URL, URL) {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("earmark-speech-client-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

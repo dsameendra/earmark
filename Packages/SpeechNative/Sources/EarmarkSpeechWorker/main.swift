@@ -24,7 +24,10 @@ final class SpeechWorker {
         capabilities = try model.capabilities
         guard Set(capabilities.languages) == Set(selected.languages),
               Set(capabilities.translateTargetLanguages) == Set(selected.translationTargets),
-              capabilities.supportsTranslate == !selected.translationTargets.isEmpty else {
+              capabilities.supportsTranslate == !selected.translationTargets.isEmpty,
+              capabilities.supportsStreaming == selected.canStream,
+              capabilities.supportsLanguageDetect == selected.canDetectLanguage,
+              model.supports(.diarization) == selected.canDiarize else {
             throw SpeechWireError.invalid("The model's language inventory does not match the selected profile.")
         }
         guard capabilities.nativeSampleRate == 16_000 else { throw SpeechWireError.invalid("Unsupported native sample rate.") }

@@ -21,6 +21,7 @@ public actor ModelResidencyTracker {
     private var busy = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
     private var monitor: Task<Void, Never>?
+    private var removals: Set<ModelID> = []
 
     /// One heavy model on 8 and 16 GB Macs, two on 32 GB and above (ADR-007: one heavy model resident by default).
     public static func defaultMaxHeavy(for tier: HardwareTier) -> Int { tier == .tier32Plus ? 2 : 1 }
@@ -54,6 +55,7 @@ public actor ModelResidencyTracker {
     public func prepareToLoad(_ id: ModelID, isHeavy: Bool, bytes: Int64 = 0) async throws -> [ModelID] {
         await acquireLoadLock()
         defer { releaseLoadLock() }
+        guard !removals.contains(id) else { throw AppError.other("This model is being removed. Try again when removal finishes.") }
         if entries[id] != nil {
             touch(id)
             return []
@@ -77,10 +79,24 @@ public actor ModelResidencyTracker {
     }
 
     /// Marks the model busy (e.g. a transcription running); busy models are never evicted.
-    public func beginUse(_ id: ModelID) {
+    public func beginUse(_ id: ModelID) throws {
+        guard !removals.contains(id), entries[id] != nil else { throw AppError.modelNotInstalled(id) }
         touch(id)
         entries[id]?.inUse += 1
     }
+
+    /// Reserve deletion across the actual engine unload and filesystem mutation.
+    /// A new load cannot enter during the suspension in the unload callback.
+    public func beginRemoval(_ id: ModelID) async throws {
+        await acquireLoadLock()
+        defer { releaseLoadLock() }
+        guard !removals.contains(id) else { throw AppError.other("This model is already being removed.") }
+        guard (entries[id]?.inUse ?? 0) == 0 else { throw AppError.other("Stop using this model before removing it.") }
+        removals.insert(id)
+        if entries[id] != nil { await unload(id) }
+    }
+
+    public func endRemoval(_ id: ModelID) { removals.remove(id) }
 
     public func endUse(_ id: ModelID) {
         guard var entry = entries[id] else { return }

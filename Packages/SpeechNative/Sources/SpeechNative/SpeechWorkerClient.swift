@@ -80,7 +80,9 @@ public actor SpeechWorkerClient {
                   selected.matches(architecture: ready.architecture, variant: ready.variant),
                   Set(ready.languages) == Set(selected.languages),
                   Set(ready.translationTargets) == Set(selected.translationTargets),
-                  ready.canTranslate == !selected.translationTargets.isEmpty else {
+                  ready.canTranslate == !selected.translationTargets.isEmpty,
+                  ready.canStream == selected.canStream, ready.canDetectLanguage == selected.canDetectLanguage,
+                  ready.canDiarize == selected.canDiarize, !ready.canStreamWithSpeakers else {
                 throw SpeechWireError.invalid("The speech helper loaded an unexpected native profile.")
             }
             self.modelFile = modelFile; self.profile = profile; readiness = ready; nextID = 0
@@ -91,13 +93,26 @@ public actor SpeechWorkerClient {
     private func sendLocked(_ original: SpeechWorkerRequest) async throws -> SpeechWorkerReply {
         try Task.checkCancellation()
         guard readiness != nil, process?.isRunning == true else { throw SpeechWireError.invalid("The speech worker is not loaded.") }
+        if let pcm = original.pcm {
+            let limit = original.operation == .feed ? SpeechWire.maximumFrameSamples : SpeechWire.maximumRunSamples
+            guard pcm.count <= limit * MemoryLayout<Float>.size else {
+                throw SpeechWireError.invalid("Speech PCM exceeded the operation's sample limit.")
+            }
+        }
         nextID += 1
         var request = original
         request.id = nextID
         var bytes = try JSONEncoder().encode(request)
         guard bytes.count <= SpeechWire.maximumMessageBytes else { throw SpeechWireError.invalid("Speech request exceeded message limit.") }
         bytes.append(10)
-        do { return try await exchange(data: bytes, expectedID: request.id) }
+        do {
+            let reply = try await exchange(data: bytes, expectedID: request.id)
+            let expectsSnapshot = [.run, .feed, .finish].contains(request.operation)
+            guard reply.ready == nil, (reply.snapshot != nil) == expectsSnapshot else {
+                throw SpeechWireError.invalid("Unexpected speech response payload.")
+            }
+            return reply
+        }
         catch { stopLocked(); if Task.isCancelled { throw CancellationError() }; throw error }
     }
 

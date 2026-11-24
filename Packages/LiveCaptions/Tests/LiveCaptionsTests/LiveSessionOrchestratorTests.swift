@@ -373,6 +373,49 @@ struct LiveSessionOrchestratorTests {
 
     // MARK: translation (LIVE-AC-13)
 
+    @Test("late language detection translates finals already waiting in the bounded queue")
+    func lateLanguageTranslation() async throws {
+        let router = FakeTranslationRouter()
+        var unknown = segment("bonjour", 0, 1)
+        unknown.languageCode = nil
+        let rig = makeRig(script: [.events([.final(unknown)]), .events([.languageDetected([LanguageScore(language: "fr", probability: 0.9)])])], translation: router)
+        let lines = Recorder(rig.orchestrator.lines())
+        let events = Recorder(rig.orchestrator.events())
+        try await rig.orchestrator.start(LiveSessionConfig(source: .mic(deviceUID: nil), languageMode: .autoDetect, translateTo: .sinhala, saveAsTranscript: true))
+        rig.source.send(chunk(0))
+        #expect(await waitUntil { events.all.contains { if case .translationFailed = $0 { true } else { false } } })
+        #expect(router.callTimes.isEmpty)
+        rig.source.send(chunk(1))
+        #expect(await waitUntil { lines.last?.first?.translation == "T(bonjour)" })
+        let id = try #require(await rig.orchestrator.stop())
+        #expect(rig.repo.stored(id).first?.translations.first?.text == "T(bonjour)")
+    }
+
+    @Test("revised finals keep their caption identity and discard an older in-flight translation")
+    func revisedFinalTranslation() async throws {
+        let router = GatedCaptionTranslator()
+        let original = segment("original words", 0, 1)
+        var revised = original
+        revised.text = "corrected words"
+        let rig = makeRig(script: [.events([.final(original)]), .events([.final(revised)])], translation: router)
+        let lines = Recorder(rig.orchestrator.lines())
+        try await rig.orchestrator.start(LiveSessionConfig(source: .mic(deviceUID: nil), translateTo: .sinhala, saveAsTranscript: true))
+        rig.source.send(chunk(0))
+        #expect(await waitUntil { router.pendingCount == 1 })
+        let lineID = try #require(lines.last?.first?.id)
+        rig.source.send(chunk(1))
+        #expect(await waitUntil { lines.last?.first?.text == "corrected words" })
+        router.completeFirst()
+        #expect(await waitUntil { router.pendingCount == 1 })
+        #expect(!lines.all.flatMap { $0 }.contains { $0.text == "corrected words" && $0.translation?.contains("original words") == true })
+        router.completeFirst()
+        #expect(await waitUntil { lines.last?.first?.translation?.contains("corrected words") == true })
+        #expect(lines.last?.count == 1 && lines.last?.first?.id == lineID)
+        let id = try #require(await rig.orchestrator.stop())
+        #expect(rig.repo.stored(id).count == 1)
+        #expect(rig.repo.stored(id).first?.translations.first?.text == "T(corrected words)")
+    }
+
     @Test("unknown source language never silently routes as English")
     func unknownTranslationSource() async throws {
         let router = FakeTranslationRouter()
@@ -452,6 +495,27 @@ struct LiveSessionOrchestratorTests {
 }
 
 // MARK: - Extra stubs for this suite
+
+final class GatedCaptionTranslator: TranslationRouter, TranslationEngine {
+    let id: EngineID = "gated.translation"
+    private struct Pending: Sendable {
+        let items: [TranslationItem]
+        let continuation: AsyncThrowingStream<TranslatedSegment, any Error>.Continuation
+    }
+    private let pending = Mutex<[Pending]>([])
+    var pendingCount: Int { pending.withLock { $0.count } }
+    func engine(for pair: LanguagePair) async throws -> any TranslationEngine { self }
+    func supportedPairs() async -> Set<LanguagePair> { [] }
+    func translate(items: [TranslationItem], from: LanguageCode, to: LanguageCode) -> AsyncThrowingStream<TranslatedSegment, any Error> {
+        AsyncThrowingStream { continuation in pending.withLock { $0.append(Pending(items: items, continuation: continuation)) } }
+    }
+    func completeFirst() {
+        let job = pending.withLock { $0.isEmpty ? nil : $0.removeFirst() }
+        guard let job else { return }
+        for item in job.items { job.continuation.yield(TranslatedSegment(segmentID: item.segmentID, text: "T(\(item.text))", engine: id)) }
+        job.continuation.finish()
+    }
+}
 
 struct MockEngines: LiveEngineProviding {
     let engine: MockTranscriptionEngine

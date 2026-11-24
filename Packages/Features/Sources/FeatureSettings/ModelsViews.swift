@@ -11,6 +11,8 @@ enum ModelFormat {
         switch warning {
         case .nonCommercial(let spdx):
             "This model is licensed \(spdx), which does not allow commercial use. Use it only for personal or non-commercial work."
+        case .licenseNotice(let spdx, let attribution):
+            ["This model is licensed \(spdx). Review its licence terms before use.", attribution].compactMap { $0 }.joined(separator: "\n")
         case .hardwareTier:
             "This model is larger than this Mac is tuned for. It may run slowly or use a lot of memory."
         case .lowDiskSpace(let needed, let available):

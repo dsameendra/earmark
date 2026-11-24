@@ -7,6 +7,8 @@ import Observation
 public enum DownloadWarning: Hashable, Sendable {
     /// CC-BY-NC or similar: shown before download.
     case nonCommercial(spdx: String)
+    /// Share-alike or unverified licence terms also need acknowledgement.
+    case licenseNotice(spdx: String, attribution: String?)
     /// The model's `minTier` exceeds this Mac's tier.
     case hardwareTier(required: HardwareTier)
     /// Free disk space is below the model size (plus headroom).
@@ -195,6 +197,9 @@ public final class ModelManagerModel {
         guard let descriptor = row(id)?.descriptor else { return [] }
         var warnings: [DownloadWarning] = []
         if descriptor.license.isNonCommercial { warnings.append(.nonCommercial(spdx: descriptor.license.spdx)) }
+        if descriptor.license.needsAcknowledgement {
+            warnings.append(.licenseNotice(spdx: descriptor.license.spdx, attribution: descriptor.license.attribution))
+        }
         if descriptor.minTier > hardware.profile.tier { warnings.append(.hardwareTier(required: descriptor.minTier)) }
         if let free = freeDiskBytes(), free < descriptor.sizeBytes + descriptor.sizeBytes / 5 {
             warnings.append(.lowDiskSpace(needed: descriptor.sizeBytes, available: free))

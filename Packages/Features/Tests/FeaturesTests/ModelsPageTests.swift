@@ -76,6 +76,21 @@ private func descriptor(_ id: String, kind: ModelKind = .asr, caps: ModelCapabil
         #expect(await mock.consentedModels() == ["best"])
     }
 
+    @Test func hardwareConfirmationCannotBypassShareAlikeLicenceAcknowledgement() async {
+        let descriptor = ModelDescriptor(
+            id: "share-alike", displayName: "Shared model", kind: .asr, runtime: .mlx, languages: ["si"], sizeBytes: 100,
+            license: LicenseInfo(spdx: "CC-BY-SA-4.0", attribution: "Model author"), minTier: .tier32Plus)
+        let mock = MockModelManager(descriptors: [descriptor])
+        let model = ModelManagerModel(manager: mock, hardware: PlaceholderHardware(), store: InMemorySettingsStore(), freeDiskBytes: { .max })
+        await model.load()
+        let expected: [DownloadWarning] = [.licenseNotice(spdx: "CC-BY-SA-4.0", attribution: "Model author"), .hardwareTier(required: .tier32Plus)]
+        #expect(await model.download("share-alike") == .needsConfirmation(expected))
+        #expect(await mock.ensureAvailableCalls().isEmpty)
+        #expect(await mock.consentedModels().isEmpty)
+        #expect(await model.download("share-alike", confirmed: true) == .completed)
+        #expect(await mock.consentedModels() == ["share-alike"])
+    }
+
     @Test func aFailedRowRetriesAndCancelDiscardsIt() async {
         let (model, mock) = await make()
         await mock.setState(.failed(reason: "offline"), for: "best")

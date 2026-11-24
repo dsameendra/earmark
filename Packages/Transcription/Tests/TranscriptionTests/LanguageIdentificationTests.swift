@@ -95,7 +95,9 @@ struct DeadlineTests {
 /// Real-model language ID on local assets (skipped when the model or fixtures are missing).
 @Suite("Whisper language ID integration (needs local model + fixtures)", .serialized)
 struct WhisperLanguageIDIntegrationTests {
-    static let sinhalaDir: URL? = LocalAssets.search(".model-cache/sinhala-eval/slr30_wav", envKey: "EARMARK_SINHALA_EVAL")
+    // An explicit directory avoids accidentally treating old iCloud placeholders as resident fixtures.
+    // Unlike EARMARK_MODEL_CACHE, this value is the actual WAV directory, with no appended suffix.
+    static let sinhalaDir: URL? = ProcessInfo.processInfo.environment["EARMARK_SINHALA_EVAL"].map { URL(fileURLWithPath: $0) }
     static let available = LocalAssets.available && sinhalaDir != nil
 
     private func engine() throws -> WhisperKitEngine {
@@ -117,6 +119,7 @@ struct WhisperLanguageIDIntegrationTests {
         let dir = try #require(Self.sinhalaDir)
         let clips = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
             .filter { $0.pathExtension == "wav" }.sorted { $0.path < $1.path }
+        try #require(!clips.isEmpty, "Native Sinhala identification must execute actual audio cases")
         var sinhalaCorrect = 0
         var sinhalaEmpty = 0
         let clock = ContinuousClock()

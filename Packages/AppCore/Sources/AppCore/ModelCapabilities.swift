@@ -269,8 +269,8 @@ public enum ModelRecommender {
         }
         if let best = ruled.min(by: { ($0.2 ? 1 : 0, $0.0, $0.1) < ($1.2 ? 1 : 0, $1.0, $1.1) }) { return best.3 }
         guard allowFallback else { return nil }
-        // No explicit rule: best compatible model that fits this Mac (non-experimental first, then larger).
-        let fitting = eligible.map(\.element).filter { $0.minTier <= tier }
+        // No explicit rule: only established models qualify for automatic fallback.
+        let fitting = eligible.map(\.element).filter { $0.minTier <= tier && !$0.isExperimental }
         return fitting.min { a, b in
             (a.isExperimental ? 1 : 0, -a.sizeBytes, a.id.rawValue) < (b.isExperimental ? 1 : 0, -b.sizeBytes, b.id.rawValue)
         }

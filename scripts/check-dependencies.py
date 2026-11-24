@@ -5,7 +5,7 @@ root=Path(__file__).resolve().parent.parent
 approved={
  'AppCore':set(),'Persistence':{'AppCore'},'DesignSystem':{'AppCore'},'ModelStore':{'AppCore'},
  'AudioCapture':{'AppCore'},'Permissions':{'AppCore'},'Processing':{'AppCore'},'Export':{'AppCore'},
- 'Meetings':{'AppCore'},'Translation':{'AppCore'},'NLLBNative':set(),
+ 'Meetings':{'AppCore'},'Translation':{'AppCore'},'NLLBNative':set(),'SpeechNative':set(),
  'LiveCaptions':{'AppCore','DesignSystem'},'Dictation':{'AppCore','DesignSystem','Features'},
  'Transcription':{'AppCore','AudioCapture','ModelStore'},'Diarization':{'AppCore','AudioCapture','ModelStore'},
  'QwenASR':{'AppCore','AudioCapture'},

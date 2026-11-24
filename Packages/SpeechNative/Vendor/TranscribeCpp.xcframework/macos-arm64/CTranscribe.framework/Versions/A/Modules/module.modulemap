@@ -1,0 +1,13 @@
+framework module CTranscribe {
+  header "diarize.h"
+  header "extensions.h"
+  header "langid.h"
+  header "moonshine_streaming.h"
+  header "parakeet.h"
+  header "sortformer.h"
+  header "transcribe.h"
+  header "vad.h"
+  header "voxtral_realtime.h"
+  header "whisper.h"
+  export *
+}

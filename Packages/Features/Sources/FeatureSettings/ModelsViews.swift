@@ -363,7 +363,7 @@ struct ModelsSettingsView: View {
                 ForEach(families.keys.sorted(), id: \.self) { family in
                     Section(family) {
                         if family == "OPUS language packs" {
-                            OPUSPairPackBrowser(model: model, rows: families[family] ?? []) { row in modelRow(row) }
+                            OPUSPairPackBrowser(model: model, rows: families[family] ?? []) { row in modelRow(row, compact: true) }
                         } else {
                             ForEach(families[family] ?? []) { row in modelRow(row) }
                         }

@@ -8,7 +8,7 @@ report_root="${EARMARK_REPORT_ROOT:-$HOME/Library/Caches/EarmarkBuild/reports}"
 mkdir -p "$report_root"
 python3 "$repo_root/scripts/check-dependencies.py"
 if [ "$mode" = all ] || [ "$mode" = unit ]; then
-    for package in AppCore Persistence DesignSystem ModelStore AudioCapture Processing Export Permissions Meetings Translation Transcription Diarization LiveCaptions Dictation Jobs QwenASR Features NLLBNative; do
+    for package in AppCore Persistence DesignSystem ModelStore AudioCapture Processing Export Permissions Meetings Translation Transcription Diarization LiveCaptions Dictation Jobs QwenASR Features NLLBNative SpeechNative; do
         printf 'Testing %s\n' "$package"
         if ! swift test --no-parallel --package-path "$repo_root/Packages/$package" > "$report_root/$package.log" 2>&1; then
             printf '%s\n' "--- failing tests and errors in $package ---"
@@ -19,6 +19,8 @@ if [ "$mode" = all ] || [ "$mode" = unit ]; then
         fi
         rg 'Test run with|tests? passed|Test Suite.*passed' "$report_root/$package.log" | tail -2 || true
     done
+    speech_bin="$(swift build --package-path "$repo_root/Packages/SpeechNative" --show-bin-path)"
+    python3 "$repo_root/scripts/verify-speech-native.py" --helper-path "$speech_bin/EarmarkSpeechWorker"
 fi
 if [ "$mode" = all ] || [ "$mode" = build ] || [ "$mode" = ui ]; then
     project="$($repo_root/scripts/project.sh)"

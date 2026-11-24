@@ -1,0 +1,11 @@
+# Native speech worker foundation
+
+`SpeechNative` defines a bounded, versioned local IPC protocol and cancellable child-process transport. `EarmarkSpeechWorker` hosts the pinned transcribe.cpp 0.4.2 runtime in one synchronous process per model/session. It has no network or Python inference dependency. It is not yet embedded or registered as an app engine.
+
+The initial `multitalker-v1` profile requires the exact Parakeet architecture/variant and reports real backend capabilities. This revision's streaming API silently ignores speaker-attributed recognition. Earmark rejects that combination and reports `canStreamWithSpeakers=false`. Single-speaker streaming and speaker-attributed offline execution are separate capabilities; the current overlap quality probe fails, so no Multitalker catalog entry is enabled.
+
+Rebuild with `scripts/build-speech-native.sh` (CMake/Ninja/Xcode required). The arm64 macOS 26 dynamic framework follows upstream's per-archive force-load recipe, retaining duplicate-basename objects, Objective-C metadata and embedded Metal kernels. `Vendor/provenance.json` binds every canonical artifact/header/wrapper/licence file. Verify with `scripts/verify-speech-native.py`; optionally pass `--helper-path <compiled-worker>` to check dynamic loading without a model.
+
+The files in `Vendor/Swift` are verbatim upstream Swift bindings, except the clearly identified Earmark commit-count extension. Upstream bindings compile in their original Swift 5 language mode; Earmark's protocol, transport and worker use Swift 6 with warnings as errors. Native handles and borrowed results stay in the worker; snapshots copy input-relative timings and speaker identities without flattening overlapping intervals or inventing confidence. Licences are preserved in `Vendor`.
+
+Tests cover finite/bounded PCM, request decoding, queued/active cancellation, restart, response identity/size and blocked writes. Optional real-worker tests require `EARMARK_NATIVE_SPEECH_HELPER` and `EARMARK_MULTITALKER_MODEL`; these verify actual capabilities/rejection/restart, not overlap quality. Reproducible authored-audio probes and their limits are documented in `specs/research/1.1.0-native-speech-protocol.md`. Natural licensed overlap, native streaming implementation, app integration, resource coordination and packaged-app acceptance remain outstanding.

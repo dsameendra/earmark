@@ -194,6 +194,16 @@ struct ModelRecommenderTests {
             ModelRecommender.recommendedModel(for: .tier16, useCase: .file, language: "en", in: [plain, bigger], allowFallback: false) == nil)
     }
 
+    @Test func experimentalCoverageAloneNeverBecomesARecommendation() {
+        let unreviewed = model("new-tamil", languages: ["ta"], experimental: true)
+        let result = ModelRecommender.recommendedModel(for: .tier16, useCase: .file, language: "ta", in: [unreviewed])
+        #expect(result == nil)
+        let explicit = model("reviewed-tamil", languages: ["ta"], experimental: true,
+                             capabilities: ModelCapabilities(file: true, recommendedUse: [RecommendedUse(.file)]))
+        let selected = ModelRecommender.recommendedModel(for: .tier16, useCase: .file, language: "ta", in: [explicit])
+        #expect(selected?.id == explicit.id)
+    }
+
     @Test func fallbackRespectsTier() {
         let heavy = model("heavy", minTier: .tier16, size: 900)
         let light = model("light", size: 10)

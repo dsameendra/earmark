@@ -13,17 +13,19 @@ private let siQwen = ModelID("qwen.si.test")
 
 private func descriptor(
     _ id: ModelID, _ name: String, languages: Set<LanguageCode>, mb: Int64, runtime: ModelRuntime = .coreML,
-    experimental: Bool = false, minTier: HardwareTier = .tier8
+    experimental: Bool = false, minTier: HardwareTier = .tier8, capabilities: ModelCapabilities = .standard
 ) -> ModelDescriptor {
     ModelDescriptor(
         id: id, displayName: name, kind: .asr, runtime: runtime, languages: languages, sizeBytes: mb * 1_000_000,
-        license: LicenseInfo(spdx: "MIT"), minTier: minTier, isExperimental: experimental)
+        license: LicenseInfo(spdx: "MIT"), minTier: minTier, isExperimental: experimental, capabilities: capabilities)
 }
 
 private let testCatalog = [
     descriptor(enWhisper, "Whisper large-v3 turbo", languages: ["en", "ta"], mb: 1600),
     descriptor(enApple, "Apple Speech", languages: ["en"], mb: 0, runtime: .appleAsset),
-    descriptor(siQwen, "Qwen3-ASR Sinhala", languages: ["si"], mb: 780, experimental: true),
+    // Like the production specialist, Sinhala has an explicit recommendation rule.
+    descriptor(siQwen, "Qwen3-ASR Sinhala", languages: ["si"], mb: 780, experimental: true,
+               capabilities: ModelCapabilities(live: true, file: true, recommendedUse: [RecommendedUse(.file)])),
 ]
 
 /// Picks Whisper for files, Apple Speech for live English, Qwen for Sinhala.

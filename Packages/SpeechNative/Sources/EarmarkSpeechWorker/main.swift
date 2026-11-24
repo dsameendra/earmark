@@ -8,18 +8,23 @@ final class SpeechWorker {
     let model: Model
     let session: Session
     let capabilities: Capabilities
+    let profile: NativeSpeechProfile
     var stream: TranscribeCpp.Stream?
     var receivedSamples = 0
     var lastID: UInt64 = 0
 
     init(path: String, profile: String, backend: Backend) throws {
         // Finite profiles are activated only after architecture-specific native validation.
-        guard profile == "multitalker-v1" else { throw SpeechWireError.invalid("Unsupported native speech profile.") }
+        guard let selected = NativeSpeechProfile(rawValue: profile) else { throw SpeechWireError.invalid("Unsupported native speech profile.") }
+        self.profile = selected
         model = try Model(path: path, options: ModelOptions(backend: backend))
-        guard model.arch == "parakeet", model.variant == "multitalker-parakeet-streaming-0.6b-v1" else {
+        guard selected.matches(architecture: model.arch, variant: model.variant) else {
             throw SpeechWireError.invalid("The model does not match the selected speech profile.")
         }
         capabilities = try model.capabilities
+        guard Set(capabilities.languages) == Set(selected.languages) else {
+            throw SpeechWireError.invalid("The model's language inventory does not match the selected profile.")
+        }
         guard capabilities.nativeSampleRate == 16_000 else { throw SpeechWireError.invalid("Unsupported native sample rate.") }
         session = try model.session(SessionOptions(nThreads: 4))
     }
@@ -33,7 +38,7 @@ final class SpeechWorker {
     }
 
     func options(_ request: SpeechWorkerRequest) throws -> RunOptions {
-        var language = request.language
+        var language = try request.language.map { try profile.resolveLanguage($0) }
         if language == nil, !capabilities.supportsLanguageDetect {
             guard capabilities.languages.count == 1 else { throw SpeechWireError.invalid("Choose a supported source language.") }
             language = capabilities.languages.first
@@ -64,6 +69,9 @@ final class SpeechWorker {
             // Upstream 0.4.2 accepts this flag but only warns and decodes one speaker.
             // Never turn that silent downgrade into an advertised overlap stream.
             guard request.diarize != true else {
+                guard model.supports(.diarization) else {
+                    throw SpeechWireError.invalid("This checkpoint has no integrated speaker support.")
+                }
                 throw SpeechWireError.invalid("This native profile supports speaker-attributed files, but its streaming API cannot yet transcribe overlapping speakers.")
             }
             stream = try session.stream(options(request))
@@ -115,18 +123,31 @@ final class SpeechWorker {
         guard (0...result.segments.count).contains(counts.segments), (0...result.words.count).contains(counts.words) else {
             throw SpeechWireError.invalid("Invalid native committed-row counts.")
         }
-        let segments = result.segments.map {
-            SpeechNativeSegment(startMS: $0.t0Ms, endMS: $0.t1Ms, text: $0.text, speaker: $0.speakerId,
+        // Native encoder frames can extend beyond the final PCM sample (e.g.
+        // Nemotron's last German word). Clip genuine alignment to the audio
+        // boundary; never fabricate word alignment for text-only stream updates.
+        func times(_ start: Int64, _ end: Int64) throws -> (Int64, Int64) {
+            guard start >= 0, end >= start else { throw SpeechWireError.invalid("Invalid native speech timing.") }
+            let boundedEnd = min(end, Int64(receivedSamples / 16))
+            return (min(start, boundedEnd), boundedEnd)
+        }
+        let segments = try result.segments.map {
+            let (start, end) = try times($0.t0Ms, $0.t1Ms)
+            return SpeechNativeSegment(startMS: start, endMS: end, text: $0.text, speaker: $0.speakerId,
                                 firstWord: $0.firstWord, wordCount: $0.nWords)
         }
-        let words = result.words.map {
-            SpeechNativeWord(startMS: $0.t0Ms, endMS: $0.t1Ms, text: $0.text, segmentIndex: $0.segIndex)
+        let words = try result.words.map {
+            let (start, end) = try times($0.t0Ms, $0.t1Ms)
+            return SpeechNativeWord(startMS: start, endMS: end, text: $0.text, segmentIndex: $0.segIndex)
         }
-        let turns = result.speakerSegments.map { SpeechNativeSpeakerTurn(startMS: $0.t0Ms, endMS: $0.t1Ms, speaker: $0.speakerId) }
+        let turns = try result.speakerSegments.map {
+            let (start, end) = try times($0.t0Ms, $0.t1Ms)
+            return SpeechNativeSpeakerTurn(startMS: start, endMS: end, speaker: $0.speakerId)
+        }
         let kind = SpeechNativeTimestampKind(rawValue: String(describing: result.timestampKind)) ?? .unknown
         return SpeechNativeSnapshot(
             timestampKind: kind, text: result.text, committedText: stream?.text.committed ?? result.text, tentativeText: stream?.text.tentative ?? "",
-            language: result.language, revision: update?.revision ?? 0, isFinal: update?.isFinal ?? true,
+            language: result.language ?? profile.detectedLanguage(in: result.rawText), revision: update?.revision ?? 0, isFinal: update?.isFinal ?? true,
             inputReceivedMS: update?.inputReceivedMs ?? Int64(receivedSamples / 16),
             audioCommittedMS: update?.audioCommittedMs ?? Int64(receivedSamples / 16), bufferedMS: update?.bufferedMs ?? 0,
             committedSegments: counts.segments, committedWords: counts.words, segments: segments, words: words, speakerTurns: turns)

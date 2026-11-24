@@ -1,0 +1,325 @@
+{
+  "status": "native checkpoint diagnostic passed; no app activation or release acceptance",
+  "scope": "Four preselected FLEURS clips, fixed and automatic language, offline and 0.5-second native streaming feeds. Not a broad accuracy, dialect, memory or sustained real-time benchmark.",
+  "model": {
+    "repository": "handy-computer/nemotron-3.5-asr-streaming-0.6b-gguf",
+    "revision": "53ce288f69326b415aeef030cfcb02a08a8096dd",
+    "files": [
+      {
+        "path": "LICENSE",
+        "size": 2619,
+        "sha256": "2ab44b68365473c112f5092211a38f231cb23e50de68b75a13369adbd76a74df"
+      },
+      {
+        "path": "NOTICE",
+        "size": 411,
+        "sha256": "e6ffd58bf2373a13db1f59ed9d96399e49b6c97a3e88aca340c054ed55fa4bac"
+      },
+      {
+        "path": "README.md",
+        "size": 50786,
+        "sha256": "63912eb14dcb1e87a85ae256664134dee97a5503675953034d21c1fd0dc48344"
+      },
+      {
+        "path": "nemotron-3.5-asr-streaming-0.6b-Q4_K_M.gguf",
+        "size": 495831520,
+        "sha256": "41c99fa5fb6f3d35f68e79adc3e755eca2232a8d921178bd647b71194792b8fd"
+      }
+    ],
+    "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+  },
+  "native": {
+    "architecture": "parakeet",
+    "backend": "MTL0",
+    "canStream": true,
+    "canDetectLanguage": true,
+    "canStreamWithSpeakers": false,
+    "languages": [
+      "en-US",
+      "en-GB",
+      "es-US",
+      "es-ES",
+      "fr-FR",
+      "fr-CA",
+      "it-IT",
+      "pt-BR",
+      "pt-PT",
+      "nl-NL",
+      "de-DE",
+      "tr-TR",
+      "ru-RU",
+      "ar-AR",
+      "hi-IN",
+      "ja-JP",
+      "ko-KR",
+      "vi-VN",
+      "uk-UA",
+      "pl-PL",
+      "sv-SE",
+      "cs-CZ",
+      "nb-NO",
+      "da-DK",
+      "bg-BG",
+      "fi-FI",
+      "hr-HR",
+      "sk-SK",
+      "zh-CN",
+      "hu-HU",
+      "ro-RO",
+      "et-EE"
+    ],
+    "nativeVersion": "0.4.2",
+    "variant": "nemotron-3.5-asr-streaming-0.6b",
+    "canDiarize": false,
+    "canTranslate": false,
+    "translationTargets": []
+  },
+  "helperSHA256": "43ba4bd330d22798cff29bc00b7ffb53b1be7039cdbc6754f5a9b1eef20ad85b",
+  "hardware": {
+    "model": "Apple M3 Pro",
+    "memoryGiB": 18,
+    "macOS": "27.2.1",
+    "Xcode": "27.2"
+  },
+  "cases": [
+    {
+      "language": "fr",
+      "automatic": false,
+      "streaming": false,
+      "audioSHA256": "f3bcc73d77ba26bb9c312383cc1a56a84a2c3a8eaa93ff321783c2353c6f9790",
+      "CER": 0.0,
+      "validInputRelativeTimes": true,
+      "languageTag": "fr-FR",
+      "seconds": 0.2236737909988733,
+      "nativeTimestampKind": "token",
+      "finalWordCount": 20,
+      "nonemptyIncrementalUpdates": 0
+    },
+    {
+      "language": "fr",
+      "automatic": false,
+      "streaming": true,
+      "audioSHA256": "f3bcc73d77ba26bb9c312383cc1a56a84a2c3a8eaa93ff321783c2353c6f9790",
+      "CER": 0.0,
+      "validInputRelativeTimes": true,
+      "languageTag": "fr-FR",
+      "seconds": 0.33921720900252694,
+      "nativeTimestampKind": "token",
+      "finalWordCount": 0,
+      "nonemptyIncrementalUpdates": 15
+    },
+    {
+      "language": "fr",
+      "automatic": true,
+      "streaming": false,
+      "audioSHA256": "f3bcc73d77ba26bb9c312383cc1a56a84a2c3a8eaa93ff321783c2353c6f9790",
+      "CER": 0.0,
+      "validInputRelativeTimes": true,
+      "languageTag": "fr-FR",
+      "seconds": 0.21150995800053352,
+      "nativeTimestampKind": "token",
+      "finalWordCount": 20,
+      "nonemptyIncrementalUpdates": 0
+    },
+    {
+      "language": "fr",
+      "automatic": true,
+      "streaming": true,
+      "audioSHA256": "f3bcc73d77ba26bb9c312383cc1a56a84a2c3a8eaa93ff321783c2353c6f9790",
+      "CER": 0.0,
+      "validInputRelativeTimes": true,
+      "languageTag": "fr-FR",
+      "seconds": 0.33924641699923086,
+      "nativeTimestampKind": "token",
+      "finalWordCount": 0,
+      "nonemptyIncrementalUpdates": 15
+    },
+    {
+      "language": "de",
+      "automatic": false,
+      "streaming": false,
+      "audioSHA256": "5ced4640ec223bd9f59601722534acbb2f47087c71167529c513741a86cdae01",
+      "CER": 0.0,
+      "validInputRelativeTimes": true,
+      "languageTag": "de-DE",
+      "seconds": 0.2139945830022043,
+      "nativeTimestampKind": "token",
+      "finalWordCount": 21,
+      "nonemptyIncrementalUpdates": 0
+    },
+    {
+      "language": "de",
+      "automatic": false,
+      "streaming": true,
+      "audioSHA256": "5ced4640ec223bd9f59601722534acbb2f47087c71167529c513741a86cdae01",
+      "CER": 0.0,
+      "validInputRelativeTimes": true,
+      "languageTag": "de-DE",
+      "seconds": 0.3720490410014463,
+      "nativeTimestampKind": "token",
+      "finalWordCount": 0,
+      "nonemptyIncrementalUpdates": 17
+    },
+    {
+      "language": "de",
+      "automatic": true,
+      "streaming": false,
+      "audioSHA256": "5ced4640ec223bd9f59601722534acbb2f47087c71167529c513741a86cdae01",
+      "CER": 0.0,
+      "validInputRelativeTimes": true,
+      "languageTag": "de-DE",
+      "seconds": 0.21777212499728194,
+      "nativeTimestampKind": "token",
+      "finalWordCount": 21,
+      "nonemptyIncrementalUpdates": 0
+    },
+    {
+      "language": "de",
+      "automatic": true,
+      "streaming": true,
+      "audioSHA256": "5ced4640ec223bd9f59601722534acbb2f47087c71167529c513741a86cdae01",
+      "CER": 0.0,
+      "validInputRelativeTimes": true,
+      "languageTag": "de-DE",
+      "seconds": 0.3495727920017089,
+      "nativeTimestampKind": "token",
+      "finalWordCount": 0,
+      "nonemptyIncrementalUpdates": 17
+    },
+    {
+      "language": "es",
+      "automatic": false,
+      "streaming": false,
+      "audioSHA256": "24624100418fb70f3947df1912c4b64c6a7ae67a84936c98e3eb9e0162055a6f",
+      "CER": 0.0,
+      "validInputRelativeTimes": true,
+      "languageTag": "es-US",
+      "seconds": 0.19734929100013687,
+      "nativeTimestampKind": "token",
+      "finalWordCount": 23,
+      "nonemptyIncrementalUpdates": 0
+    },
+    {
+      "language": "es",
+      "automatic": false,
+      "streaming": true,
+      "audioSHA256": "24624100418fb70f3947df1912c4b64c6a7ae67a84936c98e3eb9e0162055a6f",
+      "CER": 0.0,
+      "validInputRelativeTimes": true,
+      "languageTag": "es-US",
+      "seconds": 0.3207023750001099,
+      "nativeTimestampKind": "token",
+      "finalWordCount": 0,
+      "nonemptyIncrementalUpdates": 14
+    },
+    {
+      "language": "es",
+      "automatic": true,
+      "streaming": false,
+      "audioSHA256": "24624100418fb70f3947df1912c4b64c6a7ae67a84936c98e3eb9e0162055a6f",
+      "CER": 0.0,
+      "validInputRelativeTimes": true,
+      "languageTag": "es-ES",
+      "seconds": 0.1949873329976981,
+      "nativeTimestampKind": "token",
+      "finalWordCount": 23,
+      "nonemptyIncrementalUpdates": 0
+    },
+    {
+      "language": "es",
+      "automatic": true,
+      "streaming": true,
+      "audioSHA256": "24624100418fb70f3947df1912c4b64c6a7ae67a84936c98e3eb9e0162055a6f",
+      "CER": 0.0,
+      "validInputRelativeTimes": true,
+      "languageTag": "es-ES",
+      "seconds": 0.31128904100114596,
+      "nativeTimestampKind": "token",
+      "finalWordCount": 0,
+      "nonemptyIncrementalUpdates": 14
+    },
+    {
+      "language": "ja",
+      "automatic": false,
+      "streaming": false,
+      "audioSHA256": "26b6cd491b5d52cf05d89207cb88499cdaba89749aebc29c8f216e834e3d9071",
+      "CER": 0.022222222222222223,
+      "validInputRelativeTimes": true,
+      "languageTag": "ja-JP",
+      "seconds": 0.21357058299690834,
+      "nativeTimestampKind": "token",
+      "finalWordCount": 2,
+      "nonemptyIncrementalUpdates": 0
+    },
+    {
+      "language": "ja",
+      "automatic": false,
+      "streaming": true,
+      "audioSHA256": "26b6cd491b5d52cf05d89207cb88499cdaba89749aebc29c8f216e834e3d9071",
+      "CER": 0.022222222222222223,
+      "validInputRelativeTimes": true,
+      "languageTag": "ja-JP",
+      "seconds": 0.3393756250006845,
+      "nativeTimestampKind": "token",
+      "finalWordCount": 0,
+      "nonemptyIncrementalUpdates": 15
+    },
+    {
+      "language": "ja",
+      "automatic": true,
+      "streaming": false,
+      "audioSHA256": "26b6cd491b5d52cf05d89207cb88499cdaba89749aebc29c8f216e834e3d9071",
+      "CER": 0.022222222222222223,
+      "validInputRelativeTimes": true,
+      "languageTag": "ja-JP",
+      "seconds": 0.2016479169978993,
+      "nativeTimestampKind": "token",
+      "finalWordCount": 2,
+      "nonemptyIncrementalUpdates": 0
+    },
+    {
+      "language": "ja",
+      "automatic": true,
+      "streaming": true,
+      "audioSHA256": "26b6cd491b5d52cf05d89207cb88499cdaba89749aebc29c8f216e834e3d9071",
+      "CER": 0.022222222222222223,
+      "validInputRelativeTimes": true,
+      "languageTag": "ja-JP",
+      "seconds": 0.34396195800218266,
+      "nativeTimestampKind": "token",
+      "finalWordCount": 0,
+      "nonemptyIncrementalUpdates": 15
+    }
+  ],
+  "remaining": [
+    "App engine, per-lane ownership, packaging and shared resource admission",
+    "Long-file stitching, sustained live capture and lifecycle acceptance",
+    "Broader multilingual quality and hardware measurements",
+    "Stream output has no structured word/segment alignment; do not invent it"
+  ],
+  "findings": [
+    "Native detected-language accessor is empty; recover only supported, unambiguous model-emitted locale tags from rawText.",
+    "Fixed-language prompt can condition the emitted locale; the tag is not evidence of regional accent detection.",
+    "Native encoder-frame timings can extend past final PCM; clip genuine alignment to the input duration.",
+    "No catalog entry enabled.",
+    "The final source additionally clarifies that Nemotron has no integrated speaker support; the accepted 16 decoding cases never request speakers."
+  ],
+  "sourceFiles": [
+    {
+      "path": "Packages/SpeechNative/Sources/EarmarkSpeechWorker/main.swift",
+      "sha256": "2c1476cdadc98b6a9506c78bdb388ea646a635ef68e60b2167ed7059bbda0b4f"
+    },
+    {
+      "path": "Packages/SpeechNative/Sources/SpeechNative/NativeSpeechProfile.swift",
+      "sha256": "e95bd888ab00c0394a09f8526b1a03344266661bdf8ab018444169196cd46977"
+    },
+    {
+      "path": "Packages/SpeechNative/Sources/SpeechNative/SpeechWorkerClient.swift",
+      "sha256": "77900788a8bf0c8520f167f38670903c8f9cd054466cbd2c416724c145953f67"
+    },
+    {
+      "path": "scripts/research/probe-nemotron35.py",
+      "sha256": "3fada348dc203357316ecc64bc2dc472ab04900aa0fcf4c3d3b68638bc4dd8b4"
+    }
+  ]
+}

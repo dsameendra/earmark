@@ -40,6 +40,9 @@ public actor SpeechWorkerClient {
 
     private func startLocked(modelFile: URL, profile: String) async throws -> SpeechWorkerReady {
         try Task.checkCancellation()
+        guard let selected = NativeSpeechProfile(rawValue: profile) else {
+            throw SpeechWireError.invalid("Unsupported native speech profile.")
+        }
         if self.modelFile == modelFile, self.profile == profile, process?.isRunning == true, let readiness { return readiness }
         stopLocked()
         guard executable.isFileURL, modelFile.isFileURL else { throw SpeechWireError.invalid("Native workers and models must be local files.") }
@@ -73,8 +76,9 @@ public actor SpeechWorkerClient {
         do {
             try child.run()
             let reply = try await exchange(data: nil, expectedID: 0)
-            guard let ready = reply.ready, ready.nativeVersion == "0.4.2", ready.architecture == "parakeet",
-                  ready.variant == "multitalker-parakeet-streaming-0.6b-v1" else {
+            guard let ready = reply.ready, ready.nativeVersion == "0.4.2",
+                  selected.matches(architecture: ready.architecture, variant: ready.variant),
+                  Set(ready.languages) == Set(selected.languages) else {
                 throw SpeechWireError.invalid("The speech helper loaded an unexpected native profile.")
             }
             self.modelFile = modelFile; self.profile = profile; readiness = ready; nextID = 0

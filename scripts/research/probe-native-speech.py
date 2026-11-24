@@ -38,8 +38,8 @@ def distance(a, b):
 
 
 class Worker:
-    def __init__(self, helper, model, errors):
-        self.process = subprocess.Popen([str(helper), str(model), 'multitalker-v1'],
+    def __init__(self, helper, model, errors, profile='multitalker-v1'):
+        self.process = subprocess.Popen([str(helper), str(model), profile],
                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors)
         self.selector = selectors.DefaultSelector()
         self.selector.register(self.process.stdout, selectors.EVENT_READ)

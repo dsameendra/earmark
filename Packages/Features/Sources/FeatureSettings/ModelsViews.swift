@@ -65,6 +65,10 @@ struct ModelRowView: View {
             HStack(alignment: .top, spacing: DSSpacing.md) {
                 VStack(alignment: .leading, spacing: DSSpacing.xs) {
                     Text(row.descriptor.displayName).font(DSTypography.headline).fixedSize(horizontal: false, vertical: true)
+                    if compact, row.descriptor.runtime != .appleAsset {
+                        Text(compactSummary).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     if !compact, !row.descriptor.notes.isEmpty {
                         Text(row.descriptor.notes).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
@@ -72,6 +76,12 @@ struct ModelRowView: View {
                 }
                 Spacer(minLength: DSSpacing.md)
                 HStack(spacing: DSSpacing.sm) { actions }.fixedSize()
+            }
+            if isSystemTranslation {
+                Text("Choose a language pair in Live captions or a transcript’s Translate action to prepare Apple language packs.")
+                    .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("models.systemTranslation.instructions")
             }
             if isActive || row.descriptor.isCustom || !recommendations.isEmpty { badges }
             if let why = recommendations.first?.why {
@@ -90,6 +100,13 @@ struct ModelRowView: View {
         .accessibilityIdentifier("models.row.\(row.id.rawValue)")
     }
 
+    private var isSystemTranslation: Bool { row.descriptor.runtime == .appleAsset && row.descriptor.kind == .translation }
+    private var compactSummary: String {
+        var parts = [ModelFormat.bytes(row.descriptor.sizeBytes), ModelFormat.licenseBadge(row.descriptor.license).text]
+        if row.descriptor.isExperimental { parts.append("Experimental") }
+        return parts.joined(separator: " · ")
+    }
+
     private var details: some View {
         VStack(alignment: .leading, spacing: DSSpacing.sm) {
             if compact, !row.descriptor.notes.isEmpty {
@@ -105,9 +122,15 @@ struct ModelRowView: View {
 
     private var badges: some View {
         WrappingChips(spacing: DSSpacing.xs) {
-            ForEach(recommendations, id: \.useCase) { recommendation in
-                StatusPill(LocalizedStringKey(recommendation.badgeText), systemImage: "star.fill", tone: .success)
-                    .accessibilityIdentifier("models.recommended.\(row.id.rawValue).\(recommendation.useCase.rawValue)")
+            if compact, recommendations.count > 1 {
+                StatusPill("Recommended", systemImage: "star.fill", tone: .success)
+                    .accessibilityLabel(recommendations.map(\.badgeText).joined(separator: ", "))
+                    .accessibilityIdentifier("models.recommended.\(row.id.rawValue)")
+            } else {
+                ForEach(recommendations, id: \.useCase) { recommendation in
+                    StatusPill(LocalizedStringKey(recommendation.badgeText), systemImage: "star.fill", tone: .success)
+                        .accessibilityIdentifier("models.recommended.\(row.id.rawValue).\(recommendation.useCase.rawValue)")
+                }
             }
             if isActive { StatusPill("Default", systemImage: "checkmark", tone: .success) }
             if row.descriptor.isCustom { StatusPill("Custom", tone: .info) }
@@ -150,33 +173,42 @@ struct ModelRowView: View {
     }
 
     @ViewBuilder private var actions: some View {
-        switch row.state {
-        case .notInstalled:
-            if row.descriptor.isRunnable {
-                Button("Download", symbol: .download, action: onDownload).accessibilityLabel(
-                    "Download \(row.descriptor.displayName)"
-                ).accessibilityIdentifier("models.download.\(row.id.rawValue)")
-            } else {
-                unavailableLabel
+        if isSystemTranslation {
+            Text("Managed by macOS").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                .accessibilityIdentifier("models.systemTranslation.managed")
+        } else {
+            switch row.state {
+            case .notInstalled:
+                if row.descriptor.isRunnable {
+                    Button("Download", symbol: .download, action: onDownload).accessibilityLabel(
+                        "Download \(row.descriptor.displayName)"
+                    ).accessibilityIdentifier("models.download.\(row.id.rawValue)")
+                } else {
+                    unavailableLabel
+                }
+            case .downloading:
+                Button("Pause", systemImage: "pause.circle", action: onPause).labelStyle(.iconOnly).accessibilityLabel("Pause download").accessibilityIdentifier("models.pause.\(row.id.rawValue)")
+                Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download").accessibilityIdentifier("models.cancel.\(row.id.rawValue)")
+            case .paused:
+                if row.descriptor.isRunnable {
+                    Button("Resume", symbol: .play, action: onResume).labelStyle(.iconOnly).accessibilityLabel("Resume download").accessibilityIdentifier("models.resume.\(row.id.rawValue)")
+                } else { unavailableLabel }
+                Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download").accessibilityIdentifier("models.cancel.\(row.id.rawValue)")
+            case .installed:
+                if row.descriptor.runtime == .appleAsset {
+                    Text("Managed by macOS").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                } else {
+                    Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)  // stock-chrome: destructive action
+                        .labelStyle(.iconOnly)
+                        .accessibilityLabel("Delete \(row.descriptor.displayName)").accessibilityIdentifier("models.delete.\(row.id.rawValue)")
+                }
+            case .failed:
+                if row.descriptor.isRunnable {
+                    Button("Retry", symbol: .retry, action: onDownload).accessibilityIdentifier("models.retry.\(row.id.rawValue)")
+                } else { unavailableLabel }
+                Button("Cancel", systemImage: "xmark.circle", action: onCancel).accessibilityLabel("Cancel and discard \(row.descriptor.displayName)")
+                    .accessibilityIdentifier("models.cancel.\(row.id.rawValue)")
             }
-        case .downloading:
-            Button("Pause", systemImage: "pause.circle", action: onPause).labelStyle(.iconOnly).accessibilityLabel("Pause download").accessibilityIdentifier("models.pause.\(row.id.rawValue)")
-            Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download").accessibilityIdentifier("models.cancel.\(row.id.rawValue)")
-        case .paused:
-            if row.descriptor.isRunnable {
-                Button("Resume", symbol: .play, action: onResume).labelStyle(.iconOnly).accessibilityLabel("Resume download").accessibilityIdentifier("models.resume.\(row.id.rawValue)")
-            } else { unavailableLabel }
-            Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download").accessibilityIdentifier("models.cancel.\(row.id.rawValue)")
-        case .installed:
-            Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)  // stock-chrome: destructive action
-                .labelStyle(.iconOnly)
-                .accessibilityLabel("Delete \(row.descriptor.displayName)").accessibilityIdentifier("models.delete.\(row.id.rawValue)")
-        case .failed:
-            if row.descriptor.isRunnable {
-                Button("Retry", symbol: .retry, action: onDownload).accessibilityIdentifier("models.retry.\(row.id.rawValue)")
-            } else { unavailableLabel }
-            Button("Cancel", systemImage: "xmark.circle", action: onCancel).accessibilityLabel("Cancel and discard \(row.descriptor.displayName)")
-                .accessibilityIdentifier("models.cancel.\(row.id.rawValue)")
         }
     }
 
@@ -199,8 +231,12 @@ struct ModelRowView: View {
         case .paused(let fraction):
             ProgressRow(title: "Paused", detail: "\(Int(fraction * 100))%", fraction: fraction)
         case .installed(let bytes):
+            if row.descriptor.runtime == .appleAsset {
+                Text("System-managed assets available").font(DSTypography.caption).foregroundStyle(DSColor.success)
+            } else {
             Label("Installed · \(ModelFormat.bytes(bytes)) on disk", systemImage: "checkmark.circle.fill")
                 .font(DSTypography.caption).foregroundStyle(DSColor.success)
+            }
         case .failed(let reason):
             Label(reason, systemImage: "exclamationmark.triangle.fill").font(DSTypography.caption).foregroundStyle(DSColor.danger)
                 .fixedSize(horizontal: false, vertical: true)

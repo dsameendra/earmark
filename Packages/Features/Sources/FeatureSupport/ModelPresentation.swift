@@ -76,7 +76,7 @@ public enum ModelCapabilitySummary {
     public static func chips(for model: ModelDescriptor) -> [ModelCapabilityChip] {
         let c = model.capabilities
         var chips: [ModelCapabilityChip] = []
-        if model.kind == .asr || model.kind == .translation {
+        if model.kind == .asr || (model.kind == .translation && !model.languages.isEmpty) {
             let count = Set(model.languages.map(\.primary)).count
             chips.append(
                 ModelCapabilityChip(
@@ -111,10 +111,14 @@ public enum ModelCapabilitySummary {
         if c.translation { chips.append(ModelCapabilityChip(id: "translation", text: "Translation", symbol: "character.bubble", tone: .positive)) }
         if let speed = c.speed { chips.append(ModelCapabilityChip(id: "speed", text: speedText(speed), symbol: "speedometer")) }
         if let memory = c.memory { chips.append(ModelCapabilityChip(id: "memory", text: memoryText(memory), symbol: "memorychip")) }
-        chips.append(
-            ModelCapabilityChip(
+        if model.runtime == .appleAsset {
+            chips.append(ModelCapabilityChip(id: "size", text: "System-managed", symbol: "internaldrive",
+                                              spoken: "Language assets managed by macOS; size depends on the language"))
+        } else {
+            chips.append(ModelCapabilityChip(
                 id: "size", text: ByteCountFormatter.string(fromByteCount: model.sizeBytes, countStyle: .file), symbol: "internaldrive",
                 spoken: "Download size \(ByteCountFormatter.string(fromByteCount: model.sizeBytes, countStyle: .file))"))
+        }
         chips.append(licenseChip(model.license))
         if model.isExperimental {
             chips.append(ModelCapabilityChip(id: "experimental", text: "Experimental", symbol: "flask", tone: .warning))
@@ -198,7 +202,7 @@ public enum ModelRecommendations {
     }
 
     static func why(_ model: ModelDescriptor, useCase: UseCase, tier: HardwareTier, languages: [LanguageCode]) -> String {
-        if model.runtime == .appleAsset { return "Built into macOS: nothing to download, fast and private." }
+        if model.runtime == .appleAsset { return "Uses macOS language assets; available languages are checked on this Mac." }
         if model.isExperimental, !languages.isEmpty {
             let names = languages.map(ModelCapabilitySummary.languageName).joined(separator: ", ")
             return "The best option for \(names), the only one that supports it."
@@ -245,7 +249,9 @@ public struct ModelPickerEntry: Identifiable, Equatable, Sendable {
     public var disabledReason: String? {
         availability.isOK ? nil : availability.reasons.map(\.message).joined(separator: " · ")
     }
-    public var sizeText: String { ByteCountFormatter.string(fromByteCount: descriptor.sizeBytes, countStyle: .file) }
+    public var sizeText: String {
+        descriptor.runtime == .appleAsset ? "Managed by macOS" : ByteCountFormatter.string(fromByteCount: descriptor.sizeBytes, countStyle: .file)
+    }
     /// Downloaded / not downloaded / progress, as words.
     public var stateText: String {
         switch state {

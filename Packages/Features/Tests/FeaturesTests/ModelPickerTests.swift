@@ -129,6 +129,15 @@ private func catalog() -> [ModelDescriptor] {
         #expect(!small.contains("speed"))  // unmeasured stays absent, nothing invented
     }
 
+    @Test func systemTranslationUsesDynamicLanguagesAndSystemStorageLabels() {
+        let model = ModelDescriptor(id: "apple/translation", displayName: "Apple Translation", kind: .translation,
+                                    runtime: .appleAsset, engine: "apple.translation", languages: [], sizeBytes: 0,
+                                    license: LicenseInfo(spdx: "LicenseRef-Apple-System"), capabilities: ModelCapabilities(translation: true))
+        let chips = ModelCapabilitySummary.chips(for: model)
+        #expect(!chips.contains { $0.id == "languages" })
+        #expect(chips.first { $0.id == "size" }?.text == "System-managed")
+    }
+
     @Test func licenceAndExperimentalWarningsAreExplicit() {
         let nonCommercial = asr(
             "nc", ["en"], caps: ModelCapabilities(), license: LicenseInfo(spdx: "CC-BY-NC-4.0", isNonCommercial: true))

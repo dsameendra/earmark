@@ -228,6 +228,7 @@ public struct AppleSpeechAssetProvider: AppleAssetProviding {
     }
 
     public func isInstalled(_ model: ModelID) async -> Bool {
+        guard model == RoutingTargets.appleSpeech else { return false }
         let language = await effectiveLanguage()
         let status = await engine.assetStatus(for: language)
         readiness?.set(status, for: language)
@@ -235,6 +236,9 @@ public struct AppleSpeechAssetProvider: AppleAssetProviding {
     }
 
     public func install(_ model: ModelID, progress: @escaping @Sendable (Double) -> Void) async throws {
+        guard model == RoutingTargets.appleSpeech else {
+            throw AppError.modelDownloadFailed(model, reason: "Choose a language pair in Live captions or Translate to prepare Apple Translation packs.")
+        }
         let language = await effectiveLanguage()
         try await engine.installAssets(for: language, progress: progress)
         readiness?.set(await engine.assetStatus(for: language), for: language)

@@ -125,6 +125,15 @@ struct AppleSpeechAssetTests {
         #expect(pick("fr", installed: [], preferred: "en_US") == nil)
     }
 
+    @Test("translation packs cannot inherit speech installation state or install speech assets")
+    func speechProviderRejectsTranslationModel() async throws {
+        let backend = FakeSpeechBackend()
+        let provider = AppleSpeechAssetProvider(engine: AppleSpeechEngine(backend: backend), language: { "en" })
+        #expect(await provider.isInstalled("apple/translation") == false)
+        await #expect(throws: AppError.self) { try await provider.install("apple/translation") { _ in } }
+        #expect(backend.installRequests.isEmpty && backend.reserved.isEmpty)
+    }
+
     @Test("provider reports the system-language model state and installs through the engine")
     func provider() async throws {
         let backend = FakeSpeechBackend()

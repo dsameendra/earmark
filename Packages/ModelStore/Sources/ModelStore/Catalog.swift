@@ -18,7 +18,6 @@ public enum BuiltInCatalog {
         "en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "uk", "cs", "sk", "sl", "hr", "bg", "ro", "hu", "el", "sv", "da", "fi",
         "et", "lv", "lt", "mt",
     ]
-    static let appleTranslationLanguages: Set<LanguageCode> = whisperLanguages.subtracting(["he"])
 
     private static func hf(_ path: String) -> URL { URL(string: "https://huggingface.co/\(path)")! }
     private static let mb: Int64 = 1_000_000
@@ -142,9 +141,9 @@ public enum BuiltInCatalog {
             downloadInclude: ["Sortformer_v2.mlmodelc", "SortformerNvidiaLow_v2.mlmodelc"]),
         ModelDescriptor(
             id: "apple/translation", displayName: "Apple Translation", kind: .translation, runtime: .appleAsset,
-            engine: "apple.translation", languages: appleTranslationLanguages, sizeBytes: 0,
+            engine: "apple.translation", languages: [], sizeBytes: 0,
             license: LicenseInfo(spdx: "LicenseRef-Apple-System"), minTier: .tier8,
-            notes: "System language packs; does not support Sinhala.",
+            notes: "System language packs. Exact language pairs and preparation are checked by macOS.",
             capabilities: ModelCapabilities(live: false, file: true, translation: true)),
         ModelDescriptor(
             id: "nllb/200-distilled-600M", displayName: "NLLB-200 distilled 600M (CTranslate2 int8)", kind: .translation,

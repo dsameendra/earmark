@@ -7,6 +7,9 @@ import Testing
 private let parakeetFolder = ProcessInfo.processInfo.environment["EARMARK_PARAKEET_MODEL"]
 private let parakeetUltraFolder = ProcessInfo.processInfo.environment["EARMARK_PARAKEET_ULTRA_MODEL"]
 private let parakeetReduxFolder = ProcessInfo.processInfo.environment["EARMARK_PARAKEET_REDUX_MODEL"]
+private let speechHelper = ProcessInfo.processInfo.environment["EARMARK_SPEECH_HELPER"]
+private let nemotronFolder = ProcessInfo.processInfo.environment["EARMARK_NEMOTRON_MODEL"]
+private let canaryFolder = ProcessInfo.processInfo.environment["EARMARK_CANARY_MODEL"]
 private let cohereFolder = ProcessInfo.processInfo.environment["EARMARK_COHERE_MODEL"]
 
 @Suite("Native speech checkpoint acceptance", .serialized)
@@ -76,5 +79,26 @@ struct NativeSpeechAcceptanceTests {
     func cohere() async throws {
         let folder = URL(fileURLWithPath: try #require(cohereFolder))
         try await evaluate(CohereEngine(locate: { _ in folder }), model: CohereEngine.modelID)
+    }
+
+    private func nativeEngine(_ folder: String?) throws -> NativeSpeechEngine {
+        let model = URL(fileURLWithPath: try #require(folder))
+        let helper = URL(fileURLWithPath: try #require(speechHelper))
+        return NativeSpeechEngine(locate: { _ in model }, helper: { helper })
+    }
+
+    @Test("Nemotron 3.5 transcribes the real file through the native worker", .enabled(if: nemotronFolder != nil && speechHelper != nil), .timeLimit(.minutes(5)))
+    func nemotronFile() async throws {
+        try await evaluate(try nativeEngine(nemotronFolder), model: NativeSpeechEngine.nemotronModel)
+    }
+
+    @Test("Nemotron 3.5 streams real speech with native partials and finals", .enabled(if: nemotronFolder != nil && speechHelper != nil), .timeLimit(.minutes(5)))
+    func nemotronStreamed() async throws {
+        try await evaluate(try nativeEngine(nemotronFolder), model: NativeSpeechEngine.nemotronModel, streamed: true)
+    }
+
+    @Test("Canary v2 transcribes the real file through the native worker", .enabled(if: canaryFolder != nil && speechHelper != nil), .timeLimit(.minutes(5)))
+    func canaryFile() async throws {
+        try await evaluate(try nativeEngine(canaryFolder), model: NativeSpeechEngine.canaryModel)
     }
 }

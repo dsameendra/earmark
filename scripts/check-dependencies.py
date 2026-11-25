@@ -7,7 +7,7 @@ approved={
  'AudioCapture':{'AppCore'},'Permissions':{'AppCore'},'Processing':{'AppCore'},'Export':{'AppCore'},
  'Meetings':{'AppCore'},'Translation':{'AppCore','NativeWorkerKit','TextGenerationNative','ModelStore'},'NLLBNative':{'NativeWorkerKit','ModelStore'},'SpeechNative':{'NativeWorkerKit'},'NativeWorkerKit':set(),'TextGenerationNative':{'NativeWorkerKit','ModelFormats'},'ModelFormats':set(),
  'LiveCaptions':{'AppCore','DesignSystem'},'Dictation':{'AppCore','DesignSystem','Features'},
- 'Transcription':{'AppCore','AudioCapture','ModelStore'},'Diarization':{'AppCore','AudioCapture','ModelStore'},
+ 'Transcription':{'AppCore','AudioCapture','ModelStore','SpeechNative'},'Diarization':{'AppCore','AudioCapture','ModelStore'},
  'QwenASR':{'AppCore','AudioCapture'},
  'Features':{'AppCore','DesignSystem','Processing','LiveCaptions','Export'},
  'Jobs':{'AppCore','Persistence','ModelStore','AudioCapture','Transcription','Processing','Export','Diarization'},

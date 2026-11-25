@@ -34,6 +34,8 @@ public enum BuiltInCatalog {
         static let sortformer = "ae9a27ab45dc0aa3abede7d2d6bad2b7a69aa6d1"
         static let parakeet = "7dd20fe6b1797d35f5e3307e8b1732d9a178edfe"
         static let madlad = "bb45f1851bf13a0b8f4fcd9ecadf2cdb7cf22439"
+        static let nemotron = "53ce288f69326b415aeef030cfcb02a08a8096dd"
+        static let canary = "692af661b140183b60e44f55ad03c59e1e77d078"
         static let cohere = "e1ce10d4cae2ca9a8b36cef5786fa3660f070050"
         static let parakeetUltra = "95eaa59a39d4394f047a4dc5cce480388a60d1b6"
         static let parakeetRedux = "8c5ef97a29cd120dc76b354b3f22b7fec3b486f9"
@@ -217,6 +219,46 @@ public enum BuiltInCatalog {
             notes: "File transcription in 14 languages with high accuracy. Choose the spoken language explicitly; no word timing and no live captions. Large download and memory use: best on Macs with 16 GB or more.",
             capabilities: ModelCapabilities(live: false, file: true, wordTimestamps: false, autoDetectLanguage: false),
             downloadInclude: ["q8/cohere_encoder.mlmodelc", "q8/cohere_decoder_cache_external_v3.mlmodelc", "vocab.json"]),
+        ModelDescriptor(
+            id: "native/nemotron-3.5-asr-q4", displayName: "Nemotron 3.5 Streaming (0.6B, Q4)", kind: .asr, runtime: .other,
+            engine: "native.speech",
+            languages: ["en", "es", "fr", "it", "pt", "nl", "de", "tr", "ru", "ar", "hi", "ja", "ko", "vi", "uk", "pl", "sv", "cs", "nb", "da", "bg", "fi", "hr", "sk", "zh", "hu", "ro", "et"],
+            sizeBytes: 495_885_336,
+            license: LicenseInfo(spdx: "LicenseRef-OpenMDW-1.1", attribution: "NVIDIA Nemotron 3.5 ASR Streaming under the OpenMDW 1.1 licence; GGUF conversion by handy-computer. Weights were converted and quantized, not retrained."),
+            minTier: .tier8, sourceURL: hf("handy-computer/nemotron-3.5-asr-streaming-0.6b-gguf/tree/\(Revision.nemotron)"),
+            isExperimental: true,
+            notes: "Native streaming captions and file transcription for the 28 languages NVIDIA lists as production-ready. Choose the spoken language explicitly. Live text arrives without word times and may lack punctuation; file transcription is segment-level.",
+            capabilities: ModelCapabilities(live: true, file: true, wordTimestamps: false, autoDetectLanguage: false, streaming: .native),
+            downloadInclude: ["nemotron-3.5-asr-streaming-0.6b-Q4_K_M.gguf", "LICENSE", "NOTICE", "README.md"],
+            provenance: ModelProvenance(
+                repository: "handy-computer/nemotron-3.5-asr-streaming-0.6b-gguf", revision: Revision.nemotron,
+                profileID: "native.speech.nemotron-3.5", profileVersion: 1,
+                artifacts: [
+                    ModelArtifactDigest(path: "LICENSE", bytes: 2619, sha256: "2ab44b68365473c112f5092211a38f231cb23e50de68b75a13369adbd76a74df"),
+                    ModelArtifactDigest(path: "NOTICE", bytes: 411, sha256: "e6ffd58bf2373a13db1f59ed9d96399e49b6c97a3e88aca340c054ed55fa4bac"),
+                    ModelArtifactDigest(path: "README.md", bytes: 50786, sha256: "63912eb14dcb1e87a85ae256664134dee97a5503675953034d21c1fd0dc48344"),
+                    ModelArtifactDigest(path: "nemotron-3.5-asr-streaming-0.6b-Q4_K_M.gguf", bytes: 495_831_520, sha256: "41c99fa5fb6f3d35f68e79adc3e755eca2232a8d921178bd647b71194792b8fd"),
+                ], validation: .nativeInferenceChecked)),
+        ModelDescriptor(
+            id: "native/canary-1b-v2-q4", displayName: "Canary 1B v2 (Q4)", kind: .asr, runtime: .other,
+            engine: "native.speech",
+            languages: ["bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"],
+            sizeBytes: 735_524_297,
+            license: LicenseInfo(spdx: "CC-BY-4.0", attribution: "NVIDIA Canary 1B v2, CC BY 4.0; GGUF conversion by handy-computer. Weights were converted and quantized, not retrained."),
+            minTier: .tier8, sourceURL: hf("handy-computer/canary-1b-v2-gguf/tree/\(Revision.canary)"),
+            isExperimental: true,
+            notes: "File transcription in 25 European languages with punctuation. Choose the spoken language explicitly. Recognition only: direct speech translation is not offered, and there is no word timing or live captioning.",
+            capabilities: ModelCapabilities(live: false, file: true, wordTimestamps: false, autoDetectLanguage: false),
+            downloadInclude: ["canary-1b-v2-Q4_K_M.gguf", "LICENSE", "NOTICE", "README.md"],
+            provenance: ModelProvenance(
+                repository: "handy-computer/canary-1b-v2-gguf", revision: Revision.canary,
+                profileID: "native.speech.canary-v2", profileVersion: 1,
+                artifacts: [
+                    ModelArtifactDigest(path: "LICENSE", bytes: 18657, sha256: "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"),
+                    ModelArtifactDigest(path: "NOTICE", bytes: 392, sha256: "5cca40af7fa52c14821ca38e35d5758f70b81aca00afc81a9226a4577473144e"),
+                    ModelArtifactDigest(path: "README.md", bytes: 28800, sha256: "3d0253178516d65ca7af5ae78f4ccdf2074942a88b31bf80daea4ceb4a19b5e7"),
+                    ModelArtifactDigest(path: "canary-1b-v2-Q4_K_M.gguf", bytes: 735_476_448, sha256: "49e0a67e219bec95a254c2348460b6350e75a7ac6f93a131e48244b4c7cb53b9"),
+                ], validation: .nativeInferenceChecked)),
         parakeetVariant(
             id: "fluidaudio/parakeet-ultra", name: "Parakeet Ultra", repo: "parakeet-ultra-coreml",
             revision: Revision.parakeetUltra, size: 632_165_613, minTier: .tier8,

@@ -6,6 +6,7 @@ let package = Package(
     platforms: [.macOS(.v26)],
     products: [
         .library(name: "SpeechNative", targets: ["SpeechNative"]),
+        .library(name: "TranscribeCpp", targets: ["TranscribeCpp"]),
         .executable(name: "EarmarkSpeechWorker", targets: ["EarmarkSpeechWorker"]),
     ],
     dependencies: [.package(path: "../NativeWorkerKit")],

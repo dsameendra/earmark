@@ -162,14 +162,19 @@ def verify_app(app: Path, developer_id: bool = False, self_signed: bool = False)
     modern_text = tuple(int(part) for part in (info["CFBundleShortVersionString"].split(".") + ["0", "0"])[:3]) >= (1, 1, 0)
     if modern_text:
         helpers.append(app / "Contents/Helpers/EarmarkTextWorker")
+        helpers.append(app / "Contents/Helpers/EarmarkSpeechWorker")
         native_frameworks.append(app / "Contents/Frameworks/EarmarkLlama.framework")
-        require(native_frameworks[0].is_dir(), "native text framework is absent")
+        native_frameworks.append(app / "Contents/Frameworks/CTranscribe.framework")
+        require(all(framework.is_dir() for framework in native_frameworks), "a native model framework is absent")
+        require((app / "Contents/Resources/NativeSpeechRuntimeLicences.txt").is_file(), "native speech licence notice is absent")
         require((app / "Contents/Resources/NativeTextRuntimeLicences.txt").is_file(), "native text licence notice is absent")
         main_dependencies = command("/usr/bin/otool", "-L", str(main))
         require("EarmarkLlama.framework" not in main_dependencies and "CTranscribe.framework" not in main_dependencies,
                 "isolated native model libraries must not be linked into the app executable")
-        require("@rpath/EarmarkLlama.framework/Versions/A/EarmarkLlama" in command("/usr/bin/otool", "-L", str(helpers[-1])),
+        require("@rpath/EarmarkLlama.framework/Versions/A/EarmarkLlama" in command("/usr/bin/otool", "-L", str(app / "Contents/Helpers/EarmarkTextWorker")),
                 "native text helper does not link the reviewed text framework")
+        require("@rpath/CTranscribe.framework/Versions/A/CTranscribe" in command("/usr/bin/otool", "-L", str(app / "Contents/Helpers/EarmarkSpeechWorker")),
+                "native speech helper does not link the reviewed speech framework")
     for path in [main, *helpers]:
         require(is_macho(path), f"missing native executable: {path.relative_to(app)}")
         require(path.stat().st_mode & 0o111, f"native executable is not executable: {path.relative_to(app)}")

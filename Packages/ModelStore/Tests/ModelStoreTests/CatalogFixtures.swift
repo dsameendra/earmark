@@ -195,6 +195,24 @@ enum CatalogFixtures {
             ("vocab.json", 338520),
         ])
 
+    static let nemotron = Listing(
+        repo: "handy-computer/nemotron-3.5-asr-streaming-0.6b-gguf", revision: "53ce288f69326b415aeef030cfcb02a08a8096dd",
+        files: [
+            ("LICENSE", 2619),
+            ("NOTICE", 411),
+            ("README.md", 50786),
+            ("nemotron-3.5-asr-streaming-0.6b-Q4_K_M.gguf", 495831520),
+        ])
+
+    static let canary = Listing(
+        repo: "handy-computer/canary-1b-v2-gguf", revision: "692af661b140183b60e44f55ad03c59e1e77d078",
+        files: [
+            ("LICENSE", 18657),
+            ("NOTICE", 392),
+            ("README.md", 28800),
+            ("canary-1b-v2-Q4_K_M.gguf", 735476448),
+        ])
+
     static let whisperLarge = Listing(
         repo: "argmaxinc/whisperkit-coreml", revision: "0f63a7800b00dd0226abd051b906c246e1907482",
         files: [

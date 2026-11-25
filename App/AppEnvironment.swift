@@ -218,8 +218,12 @@ final class AppEnvironment {
         let qwen = QwenSinhalaEngine(models: models)
         let parakeet = ParakeetEngine(models: models)
         let cohere = CohereEngine(models: models)
+        let nativeSpeech = NativeSpeechEngine(models: models, helper: { NativeSpeechEngine.bundledHelper() })
+        // Large on-device models are admitted one at a time: starting one releases idle peers. Whisper keeps its own lifecycle.
+        let residency = ResidencyCoordinator()
         let engines: [EngineID: any TranscriptionEngine] = [
-            whisper.id: whisper, apple.id: apple, qwen.id: qwen, parakeet.id: parakeet, cohere.id: cohere,
+            whisper.id: whisper, apple.id: apple, qwen.id: residency.managing(qwen), parakeet.id: residency.managing(parakeet),
+            cohere.id: residency.managing(cohere), nativeSpeech.id: residency.managing(nativeSpeech),
         ]
         let translation = TranslationRuntime.make(models: models, settings: settings, nllbPython: nil)
         // Live and dictation leave Apple Speech for Whisper (with a notice) when it cannot be used on this Mac.

@@ -163,6 +163,13 @@ private func catalog() -> [ModelDescriptor] {
         }
     }
 
+    @Test func knownCustomLicencesUseReadableNamesAndUnknownOnesStayVisible() {
+        #expect(ModelCapabilitySummary.licenseChip(LicenseInfo(spdx: "LicenseRef-NVIDIA-Open-Model-License")).text == "NVIDIA Open Model License · custom terms")
+        #expect(ModelCapabilitySummary.licenseChip(LicenseInfo(spdx: "LicenseRef-Gemma")).text == "Gemma Terms of Use · custom terms")
+        #expect(ModelCapabilitySummary.licenseChip(LicenseInfo(spdx: "LicenseRef-OpenMDW-1.1")).text == "OpenMDW 1.1 · custom terms")
+        #expect(ModelCapabilitySummary.licenseChip(LicenseInfo(spdx: "LicenseRef-Other")).text == "LicenseRef-Other · custom terms")
+    }
+
     @Test func languageSummaryListsFewAndCountsMany() {
         #expect(ModelCapabilitySummary.languageSummary(catalog()[2]) == ModelCapabilitySummary.languageName("si"))
         let many = asr("many", Set((0..<20).map { LanguageCode("x\($0)") }), caps: ModelCapabilities())

@@ -74,6 +74,16 @@ public enum ModelCapabilitySummary {
         }
     }
 
+    /// A reader-friendly name for custom `LicenseRef-` identifiers; unknown identifiers are shown as given.
+    static func readableLicenseName(_ spdx: String) -> String {
+        switch spdx {
+        case "LicenseRef-Gemma": "Gemma Terms of Use"
+        case "LicenseRef-OpenMDW-1.1", "LicenseRef-OpenMDW": "OpenMDW 1.1"
+        case "LicenseRef-NVIDIA-Open-Model-License": "NVIDIA Open Model License"
+        default: spdx
+        }
+    }
+
     public static func licenseChip(_ license: LicenseInfo) -> ModelCapabilityChip {
         if license.isNonCommercial {
             return ModelCapabilityChip(
@@ -85,7 +95,8 @@ public enum ModelCapabilitySummary {
         }
         if license.needsAcknowledgement {
             let terms = license.spdx.uppercased() == "NOASSERTION" ? "unverified licence" : "custom terms"
-            return ModelCapabilityChip(id: "license", text: "\(license.spdx) · \(terms)", tone: .info, spoken: "Licence \(license.spdx), \(terms). Review before downloading.")
+            let name = readableLicenseName(license.spdx)
+            return ModelCapabilityChip(id: "license", text: "\(name) · \(terms)", tone: .info, spoken: "Licence \(name), \(terms). Review before downloading.")
         }
         return ModelCapabilityChip(id: "license", text: license.spdx, spoken: "Licence \(license.spdx)")
     }

@@ -176,6 +176,40 @@ final class EarmarkUITests: XCTestCase {
         capture(app, "models-compact-light")
     }
 
+    func testModelFamiliesAreBrowsableForSpeechAndTranslation() throws { try modelFamilies(appearance: "light") }
+    func testModelFamiliesAreBrowsableInDarkAppearance() throws { try modelFamilies(appearance: "dark") }
+
+    /// The 1.1.0 families appear as grouped, searchable entries. Window captures feed the website.
+    private func modelFamilies(appearance: String) throws {
+        let app = launch(appearance: appearance)
+        defer { app.terminate() }
+        app.typeKey(",", modifierFlags: .command)
+        let models = app.buttons["settings.section.models"]
+        XCTAssertTrue(models.waitForExistence(timeout: 5))
+        models.click()
+        let browse = app.buttons["models.browse"]
+        XCTAssertTrue(browse.waitForExistence(timeout: 5))
+        browse.click()
+        let browser = app.sheets.firstMatch
+        XCTAssertTrue(browser.waitForExistence(timeout: 5))
+        let search = browser.textFields["models.browse.search"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.click()
+        search.typeText("Parakeet")
+        XCTAssertTrue(browser.buttons["models.download.fluidaudio/parakeet-ultra"].waitForExistence(timeout: 5))
+        XCTAssertTrue(browser.buttons["models.download.fluidaudio/parakeet-eou-120m"].exists)
+        capture(app, "models-parakeet-\(appearance)")
+        search.typeKey("a", modifierFlags: .command)
+        search.typeText("Gemma")
+        XCTAssertTrue(browser.buttons["models.download.translategemma/4b-it-gguf-q4-k-m"].waitForExistence(timeout: 5))
+        capture(app, "models-gemma-\(appearance)")
+        search.typeKey("a", modifierFlags: .command)
+        search.typeText("Nemotron")
+        XCTAssertTrue(browser.buttons["models.download.native/nemotron-3.5-asr-q4"].waitForExistence(timeout: 5))
+        capture(app, "models-nemotron-\(appearance)")
+        browser.buttons["models.browse.done"].click()
+    }
+
     func testReviewedHuggingFacePreviewDoesNotAcceptUnknownRevisions() throws {
         let app = launch(appearance: "light", width: 1100, height: 800)
         defer { app.terminate() }

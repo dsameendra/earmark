@@ -28,6 +28,7 @@ Earmark turns audio and video into searchable, editable transcripts on your Mac.
 - **Models that explain themselves.** Pick a model per use (files, live, dictation) from the sidebar. Each model lists what it supports, unsupported choices are greyed out with a reason, and the best option for your Mac is marked Recommended. Downloads check disk space and licences first.
 - **A useful library.** Search titles and transcript text, organize with folders and tags, restore recently deleted items and relink missing media. Ignore rules and replacements preserve the source.
 - **Flexible export.** Save documents, structured data and subtitles, including TXT, Markdown, DOCX, PDF, JSON, CSV, SRT and VTT, with reusable export presets.
+- **More models, honestly labelled (1.1).** Speech: Apple Speech, Whisper, Qwen3-ASR, Parakeet (v3, Ultra, Redux, EOU), Nemotron 3.5, Voxtral Realtime, Cohere Transcribe and Canary. Translation: Apple Translation, NLLB-200, MADLAD-400, OPUS packs, Hy-MT2 and TranslateGemma. Live captions translate with their own switch. Most new models are experimental and list only the languages and directions that were verified. See the [changelog](CHANGELOG.md).
 - **Private by design.** Audio and transcripts stay on your Mac. No accounts, cloud transcription or analytics. Models download when you choose; automatic update checks require opt-in.
 
 ## Screenshots

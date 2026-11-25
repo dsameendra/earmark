@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changelog: Earmark</title>
+<meta name="description" content="What changed in each Earmark release: new speech and translation models, fixes and known limits.">
+<link rel="canonical" href="https://dsameendra.github.io/earmark/changelog.html">
+<meta name="theme-color" content="#f3eee5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12110f" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Earmark">
+<meta property="og:title" content="Earmark changelog">
+<meta property="og:description" content="What changed in each Earmark release.">
+<meta property="og:url" content="https://dsameendra.github.io/earmark/changelog.html">
+<meta property="og:image" content="https://dsameendra.github.io/earmark/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Earmark app icon beside the words Listen once. Keep what matters.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Earmark changelog">
+<meta name="twitter:description" content="What changed in each Earmark release.">
+<meta name="twitter:image" content="https://dsameendra.github.io/earmark/assets/og.png">
+
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="favicon-16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400..600&amp;display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<script>document.documentElement.classList.add("js")</script>
+<script src="assets/site.js" defer></script>
+
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="index.html" aria-label="Earmark home"><img src="favicon-32.png" width="28" height="28" alt="">earmark</a>
+    <nav aria-label="Primary">
+      <ul>
+        <li><a href="index.html#features">Features</a></li>
+        <li><a href="index.html#models">Models</a></li>
+        <li><a href="index.html#screenshots">Screenshots</a></li>
+        <li><a href="index.html#privacy">Privacy</a></li>
+        <li><a href="changelog.html" aria-current="page">Changelog</a></li>
+      </ul>
+    </nav>
+    <a class="btn btn-primary btn-sm" href="https://github.com/dsameendra/earmark/releases/latest">Download</a>
+  </div>
+</header>
+
+<main id="main">
+<section class="page-head">
+  <div class="wrap">
+    <p class="eyebrow">Changelog</p>
+    <h1>What changed in Earmark.</h1>
+    <p class="lede">Every release, newest first. Earmark updates itself only if you turn update checks on in Settings.</p>
+    <ul class="jump" aria-label="Releases">
+      <li><a href="#v1-1-0">1.1.0</a></li>
+      <li><a href="#v1-0-1">1.0.1</a></li>
+      <li><a href="#v1-0-0">1.0.0</a></li>
+    </ul>
+  </div>
+</section>
+
+<section class="log">
+  <div class="wrap log-wrap">
+
+    <article class="release" id="v1-1-0">
+      <header>
+        <h2>Earmark 1.1.0</h2>
+        <p class="meta"><span class="tag">Broader languages and translation</span> <a href="https://github.com/dsameendra/earmark/releases/tag/v1.1.0">Release page</a></p>
+      </header>
+      <p>Earmark 1.1.0 adds many more on-device speech and translation models, translates live captions on their own switch, and makes it easier to see what each model can do before you download it.</p>
+
+      <h3>New speech models</h3>
+      <ul>
+        <li><strong>Qwen3-ASR 0.6B and 1.7B</strong> for 30 languages, alongside the Sinhala specialist, which is unchanged.</li>
+        <li><strong>Parakeet</strong> v3, Ultra and Redux for 25 European languages with word timing. Redux compiles on first use, which can take several minutes once.</li>
+        <li><strong>Parakeet EOU</strong>, a small English streaming model that ends each utterance when you pause.</li>
+        <li><strong>Nemotron 3.5 Streaming</strong>: native live captions in 28 languages.</li>
+        <li><strong>Voxtral Mini Realtime</strong>: streaming captions and files in 13 languages (needs a larger Mac).</li>
+        <li><strong>Cohere Transcribe</strong>: file transcription in 14 languages.</li>
+        <li><strong>Canary 1B v2</strong>: file transcription in 25 European languages. Recognition only; it never translates.</li>
+      </ul>
+
+      <h3>New translation models</h3>
+      <ul>
+        <li><strong>NLLB-200</strong> now covers around 200 languages and scripts instead of six. It remains experimental and non-commercial.</li>
+        <li><strong>MADLAD-400</strong> now runs natively, for 27 languages including Sinhala.</li>
+        <li><strong>OPUS direction packs</strong> for English with German, French and Spanish, in both directions. Pick a source and target, and see the combined size first.</li>
+        <li><strong>Hy-MT2</strong> (1.8B and 7B) and <strong>TranslateGemma</strong> (4B and 12B). Each offers only the directions that passed Earmark's quality checks: English with German, French and Spanish, and Japanese and Chinese into English. Hy-MT2 7B also does English to Japanese. TranslateGemma shows the Gemma terms and asks you to accept them before downloading.</li>
+      </ul>
+
+      <h3>Live translation and routing</h3>
+      <ul>
+        <li>Live has an independent <strong>Translate captions</strong> switch with source and target pickers and a readiness message, instead of depending on the caption appearance preset.</li>
+        <li>Your chosen translation engine is now honored everywhere, and translation lag is bounded: stale partial captions are dropped, finals are kept, and the original caption stays if translation fails.</li>
+        <li>Apple Speech readiness is checked for the language you actually selected, with Apple Translation packs shown separately from speech assets.</li>
+      </ul>
+
+      <h3>Models page</h3>
+      <ul>
+        <li>A compact page with recommendations and installed models, plus a searchable <strong>Add models</strong> browser grouped by family. Each entry shows its languages, streaming mode, size, memory needs and licence.</li>
+        <li><strong>Add from Hugging Face</strong> accepts links to the exact reviewed checkpoints only, pinned to a fixed revision. Unknown repositories and branches are refused before anything downloads.</li>
+        <li>Custom licences such as Gemma and OpenMDW are named plainly and need your acknowledgement before a download starts.</li>
+        <li>Large models are loaded one at a time, so starting one releases idle ones.</li>
+      </ul>
+
+      <h3>Known limits</h3>
+      <ul>
+        <li>Most new models are marked experimental. Accuracy was checked on real recordings, mostly English, so quality in other languages varies.</li>
+        <li>Seamless M4T v2 and overlapping-speech recognition (Multitalker) are not included: neither has a reliable native Mac runtime or passed its quality bar. They are planned for a later release.</li>
+        <li>Hy-MT2 and TranslateGemma do not offer English into Chinese, and only Hy-MT2 7B offers English into Japanese, because those directions did not pass the quality checks.</li>
+        <li>Canary does not translate speech, and Cohere and Canary have no live mode or word timing.</li>
+        <li>Earmark is self-signed and not notarized. First-time installs need <em>Open Anyway</em> in System Settings, Privacy and Security.</li>
+      </ul>
+      <p class="fine-print">Requires macOS 26 or later on Apple silicon. Existing installations can update through Settings, General, Check for Updates.</p>
+    </article>
+
+    <article class="release" id="v1-0-1">
+      <header>
+        <h2>Earmark 1.0.1</h2>
+        <p class="meta"><span class="tag">Fixes</span> <time datetime="2026-11-23">23 November 2026</time> <a href="https://github.com/dsameendra/earmark/releases/tag/v1.0.1">Release page</a></p>
+      </header>
+      <ul>
+        <li>Zoom and Teams policy menus update their labels and selected options immediately.</li>
+        <li>Transcripts saved without audio or video show “No recording” with a clear explanation. Relink is reserved for recordings that went missing.</li>
+        <li>Removed the unwanted sidebar toggle and its empty background from the main window and Settings, including after reopening.</li>
+        <li>Compatibility fixes for building with the macOS 26 SDK.</li>
+      </ul>
+    </article>
+
+    <article class="release" id="v1-0-0">
+      <header>
+        <h2>Earmark 1.0.0</h2>
+        <p class="meta"><span class="tag">First release</span> <time datetime="2026-11-23">23 November 2026</time> <a href="https://github.com/dsameendra/earmark/releases/tag/v1.0.0">Release page</a></p>
+      </header>
+      <p>Private, on-device transcription for Mac: files, live captions, dictation and meetings.</p>
+      <ul>
+        <li>Transcribe audio and video in batches, choosing language, model and speakers before each run.</li>
+        <li>Live captions overlay, dictation into any app, and Zoom and Teams capture with an ask-first default.</li>
+        <li>Editor with a waveform scrubber, speaker and bookmark markers, original, translated and bilingual views, and find and replace.</li>
+        <li>Speaker identification you can re-run without losing edits, and re-transcribe in one or several languages.</li>
+        <li>Multilingual, including Sinhala (experimental), with optional voice processing for noisy recordings.</li>
+        <li>Export to TXT, Markdown, DOCX, PDF, JSON, CSV, SRT and VTT.</li>
+      </ul>
+    </article>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <nav aria-label="Footer">
+      <a href="https://github.com/dsameendra/earmark">GitHub</a>
+      <a href="changelog.html">Changelog</a>
+      <a href="https://github.com/dsameendra/earmark/releases">Releases</a>
+      <a href="https://github.com/dsameendra/earmark/blob/main/LICENSE">License (MIT)</a>
+    </nav>
+    <p class="fine">© 2026 Earmark. Released under the MIT licence.</p>
+  </div>
+</footer>
+</body>
+</html>

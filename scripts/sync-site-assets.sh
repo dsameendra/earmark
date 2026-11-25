@@ -51,3 +51,18 @@ for s in home queue editor live library settings; do
     echo "$s-$a <- $f"
   done
 done
+
+# Model browser captures (optional): models-<family>-<appearance>.png -> models-<family>-<appearance>[ -800].webp
+for fam in parakeet nemotron gemma; do
+  for a in dark light; do
+    f="$SRC/models-$fam-$a.png"
+    [ -f "$f" ] || continue
+    for w in 1600 800; do
+      sips --resampleWidth "$w" "$f" --out "$TMP/models-$fam-$a-$w.png" >/dev/null
+      suffix=""
+      if [ "$w" = 800 ]; then suffix="-800"; fi
+      cwebp -quiet -q 82 -alpha_q 90 -m 6 "$TMP/models-$fam-$a-$w.png" -o "$OUT/models-$fam-$a$suffix.webp"
+    done
+    echo "models-$fam-$a <- $f"
+  done
+done

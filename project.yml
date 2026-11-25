@@ -43,6 +43,7 @@ packages:
   NLLBNative: { path: Packages/NLLBNative }
   NativeWorkerKit: { path: Packages/NativeWorkerKit }
   TextGenerationNative: { path: Packages/TextGenerationNative }
+  ModelFormats: { path: Packages/ModelFormats }
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     exactVersion: 2.10.1

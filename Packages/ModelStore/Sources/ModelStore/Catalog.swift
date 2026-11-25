@@ -34,6 +34,7 @@ public enum BuiltInCatalog {
         static let sortformer = "ae9a27ab45dc0aa3abede7d2d6bad2b7a69aa6d1"
         static let parakeet = "7dd20fe6b1797d35f5e3307e8b1732d9a178edfe"
         static let madlad = "bb45f1851bf13a0b8f4fcd9ecadf2cdb7cf22439"
+        static let parakeetEOU = "40a23f4c0b333aa17ad8c0f2ea47ec2347f2f355"
         static let nemotron = "53ce288f69326b415aeef030cfcb02a08a8096dd"
         static let canary = "692af661b140183b60e44f55ad03c59e1e77d078"
         static let cohere = "e1ce10d4cae2ca9a8b36cef5786fa3660f070050"
@@ -219,6 +220,15 @@ public enum BuiltInCatalog {
             notes: "File transcription in 14 languages with high accuracy. Choose the spoken language explicitly; no word timing and no live captions. Large download and memory use: best on Macs with 16 GB or more.",
             capabilities: ModelCapabilities(live: false, file: true, wordTimestamps: false, autoDetectLanguage: false),
             downloadInclude: ["q8/cohere_encoder.mlmodelc", "q8/cohere_decoder_cache_external_v3.mlmodelc", "vocab.json"]),
+        ModelDescriptor(
+            id: "fluidaudio/parakeet-eou-120m", displayName: "Parakeet EOU (120M, streaming)", kind: .asr, runtime: .coreML,
+            engine: "fluidaudio.parakeet-eou", languages: ["en"], sizeBytes: 224_047_838,
+            license: LicenseInfo(spdx: "LicenseRef-NVIDIA-Open-Model-License", attribution: "NVIDIA Parakeet realtime EOU 120M under the NVIDIA Open Model License; Core ML conversion by FluidInference."),
+            minTier: .tier8, sourceURL: hf("FluidInference/parakeet-realtime-eou-120m-coreml/tree/\(Revision.parakeetEOU)"),
+            isExperimental: true,
+            notes: "Small English-only streaming model for dictation and live captions. Finishes each utterance when you pause. No word timing. Light on memory, so a good choice on 8 GB Macs.",
+            capabilities: ModelCapabilities(live: true, file: true, wordTimestamps: false, autoDetectLanguage: false, streaming: .native),
+            downloadInclude: ["160ms/streaming_encoder.mlmodelc", "160ms/decoder.mlmodelc", "160ms/joint_decision.mlmodelc", "160ms/vocab.json"]),
         ModelDescriptor(
             id: "native/nemotron-3.5-asr-q4", displayName: "Nemotron 3.5 Streaming (0.6B, Q4)", kind: .asr, runtime: .other,
             engine: "native.speech",

@@ -10,6 +10,7 @@ private let parakeetReduxFolder = ProcessInfo.processInfo.environment["EARMARK_P
 private let speechHelper = ProcessInfo.processInfo.environment["EARMARK_SPEECH_HELPER"]
 private let nemotronFolder = ProcessInfo.processInfo.environment["EARMARK_NEMOTRON_MODEL"]
 private let canaryFolder = ProcessInfo.processInfo.environment["EARMARK_CANARY_MODEL"]
+private let eouFolder = ProcessInfo.processInfo.environment["EARMARK_PARAKEET_EOU_MODEL"]
 private let cohereFolder = ProcessInfo.processInfo.environment["EARMARK_COHERE_MODEL"]
 
 @Suite("Native speech checkpoint acceptance", .serialized)
@@ -100,5 +101,12 @@ struct NativeSpeechAcceptanceTests {
     @Test("Canary v2 transcribes the real file through the native worker", .enabled(if: canaryFolder != nil && speechHelper != nil), .timeLimit(.minutes(5)))
     func canaryFile() async throws {
         try await evaluate(try nativeEngine(canaryFolder), model: NativeSpeechEngine.canaryModel)
+    }
+
+    @Test("Parakeet EOU streams real speech into utterance finals and also transcribes the file", .enabled(if: eouFolder != nil), .timeLimit(.minutes(5)))
+    func parakeetEOU() async throws {
+        let folder = URL(fileURLWithPath: try #require(eouFolder))
+        try await evaluate(ParakeetEOUEngine(locate: { _ in folder }), model: ParakeetEOUEngine.modelID, streamed: true)
+        try await evaluate(ParakeetEOUEngine(locate: { _ in folder }), model: ParakeetEOUEngine.modelID)
     }
 }

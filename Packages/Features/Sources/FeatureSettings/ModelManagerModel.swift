@@ -174,6 +174,7 @@ public final class ModelManagerModel {
         case "opus-mt": "OPUS language packs"
         case "fluidaudio.parakeet": "Parakeet"
         case "fluidaudio.cohere": "Cohere"
+        case "fluidaudio.parakeet-eou": "Parakeet"
         case "native.speech": descriptor.displayName.hasPrefix("Nemotron") ? "Nemotron" : "Canary"
         default: descriptor.kind == .diarization ? "Speaker models" : descriptor.displayName
         }

@@ -213,6 +213,27 @@ enum CatalogFixtures {
             ("canary-1b-v2-Q4_K_M.gguf", 735476448),
         ])
 
+    static let parakeetEOU = Listing(
+        repo: "FluidInference/parakeet-realtime-eou-120m-coreml", revision: "40a23f4c0b333aa17ad8c0f2ea47ec2347f2f355",
+        files: [
+            ("160ms/decoder.mlmodelc/analytics/coremldata.bin", 243),
+            ("160ms/decoder.mlmodelc/coremldata.bin", 497),
+            ("160ms/decoder.mlmodelc/metadata.json", 3283),
+            ("160ms/decoder.mlmodelc/model.mil", 7409),
+            ("160ms/decoder.mlmodelc/weights/weight.bin", 7873600),
+            ("160ms/joint_decision.mlmodelc/analytics/coremldata.bin", 243),
+            ("160ms/joint_decision.mlmodelc/coremldata.bin", 493),
+            ("160ms/joint_decision.mlmodelc/metadata.json", 3181),
+            ("160ms/joint_decision.mlmodelc/model.mil", 9608),
+            ("160ms/joint_decision.mlmodelc/weights/weight.bin", 2794182),
+            ("160ms/streaming_encoder.mlmodelc/analytics/coremldata.bin", 243),
+            ("160ms/streaming_encoder.mlmodelc/coremldata.bin", 670),
+            ("160ms/streaming_encoder.mlmodelc/metadata.json", 5327),
+            ("160ms/streaming_encoder.mlmodelc/model.mil", 639646),
+            ("160ms/streaming_encoder.mlmodelc/weights/weight.bin", 212691776),
+            ("160ms/vocab.json", 17437),
+        ])
+
     static let whisperLarge = Listing(
         repo: "argmaxinc/whisperkit-coreml", revision: "0f63a7800b00dd0226abd051b906c246e1907482",
         files: [

@@ -133,6 +133,52 @@ enum CatalogFixtures {
             ("parakeet_vocab.json", 151122),
         ])
 
+    static let parakeetUltra = Listing(
+        repo: "FluidInference/parakeet-ultra-coreml", revision: "95eaa59a39d4394f047a4dc5cce480388a60d1b6",
+        files: [
+            ("Decoder.mlmodelc/analytics/coremldata.bin", 243),
+            ("Decoder.mlmodelc/coremldata.bin", 560),
+            ("Decoder.mlmodelc/model.mil", 13110),
+            ("Decoder.mlmodelc/weights/weight.bin", 23604992),
+            ("Encoder.mlmodelc/analytics/coremldata.bin", 243),
+            ("Encoder.mlmodelc/coremldata.bin", 514),
+            ("Encoder.mlmodelc/model.mil", 1002653),
+            ("Encoder.mlmodelc/weights/weight.bin", 594211328),
+            ("JointDecisionv3.mlmodelc/analytics/coremldata.bin", 243),
+            ("JointDecisionv3.mlmodelc/coremldata.bin", 592),
+            ("JointDecisionv3.mlmodelc/model.mil", 11777),
+            ("JointDecisionv3.mlmodelc/weights/weight.bin", 12642764),
+            ("Preprocessor.mlmodelc/analytics/coremldata.bin", 243),
+            ("Preprocessor.mlmodelc/coremldata.bin", 486),
+            ("Preprocessor.mlmodelc/metadata.json", 2841),
+            ("Preprocessor.mlmodelc/model.mil", 28181),
+            ("Preprocessor.mlmodelc/weights/weight.bin", 491072),
+            ("parakeet_vocab.json", 151122),
+        ])
+
+    static let parakeetRedux = Listing(
+        repo: "FluidInference/parakeet-redux-coreml", revision: "8c5ef97a29cd120dc76b354b3f22b7fec3b486f9",
+        files: [
+            ("Decoder.mlmodelc/analytics/coremldata.bin", 243),
+            ("Decoder.mlmodelc/coremldata.bin", 560),
+            ("Decoder.mlmodelc/model.mil", 13110),
+            ("Decoder.mlmodelc/weights/weight.bin", 23604992),
+            ("Encoder.mlmodelc/analytics/coremldata.bin", 243),
+            ("Encoder.mlmodelc/coremldata.bin", 506),
+            ("Encoder.mlmodelc/model.mil", 965906),
+            ("Encoder.mlmodelc/weights/weight.bin", 182389312),
+            ("JointDecisionv3.mlmodelc/analytics/coremldata.bin", 243),
+            ("JointDecisionv3.mlmodelc/coremldata.bin", 592),
+            ("JointDecisionv3.mlmodelc/model.mil", 11777),
+            ("JointDecisionv3.mlmodelc/weights/weight.bin", 12642764),
+            ("Preprocessor.mlmodelc/analytics/coremldata.bin", 243),
+            ("Preprocessor.mlmodelc/coremldata.bin", 486),
+            ("Preprocessor.mlmodelc/metadata.json", 2841),
+            ("Preprocessor.mlmodelc/model.mil", 28181),
+            ("Preprocessor.mlmodelc/weights/weight.bin", 491072),
+            ("parakeet_vocab.json", 151122),
+        ])
+
     static let whisperLarge = Listing(
         repo: "argmaxinc/whisperkit-coreml", revision: "0f63a7800b00dd0226abd051b906c246e1907482",
         files: [

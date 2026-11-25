@@ -5,6 +5,8 @@ import Testing
 @testable import Transcription
 
 private let parakeetFolder = ProcessInfo.processInfo.environment["EARMARK_PARAKEET_MODEL"]
+private let parakeetUltraFolder = ProcessInfo.processInfo.environment["EARMARK_PARAKEET_ULTRA_MODEL"]
+private let parakeetReduxFolder = ProcessInfo.processInfo.environment["EARMARK_PARAKEET_REDUX_MODEL"]
 private let cohereFolder = ProcessInfo.processInfo.environment["EARMARK_COHERE_MODEL"]
 
 @Suite("Native speech checkpoint acceptance", .serialized)
@@ -33,7 +35,7 @@ struct NativeSpeechAcceptanceTests {
         let wer = wordErrorRate(reference: reference, hypothesis: text)
         print("NATIVE ASR \(model) streamed=\(streamed) segments=\(segments.count) WER=\(wer): \(text)")
         #expect(!segments.isEmpty)
-        if model == ParakeetEngine.modelV3 {
+        if [ParakeetEngine.modelV3, ParakeetEngine.modelUltra, ParakeetEngine.modelRedux].contains(model) {
             #expect(!segments.flatMap(\.words).isEmpty)
         }
         #expect(wer < 0.25)
@@ -54,6 +56,20 @@ struct NativeSpeechAcceptanceTests {
     func parakeetV3() async throws {
         let folder = URL(fileURLWithPath: try #require(parakeetFolder))
         try await evaluate(ParakeetEngine(locate: { _ in folder }), model: ParakeetEngine.modelV3)
+    }
+
+    @Test("Parakeet Ultra transcribes the real file and a buffered capture with alignment", .enabled(if: parakeetUltraFolder != nil), .timeLimit(.minutes(5)))
+    func parakeetUltra() async throws {
+        let folder = URL(fileURLWithPath: try #require(parakeetUltraFolder))
+        try await evaluate(ParakeetEngine(locate: { _ in folder }), model: ParakeetEngine.modelUltra)
+        try await evaluate(ParakeetEngine(locate: { _ in folder }), model: ParakeetEngine.modelUltra, streamed: true)
+    }
+
+    @Test("Parakeet Redux transcribes the real file and a buffered capture with alignment", .enabled(if: parakeetReduxFolder != nil), .timeLimit(.minutes(5)))
+    func parakeetRedux() async throws {
+        let folder = URL(fileURLWithPath: try #require(parakeetReduxFolder))
+        try await evaluate(ParakeetEngine(locate: { _ in folder }), model: ParakeetEngine.modelRedux)
+        try await evaluate(ParakeetEngine(locate: { _ in folder }), model: ParakeetEngine.modelRedux, streamed: true)
     }
 
     @Test("Cohere transcribes the real file without truncation", .enabled(if: cohereFolder != nil), .timeLimit(.minutes(5)))

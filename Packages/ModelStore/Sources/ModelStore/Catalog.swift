@@ -34,6 +34,8 @@ public enum BuiltInCatalog {
         static let sortformer = "ae9a27ab45dc0aa3abede7d2d6bad2b7a69aa6d1"
         static let parakeet = "7dd20fe6b1797d35f5e3307e8b1732d9a178edfe"
         static let madlad = "bb45f1851bf13a0b8f4fcd9ecadf2cdb7cf22439"
+        static let parakeetUltra = "95eaa59a39d4394f047a4dc5cce480388a60d1b6"
+        static let parakeetRedux = "8c5ef97a29cd120dc76b354b3f22b7fec3b486f9"
     }
 
     public static let models: [ModelDescriptor] = [
@@ -204,5 +206,29 @@ public enum BuiltInCatalog {
             downloadInclude: [
                 "Preprocessor.mlmodelc", "Encoder.mlmodelc", "Decoder.mlmodelc", "JointDecisionv3.mlmodelc", "parakeet_vocab.json",
             ]),
+        parakeetVariant(
+            id: "fluidaudio/parakeet-ultra", name: "Parakeet Ultra", repo: "parakeet-ultra-coreml",
+            revision: Revision.parakeetUltra, size: 632_165_613, minTier: .tier8,
+            note: "Full-precision post-training of Parakeet v3: the same 25 European languages and word alignment with the highest accuracy of the Parakeet family. Buffered Live captions; choose the spoken language explicitly."),
+        parakeetVariant(
+            id: "fluidaudio/parakeet-redux", name: "Parakeet Redux", repo: "parakeet-redux-coreml",
+            revision: Revision.parakeetRedux, size: 220_309_623, minTier: .tier8,
+            note: "Compact low-bit re-training of Parakeet v3: the same 25 European languages and word alignment in a much smaller download. The first load compiles for this Mac and can take several minutes; later loads are fast. Buffered Live captions; choose the spoken language explicitly."),
     ] + OPUSCatalog.models + QwenCatalog.models
+
+    /// Ultra and Redux share v3's vocabulary, decoder and joint and ship a single encoder build.
+    private static func parakeetVariant(
+        id: ModelID, name: String, repo: String, revision: String, size: Int64, minTier: HardwareTier, note: String
+    ) -> ModelDescriptor {
+        ModelDescriptor(
+            id: id, displayName: name, kind: .asr, runtime: .coreML, engine: "fluidaudio.parakeet",
+            languages: parakeetLanguages, sizeBytes: size,
+            license: LicenseInfo(spdx: "CC-BY-4.0", attribution: "NVIDIA Parakeet TDT 0.6B v3, retrained as \(name) and converted to Core ML by FluidInference, CC BY 4.0."),
+            minTier: minTier, sourceURL: hf("FluidInference/\(repo)/tree/\(revision)"),
+            isExperimental: true, notes: note,
+            capabilities: ModelCapabilities(live: true, file: true, wordTimestamps: true, autoDetectLanguage: false, streaming: .buffered),
+            downloadInclude: [
+                "Preprocessor.mlmodelc", "Encoder.mlmodelc", "Decoder.mlmodelc", "JointDecisionv3.mlmodelc", "parakeet_vocab.json",
+            ])
+    }
 }

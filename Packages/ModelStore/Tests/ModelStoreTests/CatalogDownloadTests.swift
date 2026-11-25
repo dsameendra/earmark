@@ -15,6 +15,8 @@ private let listings: [ModelID: CatalogFixtures.Listing] = [
     "fluidaudio/ls-eend-ami": CatalogFixtures.lseend,
     "fluidaudio/sortformer-v2": CatalogFixtures.sortformer,
     "fluidaudio/parakeet-tdt-v3": CatalogFixtures.parakeet,
+    "fluidaudio/parakeet-ultra": CatalogFixtures.parakeetUltra,
+    "fluidaudio/parakeet-redux": CatalogFixtures.parakeetRedux,
     "mlx/qwen3-asr-0.6b-4bit": CatalogFixtures.qwenGeneral,
     "mlx/qwen3-asr-1.7b-4bit": CatalogFixtures.qwenGeneral17,
     "whisperkit/large-v3-v20240930_626MB": CatalogFixtures.whisperLarge,

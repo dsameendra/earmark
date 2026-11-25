@@ -240,6 +240,19 @@ final class EarmarkUITests: XCTestCase {
         XCTAssertTrue(intake.waitForExistence(timeout: 5))
     }
 
+    /// Website captures: General settings in each appearance (the site shows a light and a dark image).
+    func testSettingsGeneralCapturesForBothAppearances() throws {
+        for appearance in ["light", "dark"] {
+            let app = launch(appearance: appearance)
+            defer { app.terminate() }
+            app.typeKey(",", modifierFlags: .command)
+            XCTAssertTrue(app.buttons["settings.section.general"].waitForExistence(timeout: 5))
+            let window = app.windows.containing(.button, identifier: "settings.section.general").firstMatch
+            Thread.sleep(forTimeInterval: 0.8)
+            capture(app, "settings-general-\(appearance)", window: window)
+        }
+    }
+
     func testSettingsSectionsRemainAvailable() throws {
         let app = launch(appearance: "light")
         defer { app.terminate() }

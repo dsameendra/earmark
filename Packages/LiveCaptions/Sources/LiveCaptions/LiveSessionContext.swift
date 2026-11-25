@@ -40,7 +40,7 @@ final class SessionContext {
     // Tasks
     var pumpTasks: [Task<Void, Never>] = []
     var engineTasks: [Task<Void, Never>] = []
-    var auxTasks: [Task<Void, Never>] = []  // diarization, health, translation worker
+    var auxTasks: [Task<Void, Never>] = []  // diarization, health
     var checkpointTask: Task<Void, Never>?
     var activeEngineLanes = 0
 
@@ -52,7 +52,10 @@ final class SessionContext {
         var language: LanguageCode?
     }
     var pendingFinalTranslations: [TranslationJob] = []
-    var volatileTranslation: TranslationJob?
+    var translationBacklogNoticeSent = false
+    var unknownTranslationSourceNoticeSent = false
+    var volatileTranslations: [UUID: TranslationJob] = [:]
+    var translationTask: Task<Void, Never>?
     var translationWake: AsyncStream<Void>.Continuation?
     var lastTranslationAt: ContinuousClock.Instant?
 

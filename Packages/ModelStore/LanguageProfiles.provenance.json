@@ -1,0 +1,1291 @@
+{
+  "profile": "nllb-200-distilled-600M",
+  "checkpointRepository": "JustFrederik/nllb-200-distilled-600M-ct2-int8",
+  "checkpointRevision": "302d78f00e6fdb50a1064059df7c392b735e9d05",
+  "vocabularySHA256": "a132a83330f45514c2476eb81d1d69b3c41762264d16ce0a7ea982e5d6c728e5",
+  "cldr": {
+    "url": "https://raw.githubusercontent.com/unicode-org/cldr-json/7d2b9cb11cec08f4d333ad73209deb3df0711c3b/cldr-json/cldr-core/supplemental/aliases.json",
+    "revision": "7d2b9cb11cec08f4d333ad73209deb3df0711c3b",
+    "sha256": "ee30563c98bb6217adebbdc97b0ca7a0ff834973011a6890cddfd83c6250e729",
+    "bytes": 137673
+  },
+  "preservedDialectCodes": [
+    "ajp",
+    "twi"
+  ],
+  "explicitScriptRequired": [
+    "sat"
+  ],
+  "tokens": [
+    {
+      "language": "ace-Arab",
+      "flores": "ace_Arab"
+    },
+    {
+      "language": "ace-Latn",
+      "flores": "ace_Latn"
+    },
+    {
+      "language": "acm",
+      "flores": "acm_Arab"
+    },
+    {
+      "language": "acq",
+      "flores": "acq_Arab"
+    },
+    {
+      "language": "aeb",
+      "flores": "aeb_Arab"
+    },
+    {
+      "language": "af",
+      "flores": "afr_Latn"
+    },
+    {
+      "language": "ajp",
+      "flores": "ajp_Arab"
+    },
+    {
+      "language": "ak",
+      "flores": "aka_Latn"
+    },
+    {
+      "language": "am",
+      "flores": "amh_Ethi"
+    },
+    {
+      "language": "apc",
+      "flores": "apc_Arab"
+    },
+    {
+      "language": "ar",
+      "flores": "arb_Arab"
+    },
+    {
+      "language": "ars",
+      "flores": "ars_Arab"
+    },
+    {
+      "language": "ary",
+      "flores": "ary_Arab"
+    },
+    {
+      "language": "arz",
+      "flores": "arz_Arab"
+    },
+    {
+      "language": "as",
+      "flores": "asm_Beng"
+    },
+    {
+      "language": "ast",
+      "flores": "ast_Latn"
+    },
+    {
+      "language": "awa",
+      "flores": "awa_Deva"
+    },
+    {
+      "language": "ay",
+      "flores": "ayr_Latn"
+    },
+    {
+      "language": "azb",
+      "flores": "azb_Arab"
+    },
+    {
+      "language": "az",
+      "flores": "azj_Latn"
+    },
+    {
+      "language": "ba",
+      "flores": "bak_Cyrl"
+    },
+    {
+      "language": "bm",
+      "flores": "bam_Latn"
+    },
+    {
+      "language": "ban",
+      "flores": "ban_Latn"
+    },
+    {
+      "language": "be",
+      "flores": "bel_Cyrl"
+    },
+    {
+      "language": "bem",
+      "flores": "bem_Latn"
+    },
+    {
+      "language": "bn",
+      "flores": "ben_Beng"
+    },
+    {
+      "language": "bho",
+      "flores": "bho_Deva"
+    },
+    {
+      "language": "bjn-Arab",
+      "flores": "bjn_Arab"
+    },
+    {
+      "language": "bjn-Latn",
+      "flores": "bjn_Latn"
+    },
+    {
+      "language": "bo",
+      "flores": "bod_Tibt"
+    },
+    {
+      "language": "bs",
+      "flores": "bos_Latn"
+    },
+    {
+      "language": "bug",
+      "flores": "bug_Latn"
+    },
+    {
+      "language": "bg",
+      "flores": "bul_Cyrl"
+    },
+    {
+      "language": "ca",
+      "flores": "cat_Latn"
+    },
+    {
+      "language": "ceb",
+      "flores": "ceb_Latn"
+    },
+    {
+      "language": "cs",
+      "flores": "ces_Latn"
+    },
+    {
+      "language": "cjk",
+      "flores": "cjk_Latn"
+    },
+    {
+      "language": "ckb",
+      "flores": "ckb_Arab"
+    },
+    {
+      "language": "crh",
+      "flores": "crh_Latn"
+    },
+    {
+      "language": "cy",
+      "flores": "cym_Latn"
+    },
+    {
+      "language": "da",
+      "flores": "dan_Latn"
+    },
+    {
+      "language": "de",
+      "flores": "deu_Latn"
+    },
+    {
+      "language": "din",
+      "flores": "dik_Latn"
+    },
+    {
+      "language": "dyu",
+      "flores": "dyu_Latn"
+    },
+    {
+      "language": "dz",
+      "flores": "dzo_Tibt"
+    },
+    {
+      "language": "el",
+      "flores": "ell_Grek"
+    },
+    {
+      "language": "en",
+      "flores": "eng_Latn"
+    },
+    {
+      "language": "eo",
+      "flores": "epo_Latn"
+    },
+    {
+      "language": "et",
+      "flores": "est_Latn"
+    },
+    {
+      "language": "eu",
+      "flores": "eus_Latn"
+    },
+    {
+      "language": "ee",
+      "flores": "ewe_Latn"
+    },
+    {
+      "language": "fo",
+      "flores": "fao_Latn"
+    },
+    {
+      "language": "fa",
+      "flores": "pes_Arab"
+    },
+    {
+      "language": "fj",
+      "flores": "fij_Latn"
+    },
+    {
+      "language": "fi",
+      "flores": "fin_Latn"
+    },
+    {
+      "language": "fon",
+      "flores": "fon_Latn"
+    },
+    {
+      "language": "fr",
+      "flores": "fra_Latn"
+    },
+    {
+      "language": "fur",
+      "flores": "fur_Latn"
+    },
+    {
+      "language": "fuv",
+      "flores": "fuv_Latn"
+    },
+    {
+      "language": "gd",
+      "flores": "gla_Latn"
+    },
+    {
+      "language": "ga",
+      "flores": "gle_Latn"
+    },
+    {
+      "language": "gl",
+      "flores": "glg_Latn"
+    },
+    {
+      "language": "gn",
+      "flores": "grn_Latn"
+    },
+    {
+      "language": "gu",
+      "flores": "guj_Gujr"
+    },
+    {
+      "language": "ht",
+      "flores": "hat_Latn"
+    },
+    {
+      "language": "ha",
+      "flores": "hau_Latn"
+    },
+    {
+      "language": "he",
+      "flores": "heb_Hebr"
+    },
+    {
+      "language": "hi",
+      "flores": "hin_Deva"
+    },
+    {
+      "language": "hne",
+      "flores": "hne_Deva"
+    },
+    {
+      "language": "hr",
+      "flores": "hrv_Latn"
+    },
+    {
+      "language": "hu",
+      "flores": "hun_Latn"
+    },
+    {
+      "language": "hy",
+      "flores": "hye_Armn"
+    },
+    {
+      "language": "ig",
+      "flores": "ibo_Latn"
+    },
+    {
+      "language": "ilo",
+      "flores": "ilo_Latn"
+    },
+    {
+      "language": "id",
+      "flores": "ind_Latn"
+    },
+    {
+      "language": "is",
+      "flores": "isl_Latn"
+    },
+    {
+      "language": "it",
+      "flores": "ita_Latn"
+    },
+    {
+      "language": "jv",
+      "flores": "jav_Latn"
+    },
+    {
+      "language": "ja",
+      "flores": "jpn_Jpan"
+    },
+    {
+      "language": "kab",
+      "flores": "kab_Latn"
+    },
+    {
+      "language": "kac",
+      "flores": "kac_Latn"
+    },
+    {
+      "language": "kam",
+      "flores": "kam_Latn"
+    },
+    {
+      "language": "kn",
+      "flores": "kan_Knda"
+    },
+    {
+      "language": "ks-Arab",
+      "flores": "kas_Arab"
+    },
+    {
+      "language": "ks-Deva",
+      "flores": "kas_Deva"
+    },
+    {
+      "language": "ka",
+      "flores": "kat_Geor"
+    },
+    {
+      "language": "kr-Arab",
+      "flores": "knc_Arab"
+    },
+    {
+      "language": "kr-Latn",
+      "flores": "knc_Latn"
+    },
+    {
+      "language": "kk",
+      "flores": "kaz_Cyrl"
+    },
+    {
+      "language": "kbp",
+      "flores": "kbp_Latn"
+    },
+    {
+      "language": "kea",
+      "flores": "kea_Latn"
+    },
+    {
+      "language": "km",
+      "flores": "khm_Khmr"
+    },
+    {
+      "language": "ki",
+      "flores": "kik_Latn"
+    },
+    {
+      "language": "rw",
+      "flores": "kin_Latn"
+    },
+    {
+      "language": "ky",
+      "flores": "kir_Cyrl"
+    },
+    {
+      "language": "kmb",
+      "flores": "kmb_Latn"
+    },
+    {
+      "language": "kg",
+      "flores": "kon_Latn"
+    },
+    {
+      "language": "ko",
+      "flores": "kor_Hang"
+    },
+    {
+      "language": "ku",
+      "flores": "kmr_Latn"
+    },
+    {
+      "language": "lo",
+      "flores": "lao_Laoo"
+    },
+    {
+      "language": "lv",
+      "flores": "lvs_Latn"
+    },
+    {
+      "language": "lij",
+      "flores": "lij_Latn"
+    },
+    {
+      "language": "li",
+      "flores": "lim_Latn"
+    },
+    {
+      "language": "ln",
+      "flores": "lin_Latn"
+    },
+    {
+      "language": "lt",
+      "flores": "lit_Latn"
+    },
+    {
+      "language": "lmo",
+      "flores": "lmo_Latn"
+    },
+    {
+      "language": "ltg",
+      "flores": "ltg_Latn"
+    },
+    {
+      "language": "lb",
+      "flores": "ltz_Latn"
+    },
+    {
+      "language": "lua",
+      "flores": "lua_Latn"
+    },
+    {
+      "language": "lg",
+      "flores": "lug_Latn"
+    },
+    {
+      "language": "luo",
+      "flores": "luo_Latn"
+    },
+    {
+      "language": "lus",
+      "flores": "lus_Latn"
+    },
+    {
+      "language": "mag",
+      "flores": "mag_Deva"
+    },
+    {
+      "language": "mai",
+      "flores": "mai_Deva"
+    },
+    {
+      "language": "ml",
+      "flores": "mal_Mlym"
+    },
+    {
+      "language": "mr",
+      "flores": "mar_Deva"
+    },
+    {
+      "language": "min",
+      "flores": "min_Latn"
+    },
+    {
+      "language": "mk",
+      "flores": "mkd_Cyrl"
+    },
+    {
+      "language": "mg",
+      "flores": "plt_Latn"
+    },
+    {
+      "language": "mt",
+      "flores": "mlt_Latn"
+    },
+    {
+      "language": "mni",
+      "flores": "mni_Beng"
+    },
+    {
+      "language": "mn",
+      "flores": "khk_Cyrl"
+    },
+    {
+      "language": "mos",
+      "flores": "mos_Latn"
+    },
+    {
+      "language": "mi",
+      "flores": "mri_Latn"
+    },
+    {
+      "language": "ms",
+      "flores": "zsm_Latn"
+    },
+    {
+      "language": "my",
+      "flores": "mya_Mymr"
+    },
+    {
+      "language": "nl",
+      "flores": "nld_Latn"
+    },
+    {
+      "language": "nn",
+      "flores": "nno_Latn"
+    },
+    {
+      "language": "nb",
+      "flores": "nob_Latn"
+    },
+    {
+      "language": "ne",
+      "flores": "npi_Deva"
+    },
+    {
+      "language": "nso",
+      "flores": "nso_Latn"
+    },
+    {
+      "language": "nus",
+      "flores": "nus_Latn"
+    },
+    {
+      "language": "ny",
+      "flores": "nya_Latn"
+    },
+    {
+      "language": "oc",
+      "flores": "oci_Latn"
+    },
+    {
+      "language": "om",
+      "flores": "gaz_Latn"
+    },
+    {
+      "language": "or",
+      "flores": "ory_Orya"
+    },
+    {
+      "language": "pag",
+      "flores": "pag_Latn"
+    },
+    {
+      "language": "pa",
+      "flores": "pan_Guru"
+    },
+    {
+      "language": "pap",
+      "flores": "pap_Latn"
+    },
+    {
+      "language": "pl",
+      "flores": "pol_Latn"
+    },
+    {
+      "language": "pt",
+      "flores": "por_Latn"
+    },
+    {
+      "language": "fa-AF",
+      "flores": "prs_Arab"
+    },
+    {
+      "language": "pbt",
+      "flores": "pbt_Arab"
+    },
+    {
+      "language": "quy",
+      "flores": "quy_Latn"
+    },
+    {
+      "language": "ro",
+      "flores": "ron_Latn"
+    },
+    {
+      "language": "rn",
+      "flores": "run_Latn"
+    },
+    {
+      "language": "ru",
+      "flores": "rus_Cyrl"
+    },
+    {
+      "language": "sg",
+      "flores": "sag_Latn"
+    },
+    {
+      "language": "sa",
+      "flores": "san_Deva"
+    },
+    {
+      "language": "sat-Beng",
+      "flores": "sat_Beng"
+    },
+    {
+      "language": "scn",
+      "flores": "scn_Latn"
+    },
+    {
+      "language": "shn",
+      "flores": "shn_Mymr"
+    },
+    {
+      "language": "si",
+      "flores": "sin_Sinh"
+    },
+    {
+      "language": "sk",
+      "flores": "slk_Latn"
+    },
+    {
+      "language": "sl",
+      "flores": "slv_Latn"
+    },
+    {
+      "language": "sm",
+      "flores": "smo_Latn"
+    },
+    {
+      "language": "sn",
+      "flores": "sna_Latn"
+    },
+    {
+      "language": "sd",
+      "flores": "snd_Arab"
+    },
+    {
+      "language": "so",
+      "flores": "som_Latn"
+    },
+    {
+      "language": "st",
+      "flores": "sot_Latn"
+    },
+    {
+      "language": "es",
+      "flores": "spa_Latn"
+    },
+    {
+      "language": "sq",
+      "flores": "als_Latn"
+    },
+    {
+      "language": "sc",
+      "flores": "srd_Latn"
+    },
+    {
+      "language": "sr",
+      "flores": "srp_Cyrl"
+    },
+    {
+      "language": "ss",
+      "flores": "ssw_Latn"
+    },
+    {
+      "language": "su",
+      "flores": "sun_Latn"
+    },
+    {
+      "language": "sv",
+      "flores": "swe_Latn"
+    },
+    {
+      "language": "sw",
+      "flores": "swh_Latn"
+    },
+    {
+      "language": "szl",
+      "flores": "szl_Latn"
+    },
+    {
+      "language": "ta",
+      "flores": "tam_Taml"
+    },
+    {
+      "language": "tt",
+      "flores": "tat_Cyrl"
+    },
+    {
+      "language": "te",
+      "flores": "tel_Telu"
+    },
+    {
+      "language": "tg",
+      "flores": "tgk_Cyrl"
+    },
+    {
+      "language": "fil",
+      "flores": "tgl_Latn"
+    },
+    {
+      "language": "th",
+      "flores": "tha_Thai"
+    },
+    {
+      "language": "ti",
+      "flores": "tir_Ethi"
+    },
+    {
+      "language": "taq-Latn",
+      "flores": "taq_Latn"
+    },
+    {
+      "language": "taq-Tfng",
+      "flores": "taq_Tfng"
+    },
+    {
+      "language": "tpi",
+      "flores": "tpi_Latn"
+    },
+    {
+      "language": "tn",
+      "flores": "tsn_Latn"
+    },
+    {
+      "language": "ts",
+      "flores": "tso_Latn"
+    },
+    {
+      "language": "tk",
+      "flores": "tuk_Latn"
+    },
+    {
+      "language": "tum",
+      "flores": "tum_Latn"
+    },
+    {
+      "language": "tr",
+      "flores": "tur_Latn"
+    },
+    {
+      "language": "twi",
+      "flores": "twi_Latn"
+    },
+    {
+      "language": "tzm",
+      "flores": "tzm_Tfng"
+    },
+    {
+      "language": "ug",
+      "flores": "uig_Arab"
+    },
+    {
+      "language": "uk",
+      "flores": "ukr_Cyrl"
+    },
+    {
+      "language": "umb",
+      "flores": "umb_Latn"
+    },
+    {
+      "language": "ur",
+      "flores": "urd_Arab"
+    },
+    {
+      "language": "uz",
+      "flores": "uzn_Latn"
+    },
+    {
+      "language": "vec",
+      "flores": "vec_Latn"
+    },
+    {
+      "language": "vi",
+      "flores": "vie_Latn"
+    },
+    {
+      "language": "war",
+      "flores": "war_Latn"
+    },
+    {
+      "language": "wo",
+      "flores": "wol_Latn"
+    },
+    {
+      "language": "xh",
+      "flores": "xho_Latn"
+    },
+    {
+      "language": "yi",
+      "flores": "ydd_Hebr"
+    },
+    {
+      "language": "yo",
+      "flores": "yor_Latn"
+    },
+    {
+      "language": "yue",
+      "flores": "yue_Hant"
+    },
+    {
+      "language": "zh",
+      "flores": "zho_Hans"
+    },
+    {
+      "language": "zh-Hant",
+      "flores": "zho_Hant"
+    },
+    {
+      "language": "zu",
+      "flores": "zul_Latn"
+    }
+  ],
+  "aliases": {
+    "tw": "twi",
+    "acm-Arab": "acm",
+    "acq-Arab": "acq",
+    "aeb-Arab": "aeb",
+    "af-Latn": "af",
+    "afr": "af",
+    "afr-Latn": "af",
+    "ajp-Arab": "ajp",
+    "ak-Latn": "ak",
+    "aka": "ak",
+    "aka-Latn": "ak",
+    "am-Ethi": "am",
+    "amh": "am",
+    "amh-Ethi": "am",
+    "apc-Arab": "apc",
+    "ar-Arab": "ar",
+    "arb": "ar",
+    "arb-Arab": "ar",
+    "ars-Arab": "ars",
+    "ary-Arab": "ary",
+    "arz-Arab": "arz",
+    "as-Beng": "as",
+    "asm": "as",
+    "asm-Beng": "as",
+    "ast-Latn": "ast",
+    "awa-Deva": "awa",
+    "ay-Latn": "ay",
+    "ayr": "ay",
+    "ayr-Latn": "ay",
+    "azb-Arab": "azb",
+    "az-Latn": "az",
+    "azj": "az",
+    "azj-Latn": "az",
+    "ba-Cyrl": "ba",
+    "bak": "ba",
+    "bak-Cyrl": "ba",
+    "bm-Latn": "bm",
+    "bam": "bm",
+    "bam-Latn": "bm",
+    "ban-Latn": "ban",
+    "be-Cyrl": "be",
+    "bel": "be",
+    "bel-Cyrl": "be",
+    "bem-Latn": "bem",
+    "bn-Beng": "bn",
+    "ben": "bn",
+    "ben-Beng": "bn",
+    "bho-Deva": "bho",
+    "bo-Tibt": "bo",
+    "bod": "bo",
+    "bod-Tibt": "bo",
+    "bs-Latn": "bs",
+    "bos": "bs",
+    "bos-Latn": "bs",
+    "bug-Latn": "bug",
+    "bg-Cyrl": "bg",
+    "bul": "bg",
+    "bul-Cyrl": "bg",
+    "ca-Latn": "ca",
+    "cat": "ca",
+    "cat-Latn": "ca",
+    "ceb-Latn": "ceb",
+    "cs-Latn": "cs",
+    "ces": "cs",
+    "ces-Latn": "cs",
+    "cjk-Latn": "cjk",
+    "ckb-Arab": "ckb",
+    "crh-Latn": "crh",
+    "cy-Latn": "cy",
+    "cym": "cy",
+    "cym-Latn": "cy",
+    "da-Latn": "da",
+    "dan": "da",
+    "dan-Latn": "da",
+    "de-Latn": "de",
+    "deu": "de",
+    "deu-Latn": "de",
+    "din-Latn": "din",
+    "dik": "din",
+    "dik-Latn": "din",
+    "dyu-Latn": "dyu",
+    "dz-Tibt": "dz",
+    "dzo": "dz",
+    "dzo-Tibt": "dz",
+    "el-Grek": "el",
+    "ell": "el",
+    "ell-Grek": "el",
+    "en-Latn": "en",
+    "eng": "en",
+    "eng-Latn": "en",
+    "eo-Latn": "eo",
+    "epo": "eo",
+    "epo-Latn": "eo",
+    "et-Latn": "et",
+    "est": "et",
+    "est-Latn": "et",
+    "eu-Latn": "eu",
+    "eus": "eu",
+    "eus-Latn": "eu",
+    "ee-Latn": "ee",
+    "ewe": "ee",
+    "ewe-Latn": "ee",
+    "fo-Latn": "fo",
+    "fao": "fo",
+    "fao-Latn": "fo",
+    "fa-Arab": "fa",
+    "pes": "fa",
+    "pes-Arab": "fa",
+    "fj-Latn": "fj",
+    "fij": "fj",
+    "fij-Latn": "fj",
+    "fi-Latn": "fi",
+    "fin": "fi",
+    "fin-Latn": "fi",
+    "fon-Latn": "fon",
+    "fr-Latn": "fr",
+    "fra": "fr",
+    "fra-Latn": "fr",
+    "fur-Latn": "fur",
+    "fuv-Latn": "fuv",
+    "gd-Latn": "gd",
+    "gla": "gd",
+    "gla-Latn": "gd",
+    "ga-Latn": "ga",
+    "gle": "ga",
+    "gle-Latn": "ga",
+    "gl-Latn": "gl",
+    "glg": "gl",
+    "glg-Latn": "gl",
+    "gn-Latn": "gn",
+    "grn": "gn",
+    "grn-Latn": "gn",
+    "gu-Gujr": "gu",
+    "guj": "gu",
+    "guj-Gujr": "gu",
+    "ht-Latn": "ht",
+    "hat": "ht",
+    "hat-Latn": "ht",
+    "ha-Latn": "ha",
+    "hau": "ha",
+    "hau-Latn": "ha",
+    "he-Hebr": "he",
+    "heb": "he",
+    "heb-Hebr": "he",
+    "hi-Deva": "hi",
+    "hin": "hi",
+    "hin-Deva": "hi",
+    "hne-Deva": "hne",
+    "hr-Latn": "hr",
+    "hrv": "hr",
+    "hrv-Latn": "hr",
+    "hu-Latn": "hu",
+    "hun": "hu",
+    "hun-Latn": "hu",
+    "hy-Armn": "hy",
+    "hye": "hy",
+    "hye-Armn": "hy",
+    "ig-Latn": "ig",
+    "ibo": "ig",
+    "ibo-Latn": "ig",
+    "ilo-Latn": "ilo",
+    "id-Latn": "id",
+    "ind": "id",
+    "ind-Latn": "id",
+    "is-Latn": "is",
+    "isl": "is",
+    "isl-Latn": "is",
+    "it-Latn": "it",
+    "ita": "it",
+    "ita-Latn": "it",
+    "jv-Latn": "jv",
+    "jav": "jv",
+    "jav-Latn": "jv",
+    "ja-Jpan": "ja",
+    "jpn": "ja",
+    "jpn-Jpan": "ja",
+    "kab-Latn": "kab",
+    "kac-Latn": "kac",
+    "kam-Latn": "kam",
+    "kn-Knda": "kn",
+    "kan": "kn",
+    "kan-Knda": "kn",
+    "kas-Arab": "ks-Arab",
+    "kas-Deva": "ks-Deva",
+    "ka-Geor": "ka",
+    "kat": "ka",
+    "kat-Geor": "ka",
+    "knc-Arab": "kr-Arab",
+    "knc-Latn": "kr-Latn",
+    "kk-Cyrl": "kk",
+    "kaz": "kk",
+    "kaz-Cyrl": "kk",
+    "kbp-Latn": "kbp",
+    "kea-Latn": "kea",
+    "km-Khmr": "km",
+    "khm": "km",
+    "khm-Khmr": "km",
+    "ki-Latn": "ki",
+    "kik": "ki",
+    "kik-Latn": "ki",
+    "rw-Latn": "rw",
+    "kin": "rw",
+    "kin-Latn": "rw",
+    "ky-Cyrl": "ky",
+    "kir": "ky",
+    "kir-Cyrl": "ky",
+    "kmb-Latn": "kmb",
+    "kg-Latn": "kg",
+    "kon": "kg",
+    "kon-Latn": "kg",
+    "ko-Hang": "ko",
+    "kor": "ko",
+    "kor-Hang": "ko",
+    "ku-Latn": "ku",
+    "kmr": "ku",
+    "kmr-Latn": "ku",
+    "lo-Laoo": "lo",
+    "lao": "lo",
+    "lao-Laoo": "lo",
+    "lv-Latn": "lv",
+    "lvs": "lv",
+    "lvs-Latn": "lv",
+    "lij-Latn": "lij",
+    "li-Latn": "li",
+    "lim": "li",
+    "lim-Latn": "li",
+    "ln-Latn": "ln",
+    "lin": "ln",
+    "lin-Latn": "ln",
+    "lt-Latn": "lt",
+    "lit": "lt",
+    "lit-Latn": "lt",
+    "lmo-Latn": "lmo",
+    "ltg-Latn": "ltg",
+    "lb-Latn": "lb",
+    "ltz": "lb",
+    "ltz-Latn": "lb",
+    "lua-Latn": "lua",
+    "lg-Latn": "lg",
+    "lug": "lg",
+    "lug-Latn": "lg",
+    "luo-Latn": "luo",
+    "lus-Latn": "lus",
+    "mag-Deva": "mag",
+    "mai-Deva": "mai",
+    "ml-Mlym": "ml",
+    "mal": "ml",
+    "mal-Mlym": "ml",
+    "mr-Deva": "mr",
+    "mar": "mr",
+    "mar-Deva": "mr",
+    "min-Latn": "min",
+    "mk-Cyrl": "mk",
+    "mkd": "mk",
+    "mkd-Cyrl": "mk",
+    "mg-Latn": "mg",
+    "plt": "mg",
+    "plt-Latn": "mg",
+    "mt-Latn": "mt",
+    "mlt": "mt",
+    "mlt-Latn": "mt",
+    "mni-Beng": "mni",
+    "mn-Cyrl": "mn",
+    "khk": "mn",
+    "khk-Cyrl": "mn",
+    "mos-Latn": "mos",
+    "mi-Latn": "mi",
+    "mri": "mi",
+    "mri-Latn": "mi",
+    "ms-Latn": "ms",
+    "zsm": "ms",
+    "zsm-Latn": "ms",
+    "my-Mymr": "my",
+    "mya": "my",
+    "mya-Mymr": "my",
+    "nl-Latn": "nl",
+    "nld": "nl",
+    "nld-Latn": "nl",
+    "nn-Latn": "nn",
+    "nno": "nn",
+    "nno-Latn": "nn",
+    "nb-Latn": "nb",
+    "nob": "nb",
+    "nob-Latn": "nb",
+    "ne-Deva": "ne",
+    "npi": "ne",
+    "npi-Deva": "ne",
+    "nso-Latn": "nso",
+    "nus-Latn": "nus",
+    "ny-Latn": "ny",
+    "nya": "ny",
+    "nya-Latn": "ny",
+    "oc-Latn": "oc",
+    "oci": "oc",
+    "oci-Latn": "oc",
+    "om-Latn": "om",
+    "gaz": "om",
+    "gaz-Latn": "om",
+    "or-Orya": "or",
+    "ory": "or",
+    "ory-Orya": "or",
+    "pag-Latn": "pag",
+    "pa-Guru": "pa",
+    "pan": "pa",
+    "pan-Guru": "pa",
+    "pap-Latn": "pap",
+    "pl-Latn": "pl",
+    "pol": "pl",
+    "pol-Latn": "pl",
+    "pt-Latn": "pt",
+    "por": "pt",
+    "por-Latn": "pt",
+    "fa-AF-Arab": "fa-AF",
+    "prs": "fa-AF",
+    "prs-Arab": "fa-AF",
+    "pbt-Arab": "pbt",
+    "quy-Latn": "quy",
+    "ro-Latn": "ro",
+    "ron": "ro",
+    "ron-Latn": "ro",
+    "rn-Latn": "rn",
+    "run": "rn",
+    "run-Latn": "rn",
+    "ru-Cyrl": "ru",
+    "rus": "ru",
+    "rus-Cyrl": "ru",
+    "sg-Latn": "sg",
+    "sag": "sg",
+    "sag-Latn": "sg",
+    "sa-Deva": "sa",
+    "san": "sa",
+    "san-Deva": "sa",
+    "scn-Latn": "scn",
+    "shn-Mymr": "shn",
+    "si-Sinh": "si",
+    "sin": "si",
+    "sin-Sinh": "si",
+    "sk-Latn": "sk",
+    "slk": "sk",
+    "slk-Latn": "sk",
+    "sl-Latn": "sl",
+    "slv": "sl",
+    "slv-Latn": "sl",
+    "sm-Latn": "sm",
+    "smo": "sm",
+    "smo-Latn": "sm",
+    "sn-Latn": "sn",
+    "sna": "sn",
+    "sna-Latn": "sn",
+    "sd-Arab": "sd",
+    "snd": "sd",
+    "snd-Arab": "sd",
+    "so-Latn": "so",
+    "som": "so",
+    "som-Latn": "so",
+    "st-Latn": "st",
+    "sot": "st",
+    "sot-Latn": "st",
+    "es-Latn": "es",
+    "spa": "es",
+    "spa-Latn": "es",
+    "sq-Latn": "sq",
+    "als": "sq",
+    "als-Latn": "sq",
+    "sc-Latn": "sc",
+    "srd": "sc",
+    "srd-Latn": "sc",
+    "sr-Cyrl": "sr",
+    "srp": "sr",
+    "srp-Cyrl": "sr",
+    "ss-Latn": "ss",
+    "ssw": "ss",
+    "ssw-Latn": "ss",
+    "su-Latn": "su",
+    "sun": "su",
+    "sun-Latn": "su",
+    "sv-Latn": "sv",
+    "swe": "sv",
+    "swe-Latn": "sv",
+    "sw-Latn": "sw",
+    "swh": "sw",
+    "swh-Latn": "sw",
+    "szl-Latn": "szl",
+    "ta-Taml": "ta",
+    "tam": "ta",
+    "tam-Taml": "ta",
+    "tt-Cyrl": "tt",
+    "tat": "tt",
+    "tat-Cyrl": "tt",
+    "te-Telu": "te",
+    "tel": "te",
+    "tel-Telu": "te",
+    "tg-Cyrl": "tg",
+    "tgk": "tg",
+    "tgk-Cyrl": "tg",
+    "fil-Latn": "fil",
+    "tgl": "fil",
+    "tgl-Latn": "fil",
+    "th-Thai": "th",
+    "tha": "th",
+    "tha-Thai": "th",
+    "ti-Ethi": "ti",
+    "tir": "ti",
+    "tir-Ethi": "ti",
+    "tpi-Latn": "tpi",
+    "tn-Latn": "tn",
+    "tsn": "tn",
+    "tsn-Latn": "tn",
+    "ts-Latn": "ts",
+    "tso": "ts",
+    "tso-Latn": "ts",
+    "tk-Latn": "tk",
+    "tuk": "tk",
+    "tuk-Latn": "tk",
+    "tum-Latn": "tum",
+    "tr-Latn": "tr",
+    "tur": "tr",
+    "tur-Latn": "tr",
+    "twi-Latn": "twi",
+    "tzm-Tfng": "tzm",
+    "ug-Arab": "ug",
+    "uig": "ug",
+    "uig-Arab": "ug",
+    "uk-Cyrl": "uk",
+    "ukr": "uk",
+    "ukr-Cyrl": "uk",
+    "umb-Latn": "umb",
+    "ur-Arab": "ur",
+    "urd": "ur",
+    "urd-Arab": "ur",
+    "uz-Latn": "uz",
+    "uzn": "uz",
+    "uzn-Latn": "uz",
+    "vec-Latn": "vec",
+    "vi-Latn": "vi",
+    "vie": "vi",
+    "vie-Latn": "vi",
+    "war-Latn": "war",
+    "wo-Latn": "wo",
+    "wol": "wo",
+    "wol-Latn": "wo",
+    "xh-Latn": "xh",
+    "xho": "xh",
+    "xho-Latn": "xh",
+    "yi-Hebr": "yi",
+    "ydd": "yi",
+    "ydd-Hebr": "yi",
+    "yo-Latn": "yo",
+    "yor": "yo",
+    "yor-Latn": "yo",
+    "yue-Hant": "yue",
+    "zh-Hans": "zh",
+    "zho": "zh",
+    "zho-Hans": "zh",
+    "zho-Hant": "zh-Hant",
+    "zu-Latn": "zu",
+    "zul": "zu",
+    "zul-Latn": "zu"
+  },
+  "generatedSourceSHA256": "a7b7fc6fc287e78e958341bf27ebc84c7cfd9aae99e26c808e4ed04dbe589315",
+  "status": "token inventory and aliases; not quality certification"
+}

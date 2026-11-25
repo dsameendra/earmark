@@ -58,6 +58,30 @@ struct LiveSessionOrchestratorTests {
         #expect(stored.last?.isIgnored == false)
     }
 
+    @Test("hiding a revised older final preserves a newer partial on the same lane")
+    func hiddenRevisionKeepsPartial() async throws {
+        let original = segment("old words", 0, 1)
+        var hidden = original
+        hidden.isIgnored = true
+        let rig = makeRig(script: [
+            .events([.final(original)]),
+            .events([.partial(PartialSegment(text: "new thought", start: 2))]),
+            .events([.final(hidden)]),
+        ])
+        let lines = Recorder(rig.orchestrator.lines())
+        try await rig.orchestrator.start(LiveSessionConfig(source: .mic(deviceUID: nil)))
+        rig.source.send(chunk(0))
+        #expect(await waitUntil { lines.last?.first?.text == "old words" })
+        rig.source.send(chunk(1))
+        #expect(await waitUntil { lines.last?.count == 2 })
+        let partialID = try #require(lines.last?.last?.id)
+        rig.source.send(chunk(2))
+        #expect(await waitUntil { lines.last?.count == 1 && lines.last?.first?.id == partialID })
+        #expect(lines.last?.first?.text == "new thought")
+        #expect(lines.last?.first?.isVolatile == true)
+        _ = await rig.orchestrator.stop()
+    }
+
     @Test("Engine, source and persisted source tag follow the config (default English, live use case)")
     func configIsHonoured() async throws {
         let rig = makeRig(script: [.events([.final(segment("hi", 0, 1))])])
@@ -373,6 +397,121 @@ struct LiveSessionOrchestratorTests {
 
     // MARK: translation (LIVE-AC-13)
 
+    @Test("live translation does not suppress a distinct Chinese writing system")
+    func scriptTranslation() async throws {
+        var original = segment("汉字", 0, 1)
+        original.languageCode = "zh-Hans"
+        let router = FakeTranslationRouter()
+        let rig = makeRig(script: [.events([.final(original)])], translation: router)
+        let lines = Recorder(rig.orchestrator.lines())
+        try await rig.orchestrator.start(LiveSessionConfig(source: .mic(deviceUID: nil), languageMode: .single("zh-Hans"), translateTo: "zh-Hant", saveAsTranscript: true))
+        rig.source.send(chunk(0))
+        #expect(await waitUntil { lines.last?.first?.translation == "T(汉字)" })
+        let id = try #require(await rig.orchestrator.stop())
+        #expect(rig.repo.stored(id).first?.translations.first?.language == "zh-Hant")
+    }
+
+    @Test("late language detection translates finals already waiting in the bounded queue")
+    func lateLanguageTranslation() async throws {
+        let router = FakeTranslationRouter()
+        var unknown = segment("bonjour", 0, 1)
+        unknown.languageCode = "und"
+        let rig = makeRig(script: [.events([.final(unknown)]), .events([.languageDetected([LanguageScore(language: "fr", probability: 0.9)])])], translation: router)
+        let lines = Recorder(rig.orchestrator.lines())
+        let events = Recorder(rig.orchestrator.events())
+        try await rig.orchestrator.start(LiveSessionConfig(source: .mic(deviceUID: nil), languageMode: .autoDetect, translateTo: .sinhala, saveAsTranscript: true))
+        rig.source.send(chunk(0))
+        #expect(await waitUntil { events.all.contains { if case .translationFailed = $0 { true } else { false } } })
+        #expect(router.callTimes.isEmpty)
+        rig.source.send(chunk(1))
+        #expect(await waitUntil { lines.last?.first?.translation == "T(bonjour)" })
+        let id = try #require(await rig.orchestrator.stop())
+        #expect(rig.repo.stored(id).first?.translations.first?.text == "T(bonjour)")
+        #expect(rig.repo.stored(id).first?.languageCode == "fr")
+        #expect(lines.last?.first?.language == "fr")
+    }
+
+    @Test("revised finals keep their caption identity and discard an older in-flight translation")
+    func revisedFinalTranslation() async throws {
+        let router = GatedCaptionTranslator()
+        let original = segment("original words", 0, 1)
+        var revised = original
+        revised.text = "corrected words"
+        let rig = makeRig(script: [.events([.final(original)]), .events([.final(revised)])], translation: router)
+        let lines = Recorder(rig.orchestrator.lines())
+        try await rig.orchestrator.start(LiveSessionConfig(source: .mic(deviceUID: nil), translateTo: .sinhala, saveAsTranscript: true))
+        rig.source.send(chunk(0))
+        #expect(await waitUntil { router.pendingCount == 1 })
+        let lineID = try #require(lines.last?.first?.id)
+        rig.source.send(chunk(1))
+        #expect(await waitUntil { lines.last?.first?.text == "corrected words" })
+        router.completeFirst()
+        #expect(await waitUntil { router.pendingCount == 1 })
+        #expect(!lines.all.flatMap { $0 }.contains { $0.text == "corrected words" && $0.translation?.contains("original words") == true })
+        router.completeFirst()
+        #expect(await waitUntil { lines.last?.first?.translation?.contains("corrected words") == true })
+        #expect(lines.last?.count == 1 && lines.last?.first?.id == lineID)
+        let id = try #require(await rig.orchestrator.stop())
+        #expect(rig.repo.stored(id).count == 1)
+        #expect(rig.repo.stored(id).first?.translations.first?.text == "T(corrected words)")
+    }
+
+    @Test("unknown source language never silently routes as English")
+    func unknownTranslationSource() async throws {
+        let router = FakeTranslationRouter()
+        var unknown = segment("bonjour", 0, 1)
+        unknown.languageCode = nil
+        let rig = makeRig(script: [.events([.final(unknown)])], translation: router)
+        let lines = Recorder(rig.orchestrator.lines())
+        let events = Recorder(rig.orchestrator.events())
+        try await rig.orchestrator.start(LiveSessionConfig(
+            source: .mic(deviceUID: nil), languageMode: .autoDetect, translateTo: .sinhala, saveAsTranscript: true))
+        rig.source.send(chunk(0))
+        #expect(await waitUntil { events.all.contains { if case .translationFailed = $0 { true } else { false } } })
+        #expect(router.callTimes.isEmpty)
+        #expect(lines.last?.first?.translation == nil)
+        let id = try #require(await rig.orchestrator.stop())
+        #expect(rig.repo.stored(id).first?.text == "bonjour")
+    }
+
+    @Test("slow translation has bounded backlog and keeps every original segment")
+    func boundedTranslationBacklog() async throws {
+        let router = FakeTranslationRouter()
+        let options = LiveSessionOptions(
+            checkpointInterval: .seconds(60), drainTimeout: .seconds(1),
+            translationMinInterval: .milliseconds(30), maxPendingTranslations: 2)
+        let rig = makeRig(
+            script: [.events((0..<20).map { .final(segment("sentence \($0)", Double($0), Double($0) + 1)) })],
+            translation: router, options: options)
+        let lines = Recorder(rig.orchestrator.lines())
+        let events = Recorder(rig.orchestrator.events())
+        try await rig.orchestrator.start(LiveSessionConfig(
+            source: .mic(deviceUID: nil), translateTo: .sinhala, saveAsTranscript: true))
+        rig.source.send(chunk(0))
+        #expect(await waitUntil { lines.last?.count == 20 })
+        let id = try #require(await rig.orchestrator.stop())
+        #expect(rig.repo.stored(id).count == 20)
+        #expect(router.callTimes.count < 20)
+        #expect(events.all.contains { if case .translationFailed(let reason) = $0 { reason.contains("falling behind") } else { false } })
+        #expect(rig.repo.stored(id).last?.translations.first?.language == .sinhala)
+    }
+
+    @Test("stopping drains queued final translations before saving")
+    func stopDrainsTranslationQueue() async throws {
+        let router = FakeTranslationRouter()
+        let rig = makeRig(
+            script: [Step.events((0..<4).map { .final(segment("sentence \($0)", Double($0), Double($0) + 1)) })],
+            translation: router, options: testOptions(translation: .milliseconds(80)))
+        let lines = Recorder(rig.orchestrator.lines())
+        try await rig.orchestrator.start(LiveSessionConfig(source: .mic(deviceUID: nil), translateTo: .sinhala, saveAsTranscript: true))
+        rig.source.send(chunk(0))
+        #expect(await waitUntil { lines.last?.count == 4 })
+        let id = try #require(await rig.orchestrator.stop())
+        let saved = rig.repo.stored(id)
+        #expect(saved.count == 4)
+        #expect(saved.allSatisfy { $0.translations.first?.language == .sinhala })
+    }
+
     @Test("Translation is throttled and English to Sinhala carries the low-confidence marker")
     func translationThrottleAndMarker() async throws {
         let router = FakeTranslationRouter()
@@ -396,6 +535,27 @@ struct LiveSessionOrchestratorTests {
 }
 
 // MARK: - Extra stubs for this suite
+
+final class GatedCaptionTranslator: TranslationRouter, TranslationEngine {
+    let id: EngineID = "gated.translation"
+    private struct Pending: Sendable {
+        let items: [TranslationItem]
+        let continuation: AsyncThrowingStream<TranslatedSegment, any Error>.Continuation
+    }
+    private let pending = Mutex<[Pending]>([])
+    var pendingCount: Int { pending.withLock { $0.count } }
+    func engine(for pair: LanguagePair) async throws -> any TranslationEngine { self }
+    func supportedPairs() async -> Set<LanguagePair> { [] }
+    func translate(items: [TranslationItem], from: LanguageCode, to: LanguageCode) -> AsyncThrowingStream<TranslatedSegment, any Error> {
+        AsyncThrowingStream { continuation in pending.withLock { $0.append(Pending(items: items, continuation: continuation)) } }
+    }
+    func completeFirst() {
+        let job = pending.withLock { $0.isEmpty ? nil : $0.removeFirst() }
+        guard let job else { return }
+        for item in job.items { job.continuation.yield(TranslatedSegment(segmentID: item.segmentID, text: "T(\(item.text))", engine: id)) }
+        job.continuation.finish()
+    }
+}
 
 struct MockEngines: LiveEngineProviding {
     let engine: MockTranscriptionEngine

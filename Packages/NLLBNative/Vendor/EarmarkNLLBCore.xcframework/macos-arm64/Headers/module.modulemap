@@ -1,4 +1,1 @@
-module EarmarkNLLBCore {
-  header "earmark_nllb.h"
-  export *
-}
+module EarmarkNLLBCore { header "earmark_nllb.h" export * }

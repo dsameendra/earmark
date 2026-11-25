@@ -21,17 +21,17 @@ public enum LanguageEngineResolver {
         return { language in
             guard let language else { return try await fallback(nil) }
             let installedModels = await installed()
-            func plan(explicit: ModelID?) throws -> EnginePlan {
-                try router.plan(
+            func plan(explicit: ModelID?) async throws -> EnginePlan {
+                try await router.preparedPlan(
                     for: RoutingRequest(
                         languageMode: .single(language), useCase: useCase, tier: tier, installedModels: installedModels,
                         explicitModel: explicit))
             }
             let routed: EnginePlan
             do {
-                routed = try plan(explicit: explicitModel)
+                routed = try await plan(explicit: explicitModel)
             } catch AppError.unsupportedLanguage where explicitModel != nil {
-                routed = try plan(explicit: nil)
+                routed = try await plan(explicit: nil)
             }
             return try await EngineBinding.resolver(plan: routed, engines: engines)(language)
         }

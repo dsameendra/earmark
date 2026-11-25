@@ -1,0 +1,200 @@
+{
+  "repository": "https://github.com/handy-computer/transcribe.cpp",
+  "revision": "cfa237c2551a4b2d3a56ff8fe5461e3c67c51772",
+  "version": "0.4.2",
+  "abiHash": "f99ad4169374b8f3",
+  "deploymentTarget": "26.0",
+  "architectures": [
+    "arm64"
+  ],
+  "backends": [
+    "metal",
+    "cpu"
+  ],
+  "embeddedMetal": true,
+  "buildScript": "scripts/build-speech-native.sh",
+  "files": [
+    {
+      "path": "LICENSE-ggml",
+      "bytes": 1078,
+      "sha256": "94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d"
+    },
+    {
+      "path": "LICENSE-transcribe",
+      "bytes": 1083,
+      "sha256": "86a53633b56f6b029d3cb42158bcc7aac0cdff898aceb13e83b93e368bbc4ac6"
+    },
+    {
+      "path": "Swift/ABIHash.swift",
+      "bytes": 1142,
+      "sha256": "f0b57c2dd0e5fe2a088746b06f10baa0b8bf7979d0237d4746269ba10f5bfcf6"
+    },
+    {
+      "path": "Swift/Backend.swift",
+      "bytes": 6220,
+      "sha256": "8b6fc06c07cff953f5e1c724cab6ee1b18b2c5a3fde12b98333b8967b333a7e7"
+    },
+    {
+      "path": "Swift/Cancellation.swift",
+      "bytes": 3335,
+      "sha256": "0989816cd28453fa83e6eaac850aaeb4881c6788731d21f57fa0c78ec5aae97e"
+    },
+    {
+      "path": "Swift/Convenience.swift",
+      "bytes": 530,
+      "sha256": "58eacaf804170a66020cca5a90f99086c8abce7cec0f00fd426536d75cf6b2c2"
+    },
+    {
+      "path": "Swift/Diarize.swift",
+      "bytes": 4676,
+      "sha256": "2ac4677692620aeaf6c248d78286d20683f40c82c6b2bb1ac704abff3c10888d"
+    },
+    {
+      "path": "Swift/EarmarkCommitCounts.swift",
+      "bytes": 473,
+      "sha256": "9155e94222f1c8fa8fa143d7bfb0e0664caa9b5bd8cd754fb54a4f63ccbaa2ee"
+    },
+    {
+      "path": "Swift/Family.swift",
+      "bytes": 8958,
+      "sha256": "5aa0f2dba46939533e554b7b2ec99faea6f1a1b39837720aeaae5bd4af69fd3e"
+    },
+    {
+      "path": "Swift/LangId.swift",
+      "bytes": 8055,
+      "sha256": "4cb89f21bc6f21cc6721500fe518e3ed33526751ea66e3e4efbcf3c13439e245"
+    },
+    {
+      "path": "Swift/Logging.swift",
+      "bytes": 3430,
+      "sha256": "524dd8c3705b8f4054b8441b46dbce652e99a61458b1d4ab530e60c79431bd0e"
+    },
+    {
+      "path": "Swift/Model.swift",
+      "bytes": 6642,
+      "sha256": "0e6d2568db1257f7e04234d17e20a4772b611e10706f53a693c3dc4f7d8eae1b"
+    },
+    {
+      "path": "Swift/Options.swift",
+      "bytes": 10323,
+      "sha256": "8d8a1beb0ca8aeddeeb778eaea4429cbe257549f918ad7517192067ca0f5a0c7"
+    },
+    {
+      "path": "Swift/Session.swift",
+      "bytes": 13159,
+      "sha256": "5280797563263299009846da95ff04652ec1c9398580b36fbf6094dd9b5285a2"
+    },
+    {
+      "path": "Swift/Streaming.swift",
+      "bytes": 8934,
+      "sha256": "085f5f9b3489eac3558b8c5db54ab0b395cb24e6c9acf0b5063cdb70bed9e531"
+    },
+    {
+      "path": "Swift/TranscribeCpp.swift",
+      "bytes": 4223,
+      "sha256": "6b7990135b0e711091f965aea8e838fb1b29b23faea745a43f31b83fb7f75bd0"
+    },
+    {
+      "path": "Swift/TranscribeError.swift",
+      "bytes": 5172,
+      "sha256": "17c15b6e7ba168f246f53674d55fc52bdb6e3e29e490d473cb1eee993dddc1c2"
+    },
+    {
+      "path": "Swift/Transcript.swift",
+      "bytes": 5692,
+      "sha256": "3beec385b645c5cd116dcf67f491208ac3738d16fbff8a3fbcc94ab24cdfe78e"
+    },
+    {
+      "path": "Swift/Vad.swift",
+      "bytes": 8634,
+      "sha256": "dbe2b6598ed23610e6441af60b29ab31ceace82bf31b08257f73f7ae54b1f9b4"
+    },
+    {
+      "path": "THIRD-PARTY-LICENSES.md",
+      "bytes": 5908,
+      "sha256": "3e1feb08b09149d34b58e1a433c01dc42b33f2479304cc3997936fa9e1eb8881"
+    },
+    {
+      "path": "TranscribeCpp.xcframework/Info.plist",
+      "bytes": 738,
+      "sha256": "9da774c26b1c6c245d304778811116229c42b6259d7b7e42c0745180848ef38a"
+    },
+    {
+      "path": "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Versions/A/CTranscribe",
+      "bytes": 9214176,
+      "sha256": "dae93a414e6cdcc20f9b351428caa1efca4737c3f3860a5d46d394efce7ef6a8"
+    },
+    {
+      "path": "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Versions/A/Headers/diarize.h",
+      "bytes": 4574,
+      "sha256": "a818f6cb2fc6eccfded234d50e0a51725f564453533dde9dce8bb1aefcbb201c"
+    },
+    {
+      "path": "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Versions/A/Headers/extensions.h",
+      "bytes": 834,
+      "sha256": "147d6cfca46434c4cb78160a037de3d2d73f25bb7073c5a55685e133ea18c5eb"
+    },
+    {
+      "path": "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Versions/A/Headers/langid.h",
+      "bytes": 7083,
+      "sha256": "71367bc67a2b7835aeac53ba1cd4b65357d60ad0f55cb70aa5f0757c71601d35"
+    },
+    {
+      "path": "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Versions/A/Headers/moonshine_streaming.h",
+      "bytes": 2160,
+      "sha256": "fe67db1635f2c15059d88f54095f6c14c6ae315e09f9a1d447d0f075f5de5e20"
+    },
+    {
+      "path": "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Versions/A/Headers/parakeet.h",
+      "bytes": 4746,
+      "sha256": "969a8d124ae837cdff3038f22a1a6037f5a68d5f906a4cf731154cb756b3b132"
+    },
+    {
+      "path": "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Versions/A/Headers/sortformer.h",
+      "bytes": 2848,
+      "sha256": "9602a3308b9cf9b427495922172787ff3246cef2b229369d0abe35046f74ef74"
+    },
+    {
+      "path": "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Versions/A/Headers/transcribe.h",
+      "bytes": 146584,
+      "sha256": "5c8267936370f40d911866df8617cb320dda6dba951e5ba89287645988105dbf"
+    },
+    {
+      "path": "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Versions/A/Headers/vad.h",
+      "bytes": 9222,
+      "sha256": "8dec48a2d6c6b72f977011813fb5aee333815724322b65dbdc293235b99b11a3"
+    },
+    {
+      "path": "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Versions/A/Headers/voxtral_realtime.h",
+      "bytes": 2942,
+      "sha256": "de0321ce95f54904a76a72bdef267621d499c3bcae0cd319587fb9f4242f8082"
+    },
+    {
+      "path": "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Versions/A/Headers/whisper.h",
+      "bytes": 9397,
+      "sha256": "1edaab9c696f534eaa2b84c32d2f897795e10061b81f04d70a00301d23e9ede5"
+    },
+    {
+      "path": "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Versions/A/Modules/module.modulemap",
+      "bytes": 280,
+      "sha256": "46177327f3c781be40d1e5360cab3f55992a39b447b1a6acc4f7935f2474ae07"
+    },
+    {
+      "path": "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Versions/A/Resources/Info.plist",
+      "bytes": 694,
+      "sha256": "df974e611b7bc39ee061de420a191df2c20fd479c67491f4fd28ed30b61ab112"
+    },
+    {
+      "path": "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Versions/A/_CodeSignature/CodeResources",
+      "bytes": 4004,
+      "sha256": "05e2d78b2a7d1ac4d3731da22ea3c19cc9ac24aca304ee6ae0c7bc2a1fe0c7fe"
+    }
+  ],
+  "symlinks": {
+    "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/CTranscribe": "Versions/Current/CTranscribe",
+    "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Headers": "Versions/Current/Headers",
+    "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Modules": "Versions/Current/Modules",
+    "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Resources": "Versions/Current/Resources",
+    "TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework/Versions/Current": "A"
+  }
+}

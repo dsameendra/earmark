@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 /* All returned text is UTF-8 and owned by the caller via earmark_nllb_free_text. */
+/* Profiles: 1 = NLLB, 2 = MADLAD/T5, 3 = directional Marian/OPUS. */
+void *earmark_translation_load(const char *folder, int profile, int threads, char **error);
 void *earmark_nllb_load(const char *folder, int threads, char **error);
 void earmark_nllb_unload(void *model);
 char *earmark_nllb_translate(void *model, const char *text, const char *source, const char *target, char **error);

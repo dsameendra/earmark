@@ -8,6 +8,14 @@ import Translation
 
 @Suite("Apple engine")
 struct AppleEngineTests {
+    @Test("Apple availability and execution preserve Chinese writing systems")
+    func scriptsArePreserved() async throws {
+        let backend = FakeAppleBackend(languages: ["zh-Hans", "zh-Hant"], installed: [pair("zh-Hans", "zh-Hant")])
+        let engine = AppleTranslationEngine(backend: backend)
+        #expect(await engine.supports(pair("zh-CN", "zh-TW")))
+        let output = try await collect(engine.translate(items: items(["汉字"]), from: "zh-CN", to: "zh-TW"))
+        #expect(output.first?.text == "[zh-Hant] 汉字")
+    }
     @Test("installed pair translates, in order, with ids preserved")
     func installed() async throws {
         let backend = FakeAppleBackend(installed: [pair("en", "de")])
@@ -34,6 +42,15 @@ struct AppleEngineTests {
             _ = try await collect(engine.translate(items: items(["Hi"]), from: "en", to: "si"))
         }
         #expect(await !engine.supports(pair("si", "en")))
+    }
+
+    @Test("Apple response IDs are reordered and incomplete, duplicate, unrelated or blank results fail")
+    func responseValidation() throws {
+        #expect(try SystemAppleTranslationBackend.orderedResponses([("1", "Zwei"), ("0", "Eins")], count: 2) == ["Eins", "Zwei"])
+        for responses: [(String?, String)] in [ [("0", "Eins")], [("0", "Eins"), ("0", "Doppelt")],
+            [("2", "Falsch"), ("0", "Eins")], [(nil, "Falsch"), ("0", "Eins")], [("0", "Eins"), ("1", "  ")] ] {
+            #expect(throws: (any Error).self) { try SystemAppleTranslationBackend.orderedResponses(responses, count: 2) }
+        }
     }
 
     @Test("Apple framework errors map to AppError")
@@ -99,6 +116,51 @@ struct NLLBEngineTests {
         #expect(await !e.supports(pair("en", "xx")))
     }
 
+    @Test("unsupported writing systems never load or call NLLB")
+    func unsupportedScripts() async throws {
+        let runtime = FakeNLLBRuntime()
+        let e = engine(installed: true, runtime: runtime)
+        #expect(await !e.supports(pair("en", "zh-Cyrl")))
+        #expect(await !e.supports(pair("en-Cyrl", "si")))
+        #expect(NLLBLanguages.code(for: "zh-TW") == "zho_Hant")
+        #expect(NLLBLanguages.code(for: "zh-Hans") == "zho_Hans")
+        #expect(NLLBLanguages.code(for: "en-Latn") == "eng_Latn")
+        do {
+            _ = try await collect(e.translate(items: items(["hello"]), from: "en", to: "zh-Cyrl"))
+            Issue.record("unsupported script was translated")
+        } catch {}
+        #expect(await runtime.loadedFolder == nil)
+        #expect(await runtime.requests.isEmpty)
+    }
+
+    @Test("all checkpoint language tokens are mapped once; ambiguous scripts and merged dialects remain distinct")
+    func completeInventory() async throws {
+        #expect(NLLBLanguages.codes.count == 202)
+        #expect(Set(NLLBLanguages.codes.values).count == 202)
+        #expect(NLLBLanguages.code(for: "ace") == nil)
+        #expect(NLLBLanguages.code(for: "sat") == nil)
+        #expect(NLLBLanguages.code(for: "sat-Olck") == nil)
+        #expect(NLLBLanguages.code(for: "sat-Beng") == "sat_Beng")
+        #expect(NLLBLanguages.code(for: "ks") == nil)
+        #expect(NLLBLanguages.code(for: "ks-Arab") == "kas_Arab")
+        #expect(NLLBLanguages.code(for: "ks-Deva") == "kas_Deva")
+        #expect(NLLBLanguages.code(for: "ajp") == "ajp_Arab")
+        #expect(NLLBLanguages.code(for: "apc") == "apc_Arab")
+        #expect(NLLBLanguages.code(for: "ak") == "aka_Latn")
+        #expect(NLLBLanguages.code(for: "tw") == "twi_Latn")
+        let runtime = FakeNLLBRuntime()
+        let restricted = NLLBEngine(models: MockModelManager(installed: ["nllb/200-distilled-600M"]), runtime: runtime, languages: ["en-Latn", "si"])
+        #expect(await restricted.supports(pair("en-US", "si")))
+        #expect(await !restricted.supports(pair("en", "de")))
+        let e = engine(installed: true, runtime: runtime)
+        #expect(await e.supports(pair("zh-Hans", "zh-Hant")))
+        #expect(await e.supports(pair("ks-Arab", "ks-Deva")))
+        #expect(await !e.supports(pair("en-Latn", "eng")))
+        _ = try await collect(e.translate(items: items(["test"]), from: "ks-Arab", to: "ks-Deva"))
+        #expect(await runtime.requests.first?.source == "kas_Arab")
+        #expect(await runtime.requests.first?.target == "kas_Deva")
+    }
+
     @Test("unload releases the runtime")
     func unload() async {
         let runtime = FakeNLLBRuntime()
@@ -110,6 +172,36 @@ struct NLLBEngineTests {
 
 @Suite("Router")
 struct RouterTests {
+    @Test("distinct scripts route directly and pivot endpoints never lose their script")
+    func scriptRoutes() async throws {
+        let script = FakeEngine(id: "script", pairs: [pair("zh-Hans", "zh-Hant")])
+        let first = FakeEngine(id: "first", pairs: [pair("sr-Latn", "en")])
+        let second = FakeEngine(id: "second", pairs: [pair("en", "fr")])
+        let router = DefaultTranslationRouter(apple: FakeEngine(id: "none", pairs: []), nllb: nil,
+                                              cache: nil, additional: [script, first, second])
+        #expect(try await router.engine(for: pair("zh-Hans", "zh-Hant")).id == "script")
+        let pivot = try await router.engine(for: pair("sr-Latn", "fr"))
+        #expect(pivot.id.rawValue.hasPrefix("pivot:"))
+        let translated = try await collect(pivot.translate(items: items(["tekst"]), from: "sr-Latn", to: "fr"))
+        #expect(translated.first?.text.contains("first:en:") == true)
+        var events: [TranslationEvent] = []
+        for try await event in TranslationCoordinator(router: router).translate(
+            segments: [Segment(start: 0, end: 1, text: "汉字")], source: "zh-Hans", target: "zh-Hant") { events.append(event) }
+        #expect(events.contains { if case .segment = $0 { true } else { false } })
+        #expect(!events.contains { if case .skipped = $0 { true } else { false } })
+    }
+    @Test("automatic selection prefers an installed model; explicit selection retains its installation error")
+    func installedPreference() async throws {
+        let apple = FakeEngine(id: "apple.translation", pairs: [pair("en", "de")])
+        let local = FakeEngine(id: "local", pairs: [pair("en", "de")])
+        let router = DefaultTranslationRouter(apple: apple, nllb: nil, additional: [local], isReady: { engine, _ in engine == "local" })
+        #expect(try await router.engine(for: pair("en", "de")).id == "local")
+        let selected = DefaultTranslationRouter(apple: apple, nllb: nil, additional: [local], selectedEngine: { "apple.translation" }, isReady: { _, _ in false })
+        #expect(try await selected.engine(for: pair("en", "de")).id == "apple.translation")
+        let missing = DefaultTranslationRouter(apple: apple, nllb: nil, additional: [local], isReady: { _, _ in false })
+        #expect(try await missing.engine(for: pair("en", "de")).id == "apple.translation")
+    }
+
     let apple = FakeEngine(id: "apple.translation", pairs: allPairs(["en", "de", "fr", "ja", "hi"]))
     let nllb = FakeEngine(id: "nllb", pairs: allPairs(["si", "en", "ta", "hi", "bn", "ur"]))
     func router(cache: TranslationCache? = nil) -> DefaultTranslationRouter { .init(apple: apple, nllb: nllb, cache: cache) }
@@ -201,6 +293,16 @@ struct BatchingTests {
         #expect(await backend.calls == 10)
     }
 
+    @Test("an empty result fails the batch before attaching any translated rows")
+    func blankBatchOutput() async {
+        var result: [TranslatedSegment] = []
+        do {
+            for try await item in streamInBatches(items: items(["One", "Two"]), maxItems: 8, maxCharacters: 100, engine: "test", lowConfidence: false, translateBatch: { _ in ["Eins", " "] }) { result.append(item) }
+            Issue.record("blank translation succeeded")
+        } catch {}
+        #expect(result.isEmpty)
+    }
+
     @Test("character budget splits batches")
     func charBudget() async throws {
         let backend = FakeAppleBackend(installed: [pair("en", "de")])
@@ -256,6 +358,18 @@ struct BatchingTests {
 
 @Suite("Track (parallel translation)")
 struct TrackTests {
+    @Test("saved script-specific tracks neither read nor replace another writing system")
+    func savedScripts() throws {
+        let original = seg("Original", translations: [SegmentTranslation(language: "zh-Hans", text: "简体", engine: "test")])
+        var track = TranslatedTrack(language: "zh-Hant", segments: [original])
+        #expect(track.entries.first?.translated == nil)
+        track.apply(TranslatedSegment(segmentID: original.id, text: "繁體", engine: "test"))
+        let saved = try #require(track.applied(to: [original]).first)
+        #expect(saved.translations.count == 2)
+        #expect(TranslatedTrack(language: "zh-CN", segments: [saved]).entries.first?.translated == "简体")
+        #expect(TranslatedTrack(language: "zh-TW", segments: [saved]).entries.first?.translated == "繁體")
+    }
+
     @Test("applying results keeps the original untouched (TRN-AC-04)")
     func apply() {
         let segments = [seg("Hello"), seg("World"), seg("ignored", ignored: true), seg("  ")]
@@ -439,5 +553,45 @@ final class FakeClock: @unchecked Sendable {
             current = current.advanced(by: d)
             _slept.append(d)
         }
+    }
+}
+
+
+@Suite("Explicit translation engine selection")
+struct TranslationSelectionTests {
+    @Test("explicit NLLB choice is honored even when Apple supports the pair")
+    func honorsChoice() async throws {
+        let pair = LanguagePair(source: "en", target: "hi")
+        let apple = FakeEngine(id: "apple.translation", pairs: [pair])
+        let nllb = FakeEngine(id: "nllb", pairs: [pair])
+        let router = DefaultTranslationRouter(apple: apple, nllb: nllb, selectedEngine: { "nllb" })
+        #expect(try await router.engine(for: pair).id == "nllb")
+    }
+
+    @Test("explicit unsupported engine does not silently fall back")
+    func refusesFallback() async {
+        let pair = LanguagePair(source: "si", target: "en")
+        let router = DefaultTranslationRouter(
+            apple: FakeEngine(id: "apple.translation", pairs: []), nllb: FakeEngine(id: "nllb", pairs: [pair]),
+            selectedEngine: { "apple.translation" })
+        await #expect(throws: TranslationFailure.noEngine(pair)) { _ = try await router.engine(for: pair) }
+    }
+
+    @Test("engine policy is enforced before returning a cached engine")
+    func policy() async {
+        let pair = LanguagePair(source: "si", target: "en")
+        let router = DefaultTranslationRouter(
+            apple: FakeEngine(id: "apple.translation", pairs: []), nllb: FakeEngine(id: "nllb", pairs: [pair]),
+            isAllowed: { $0 != "nllb" })
+        await #expect(throws: TranslationFailure.noEngine(pair)) { _ = try await router.engine(for: pair) }
+    }
+
+    @Test("additional registered native engines participate in automatic and explicit routing")
+    func additionalEngine() async throws {
+        let pair = LanguagePair(source: "fr", target: "de")
+        let engine = FakeEngine(id: "test.native", pairs: [pair])
+        let router = DefaultTranslationRouter(
+            apple: FakeEngine(id: "apple.translation", pairs: []), nllb: nil, additional: [engine])
+        #expect(try await router.engine(for: pair).id == engine.id)
     }
 }

@@ -8,13 +8,14 @@ let package = Package(
         .library(name: "NLLBNative", targets: ["NLLBNative"]),
         .executable(name: "EarmarkNLLBWorker", targets: ["EarmarkNLLBWorker"]),
     ],
+    dependencies: [.package(path: "../NativeWorkerKit"), .package(path: "../ModelStore")],
     targets: [
         .binaryTarget(name: "EarmarkNLLBCore", path: "Vendor/EarmarkNLLBCore.xcframework"),
         .target(
-            name: "NLLBNative", dependencies: ["EarmarkNLLBCore"],
+            name: "NLLBNative", dependencies: ["EarmarkNLLBCore", .product(name: "ModelLanguageProfiles", package: "ModelStore")],
             swiftSettings: [.treatAllWarnings(as: .error)],
             linkerSettings: [.linkedFramework("Accelerate"), .linkedLibrary("c++")]),
-        .executableTarget(name: "EarmarkNLLBWorker", dependencies: ["NLLBNative"], path: "Sources/EarmarkNLLBWorker"),
+        .executableTarget(name: "EarmarkNLLBWorker", dependencies: ["NLLBNative", "NativeWorkerKit"], path: "Sources/EarmarkNLLBWorker"),
         .testTarget(name: "NLLBNativeTests", dependencies: ["NLLBNative"], resources: [.copy("Fixtures")]),
     ],
     swiftLanguageModes: [.v6]

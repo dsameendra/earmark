@@ -237,3 +237,38 @@ footer { border-top: 1px solid var(--line); padding-block: 3rem 3.5rem; }
   .js .reveal { opacity: 1; transform: none; }
   .parallax { transform: none !important; }
 }
+
+/* Models section */
+.new-note { margin-top: 1rem; font-weight: 600; }
+.model-cols { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); }
+.model-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.85rem; }
+.model-list li { display: grid; gap: 0.15rem; }
+.model-list strong { font-weight: 600; }
+.model-list span { color: var(--muted); font-size: 0.98rem; line-height: 1.45; }
+.fine-print { color: var(--muted); font-size: 0.9rem; margin-top: 1.25rem; }
+.model-shot { margin-top: 2rem; }
+.model-shot figure { margin: 0; max-width: 1000px; margin-inline: auto; }
+.model-shot figcaption { text-align: center; color: var(--muted); margin-top: 0.9rem; font-size: 0.95rem; }
+.model-honesty { max-width: 46rem; margin: 1.75rem auto 0; text-align: center; color: var(--muted); }
+
+/* Changelog page */
+.nav nav a[aria-current="page"] { color: var(--ember-text); }
+.page-head { padding-block: clamp(5rem, 10vw, 7.5rem) 1rem; }
+.page-head h1 { font-size: clamp(2.4rem, 6vw, 4rem); margin-bottom: 1rem; }
+.page-head .lede { max-width: 40rem; }
+.jump { list-style: none; display: flex; gap: 0.5rem; padding: 0; margin: 1.5rem 0 0; flex-wrap: wrap; }
+.jump a { display: inline-block; padding: 0.4rem 0.9rem; border: 1px solid var(--line); border-radius: 999px; background: var(--sheet); color: var(--ink); text-decoration: none; font-weight: 500; }
+.jump a:hover { border-color: var(--ember); color: var(--ember-text); }
+.log { padding-block: 2rem 5rem; }
+.page-head .wrap, .log-wrap { max-width: 46rem; }
+.log-wrap { display: grid; gap: 1.5rem; }
+.release { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r); padding: clamp(1.4rem, 4vw, 2.2rem); box-shadow: var(--shadow-s); }
+.release header { margin-bottom: 1rem; }
+.release h2 { font-size: clamp(1.8rem, 4vw, 2.4rem); }
+.release h3 { font-size: 1.25rem; margin: 1.5rem 0 0.5rem; }
+.release p { color: var(--muted); }
+.release ul { margin: 0.4rem 0 0; padding-left: 1.2rem; color: var(--muted); display: grid; gap: 0.5rem; }
+.release ul strong { color: var(--ink); font-weight: 600; }
+.meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; margin-top: 0.5rem; font-size: 0.95rem; }
+.tag { background: var(--ember-soft); color: var(--ember-text); padding: 0.15rem 0.65rem; border-radius: 999px; font-weight: 600; font-size: 0.85rem; }
+.release:target { border-color: var(--ember); }

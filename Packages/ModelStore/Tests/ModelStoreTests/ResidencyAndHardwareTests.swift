@@ -8,6 +8,59 @@ private let gib: UInt64 = 1_073_741_824
 
 @Suite("Residency")
 struct ResidencyTests {
+    @Test("eviction waits for native teardown and queued cancellation never registers a model")
+    func evictionAdmissionAndCancellation() async throws {
+        let barrier = ResidencyUnloadBarrier()
+        let tracker = ModelResidencyTracker(maxHeavyResident: 1) { _ in await barrier.enter() }
+        try await tracker.prepareToLoad("a", isHeavy: true)
+        let eviction = Task { await tracker.evict("a") }
+        for _ in 0..<100 where await !barrier.started { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(await barrier.started)
+        let queued = Task { try await tracker.prepareToLoad("b", isHeavy: true) }
+        try await Task.sleep(for: .milliseconds(20))
+        queued.cancel()
+        await #expect(throws: CancellationError.self) { try await queued.value }
+        #expect(await tracker.resident().isEmpty)
+        await barrier.release()
+        #expect(await eviction.value)
+        try await tracker.prepareAndBeginUse("b", isHeavy: true)
+        #expect(await !tracker.evict("b"))
+        await #expect(throws: AppError.self) { try await tracker.beginRemoval("b") }
+        await tracker.endUse("b")
+        #expect(await tracker.evict("b"))
+    }
+
+    @Test("memory-pressure eviction finishes before admitting the next load")
+    func memoryPressureAdmission() async throws {
+        let barrier = ResidencyUnloadBarrier()
+        let tracker = ModelResidencyTracker(maxHeavyResident: 1) { _ in await barrier.enter() }
+        try await tracker.prepareToLoad("a", isHeavy: true)
+        let pressure = Task { await tracker.handleMemoryPressure() }
+        for _ in 0..<100 where await !barrier.started { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(await barrier.started)
+        let next = Task { try await tracker.prepareAndBeginUse("b", isHeavy: true) }
+        try await Task.sleep(for: .milliseconds(20))
+        #expect(await tracker.resident().isEmpty)
+        await barrier.release()
+        #expect(await pressure.value == "a")
+        _ = try await next.value
+        #expect(await tracker.resident() == ["b"])
+        #expect(await tracker.handleMemoryPressure() == nil)
+        await tracker.endUse("b")
+    }
+
+    @Test("removal blocks reloading and a late beginUse until filesystem work finishes")
+    func removalReservation() async throws {
+        let tracker = ModelResidencyTracker(maxHeavyResident: 1)
+        try await tracker.prepareToLoad("a", isHeavy: true)
+        try await tracker.beginRemoval("a")
+        await #expect(throws: AppError.self) { try await tracker.prepareToLoad("a", isHeavy: true) }
+        await #expect(throws: AppError.self) { try await tracker.beginUse("a") }
+        await tracker.endRemoval("a")
+        try await tracker.prepareToLoad("a", isHeavy: true)
+        try await tracker.beginUse("a")
+        #expect(await tracker.isResident("a"))
+    }
     @Test("LRU heavy model is evicted when the limit is reached")
     func lruEviction() async throws {
         let log = UnloadLog()
@@ -44,7 +97,7 @@ struct ResidencyTests {
     func busyModels() async throws {
         let tracker = ModelResidencyTracker(maxHeavyResident: 1)
         try await tracker.prepareToLoad("a", isHeavy: true)
-        await tracker.beginUse("a")
+        try await tracker.beginUse("a")
         await #expect(throws: AppError.outOfMemory) { try await tracker.prepareToLoad("b", isHeavy: true) }
         #expect(await tracker.handleMemoryPressure() == nil)
         await tracker.endUse("a")
@@ -58,7 +111,7 @@ struct ResidencyTests {
         let tracker = ModelResidencyTracker(maxHeavyResident: 3) { await log.record($0) }
         try await tracker.prepareToLoad("a", isHeavy: true)
         try await tracker.prepareToLoad("b", isHeavy: true)
-        await tracker.beginUse("a")
+        try await tracker.beginUse("a")
         await tracker.touch("b")
         #expect(await tracker.handleMemoryPressure() == "b", "a is busy so idle b goes")
         #expect(await log.ids == ["b"])
@@ -142,4 +195,15 @@ struct HardwareTierTests {
         await task.value
         await thermal.value
     }
+}
+
+private actor ResidencyUnloadBarrier {
+    private(set) var started = false
+    private var open = false
+    private var continuation: CheckedContinuation<Void, Never>?
+    func enter() async {
+        started = true
+        if !open { await withCheckedContinuation { continuation = $0 } }
+    }
+    func release() { open = true; continuation?.resume(); continuation = nil }
 }

@@ -293,12 +293,38 @@ public struct LiveView: View {
     }
 
     @ViewBuilder private func translationCard(_ summary: LiveSessionSummary) -> some View {
-        if summary.translatedCount == 0 {
-            Text("No translated lines yet. Translations appear under each caption when a language pair is active.")
+        Toggle("Translate captions", isOn: $model.translationEnabled)
+            .disabled(model.isRunning)
+            .accessibilityIdentifier("live.translation.enabled")
+        if model.translationEnabled {
+            Picker("Translate to", selection: $model.translationTarget) {
+                Text("Choose a language").tag("")
+                ForEach(model.translationLanguages, id: \.self) { language in
+                    Text(LiveLanguageChoice.name(language)).tag(language.rawValue)
+                }
+            }
+            .disabled(model.isRunning)
+            .accessibilityIdentifier("live.translation.target")
+            Picker("Engine", selection: $model.translationEngine) {
+                ForEach(model.translationEngineChoices) { choice in Text(choice.title).tag(choice.id).disabled(choice.isUnavailable) }
+            }
+            .disabled(model.isRunning)
+            .accessibilityIdentifier("live.translation.engine")
+            if case .needsApplePack = model.translationPreparation {
+                Button("Prepare translation…") { Task { await model.prepareTranslation() } }
+                    .accessibilityIdentifier("live.translation.prepare")
+            }
+            if summary.translatedCount > 0 {
+                factRow("Translated lines", "\(summary.translatedCount) of \(summary.finalCount)")
+            } else {
+                Text(model.isRunning ? "Waiting for translated speech. Translation problems appear above the captions." : "Translations will appear below each caption after you start.")
+                    .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        } else {
+            Text("Translation is off. Turn on Translate captions to choose a target language.")
                 .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
-        } else {
-            factRow("Translated lines", "\(summary.translatedCount) of \(summary.finalCount)")
         }
     }
 

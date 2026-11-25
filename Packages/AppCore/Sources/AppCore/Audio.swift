@@ -220,6 +220,13 @@ public struct EnginePlan: Sendable, Hashable {
 /// Pure, table-driven engine routing (ADR-004). Must have no side effects so every row can be unit-tested.
 public protocol EngineRouter: Sendable {
     func plan(for request: RoutingRequest) throws -> EnginePlan
+    /// Execution-time routing after refreshing system/model readiness for the actual requested languages.
+    func preparedPlan(for request: RoutingRequest) async throws -> EnginePlan
+}
+
+extension EngineRouter {
+    /// Pure routers need no asynchronous preparation. Runtime-aware routers override this entry point.
+    public func preparedPlan(for request: RoutingRequest) async throws -> EnginePlan { try plan(for: request) }
 }
 
 // MARK: - Post-processing

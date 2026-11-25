@@ -78,6 +78,35 @@ enum CatalogFixtures {
             ("SortformerNvidiaLow_v2.mlmodelc/model1/weights/1-weight.bin", 235580992),
         ])
 
+    static let qwenGeneral = Listing(
+        repo: "mlx-community/Qwen3-ASR-0.6B-4bit", revision: "313d850181767edf09f00a9c289becca70e58cd0",
+        files: [
+            ("chat_template.json", 1161),
+            ("config.json", 7187),
+            ("generation_config.json", 142),
+            ("merges.txt", 1671853),
+            ("model.safetensors", 708236945),
+            ("model.safetensors.index.json", 71814),
+            ("preprocessor_config.json", 330),
+            ("tokenizer_config.json", 12487),
+            ("vocab.json", 2776833),
+        ])
+
+    static let qwenGeneral17 = Listing(
+        repo: "mlx-community/Qwen3-ASR-1.7B-4bit", revision: "78a389c776a5483b2d0d4ea5494e11012e0d6159",
+        files: [
+            ("README.md", 1008),
+            ("chat_template.json", 1161),
+            ("config.json", 7188),
+            ("generation_config.json", 142),
+            ("merges.txt", 1671853),
+            ("model.safetensors", 1603081617),
+            ("model.safetensors.index.json", 78968),
+            ("preprocessor_config.json", 330),
+            ("tokenizer_config.json", 12487),
+            ("vocab.json", 2776833),
+        ])
+
     static let parakeet = Listing(
         repo: "FluidInference/parakeet-tdt-0.6b-v3-coreml", revision: "7dd20fe6b1797d35f5e3307e8b1732d9a178edfe",
         files: [
@@ -101,7 +130,147 @@ enum CatalogFixtures {
             ("JointDecisionv3.mlmodelc/metadata.json", 3453),
             ("JointDecisionv3.mlmodelc/model.mil", 11775),
             ("JointDecisionv3.mlmodelc/weights/weight.bin", 12642764),
-            ("parakeet_v3_vocab.json", 151122),
+            ("parakeet_vocab.json", 151122),
+        ])
+
+    static let parakeetUltra = Listing(
+        repo: "FluidInference/parakeet-ultra-coreml", revision: "95eaa59a39d4394f047a4dc5cce480388a60d1b6",
+        files: [
+            ("Decoder.mlmodelc/analytics/coremldata.bin", 243),
+            ("Decoder.mlmodelc/coremldata.bin", 560),
+            ("Decoder.mlmodelc/model.mil", 13110),
+            ("Decoder.mlmodelc/weights/weight.bin", 23604992),
+            ("Encoder.mlmodelc/analytics/coremldata.bin", 243),
+            ("Encoder.mlmodelc/coremldata.bin", 514),
+            ("Encoder.mlmodelc/model.mil", 1002653),
+            ("Encoder.mlmodelc/weights/weight.bin", 594211328),
+            ("JointDecisionv3.mlmodelc/analytics/coremldata.bin", 243),
+            ("JointDecisionv3.mlmodelc/coremldata.bin", 592),
+            ("JointDecisionv3.mlmodelc/model.mil", 11777),
+            ("JointDecisionv3.mlmodelc/weights/weight.bin", 12642764),
+            ("Preprocessor.mlmodelc/analytics/coremldata.bin", 243),
+            ("Preprocessor.mlmodelc/coremldata.bin", 486),
+            ("Preprocessor.mlmodelc/metadata.json", 2841),
+            ("Preprocessor.mlmodelc/model.mil", 28181),
+            ("Preprocessor.mlmodelc/weights/weight.bin", 491072),
+            ("parakeet_vocab.json", 151122),
+        ])
+
+    static let parakeetRedux = Listing(
+        repo: "FluidInference/parakeet-redux-coreml", revision: "8c5ef97a29cd120dc76b354b3f22b7fec3b486f9",
+        files: [
+            ("Decoder.mlmodelc/analytics/coremldata.bin", 243),
+            ("Decoder.mlmodelc/coremldata.bin", 560),
+            ("Decoder.mlmodelc/model.mil", 13110),
+            ("Decoder.mlmodelc/weights/weight.bin", 23604992),
+            ("Encoder.mlmodelc/analytics/coremldata.bin", 243),
+            ("Encoder.mlmodelc/coremldata.bin", 506),
+            ("Encoder.mlmodelc/model.mil", 965906),
+            ("Encoder.mlmodelc/weights/weight.bin", 182389312),
+            ("JointDecisionv3.mlmodelc/analytics/coremldata.bin", 243),
+            ("JointDecisionv3.mlmodelc/coremldata.bin", 592),
+            ("JointDecisionv3.mlmodelc/model.mil", 11777),
+            ("JointDecisionv3.mlmodelc/weights/weight.bin", 12642764),
+            ("Preprocessor.mlmodelc/analytics/coremldata.bin", 243),
+            ("Preprocessor.mlmodelc/coremldata.bin", 486),
+            ("Preprocessor.mlmodelc/metadata.json", 2841),
+            ("Preprocessor.mlmodelc/model.mil", 28181),
+            ("Preprocessor.mlmodelc/weights/weight.bin", 491072),
+            ("parakeet_vocab.json", 151122),
+        ])
+
+    static let cohere = Listing(
+        repo: "FluidInference/cohere-transcribe-03-2026-coreml", revision: "e1ce10d4cae2ca9a8b36cef5786fa3660f070050",
+        files: [
+            ("q8/cohere_decoder_cache_external_v3.mlmodelc/analytics/coremldata.bin", 243),
+            ("q8/cohere_decoder_cache_external_v3.mlmodelc/coremldata.bin", 1688),
+            ("q8/cohere_decoder_cache_external_v3.mlmodelc/metadata.json", 13693),
+            ("q8/cohere_decoder_cache_external_v3.mlmodelc/model.mil", 203705),
+            ("q8/cohere_decoder_cache_external_v3.mlmodelc/weights/weight.bin", 304453120),
+            ("q8/cohere_encoder.mlmodelc/analytics/coremldata.bin", 243),
+            ("q8/cohere_encoder.mlmodelc/coremldata.bin", 421),
+            ("q8/cohere_encoder.mlmodelc/metadata.json", 2587),
+            ("q8/cohere_encoder.mlmodelc/model.mil", 2444649),
+            ("q8/cohere_encoder.mlmodelc/weights/weight.bin", 1881964672),
+            ("vocab.json", 338520),
+        ])
+
+    static let nemotron = Listing(
+        repo: "handy-computer/nemotron-3.5-asr-streaming-0.6b-gguf", revision: "53ce288f69326b415aeef030cfcb02a08a8096dd",
+        files: [
+            ("LICENSE", 2619),
+            ("NOTICE", 411),
+            ("README.md", 50786),
+            ("nemotron-3.5-asr-streaming-0.6b-Q4_K_M.gguf", 495831520),
+        ])
+
+    static let canary = Listing(
+        repo: "handy-computer/canary-1b-v2-gguf", revision: "692af661b140183b60e44f55ad03c59e1e77d078",
+        files: [
+            ("LICENSE", 18657),
+            ("NOTICE", 392),
+            ("README.md", 28800),
+            ("canary-1b-v2-Q4_K_M.gguf", 735476448),
+        ])
+
+    static let parakeetEOU = Listing(
+        repo: "FluidInference/parakeet-realtime-eou-120m-coreml", revision: "40a23f4c0b333aa17ad8c0f2ea47ec2347f2f355",
+        files: [
+            ("160ms/decoder.mlmodelc/analytics/coremldata.bin", 243),
+            ("160ms/decoder.mlmodelc/coremldata.bin", 497),
+            ("160ms/decoder.mlmodelc/metadata.json", 3283),
+            ("160ms/decoder.mlmodelc/model.mil", 7409),
+            ("160ms/decoder.mlmodelc/weights/weight.bin", 7873600),
+            ("160ms/joint_decision.mlmodelc/analytics/coremldata.bin", 243),
+            ("160ms/joint_decision.mlmodelc/coremldata.bin", 493),
+            ("160ms/joint_decision.mlmodelc/metadata.json", 3181),
+            ("160ms/joint_decision.mlmodelc/model.mil", 9608),
+            ("160ms/joint_decision.mlmodelc/weights/weight.bin", 2794182),
+            ("160ms/streaming_encoder.mlmodelc/analytics/coremldata.bin", 243),
+            ("160ms/streaming_encoder.mlmodelc/coremldata.bin", 670),
+            ("160ms/streaming_encoder.mlmodelc/metadata.json", 5327),
+            ("160ms/streaming_encoder.mlmodelc/model.mil", 639646),
+            ("160ms/streaming_encoder.mlmodelc/weights/weight.bin", 212691776),
+            ("160ms/vocab.json", 17437),
+        ])
+
+    static let hymt18 = Listing(
+        repo: "tencent/Hy-MT2-1.8B-GGUF", revision: "a0c709d9fac510f2c807aa3af52872340dc37a4a",
+        files: [
+            ("Hy-MT2-1.8B-Q4_K_M.gguf", 1133080448),
+            ("LICENSE.txt", 11639),
+            ("README.md", 15305),
+        ])
+
+    static let hymt7 = Listing(
+        repo: "tencent/Hy-MT2-7B-GGUF", revision: "ab8472660ac61fac25f1af43fac2599d52a8a775",
+        files: [
+            ("Hy-MT2-7B-Q4_K_M.gguf", 4624648896),
+            ("LICENSE.txt", 11635),
+            ("README.md", 15276),
+        ])
+
+    static let gemma4 = Listing(
+        repo: "mradermacher/translategemma-4b-it-GGUF", revision: "d37868f759d2f817a43d28dd80cf9f982ffa62fd",
+        files: [
+            ("README.md", 4521),
+            ("translategemma-4b-it.Q4_K_M.gguf", 2489909760),
+        ])
+
+    static let gemma12 = Listing(
+        repo: "mradermacher/translategemma-12b-it-GGUF", revision: "41d7c8aa650b26791225ad9d0597e674e680da96",
+        files: [
+            ("README.md", 4404),
+            ("translategemma-12b-it.Q4_K_M.gguf", 7300794112),
+        ])
+
+    static let voxtral = Listing(
+        repo: "handy-computer/Voxtral-Mini-4B-Realtime-2602-gguf", revision: "7fd3d424fc558edca2c53808578b0541ef52a81a",
+        files: [
+            ("LICENSE", 11358),
+            ("NOTICE", 412),
+            ("README.md", 20272),
+            ("Voxtral-Mini-4B-Realtime-2602-Q4_K_M.gguf", 2830493984),
         ])
 
     static let whisperLarge = Listing(
@@ -175,6 +344,112 @@ enum CatalogFixtures {
             ("openai_whisper-small_216MB/TextDecoder.mlmodelc/weights/weight.bin", 153130482),
             ("openai_whisper-small_216MB/config.json", 1456),
             ("openai_whisper-small_216MB/generation_config.json", 2779),
+        ])
+
+    static let madladNative = Listing(
+        repo: "Nextcloud-AI/madlad400-3b-mt-ct2-int8", revision: "aa32bbdeba7880eff2096ec044cb155a340a9400",
+        files: [
+            (".gitattributes", 1570),
+            ("README.md", 10014),
+            ("added_tokens.json", 4),
+            ("config.json", 224),
+            ("generation_config.json", 142),
+            ("model.bin", 2950208329),
+            ("shared_vocabulary.json", 5477099),
+            ("special_tokens_map.json", 414),
+            ("spiece.model", 4427844),
+            ("tokenizer.json", 16629031),
+            ("tokenizer_config.json", 830),
+        ])
+
+    static let opusEnDe = Listing(
+        repo: "gaudi/opus-mt-en-de-ctranslate2", revision: "3998844c0d44ff2aa5aaf5a1cf8365b6eb4fd783",
+        files: [
+            (".gitattributes", 433),
+            ("README.md", 6720),
+            ("config.json", 215),
+            ("generation_config.json", 293),
+            ("model.bin", 148423215),
+            ("shared_vocabulary.json", 993828),
+            ("source.spm", 768489),
+            ("target.spm", 796845),
+            ("tokenizer_config.json", 42),
+            ("vocab.json", 1273232)
+        ])
+
+    static let opusDeEn = Listing(
+        repo: "gaudi/opus-mt-de-en-ctranslate2", revision: "7134d80efb6dbc284567cbeb55a517dc2974f722",
+        files: [
+            (".gitattributes", 387),
+            ("README.md", 6720),
+            ("config.json", 215),
+            ("generation_config.json", 293),
+            ("model.bin", 148423215),
+            ("shared_vocabulary.json", 993828),
+            ("source.spm", 796845),
+            ("target.spm", 768489),
+            ("tokenizer_config.json", 42),
+            ("vocab.json", 1273232)
+        ])
+
+    static let opusEnFr = Listing(
+        repo: "michaelfeil/ct2fast-opus-mt-en-fr", revision: "55bcef18761227161433d86b81bbbcd9d813b429",
+        files: [
+            (".gitattributes", 391),
+            ("README.md", 2817),
+            ("config.json", 159),
+            ("generation_config.json", 293),
+            ("model.bin", 149872839),
+            ("shared_vocabulary.txt", 556777),
+            ("source.spm", 778395),
+            ("target.spm", 802397),
+            ("tokenizer_config.json", 42),
+            ("vocab.json", 1339166)
+        ])
+
+    static let opusFrEn = Listing(
+        repo: "gaudi/opus-mt-fr-en-ctranslate2", revision: "b88efd065a8720e0beeaba2efd53b1dc9a29cfc0",
+        files: [
+            (".gitattributes", 433),
+            ("README.md", 6720),
+            ("config.json", 215),
+            ("generation_config.json", 293),
+            ("model.bin", 149872953),
+            ("shared_vocabulary.json", 1052697),
+            ("source.spm", 802397),
+            ("target.spm", 778395),
+            ("tokenizer_config.json", 42),
+            ("vocab.json", 1339166)
+        ])
+
+    static let opusEnEs = Listing(
+        repo: "michaelfeil/ct2fast-opus-mt-en-es", revision: "76ec296588e2234f9b7dfad5254219a0f5ecb7af",
+        files: [
+            (".gitattributes", 391),
+            ("README.md", 4027),
+            ("config.json", 159),
+            ("generation_config.json", 293),
+            ("model.bin", 155502501),
+            ("shared_vocabulary.txt", 666435),
+            ("source.spm", 801636),
+            ("target.spm", 825924),
+            ("tokenizer_config.json", 44),
+            ("vocab.json", 1590040)
+        ])
+
+    static let opusEsEn = Listing(
+        repo: "gaudi/opus-mt-es-en-ctranslate2", revision: "ef459fb7b0511ea2d1ec9279f8d6cf80661bf9f7",
+        files: [
+            (".gitattributes", 387),
+            ("README.md", 6720),
+            ("config.json", 215),
+            ("generation_config.json", 293),
+            ("model.bin", 155502615),
+            ("shared_vocabulary.json", 1276136),
+            ("source.spm", 825924),
+            ("target.spm", 801636),
+            ("tokenizer_config.json", 44),
+            ("vocab.json", 1590040)
         ])
 
     static let nllb = Listing(

@@ -1,5 +1,6 @@
 import AppCore
 import Foundation
+import NativeWorkerKit
 
 /// Tracks which models are loaded in memory, evicts least-recently-used idle ones, and reacts to memory pressure (ADR-007).
 ///
@@ -18,9 +19,9 @@ public actor ModelResidencyTracker {
     private var entries: [ModelID: Entry] = [:]
     private var tick: UInt64 = 0
     private var unloadHandler: (@Sendable (ModelID) async -> Void)?
-    private var busy = false
-    private var waiters: [CheckedContinuation<Void, Never>] = []
+    private let gate = WorkerGate()
     private var monitor: Task<Void, Never>?
+    private var removals: Set<ModelID> = []
 
     /// One heavy model on 8 and 16 GB Macs, two on 32 GB and above (ADR-007: one heavy model resident by default).
     public static func defaultMaxHeavy(for tier: HardwareTier) -> Int { tier == .tier32Plus ? 2 : 1 }
@@ -52,8 +53,23 @@ public actor ModelResidencyTracker {
     /// - Throws: ``AppError/outOfMemory`` if room is needed but every resident model is in use.
     @discardableResult
     public func prepareToLoad(_ id: ModelID, isHeavy: Bool, bytes: Int64 = 0) async throws -> [ModelID] {
-        await acquireLoadLock()
-        defer { releaseLoadLock() }
+        try await gate.withLease { try await self.prepareLocked(id, isHeavy: isHeavy, bytes: bytes) }
+    }
+
+    /// Atomically reserve use before native loading, so eviction/deletion cannot
+    /// enter between prepareToLoad and beginUse. Call endUse on every exit path.
+    @discardableResult
+    public func prepareAndBeginUse(_ id: ModelID, isHeavy: Bool, bytes: Int64 = 0) async throws -> [ModelID] {
+        try await gate.withLease {
+            let evicted = try await self.prepareLocked(id, isHeavy: isHeavy, bytes: bytes)
+            try await self.beginUse(id)
+            return evicted
+        }
+    }
+
+    private func prepareLocked(_ id: ModelID, isHeavy: Bool, bytes: Int64) async throws -> [ModelID] {
+        try Task.checkCancellation()
+        guard !removals.contains(id) else { throw AppError.other("This model is being removed. Try again when removal finishes.") }
         if entries[id] != nil {
             touch(id)
             return []
@@ -64,6 +80,7 @@ public actor ModelResidencyTracker {
             await unload(victim)
             evicted.append(victim)
         }
+        try Task.checkCancellation()
         tick += 1
         entries[id] = Entry(isHeavy: isHeavy, bytes: bytes, lastUsed: tick, inUse: 0)
         return evicted
@@ -77,10 +94,27 @@ public actor ModelResidencyTracker {
     }
 
     /// Marks the model busy (e.g. a transcription running); busy models are never evicted.
-    public func beginUse(_ id: ModelID) {
+    public func beginUse(_ id: ModelID) throws {
+        guard !removals.contains(id), entries[id] != nil else { throw AppError.modelNotInstalled(id) }
         touch(id)
         entries[id]?.inUse += 1
     }
+
+    /// Reserve deletion across the actual engine unload and filesystem mutation.
+    /// A new load cannot enter during the suspension in the unload callback.
+    public func beginRemoval(_ id: ModelID) async throws {
+        try await gate.withLease { try await self.beginRemovalLocked(id) }
+    }
+
+    private func beginRemovalLocked(_ id: ModelID) async throws {
+        try Task.checkCancellation()
+        guard !removals.contains(id) else { throw AppError.other("This model is already being removed.") }
+        guard (entries[id]?.inUse ?? 0) == 0 else { throw AppError.other("Stop using this model before removing it.") }
+        removals.insert(id)
+        if entries[id] != nil { await unload(id) }
+    }
+
+    public func endRemoval(_ id: ModelID) { removals.remove(id) }
 
     public func endUse(_ id: ModelID) {
         guard var entry = entries[id] else { return }
@@ -97,6 +131,10 @@ public actor ModelResidencyTracker {
     /// - Returns: `true` if the model was unloaded.
     @discardableResult
     public func evict(_ id: ModelID) async -> Bool {
+        await gate.cleanup { await self.evictLocked(id) }
+    }
+
+    private func evictLocked(_ id: ModelID) async -> Bool {
         guard let entry = entries[id], entry.inUse == 0 else { return false }
         await unload(id)
         return true
@@ -106,6 +144,10 @@ public actor ModelResidencyTracker {
     /// - Returns: the unloaded id, or `nil` when nothing was idle.
     @discardableResult
     public func handleMemoryPressure() async -> ModelID? {
+        await gate.cleanup { await self.handleMemoryPressureLocked() }
+    }
+
+    private func handleMemoryPressureLocked() async -> ModelID? {
         guard let victim = lruIdle(heavyOnly: false) else { return nil }
         await unload(victim)
         return victim
@@ -137,19 +179,4 @@ public actor ModelResidencyTracker {
         await unloadHandler?(id)
     }
 
-    private func acquireLoadLock() async {
-        if !busy {
-            busy = true
-            return
-        }
-        await withCheckedContinuation { waiters.append($0) }
-    }
-
-    private func releaseLoadLock() {
-        if waiters.isEmpty {
-            busy = false
-        } else {
-            waiters.removeFirst().resume()
-        }
-    }
 }

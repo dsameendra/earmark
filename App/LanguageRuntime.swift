@@ -18,7 +18,7 @@ struct SegmentRetranscriptionAdapter: SegmentRetranscriptionService {
         let tier = hardware.profile.tier
         let installed = await models.installedModels()
         let explicit = await explicitModel()
-        let base = try router.plan(
+        let base = try await router.preparedPlan(
             for: RoutingRequest(languageMode: .single(language), useCase: .file, tier: tier, installedModels: installed))
         let resolver = LanguageEngineResolver.make(
             router: router, basePlan: base, useCase: .file, tier: tier, explicitModel: explicit,
@@ -51,7 +51,7 @@ struct LiveLanguageEngineProvider: LiveEngineProviding {
         guard case .multilingual(let set) = languageMode, set.count > 1 else { return try await base.resolve(languageMode: languageMode) }
         let installed = await models.installedModels()
         let tier = hardware.profile.tier
-        let plan = try router.plan(
+        let plan = try await router.preparedPlan(
             for: RoutingRequest(languageMode: languageMode, useCase: .live, tier: tier, installedModels: installed))
         // Every language needs its model now: a missing one would only fail mid-session, on the first utterance in it.
         for assignment in plan.assignments where assignment.requiresDownload {

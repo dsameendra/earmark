@@ -36,7 +36,8 @@ struct HardwareSmokeTests {
             let start2 = clock.now
             _ = try await collect(engine.translate(items: items(english), from: "en", to: target))
             print(String(format: "SMOKE apple en->%@ warm: %.0f ms", target.rawValue, ms(clock.now - start2)))
-            #expect(out.count == english.count && out.allSatisfy { !$0.text.isEmpty && $0.text != english[0] || true })
+            #expect(out.count == english.count)
+            #expect(zip(english, out).allSatisfy { source, output in !output.text.isEmpty && output.text != source })
         }
         // Sinhala is unsupported by Apple
         #expect(await !engine.supports(pair("en", "si")))
@@ -86,20 +87,3 @@ struct HardwareSmokeTests {
 }
 
 /// Minimal `ModelManaging` that reports the NLLB model as installed at a fixed folder.
-private struct FolderModelManager: ModelManaging {
-    let folder: URL
-    func catalog() async -> [ModelDescriptor] { [] }
-    func state(of model: ModelID) async -> ModelState { .installed(bytesOnDisk: 1) }
-    func stateChanges() -> AsyncStream<(ModelID, ModelState)> { AsyncStream { $0.finish() } }
-    func installedModels() async -> Set<ModelID> { [TranslationEngineIDs.nllbModel] }
-    func ensureAvailable(_ model: ModelID) -> AsyncThrowingStream<ModelDownloadEvent, any Error> { AsyncThrowingStream { $0.finish() } }
-    func pauseDownload(_ model: ModelID) async {}
-    func resumeDownload(_ model: ModelID) async {}
-    func cancelDownload(_ model: ModelID) async {}
-    func delete(_ model: ModelID) async throws {}
-    func importModel(folder: URL, displayName: String, languages: Set<LanguageCode>) async throws -> ModelDescriptor {
-        throw AppError.other("unsupported")
-    }
-    func diskUsage() async -> DiskUsage { DiskUsage(totalBytes: 0, perModel: [:]) }
-    func location(of model: ModelID) async throws -> URL { folder }
-}

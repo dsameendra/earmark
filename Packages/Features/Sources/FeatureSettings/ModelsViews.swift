@@ -11,6 +11,8 @@ enum ModelFormat {
         switch warning {
         case .nonCommercial(let spdx):
             "This model is licensed \(spdx), which does not allow commercial use. Use it only for personal or non-commercial work."
+        case .licenseNotice(let spdx, let attribution):
+            ["This model is licensed \(spdx). Review its licence terms before use.", attribution].compactMap { $0 }.joined(separator: "\n")
         case .hardwareTier:
             "This model is larger than this Mac is tuned for. It may run slowly or use a lot of memory."
         case .lowDiskSpace(let needed, let available):
@@ -26,6 +28,7 @@ enum ModelFormat {
     static func licenseBadge(_ license: LicenseInfo) -> (text: String, tone: DSTone) {
         if license.isNonCommercial { return ("\(license.spdx) · non-commercial", .warning) }
         if license.spdx.uppercased().contains("-SA") { return ("\(license.spdx) · share-alike", .info) }
+        if license.needsAcknowledgement { return ("\(license.spdx) · review terms", .info) }
         return (license.spdx, .neutral)
     }
 }
@@ -52,6 +55,7 @@ struct ModelRowView: View {
     let row: ModelManagerModel.Row
     let isActive: Bool
     var recommendations: [ModelRecommendation] = []
+    var compact = false
     let onDownload: () -> Void
     let onPause: () -> Void
     let onResume: () -> Void
@@ -64,7 +68,11 @@ struct ModelRowView: View {
             HStack(alignment: .top, spacing: DSSpacing.md) {
                 VStack(alignment: .leading, spacing: DSSpacing.xs) {
                     Text(row.descriptor.displayName).font(DSTypography.headline).fixedSize(horizontal: false, vertical: true)
-                    if !row.descriptor.notes.isEmpty {
+                    if compact, row.descriptor.runtime != .appleAsset {
+                        Text(compactSummary).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if !compact, !row.descriptor.notes.isEmpty {
                         Text(row.descriptor.notes).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -72,16 +80,22 @@ struct ModelRowView: View {
                 Spacer(minLength: DSSpacing.md)
                 HStack(spacing: DSSpacing.sm) { actions }.fixedSize()
             }
+            if isSystemTranslation {
+                Text("Choose a language pair in Live captions or a transcript’s Translate action to prepare Apple language packs.")
+                    .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("models.systemTranslation.instructions")
+            }
             if isActive || row.descriptor.isCustom || !recommendations.isEmpty { badges }
             if let why = recommendations.first?.why {
                 Text(why).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("models.recommendedWhy.\(row.id.rawValue)")
             }
-            WrappingChips(spacing: DSSpacing.xs) {
-                if row.descriptor.kind == .asr { languagesButton }
-                ForEach(ModelCapabilitySummary.chips(for: row.descriptor).filter { $0.id != "languages" }) { CapabilityChipView($0) }
-            }
+            if compact {
+                DisclosureGroup("Model details") { details }
+                    .accessibilityIdentifier("models.details.\(row.id.rawValue)")
+            } else { details }
             statusLine
         }
         .padding(.vertical, DSSpacing.sm)
@@ -89,11 +103,37 @@ struct ModelRowView: View {
         .accessibilityIdentifier("models.row.\(row.id.rawValue)")
     }
 
+    private var isSystemTranslation: Bool { row.descriptor.runtime == .appleAsset && row.descriptor.kind == .translation }
+    private var compactSummary: String {
+        var parts = [ModelFormat.bytes(row.descriptor.sizeBytes), ModelFormat.licenseBadge(row.descriptor.license).text]
+        if row.descriptor.isExperimental { parts.append("Experimental") }
+        return parts.joined(separator: " · ")
+    }
+
+    private var details: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.sm) {
+            if compact, !row.descriptor.notes.isEmpty {
+                Text(row.descriptor.notes).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            WrappingChips(spacing: DSSpacing.xs) {
+                if !row.descriptor.languages.isEmpty { languagesButton }
+                ForEach(ModelCapabilitySummary.chips(for: row.descriptor).filter { $0.id != "languages" }) { CapabilityChipView($0) }
+            }
+        }
+    }
+
     private var badges: some View {
         WrappingChips(spacing: DSSpacing.xs) {
-            ForEach(recommendations, id: \.useCase) { recommendation in
-                StatusPill(LocalizedStringKey(recommendation.badgeText), systemImage: "star.fill", tone: .success)
-                    .accessibilityIdentifier("models.recommended.\(row.id.rawValue).\(recommendation.useCase.rawValue)")
+            if compact, recommendations.count > 1 {
+                StatusPill("Recommended", systemImage: "star.fill", tone: .success)
+                    .accessibilityLabel(recommendations.map(\.badgeText).joined(separator: ", "))
+                    .accessibilityIdentifier("models.recommended.\(row.id.rawValue)")
+            } else {
+                ForEach(recommendations, id: \.useCase) { recommendation in
+                    StatusPill(LocalizedStringKey(recommendation.badgeText), systemImage: "star.fill", tone: .success)
+                        .accessibilityIdentifier("models.recommended.\(row.id.rawValue).\(recommendation.useCase.rawValue)")
+                }
             }
             if isActive { StatusPill("Default", systemImage: "checkmark", tone: .success) }
             if row.descriptor.isCustom { StatusPill("Custom", tone: .info) }
@@ -119,43 +159,70 @@ struct ModelRowView: View {
         .accessibilityLabel(chip?.spoken ?? "Languages")
         .accessibilityHint("Shows the full list")
         .accessibilityIdentifier("models.languages.\(row.id.rawValue)")
-        .popover(isPresented: $showsLanguages) {
+        .popover(isPresented: $showsLanguages, arrowEdge: .bottom) {
             let names = ModelCapabilitySummary.languageNames(row.descriptor)
             VStack(alignment: .leading, spacing: DSSpacing.sm) {
-                Text("\(names.count) \(names.count == 1 ? "language" : "languages")").font(DSTypography.headline)
+                Text(ModelCapabilitySummary.languageCountLabel(row.descriptor)).font(DSTypography.headline)
                 ScrollView {
-                    Text(names.joined(separator: ", ")).font(DSTypography.body)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .fixedSize(horizontal: false, vertical: true)
+                    LazyVStack(alignment: .leading, spacing: DSSpacing.xs) {
+                        ForEach(names, id: \.self) { name in
+                            Text(name).font(DSTypography.body)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                 }
                 .frame(minHeight: 100, idealHeight: 200, maxHeight: 280)
             }
             .padding(DSSpacing.lg)
-            .frame(minWidth: 340, idealWidth: 360)
+            .frame(width: 360)
         }
     }
 
     @ViewBuilder private var actions: some View {
-        switch row.state {
-        case .notInstalled:
-            Button("Download", symbol: .download, action: onDownload).accessibilityLabel(
-                "Download \(row.descriptor.displayName)"
-            ).accessibilityIdentifier("models.download.\(row.id.rawValue)")
-        case .downloading:
-            Button("Pause", systemImage: "pause.circle", action: onPause).labelStyle(.iconOnly).accessibilityLabel("Pause download")
-            Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download")
-        case .paused:
-            Button("Resume", symbol: .play, action: onResume).labelStyle(.iconOnly).accessibilityLabel("Resume download")
-            Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download")
-        case .installed:
-            Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)  // stock-chrome: destructive action
-                .labelStyle(.iconOnly)
-                .accessibilityLabel("Delete \(row.descriptor.displayName)")
-        case .failed:
-            Button("Retry", symbol: .retry, action: onDownload).accessibilityIdentifier("models.retry.\(row.id.rawValue)")
-            Button("Cancel", systemImage: "xmark.circle", action: onCancel).accessibilityLabel("Cancel and discard \(row.descriptor.displayName)")
-                .accessibilityIdentifier("models.cancel.\(row.id.rawValue)")
+        if isSystemTranslation {
+            Text("Managed by macOS").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                .accessibilityIdentifier("models.systemTranslation.managed")
+        } else {
+            switch row.state {
+            case .notInstalled:
+                if row.descriptor.isRunnable {
+                    Button("Download", symbol: .download, action: onDownload).accessibilityLabel(
+                        "Download \(row.descriptor.displayName)"
+                    ).accessibilityIdentifier("models.download.\(row.id.rawValue)")
+                } else {
+                    unavailableLabel
+                }
+            case .downloading:
+                Button("Pause", systemImage: "pause.circle", action: onPause).labelStyle(.iconOnly).accessibilityLabel("Pause download").accessibilityIdentifier("models.pause.\(row.id.rawValue)")
+                Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download").accessibilityIdentifier("models.cancel.\(row.id.rawValue)")
+            case .paused:
+                if row.descriptor.isRunnable {
+                    Button("Resume", symbol: .play, action: onResume).labelStyle(.iconOnly).accessibilityLabel("Resume download").accessibilityIdentifier("models.resume.\(row.id.rawValue)")
+                } else { unavailableLabel }
+                Button("Cancel", systemImage: "xmark.circle", action: onCancel).labelStyle(.iconOnly).accessibilityLabel("Cancel download").accessibilityIdentifier("models.cancel.\(row.id.rawValue)")
+            case .installed:
+                if row.descriptor.runtime == .appleAsset {
+                    Text("Managed by macOS").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                } else {
+                    Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)  // stock-chrome: destructive action
+                        .labelStyle(.iconOnly)
+                        .accessibilityLabel("Delete \(row.descriptor.displayName)").accessibilityIdentifier("models.delete.\(row.id.rawValue)")
+                }
+            case .failed:
+                if row.descriptor.isRunnable {
+                    Button("Retry", symbol: .retry, action: onDownload).accessibilityIdentifier("models.retry.\(row.id.rawValue)")
+                } else { unavailableLabel }
+                Button("Cancel", systemImage: "xmark.circle", action: onCancel).accessibilityLabel("Cancel and discard \(row.descriptor.displayName)")
+                    .accessibilityIdentifier("models.cancel.\(row.id.rawValue)")
+            }
         }
+    }
+
+    private var unavailableLabel: some View {
+        Text("Unavailable").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+            .accessibilityLabel("\(row.descriptor.displayName) has no runtime in this build")
+            .accessibilityIdentifier("models.unavailable.\(row.id.rawValue)")
     }
 
     @ViewBuilder private var statusLine: some View {
@@ -171,8 +238,12 @@ struct ModelRowView: View {
         case .paused(let fraction):
             ProgressRow(title: "Paused", detail: "\(Int(fraction * 100))%", fraction: fraction)
         case .installed(let bytes):
+            if row.descriptor.runtime == .appleAsset {
+                Text("System-managed assets available").font(DSTypography.caption).foregroundStyle(DSColor.success)
+            } else {
             Label("Installed · \(ModelFormat.bytes(bytes)) on disk", systemImage: "checkmark.circle.fill")
                 .font(DSTypography.caption).foregroundStyle(DSColor.success)
+            }
         case .failed(let reason):
             Label(reason, systemImage: "exclamationmark.triangle.fill").font(DSTypography.caption).foregroundStyle(DSColor.danger)
                 .fixedSize(horizontal: false, vertical: true)
@@ -196,17 +267,30 @@ struct ModelsSettingsView: View {
     let model: ModelManagerModel
     var kinds: Set<ModelKind>?
     @State private var pendingDownload: (id: ModelID, warnings: [DownloadWarning])?
+    @State private var showBrowser = false
+    @State private var browseQuery = ""
+    @State private var installedQuery = ""
+    @State private var browseKind = "all"
+    @State private var huggingFaceMode = false
+    @State private var huggingFaceSource = ""
+    @State private var huggingFaceMatches: [ModelID]?
+    @State private var huggingFaceError: String?
     @State private var showImporter = false
     @State private var importFolder: URL?
     @State private var importName = ""
     @State private var importLanguages = "en"
 
-    private var visibleRows: [ModelManagerModel.Row] {
-        model.rows.filter { kinds?.contains($0.descriptor.kind) ?? true }
+    private var recommendedRows: [ModelManagerModel.Row] {
+        model.recommendedRows.filter(isVisible)
     }
-
-    private var visibleKinds: [ModelKind] {
-        [ModelKind.asr, .diarization, .translation, .languageID, .vad].filter { kind in visibleRows.contains { $0.descriptor.kind == kind } }
+    private var installedRows: [ModelManagerModel.Row] {
+        model.managedRows.filter(isVisible).filter { row in
+            installedQuery.isEmpty || model.browseRows(query: installedQuery, kind: nil).contains(where: { $0.id == row.id })
+        }
+    }
+    private func isVisible(_ row: ModelManagerModel.Row) -> Bool {
+        guard let kinds else { return true }
+        return kinds.contains(row.descriptor.kind)
     }
 
     static func title(for kind: ModelKind) -> LocalizedStringKey {
@@ -221,33 +305,37 @@ struct ModelsSettingsView: View {
 
     var body: some View {
         Form {
-            ForEach(visibleKinds, id: \.self) { kind in
-                Section {
-                    ForEach(model.rows(of: kind)) { row in
-                        ModelRowView(
-                            row: row, isActive: row.id == model.activeModelID, recommendations: model.recommendations(for: row.id),
-                            onDownload: { start(row.id) }, onPause: { Task { await model.pause(row.id) } },
-                            onResume: { Task { await model.resume(row.id) } }, onCancel: { Task { await model.cancel(row.id) } },
-                            onDelete: { Task { await model.requestDelete(row.id) } })
-                    }
-                } header: {
-                    HStack {
-                        Text(Self.title(for: kind))
-                        Spacer()
-                        if kind == visibleKinds.first {
-                            Text("Disk usage: \(ModelFormat.bytes(model.totalDiskUsage))").font(DSTypography.caption)
-                        }
-                    }
-                } footer: {
-                    if kind == visibleKinds.last {
-                        Text("Models are downloaded only when you choose to. Your audio stays on this Mac.")
-                    }
-                }
+            Section {
+                ForEach(recommendedRows) { row in modelRow(row, compact: true) }
+                Button("Add models…", systemImage: "plus.circle") { huggingFaceMode = false; showBrowser = true }
+                    .accessibilityIdentifier("models.browse")
+            } header: { Text("Recommended") } footer: {
+                Text("Browse speech models, translation models and language packs. Downloads start only when you choose them.")
             }
-            if visibleRows.isEmpty { Section { Text("No models available.").foregroundStyle(DSColor.secondaryText) } }
+            Section {
+                if installedRows.isEmpty { Text("No models installed yet.").foregroundStyle(DSColor.secondaryText) }
+                if model.managedRows.filter(isVisible).count > 5 {
+                    TextField("Search installed models", text: $installedQuery)
+                        .accessibilityIdentifier("models.installed.search")
+                }
+                ForEach(installedRows.filter { $0.descriptor.engine != "opus-mt" }) { row in modelRow(row, compact: true) }
+                let packs = installedRows.filter { $0.descriptor.engine == "opus-mt" }
+                if !packs.isEmpty {
+                    DisclosureGroup("OPUS language packs (\(packs.count))") {
+                        ForEach(packs) { row in modelRow(row, compact: true) }
+                    }.accessibilityIdentifier("models.installed.opus")
+                }
+            } header: { Text("Installed and downloads") } footer: {
+                Text("Disk usage: \(ModelFormat.bytes(model.totalDiskUsage)). Your audio stays on this Mac.")
+            }
             if kinds == nil {
-                Section("Custom model") {
+                Section("Import") {
+                    if model.canBrowseHuggingFace {
+                        Button("Add from Hugging Face…", systemImage: "link") { huggingFaceMode = true; showBrowser = true }
+                            .accessibilityIdentifier("models.import.huggingface")
+                    }
                     Button("Import WhisperKit CoreML folder…", systemImage: "folder.badge.plus") { showImporter = true }
+                        .accessibilityIdentifier("models.import.whisperkit")
                 }
             }
             if let message = model.errorMessage {
@@ -259,6 +347,7 @@ struct ModelsSettingsView: View {
             await model.load()
             await model.observe()
         }
+        .sheet(isPresented: $showBrowser) { modelBrowser }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.folder]) { result in
             if case .success(let url) = result {
                 importName = url.lastPathComponent
@@ -269,7 +358,7 @@ struct ModelsSettingsView: View {
             importSheet(item.url)
         }
         .alert(
-            "Download model?", isPresented: Binding(get: { pendingDownload != nil }, set: { if !$0 { pendingDownload = nil } }),
+            "Download model?", isPresented: Binding(get: { !showBrowser && pendingDownload != nil }, set: { if !$0 && !showBrowser { pendingDownload = nil } }),
             presenting: pendingDownload?.id
         ) { id in
             Button("Download") {
@@ -282,12 +371,119 @@ struct ModelsSettingsView: View {
         }
         .alert(
             "Delete the default model?",
-            isPresented: Binding(get: { model.pendingDeletion != nil }, set: { if !$0 { model.pendingDeletion = nil } })
+            isPresented: Binding(get: { !showBrowser && model.pendingDeletion != nil }, set: { if !$0 && !showBrowser { model.pendingDeletion = nil } })
         ) {
             Button("Delete", role: .destructive) { Task { await model.confirmPendingDeletion() } }
             Button("Cancel", role: .cancel) { model.pendingDeletion = nil }
         } message: {
             Text("\(model.pendingDeletion?.displayName ?? "This model") is your default. Transcription will download it again when needed.")
+        }
+    }
+
+    private func modelRow(_ row: ModelManagerModel.Row, compact: Bool = false) -> some View {
+        ModelRowView(
+            row: row, isActive: row.id == model.activeModelID, recommendations: model.recommendations(for: row.id), compact: compact,
+            onDownload: { start(row.id) }, onPause: { Task { await model.pause(row.id) } },
+            onResume: { Task { await model.resume(row.id) } }, onCancel: { Task { await model.cancel(row.id) } },
+            onDelete: { Task { await model.requestDelete(row.id) } })
+    }
+
+    private var modelBrowser: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.md) {
+            HStack {
+                Text(huggingFaceMode ? "Add from Hugging Face" : "Add models").font(DSTypography.title)
+                Spacer()
+                Button("Done") { showBrowser = false }.accessibilityIdentifier("models.browse.done")
+            }
+            browserControls
+            let rows = browserRows
+            let families = Dictionary(grouping: rows) { ModelManagerModel.familyName(for: $0.descriptor) }
+            Form {
+                if rows.isEmpty {
+                    Text(huggingFaceMode ? "Review a supported source to see its model variants." : "No models match this search.").foregroundStyle(DSColor.secondaryText)
+                        .accessibilityIdentifier("models.browse.empty")
+                }
+                ForEach(families.keys.sorted(), id: \.self) { family in
+                    Section(family) {
+                        if family == "OPUS language packs" && !huggingFaceMode {
+                            OPUSPairPackBrowser(model: model, rows: families[family] ?? []) { row in modelRow(row, compact: true) }
+                        } else {
+                            ForEach(families[family] ?? []) { row in
+                                modelRow(row)
+                                if huggingFaceMode, let source = row.descriptor.sourceURL {
+                                    Text("Reviewed source: \(source.absoluteString)")
+                                        .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                                        .accessibilityIdentifier("models.huggingface.source.\(row.id.rawValue)")
+                                }
+                            }
+                        }
+                    }
+                }
+            }.formStyle(.grouped)
+        }
+        .padding(DSSpacing.lg)
+        .frame(minWidth: 560, idealWidth: 680, minHeight: 500, idealHeight: 650)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("models.browser")
+        .alert(
+            "Download model?",
+            isPresented: Binding(get: { showBrowser && pendingDownload != nil }, set: { if !$0 && showBrowser { pendingDownload = nil } }),
+            presenting: pendingDownload?.id
+        ) { id in
+            Button("Download") { pendingDownload = nil; Task { await model.download(id, confirmed: true) } }
+            Button("Cancel", role: .cancel) { pendingDownload = nil }
+        } message: { _ in Text(ModelFormat.warningsMessage(pendingDownload?.warnings ?? [])) }
+        .alert(
+            "Delete the default model?",
+            isPresented: Binding(get: { showBrowser && model.pendingDeletion != nil }, set: { if !$0 && showBrowser { model.pendingDeletion = nil } })
+        ) {
+            Button("Delete", role: .destructive) { Task { await model.confirmPendingDeletion() } }
+            Button("Cancel", role: .cancel) { model.pendingDeletion = nil }
+        } message: { Text("This is your default model. Transcription will download it again when needed.") }
+    }
+
+    private var browserRows: [ModelManagerModel.Row] {
+        if huggingFaceMode {
+            return model.rows.filter { huggingFaceMatches?.contains($0.id) == true && isVisible($0) }
+        }
+        return model.browseRows(query: browseQuery, kind: ModelKind(rawValue: browseKind)).filter(isVisible)
+    }
+
+    @ViewBuilder private var browserControls: some View {
+        if huggingFaceMode {
+            Text("Paste a repository or variant link. Earmark offers only reviewed versions supported by this build. A main link uses the reviewed commit shown below, which may differ from the latest upstream version. Downloads start only when you choose Download.")
+                .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+            HStack {
+                TextField("Hugging Face repository or link", text: $huggingFaceSource)
+                    .accessibilityIdentifier("models.huggingface.input")
+                    .onChange(of: huggingFaceSource) { _, _ in huggingFaceMatches = nil; huggingFaceError = nil }
+                Button("Review source") {
+                    do {
+                        huggingFaceMatches = try model.previewHuggingFace(huggingFaceSource).map(\.id)
+                        huggingFaceError = nil
+                    } catch {
+                        huggingFaceMatches = nil
+                        huggingFaceError = error.localizedDescription
+                    }
+                }.disabled(huggingFaceSource.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier("models.huggingface.review")
+            }
+            if let error = huggingFaceError {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .font(DSTypography.caption).foregroundStyle(DSColor.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("models.huggingface.error")
+            }
+        } else {
+            TextField("Search models or languages", text: $browseQuery)
+                .accessibilityIdentifier("models.browse.search")
+            Picker("Task", selection: $browseKind) {
+                Text("All models").tag("all")
+                Text("Speech recognition").tag(ModelKind.asr.rawValue)
+                Text("Translation").tag(ModelKind.translation.rawValue)
+                Text("Speaker labels").tag(ModelKind.diarization.rawValue)
+            }.accessibilityIdentifier("models.browse.task")
         }
     }
 

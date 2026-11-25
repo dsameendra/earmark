@@ -3,12 +3,13 @@
 set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 mode="${1:-all}"
-case "$mode" in all|unit|build|ui) ;; *) echo 'Usage: scripts/check.sh all|unit|build|ui' >&2; exit 64 ;; esac
+case "$mode" in all|unit|build|ui|performance) ;; *) echo 'Usage: scripts/check.sh all|unit|build|ui|performance' >&2; exit 64 ;; esac
 report_root="${EARMARK_REPORT_ROOT:-$HOME/Library/Caches/EarmarkBuild/reports}"
 mkdir -p "$report_root"
 python3 "$repo_root/scripts/check-dependencies.py"
+python3 "$repo_root/scripts/verify-language-profiles.py"
 if [ "$mode" = all ] || [ "$mode" = unit ]; then
-    for package in AppCore Persistence DesignSystem ModelStore AudioCapture Processing Export Permissions Meetings Translation Transcription Diarization LiveCaptions Dictation Jobs QwenASR Features NLLBNative; do
+    for package in NativeWorkerKit ModelFormats AppCore Persistence DesignSystem ModelStore AudioCapture Processing Export Permissions Meetings Translation Transcription Diarization LiveCaptions Dictation Jobs QwenASR Features NLLBNative SpeechNative TextGenerationNative; do
         printf 'Testing %s\n' "$package"
         if ! swift test --no-parallel --package-path "$repo_root/Packages/$package" > "$report_root/$package.log" 2>&1; then
             printf '%s\n' "--- failing tests and errors in $package ---"
@@ -17,8 +18,22 @@ if [ "$mode" = all ] || [ "$mode" = unit ]; then
             tail -20 "$report_root/$package.log"
             exit 1
         fi
-        rg 'Test run with|tests? passed|Test Suite.*passed' "$report_root/$package.log" | tail -2 || true
+        grep -aE 'Test run with|tests? passed|Test Suite.*passed' "$report_root/$package.log" | tail -2 || true
     done
+    speech_bin="$(swift build --package-path "$repo_root/Packages/SpeechNative" --show-bin-path)"
+    python3 "$repo_root/scripts/verify-speech-native.py" --helper-path "$speech_bin/EarmarkSpeechWorker"
+    text_bin="$(swift build --package-path "$repo_root/Packages/TextGenerationNative" --show-bin-path)"
+    python3 "$repo_root/scripts/verify-text-generation-native.py" --helper-path "$text_bin/EarmarkTextWorker"
+fi
+if [ "$mode" = all ] || [ "$mode" = performance ]; then
+    performance_log="$report_root/VoiceEnhancerPerformance.log"
+    if ! swift test --configuration release --no-parallel --package-path "$repo_root/Packages/AudioCapture" --filter fasterThanRealtime > "$performance_log" 2>&1; then
+        tail -40 "$performance_log"
+        exit 1
+    fi
+    # The benchmark must execute in optimized mode, rather than pass as a skip.
+    grep -aE '^realtime factor ' "$performance_log" || { echo 'The optimized benchmark did not execute.' >&2; exit 1; }
+    grep -aE 'Test run with|Test Suite.*passed' "$performance_log" | tail -2 || true
 fi
 if [ "$mode" = all ] || [ "$mode" = build ] || [ "$mode" = ui ]; then
     project="$($repo_root/scripts/project.sh)"

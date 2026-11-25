@@ -207,7 +207,7 @@ public final class OnboardingLanguageModel {
                 for useCase in [UseCase.file, .live] {
                     let request = RoutingRequest(languageMode: .single(language), useCase: useCase, tier: tier, installedModels: installed)
                     do {
-                        let plan = try router.plan(for: request)
+                        let plan = try await router.preparedPlan(for: request)
                         picked += plan.assignments.compactMap(\.model)
                         notes += plan.warnings
                     } catch {

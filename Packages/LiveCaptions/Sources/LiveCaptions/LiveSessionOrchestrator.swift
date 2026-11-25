@@ -57,6 +57,9 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
     /// Provisional speaker turns of the most recent session, for `SpeakerReconciler` once the offline pass exists.
     public func liveSpeakerTurns() -> [SpeakerTurn] { session?.timeline.turns ?? lastTurns }
 
+    /// Whether the active session requested translation (independent of its appearance preset).
+    public var translatesCaptions: Bool { session?.config.translateTo != nil }
+
     // MARK: Control
 
     public func start(_ config: LiveSessionConfig) async throws {
@@ -298,16 +301,19 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
     private func cancelAll(_ ctx: SessionContext) {
         for t in ctx.pumpTasks + ctx.engineTasks + ctx.auxTasks { t.cancel() }
         ctx.checkpointTask?.cancel()
+        ctx.translationTask?.cancel()
         ctx.translationWake?.finish()
     }
 
     /// Final promotion and flush shared by stop, natural completion and failure. Returns the saved transcript id.
     private func finish(_ ctx: SessionContext, graceful: Bool) async -> TranscriptID? {
         for t in ctx.auxTasks { t.cancel() }
-        ctx.translationWake?.finish()
         ctx.checkpointTask?.cancel()
         await ctx.checkpointTask?.value
         if graceful { await promoteVolatile(ctx) }
+        ctx.volatileTranslations.removeAll()
+        ctx.translationWake?.finish()
+        if graceful { await drainTranslations(ctx) } else { ctx.translationTask?.cancel() }
         linesBus.send(ctx.store.lines)
         // Unstructured on purpose: a cancelled caller (view teardown, app quit) must not drop the last flush.
         _ = await Task { await self.checkpoint(ctx) }.value
@@ -316,6 +322,26 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         if session === ctx { session = nil }
         pauseGate.set(false)
         return ctx.transcriptID
+    }
+
+    /// Translation gets its own bounded flush after recognition has produced its final segments.
+    private func drainTranslations(_ ctx: SessionContext) async {
+        guard let worker = ctx.translationTask else { return }
+        let (outcomes, continuation) = AsyncStream.makeStream(of: Bool.self, bufferingPolicy: .bufferingNewest(1))
+        let completion = Task { await worker.value; continuation.yield(true); continuation.finish() }
+        let timeout = options.drainTimeout
+        let deadline = Task {
+            try? await Task.sleep(for: timeout)
+            guard !Task.isCancelled else { return }
+            continuation.yield(false); continuation.finish()
+        }
+        var iterator = outcomes.makeAsyncIterator()
+        let completed = await iterator.next() == true
+        deadline.cancel(); completion.cancel()
+        if !completed {
+            worker.cancel()
+            eventBus.send(.translationFailed(reason: "Translation did not finish before stopping. Original captions have been saved."))
+        }
     }
 
     /// Volatile text still on screen at stop becomes a final segment so the last words are never lost.
@@ -354,7 +380,24 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         case .progress:
             break
         case .languageDetected(let scores):
-            if let best = scores.max(by: { $0.probability < $1.probability }) { ctx.detectedLanguage = best.language }
+            if let best = scores.filter({ $0.probability.isFinite && $0.probability > 0 && $0.probability <= 1 && Self.knownLanguage($0.language) != nil }).max(by: { $0.probability < $1.probability }) {
+                ctx.detectedLanguage = best.language
+                // Repair only unlabelled captions; a later language detection
+                // must never relabel a segment with an explicit source language.
+                for index in ctx.finals.indices where Self.knownLanguage(ctx.finals[index].languageCode) == nil {
+                    ctx.finals[index].languageCode = best.language
+                    ctx.dirty.insert(ctx.finals[index].id)
+                }
+                ctx.store.updateEntries { if Self.knownLanguage($0.line.language) == nil { $0.line.language = best.language } }
+                for index in ctx.pendingFinalTranslations.indices where Self.knownLanguage(ctx.pendingFinalTranslations[index].language) == nil {
+                    ctx.pendingFinalTranslations[index].language = best.language
+                }
+                for id in Array(ctx.volatileTranslations.keys) where Self.knownLanguage(ctx.volatileTranslations[id]?.language) == nil {
+                    ctx.volatileTranslations[id]?.language = best.language
+                }
+                linesBus.send(ctx.store.lines)
+                ctx.translationWake?.yield()
+            }
         }
     }
 
@@ -363,13 +406,16 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         guard ctx.phase != .finished else { return }
         if processed.isEmpty { ctx.store.removeVolatile(lane: lane) }
         for var p in processed {
-            p.languageCode = p.languageCode ?? ctx.detectedLanguage ?? ctx.fixedLanguage
+            p.languageCode = Self.knownLanguage(p.languageCode) ?? Self.knownLanguage(ctx.detectedLanguage) ?? Self.knownLanguage(ctx.fixedLanguage)
             let label = ctx.diarizedLanes.contains(lane) ? ctx.timeline.label(for: p.range) : nil
             if let index = label?.index { p.speakerID = ctx.speaker(forIndex: index).id }
+            let isRevision = ctx.finalIndex[p.id] != nil
             ctx.record(p)
             let hidden = p.isIgnored || p.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             if hidden {
-                ctx.store.removeVolatile(lane: lane)
+                if !isRevision { ctx.store.removeVolatile(lane: lane) }
+                ctx.store.removeFinal(p.id)
+                ctx.pendingFinalTranslations.removeAll { $0.segmentID == p.id }
                 continue
             }
             let id = ctx.store.finalize(
@@ -439,18 +485,49 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         guard ctx.config.translateTo != nil, translation != nil else { return }
         let job = SessionContext.TranslationJob(lineID: lineID, segmentID: segmentID, text: text, language: language)
         if volatile {
-            ctx.volatileTranslation = job
+            ctx.volatileTranslations[lineID] = job
         } else {
+            ctx.pendingFinalTranslations.removeAll { $0.segmentID == segmentID }
+            if ctx.pendingFinalTranslations.count >= options.maxPendingTranslations {
+                ctx.pendingFinalTranslations.removeFirst()
+                if !ctx.translationBacklogNoticeSent {
+                    ctx.translationBacklogNoticeSent = true
+                    eventBus.send(.translationFailed(reason: "Translation is falling behind. Some captions will keep their original text."))
+                }
+            }
             ctx.pendingFinalTranslations.append(job)
-            if ctx.volatileTranslation?.lineID == lineID { ctx.volatileTranslation = nil }
+            ctx.volatileTranslations.removeValue(forKey: lineID)
         }
         ctx.translationWake?.yield()
     }
 
+    private static func knownLanguage(_ language: LanguageCode?) -> LanguageCode? {
+        guard let language, !language.primary.rawValue.isEmpty, language.primary.rawValue != "und" else { return nil }
+        return language
+    }
+
     private func nextTranslationJob(_ ctx: SessionContext) -> SessionContext.TranslationJob? {
-        if !ctx.pendingFinalTranslations.isEmpty { return ctx.pendingFinalTranslations.removeFirst() }
-        defer { ctx.volatileTranslation = nil }
-        return ctx.volatileTranslation
+        func hasSource(_ job: SessionContext.TranslationJob) -> Bool {
+            Self.knownLanguage(job.language) != nil || Self.knownLanguage(ctx.detectedLanguage) != nil || Self.knownLanguage(ctx.fixedLanguage) != nil
+        }
+        // Keep unknown-source finals in the same bounded queue until language ID
+        // arrives. "Waiting for language" must not mean silently dropping them.
+        if let index = ctx.pendingFinalTranslations.firstIndex(where: hasSource) {
+            let job = ctx.pendingFinalTranslations.remove(at: index)
+            if ctx.pendingFinalTranslations.count < options.maxPendingTranslations / 2 {
+                ctx.translationBacklogNoticeSent = false
+            }
+            return job
+        }
+        guard let job = ctx.volatileTranslations.values.filter(hasSource).min(by: { $0.lineID.uuidString < $1.lineID.uuidString }) else {
+            if (!ctx.pendingFinalTranslations.isEmpty || !ctx.volatileTranslations.isEmpty), !ctx.unknownTranslationSourceNoticeSent {
+                ctx.unknownTranslationSourceNoticeSent = true
+                eventBus.send(.translationFailed(reason: "Waiting for the spoken language before translating. Choose a source language if detection is unavailable."))
+            }
+            return nil
+        }
+        ctx.volatileTranslations.removeValue(forKey: job.lineID)
+        return job
     }
 
     private func launchTranslation(_ ctx: SessionContext) {
@@ -458,8 +535,7 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         let (wake, continuation) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
         ctx.translationWake = continuation
         let minInterval = options.translationMinInterval
-        ctx.auxTasks.append(
-            Task {
+        ctx.translationTask = Task {
                 let clock = ContinuousClock()
                 for await _ in wake {
                     while !Task.isCancelled {
@@ -472,14 +548,21 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
                         await self.translate(job, to: target, router: router, ctx: ctx)
                     }
                 }
-            })
+            }
     }
 
     private func translate(
         _ job: SessionContext.TranslationJob, to target: LanguageCode, router: any TranslationRouter, ctx: SessionContext
     ) async {
-        let source = job.language ?? ctx.detectedLanguage ?? ctx.fixedLanguage ?? .english
-        guard source.primary != target.primary else { return }
+        guard let source = Self.knownLanguage(job.language) ?? Self.knownLanguage(ctx.detectedLanguage) ?? Self.knownLanguage(ctx.fixedLanguage) else {
+            if !ctx.unknownTranslationSourceNoticeSent {
+                ctx.unknownTranslationSourceNoticeSent = true
+                eventBus.send(.translationFailed(reason: "Waiting for the spoken language before translating. Choose a source language if detection is unavailable."))
+            }
+            return
+        }
+        ctx.unknownTranslationSourceNoticeSent = false
+        guard !LanguagePair(source: source, target: target).isSameWrittenLanguage else { return }
         do {
             let engine = try await router.engine(for: LanguagePair(source: source, target: target))
             let item = TranslationItem(segmentID: job.segmentID ?? SegmentID(), text: job.text)
@@ -488,7 +571,18 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
                 result = t
                 break
             }
-            guard let result, ctx.phase != .finished else { return }
+            guard !Task.isCancelled, let result, ctx.phase != .finished else { return }
+            guard result.segmentID == item.segmentID, !result.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw AppError.engineFailure(result.engine, reason: "Translation returned an invalid caption result.")
+            }
+            if job.segmentID == nil {
+                guard let entry = ctx.store.entries.first(where: { $0.line.id == job.lineID }),
+                    entry.line.isVolatile, entry.line.text == CaptionLineStore.rollingTail(job.text)
+                else { return }
+            } else if let id = job.segmentID {
+                guard let index = ctx.finalIndex[id], !ctx.finals[index].isIgnored,
+                      ctx.finals[index].text == job.text, ctx.finals[index].languageCode == job.language else { return }
+            }
             // English to Sinhala is always flagged low-confidence, whatever the engine reports.
             let low = result.isLowConfidence || (source.primary == .english && target.primary == .sinhala)
             let shown = (low ? LiveCaptionMarkers.lowConfidenceTranslationPrefix : "") + result.text
@@ -501,6 +595,9 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
             }
             linesBus.send(ctx.store.lines)
         } catch {
+            if !(error is CancellationError), ctx.phase == .running {
+                eventBus.send(.translationFailed(reason: String(describing: error)))
+            }
             log.error("translation skipped: \(String(describing: error), privacy: .public)")
         }
     }

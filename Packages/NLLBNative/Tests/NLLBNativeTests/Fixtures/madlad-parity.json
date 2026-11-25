@@ -1,0 +1,124 @@
+{
+  "modelRepository": "Nextcloud-AI/madlad400-3b-mt-ct2-int8",
+  "revision": "aa32bbdeba7880eff2096ec044cb155a340a9400",
+  "ctranslate2": "4.6.0",
+  "sentencepiece": "0.2.1",
+  "beamSize": 4,
+  "maxDecodingLength": 256,
+  "rows": [
+    {
+      "source": "en",
+      "target": "de",
+      "text": "The meeting starts tomorrow morning.",
+      "translation": "Das Treffen beginnt morgen früh.",
+      "sourcePieces": [
+        "▁",
+        "<2de>",
+        "▁The",
+        "▁meeting",
+        "▁start",
+        "s",
+        "▁tomo",
+        "rrow",
+        "▁morning",
+        ".",
+        "</s>"
+      ]
+    },
+    {
+      "source": "en",
+      "target": "fr",
+      "text": "The meeting starts tomorrow morning.",
+      "translation": "La réunion commence demain matin.",
+      "sourcePieces": [
+        "▁",
+        "<2fr>",
+        "▁The",
+        "▁meeting",
+        "▁start",
+        "s",
+        "▁tomo",
+        "rrow",
+        "▁morning",
+        ".",
+        "</s>"
+      ]
+    },
+    {
+      "source": "en",
+      "target": "es",
+      "text": "The meeting starts tomorrow morning.",
+      "translation": "La reunión comienza mañana por la mañana.",
+      "sourcePieces": [
+        "▁",
+        "<2es>",
+        "▁The",
+        "▁meeting",
+        "▁start",
+        "s",
+        "▁tomo",
+        "rrow",
+        "▁morning",
+        ".",
+        "</s>"
+      ]
+    },
+    {
+      "source": "en",
+      "target": "si",
+      "text": "The meeting starts tomorrow morning.",
+      "translation": "රැස්වීම හෙට උදේ පටන් ගන්නවා.",
+      "sourcePieces": [
+        "▁",
+        "<2si>",
+        "▁The",
+        "▁meeting",
+        "▁start",
+        "s",
+        "▁tomo",
+        "rrow",
+        "▁morning",
+        ".",
+        "</s>"
+      ]
+    },
+    {
+      "source": "en",
+      "target": "ja",
+      "text": "The meeting starts tomorrow morning.",
+      "translation": "会議は明日の朝に始まる。",
+      "sourcePieces": [
+        "▁",
+        "<2ja>",
+        "▁The",
+        "▁meeting",
+        "▁start",
+        "s",
+        "▁tomo",
+        "rrow",
+        "▁morning",
+        ".",
+        "</s>"
+      ]
+    },
+    {
+      "source": "en",
+      "target": "ta",
+      "text": "The meeting starts tomorrow morning.",
+      "translation": "கூட்டம் நாளை காலை தொடங்குகிறது.",
+      "sourcePieces": [
+        "▁",
+        "<2ta>",
+        "▁The",
+        "▁meeting",
+        "▁start",
+        "s",
+        "▁tomo",
+        "rrow",
+        "▁morning",
+        ".",
+        "</s>"
+      ]
+    }
+  ]
+}

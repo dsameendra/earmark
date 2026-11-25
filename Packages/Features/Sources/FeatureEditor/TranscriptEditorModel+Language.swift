@@ -108,7 +108,7 @@ extension TranscriptEditorModel {
     /// The translation to draw under (bilingual) or instead of (translated) the original, or `nil` in original mode.
     public func translationDisplay(for segment: Segment) -> SegmentTranslationDisplay? {
         guard translationChoice.mode != .original, let target = translationChoice.target,
-            let translation = segment.translations.first(where: { $0.language.primary == target.primary })
+            let translation = segment.translations.first(where: { $0.language.translationIdentity == target.translationIdentity })
         else { return nil }
         return SegmentTranslationDisplay(
             text: translation.text, language: target,
@@ -121,7 +121,7 @@ extension TranscriptEditorModel {
         guard translationChoice.mode != .original, let target = translationChoice.target, !segment.isIgnored,
             !segment.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { return false }
-        return !segment.translations.contains { $0.language.primary == target.primary }
+        return !segment.translations.contains { $0.language.translationIdentity == target.translationIdentity }
     }
 
     /// What a row shows for this segment in the current mode (shared by the Segments and Paragraphs layouts).

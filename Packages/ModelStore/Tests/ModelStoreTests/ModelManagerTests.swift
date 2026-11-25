@@ -362,6 +362,23 @@ struct ModelManagerStorageTests {
         #expect(await unloaded.ids == [small])
         #expect(!(await manager.residency.isResident(small)))
     }
+
+    @Test("deleting a busy model preserves its installed files and residency")
+    func deleteBusyPreservesModel() async throws {
+        let (harness, _, _) = twoFileHarness()
+        let manager = harness.manager()
+        _ = try await collect(manager.ensureAvailable(small))
+        let location = try await manager.location(of: small)
+        try await manager.residency.prepareToLoad(small, isHeavy: true)
+        try await manager.residency.beginUse(small)
+        await #expect(throws: AppError.self) { try await manager.delete(small) }
+        #expect(FileManager.default.fileExists(atPath: location.path))
+        #expect(await manager.residency.isResident(small))
+        #expect(await manager.installedModels().contains(small))
+        await manager.residency.endUse(small)
+        try await manager.delete(small)
+        #expect(!FileManager.default.fileExists(atPath: location.path))
+    }
 }
 
 @Suite("Catalog")

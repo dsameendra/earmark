@@ -46,10 +46,10 @@ struct UtteranceSegmenter: Sendable {
     }
 
     /// Releases utterances that are complete (or all remaining speech when `final`).
-    mutating func drain(final: Bool) async -> [Utterance] {
+    mutating func drain(final: Bool) async throws -> [Utterance] {
         guard !buffer.isEmpty else { return [] }
         let chunk = AudioChunk(samples: buffer, startSeconds: bufferStart, source: .file)
-        let raw = (try? await vad.speechRanges(in: chunk)) ?? []
+        let raw = try await vad.speechRanges(in: chunk)
         let ranges = merge(raw)
         let total = bufferedSeconds
         var out: [Utterance] = []
@@ -88,10 +88,10 @@ struct UtteranceSegmenter: Sendable {
     }
 
     /// The speech run still in progress (for partial results), if any.
-    func openUtterance() async -> Utterance? {
+    func openUtterance() async throws -> Utterance? {
         guard !buffer.isEmpty else { return nil }
         let chunk = AudioChunk(samples: buffer, startSeconds: bufferStart, source: .file)
-        let ranges = merge((try? await vad.speechRanges(in: chunk)) ?? [])
+        let ranges = merge(try await vad.speechRanges(in: chunk))
         guard let last = ranges.last, bufferedSeconds - last.end < minSilence, last.duration >= minSpeech else { return nil }
         return slice(last)
     }

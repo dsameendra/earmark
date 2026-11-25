@@ -25,12 +25,27 @@ public struct ModelCapabilityChip: Hashable, Identifiable, Sendable {
 
 public enum ModelCapabilitySummary {
     public static func languageName(_ code: LanguageCode) -> String {
-        Locale.current.localizedString(forLanguageCode: code.rawValue) ?? code.rawValue
+        if code.rawValue.contains("-") {
+            return Locale.current.localizedString(forIdentifier: code.rawValue) ?? code.rawValue
+        }
+        return Locale.current.localizedString(forLanguageCode: code.rawValue) ?? code.rawValue
     }
 
-    /// Distinct primary languages, sorted by display name.
+    /// Preserve script/locale options and disambiguate OS-localized names that
+    /// collapse two distinct model dialects to the same display name.
     public static func languageNames(_ model: ModelDescriptor) -> [String] {
-        Set(model.languages.map(\.primary)).map(languageName).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+        let names = Dictionary(grouping: model.languages, by: languageName)
+        return model.languages.map { code in
+            let name = languageName(code)
+            return names[name, default: []].count > 1 ? "\(name) (\(code.rawValue))" : name
+        }.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    public static func languageCountLabel(_ model: ModelDescriptor) -> String {
+        let count = model.languages.count
+        let hasVariants = Set(model.languages.map(\.primary)).count != count
+        if hasVariants { return "\(count) language options" }
+        return "\(count) \(count == 1 ? "language" : "languages")"
     }
 
     /// "English", "English, German, French" or "99 languages".
@@ -39,7 +54,7 @@ public enum ModelCapabilitySummary {
         switch names.count {
         case 0: return "No languages"
         case 1...3: return names.joined(separator: ", ")
-        default: return "\(names.count) languages"
+        default: return languageCountLabel(model)
         }
     }
 
@@ -59,15 +74,29 @@ public enum ModelCapabilitySummary {
         }
     }
 
+    /// A reader-friendly name for custom `LicenseRef-` identifiers; unknown identifiers are shown as given.
+    static func readableLicenseName(_ spdx: String) -> String {
+        switch spdx {
+        case "LicenseRef-Gemma": "Gemma Terms of Use"
+        case "LicenseRef-OpenMDW-1.1", "LicenseRef-OpenMDW": "OpenMDW 1.1"
+        case "LicenseRef-NVIDIA-Open-Model-License": "NVIDIA Open Model License"
+        default: spdx
+        }
+    }
+
     public static func licenseChip(_ license: LicenseInfo) -> ModelCapabilityChip {
         if license.isNonCommercial {
             return ModelCapabilityChip(
                 id: "license", text: "\(license.spdx) · non-commercial", symbol: "exclamationmark.triangle", tone: .warning,
                 spoken: "Licence \(license.spdx), non-commercial use only")
         }
+        if license.spdx.uppercased().contains("-SA") {
+            return ModelCapabilityChip(id: "license", text: "\(license.spdx) · share-alike", tone: .info, spoken: "Licence \(license.spdx), share-alike terms")
+        }
         if license.needsAcknowledgement {
-            return ModelCapabilityChip(
-                id: "license", text: "\(license.spdx) · share-alike", tone: .info, spoken: "Licence \(license.spdx), share-alike terms")
+            let terms = license.spdx.uppercased() == "NOASSERTION" ? "unverified licence" : "custom terms"
+            let name = readableLicenseName(license.spdx)
+            return ModelCapabilityChip(id: "license", text: "\(name) · \(terms)", tone: .info, spoken: "Licence \(name), \(terms). Review before downloading.")
         }
         return ModelCapabilityChip(id: "license", text: license.spdx, spoken: "Licence \(license.spdx)")
     }
@@ -76,14 +105,22 @@ public enum ModelCapabilitySummary {
     public static func chips(for model: ModelDescriptor) -> [ModelCapabilityChip] {
         let c = model.capabilities
         var chips: [ModelCapabilityChip] = []
-        if model.kind == .asr {
-            let count = Set(model.languages.map(\.primary)).count
+        if model.kind == .asr || (model.kind == .translation && !model.languages.isEmpty) {
+            let names = languageNames(model)
             chips.append(
                 ModelCapabilityChip(
                     id: "languages", text: languageSummary(model), symbol: "globe",
-                    spoken: "\(count) \(count == 1 ? "language" : "languages"): \(languageNames(model).joined(separator: ", "))"))
+                    spoken: names.count <= 5 ? "\(languageCountLabel(model)): \(names.joined(separator: ", "))" : languageCountLabel(model)))
+        }
+        if model.kind == .asr {
             if c.live {
-                chips.append(ModelCapabilityChip(id: "live", text: "Live streaming", symbol: "waveform", tone: .positive))
+                let text: String
+                switch c.streaming {
+                case .native: text = "Native streaming"
+                case .buffered: text = "Buffered captions"
+                case nil: text = "Live captions"
+                }
+                chips.append(ModelCapabilityChip(id: "live", text: text, symbol: "waveform", tone: .positive))
             } else if c.file {
                 chips.append(
                     ModelCapabilityChip(
@@ -103,10 +140,14 @@ public enum ModelCapabilitySummary {
         if c.translation { chips.append(ModelCapabilityChip(id: "translation", text: "Translation", symbol: "character.bubble", tone: .positive)) }
         if let speed = c.speed { chips.append(ModelCapabilityChip(id: "speed", text: speedText(speed), symbol: "speedometer")) }
         if let memory = c.memory { chips.append(ModelCapabilityChip(id: "memory", text: memoryText(memory), symbol: "memorychip")) }
-        chips.append(
-            ModelCapabilityChip(
+        if model.runtime == .appleAsset {
+            chips.append(ModelCapabilityChip(id: "size", text: "System-managed", symbol: "internaldrive",
+                                              spoken: "Language assets managed by macOS; size depends on the language"))
+        } else {
+            chips.append(ModelCapabilityChip(
                 id: "size", text: ByteCountFormatter.string(fromByteCount: model.sizeBytes, countStyle: .file), symbol: "internaldrive",
                 spoken: "Download size \(ByteCountFormatter.string(fromByteCount: model.sizeBytes, countStyle: .file))"))
+        }
         chips.append(licenseChip(model.license))
         if model.isExperimental {
             chips.append(ModelCapabilityChip(id: "experimental", text: "Experimental", symbol: "flask", tone: .warning))
@@ -190,7 +231,7 @@ public enum ModelRecommendations {
     }
 
     static func why(_ model: ModelDescriptor, useCase: UseCase, tier: HardwareTier, languages: [LanguageCode]) -> String {
-        if model.runtime == .appleAsset { return "Built into macOS: nothing to download, fast and private." }
+        if model.runtime == .appleAsset { return "Uses macOS language assets; available languages are checked on this Mac." }
         if model.isExperimental, !languages.isEmpty {
             let names = languages.map(ModelCapabilitySummary.languageName).joined(separator: ", ")
             return "The best option for \(names), the only one that supports it."
@@ -237,7 +278,9 @@ public struct ModelPickerEntry: Identifiable, Equatable, Sendable {
     public var disabledReason: String? {
         availability.isOK ? nil : availability.reasons.map(\.message).joined(separator: " · ")
     }
-    public var sizeText: String { ByteCountFormatter.string(fromByteCount: descriptor.sizeBytes, countStyle: .file) }
+    public var sizeText: String {
+        descriptor.runtime == .appleAsset ? "Managed by macOS" : ByteCountFormatter.string(fromByteCount: descriptor.sizeBytes, countStyle: .file)
+    }
     /// Downloaded / not downloaded / progress, as words.
     public var stateText: String {
         switch state {

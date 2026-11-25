@@ -51,7 +51,7 @@ public struct TranslationJob: Sendable {
                         skipped = skipped ?? message
                     case .segment(let result):
                         guard let index = segments.firstIndex(where: { $0.id == result.segmentID }) else { continue }
-                        segments[index].translations.removeAll { $0.language.primary == target.primary }
+                        segments[index].translations.removeAll { $0.language.translationIdentity == target.translationIdentity }
                         segments[index].translations.append(
                             SegmentTranslation(language: target, text: result.text, engine: result.engine))
                         pending.append(segments[index])

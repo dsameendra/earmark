@@ -10,5 +10,7 @@ for checkout in sorted(args.checkouts.iterdir()):
  for licence in licences:
   sections.append(f'\n{checkout.name}: {licence.name}\n'+('='*60)+'\n'+licence.read_text(errors='replace'))
 sections.append('\n'+(root/'Packages/NLLBNative/Vendor/LICENSES.txt').read_text())
+for notice in sorted((root/'NativeRuntime/ModelLicences').glob('*.txt')):
+ sections.append('\n'+notice.read_text())
 output=root/'App/Resources/ThirdPartyNotices.txt';output.parent.mkdir(exist_ok=True)
 output.write_text('\n'.join(line.rstrip() for line in '\n'.join(sections).splitlines())+'\n');print(output)

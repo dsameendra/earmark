@@ -1,0 +1,904 @@
+{
+  "recordedAt": "2026-11-25T04:43:24.108130+00:00",
+  "status": "backend acceptance in progress; no generative catalog activation or release readiness",
+  "qualityScope": "ten frozen FLORES directions, 30 parallel samples each; conservative screening is not universal language quality acceptance",
+  "quality": [
+    {
+      "profile": "hymt2-1.8b",
+      "report": "hymt2-1.8b-quality-correct-template.json",
+      "reportSHA256": "691369543b1c17c2e4702ab70281023b990762d10b4bcc6a7d6e232fb3e425ba",
+      "helperSHA256": "5c72535245908a7b0b72d952daef50e9f05d69fc5d457857a681f2b76d7503ba",
+      "checkpoint": {
+        "repository": "tencent/Hy-MT2-1.8B-GGUF",
+        "revision": "a0c709d9fac510f2c807aa3af52872340dc37a4a",
+        "files": [
+          {
+            "path": "Hy-MT2-1.8B-Q4_K_M.gguf",
+            "size": 1133080448,
+            "sha256": "dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699"
+          },
+          {
+            "path": "LICENSE.txt",
+            "size": 11639,
+            "sha256": "a1d52d448f81c584a47c583e19dfab2d3851c7c84431b07baee093c1113ed114"
+          },
+          {
+            "path": "README.md",
+            "size": 15305,
+            "sha256": "6811073b8b3d20a9a4db959c2b3f36e39e66bdb953cfecbdd8223fc20cc9a05b"
+          }
+        ],
+        "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+      },
+      "status": "failed_quality_screen",
+      "quantizationParity": "not independently evaluated against original unquantized weights",
+      "scores": [
+        {
+          "pair": "en-de",
+          "samples": 30,
+          "chrfPlusPlus": 56.260059462529455,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 7,
+          "preservedNumberTokens": 7,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "de-en",
+          "samples": 30,
+          "chrfPlusPlus": 62.344551776352155,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 7,
+          "preservedNumberTokens": 7,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "en-fr",
+          "samples": 30,
+          "chrfPlusPlus": 62.494217711150604,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 7,
+          "preservedNumberTokens": 7,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "fr-en",
+          "samples": 30,
+          "chrfPlusPlus": 67.88453937437181,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 7,
+          "preservedNumberTokens": 7,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "en-es",
+          "samples": 30,
+          "chrfPlusPlus": 53.14949942316749,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 6,
+          "preservedNumberTokens": 6,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "es-en",
+          "samples": 30,
+          "chrfPlusPlus": 60.3777972791106,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 6,
+          "preservedNumberTokens": 6,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "en-ja",
+          "samples": 30,
+          "chrfPlusPlus": 30.990446592222494,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 1,
+          "preservedNumberTokens": 1,
+          "passesQualityScreen": false
+        },
+        {
+          "pair": "ja-en",
+          "samples": 30,
+          "chrfPlusPlus": 52.01764437132942,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 1,
+          "preservedNumberTokens": 1,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "en-zh",
+          "samples": 30,
+          "chrfPlusPlus": 30.954021215075016,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 4,
+          "preservedNumberTokens": 3,
+          "passesQualityScreen": false
+        },
+        {
+          "pair": "zh-en",
+          "samples": 30,
+          "chrfPlusPlus": 54.836297915589086,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 4,
+          "preservedNumberTokens": 4,
+          "passesQualityScreen": true
+        }
+      ]
+    },
+    {
+      "profile": "hymt2-7b",
+      "report": "hymt2-7b-quality.json",
+      "reportSHA256": "f9801b4ece385d28c822840046239167b6a8d226d49f019909751b62887d0b1f",
+      "helperSHA256": "3f514914bb10102fb77476f98d3393b0323ed2c13d92ae59a68d4d200c8ab5cb",
+      "checkpoint": {
+        "repository": "tencent/Hy-MT2-7B-GGUF",
+        "revision": "ab8472660ac61fac25f1af43fac2599d52a8a775",
+        "files": [
+          {
+            "path": "Hy-MT2-7B-Q4_K_M.gguf",
+            "size": 4624648896,
+            "sha256": "9f96256500f3fc1ab4d64336b58f52a949a95ad7516b0c229476eef782f9f77b"
+          },
+          {
+            "path": "LICENSE.txt",
+            "size": 11635,
+            "sha256": "746750afa6af28fe4f8b326751ad2a40c700d2e5c459c0a1f6a2e76d99ace224"
+          },
+          {
+            "path": "README.md",
+            "size": 15276,
+            "sha256": "9c9054f91dc86809e5da4d187a16b69ce39ebf02143767b1253bf1f26f1206a1"
+          }
+        ],
+        "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+      },
+      "status": "failed_quality_screen",
+      "quantizationParity": "not independently evaluated against original unquantized weights",
+      "scores": [
+        {
+          "pair": "en-de",
+          "samples": 30,
+          "chrfPlusPlus": 59.981670637616155,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 7,
+          "preservedNumberTokens": 7,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "de-en",
+          "samples": 30,
+          "chrfPlusPlus": 65.73305826425144,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 7,
+          "preservedNumberTokens": 7,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "en-fr",
+          "samples": 30,
+          "chrfPlusPlus": 69.26584380151733,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 7,
+          "preservedNumberTokens": 7,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "fr-en",
+          "samples": 30,
+          "chrfPlusPlus": 71.51449074319444,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 7,
+          "preservedNumberTokens": 7,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "en-es",
+          "samples": 30,
+          "chrfPlusPlus": 54.51011562001952,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 6,
+          "preservedNumberTokens": 6,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "es-en",
+          "samples": 30,
+          "chrfPlusPlus": 62.22822630412369,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 6,
+          "preservedNumberTokens": 6,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "en-ja",
+          "samples": 30,
+          "chrfPlusPlus": 35.21464364995675,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 1,
+          "preservedNumberTokens": 1,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "ja-en",
+          "samples": 30,
+          "chrfPlusPlus": 55.11505161338882,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 1,
+          "preservedNumberTokens": 1,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "en-zh",
+          "samples": 30,
+          "chrfPlusPlus": 34.32552642610444,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 4,
+          "preservedNumberTokens": 3,
+          "passesQualityScreen": false
+        },
+        {
+          "pair": "zh-en",
+          "samples": 30,
+          "chrfPlusPlus": 55.24191494952755,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 4,
+          "preservedNumberTokens": 4,
+          "passesQualityScreen": true
+        }
+      ]
+    },
+    {
+      "profile": "translategemma-4b",
+      "report": "translategemma-4b-quality.json",
+      "reportSHA256": "43b3ea2d80914f7c2ea3a3da1d1db6dc0bc23a7c918dae7d7a505321359d8d4f",
+      "helperSHA256": "3f514914bb10102fb77476f98d3393b0323ed2c13d92ae59a68d4d200c8ab5cb",
+      "checkpoint": {
+        "repository": "mradermacher/translategemma-4b-it-GGUF",
+        "revision": "d37868f759d2f817a43d28dd80cf9f982ffa62fd",
+        "files": [
+          {
+            "path": "README.md",
+            "size": 4521,
+            "sha256": "c1461baced83658436805467a57ca738eb668f2b7026783006ece0ae2f8e4357"
+          },
+          {
+            "path": "translategemma-4b-it.Q4_K_M.gguf",
+            "size": 2489909760,
+            "sha256": "81200d03e843d2ec1ece6eeafe7d13cb6e5211e1fcd336ade55790b683a08330"
+          }
+        ],
+        "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+      },
+      "status": "failed_quality_screen",
+      "quantizationParity": "not independently evaluated against original unquantized weights",
+      "scores": [
+        {
+          "pair": "en-de",
+          "samples": 30,
+          "chrfPlusPlus": 55.49658739949626,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 7,
+          "preservedNumberTokens": 7,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "de-en",
+          "samples": 30,
+          "chrfPlusPlus": 61.33101142789506,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 7,
+          "preservedNumberTokens": 7,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "en-fr",
+          "samples": 30,
+          "chrfPlusPlus": 63.681216869090264,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 7,
+          "preservedNumberTokens": 7,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "fr-en",
+          "samples": 30,
+          "chrfPlusPlus": 66.31673431611893,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 7,
+          "preservedNumberTokens": 7,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "en-es",
+          "samples": 30,
+          "chrfPlusPlus": 51.813222652629975,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 6,
+          "preservedNumberTokens": 6,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "es-en",
+          "samples": 30,
+          "chrfPlusPlus": 59.64530311008143,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 6,
+          "preservedNumberTokens": 6,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "en-ja",
+          "samples": 30,
+          "chrfPlusPlus": 31.460715723346517,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 1,
+          "preservedNumberTokens": 1,
+          "passesQualityScreen": false
+        },
+        {
+          "pair": "ja-en",
+          "samples": 30,
+          "chrfPlusPlus": 51.49971074509373,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 1,
+          "preservedNumberTokens": 1,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "en-zh",
+          "samples": 30,
+          "chrfPlusPlus": 28.272682385862602,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 4,
+          "preservedNumberTokens": 2,
+          "passesQualityScreen": false
+        },
+        {
+          "pair": "zh-en",
+          "samples": 30,
+          "chrfPlusPlus": 51.44474826531776,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 4,
+          "preservedNumberTokens": 4,
+          "passesQualityScreen": true
+        }
+      ]
+    },
+    {
+      "profile": "translategemma-12b",
+      "report": "translategemma-12b-quality.json",
+      "reportSHA256": "88101ad71016d940bd995a60bf97a21984d8e729a3ad47e076aa3bd009820943",
+      "helperSHA256": "3f514914bb10102fb77476f98d3393b0323ed2c13d92ae59a68d4d200c8ab5cb",
+      "checkpoint": {
+        "repository": "mradermacher/translategemma-12b-it-GGUF",
+        "revision": "41d7c8aa650b26791225ad9d0597e674e680da96",
+        "files": [
+          {
+            "path": "README.md",
+            "size": 4404,
+            "sha256": "c967757710fcb5828176db561e4feb549c9fc56e843b8050dda03d5d29b34e05"
+          },
+          {
+            "path": "translategemma-12b-it.Q4_K_M.gguf",
+            "size": 7300794112,
+            "sha256": "b7aac4b4be7ab0c49b6556c29c4467e74313df7f1e95d9f9676bb2adf0afa528"
+          }
+        ],
+        "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+      },
+      "status": "failed_quality_screen",
+      "quantizationParity": "not independently evaluated against original unquantized weights",
+      "scores": [
+        {
+          "pair": "en-de",
+          "samples": 30,
+          "chrfPlusPlus": 58.240677597149116,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 7,
+          "preservedNumberTokens": 7,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "de-en",
+          "samples": 30,
+          "chrfPlusPlus": 63.025719656935195,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 7,
+          "preservedNumberTokens": 7,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "en-fr",
+          "samples": 30,
+          "chrfPlusPlus": 64.55529777761095,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 7,
+          "preservedNumberTokens": 7,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "fr-en",
+          "samples": 30,
+          "chrfPlusPlus": 67.75263000086122,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 7,
+          "preservedNumberTokens": 7,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "en-es",
+          "samples": 30,
+          "chrfPlusPlus": 52.439885298191534,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 6,
+          "preservedNumberTokens": 6,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "es-en",
+          "samples": 30,
+          "chrfPlusPlus": 59.959515575242314,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 6,
+          "preservedNumberTokens": 6,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "en-ja",
+          "samples": 30,
+          "chrfPlusPlus": 30.878595632712113,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 1,
+          "preservedNumberTokens": 1,
+          "passesQualityScreen": false
+        },
+        {
+          "pair": "ja-en",
+          "samples": 30,
+          "chrfPlusPlus": 54.15566725332832,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 1,
+          "preservedNumberTokens": 1,
+          "passesQualityScreen": true
+        },
+        {
+          "pair": "en-zh",
+          "samples": 30,
+          "chrfPlusPlus": 27.12059888438187,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 4,
+          "preservedNumberTokens": 2,
+          "passesQualityScreen": false
+        },
+        {
+          "pair": "zh-en",
+          "samples": 30,
+          "chrfPlusPlus": 53.489031699947674,
+          "signature": "nrefs:1|case:mixed|eff:yes|nc:6|nw:2|space:no|version:2.5.1",
+          "empty": 0,
+          "sharedNumberTokens": 4,
+          "preservedNumberTokens": 4,
+          "passesQualityScreen": true
+        }
+      ]
+    }
+  ],
+  "tokenizerParity": {
+    "report": "generative-tokenizer-parity-correct-template.json",
+    "reportSHA256": "0fab0fc53583854c45175f41c815cd330f4f1b8ee8994d5dc3946492384bc124",
+    "passed": true,
+    "profiles": [
+      {
+        "profile": "hymt2-1.8b",
+        "header": {
+          "architecture": "hunyuan-dense",
+          "fileBytes": 1133080448,
+          "parameters": 1791080448,
+          "profile": "hymt2-1.8b",
+          "quantizationType": 15,
+          "ready": true,
+          "tensorTypes": [
+            0,
+            12,
+            14
+          ],
+          "tokenizerOnly": true
+        },
+        "reference": {
+          "repository": "tencent/Hy-MT2-1.8B",
+          "revision": "9a341cd1b679d3efd23b46e847b01745a71ed792",
+          "files": [
+            {
+              "path": "LICENSE.txt",
+              "size": 11629,
+              "sha256": "1af3c6dc0c697277cbb6b68720787c1caa43a79c5626bf9f19cd8c00de9c8cd4"
+            },
+            {
+              "path": "README.md",
+              "size": 14763,
+              "sha256": "c81edecabcbf5c9f312680dd928485dd44830424986e42f450c52864babe5d81"
+            },
+            {
+              "path": "chat_template.jinja",
+              "size": 654,
+              "sha256": "b7491ec0e9c869dfce20f2176758099bf248d979dd05530ede99deb21698acee"
+            },
+            {
+              "path": "special_tokens_map.json",
+              "size": 488,
+              "sha256": "bb9f59990034dae326581b9c62471523975417869f78a244b7ae2ce8cbb085eb"
+            },
+            {
+              "path": "tokenizer.json",
+              "size": 9527287,
+              "sha256": "b475bbef1b0b2fd57dcb865332b546475bd1ede2deb3bb91bafd0c047a8a530a"
+            },
+            {
+              "path": "tokenizer_config.json",
+              "size": 165815,
+              "sha256": "53bd8581b601a8ee9caefeb988207de50b3fc0b733295bdf5ad68dec4cc0b07c"
+            }
+          ],
+          "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+        },
+        "cases": [
+          {
+            "source": "en",
+            "target": "de",
+            "count": 34,
+            "matches": true
+          },
+          {
+            "source": "ja",
+            "target": "en",
+            "count": 37,
+            "matches": true
+          },
+          {
+            "source": "zh-Hant",
+            "target": "en",
+            "count": 38,
+            "matches": true
+          },
+          {
+            "source": "ar",
+            "target": "en",
+            "count": 37,
+            "matches": true
+          },
+          {
+            "source": "ta",
+            "target": "en",
+            "count": 50,
+            "matches": true
+          }
+        ],
+        "tokenizerOnlyInferenceRejected": true
+      },
+      {
+        "profile": "hymt2-7b",
+        "header": {
+          "architecture": "hunyuan-dense",
+          "fileBytes": 4624648896,
+          "parameters": 7504568320,
+          "profile": "hymt2-7b",
+          "quantizationType": 15,
+          "ready": true,
+          "tensorTypes": [
+            0,
+            12,
+            14
+          ],
+          "tokenizerOnly": true
+        },
+        "reference": {
+          "repository": "tencent/Hy-MT2-7B",
+          "revision": "9b0eb4e8f001def3e5ff6469a0ac96fdb39ec223",
+          "files": [
+            {
+              "path": "LICENSE.txt",
+              "size": 11625,
+              "sha256": "fccbe004b9870859aa97ba932e647cb1ac39f54716ef008ddf666d86a34ffd98"
+            },
+            {
+              "path": "README.md",
+              "size": 15470,
+              "sha256": "d39a0b20199e45f867f33d5249b9cba708a0214e947eb91d215968d384a1a665"
+            },
+            {
+              "path": "chat_template.jinja",
+              "size": 662,
+              "sha256": "788ac16c5d7bfefc28655928ad524c8f378a44cb24d24fb125d6a5859b167677"
+            },
+            {
+              "path": "special_tokens_map.json",
+              "size": 431,
+              "sha256": "c6571f2ee67c36fa93d7f688ee6fd43f5b84784e895f3e6a4eb8c2657379758e"
+            },
+            {
+              "path": "tokenizer.json",
+              "size": 16388221,
+              "sha256": "4185389a69284fdd3ebf737c6120bbeee36cbed9763151fa5bac5986a39e05d4"
+            },
+            {
+              "path": "tokenizer_config.json",
+              "size": 37763,
+              "sha256": "1fffdb809549222938f4a732645dd984c7c0b2973d592c2d01e05425274317da"
+            }
+          ],
+          "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+        },
+        "cases": [
+          {
+            "source": "en",
+            "target": "de",
+            "count": 35,
+            "matches": true
+          },
+          {
+            "source": "ja",
+            "target": "en",
+            "count": 38,
+            "matches": true
+          },
+          {
+            "source": "zh-Hant",
+            "target": "en",
+            "count": 37,
+            "matches": true
+          },
+          {
+            "source": "ar",
+            "target": "en",
+            "count": 40,
+            "matches": true
+          },
+          {
+            "source": "ta",
+            "target": "en",
+            "count": 68,
+            "matches": true
+          }
+        ],
+        "tokenizerOnlyInferenceRejected": true
+      },
+      {
+        "profile": "translategemma-4b",
+        "header": {
+          "architecture": "gemma3",
+          "fileBytes": 2489909760,
+          "parameters": 3880263168,
+          "profile": "translategemma-4b",
+          "quantizationType": 15,
+          "ready": true,
+          "tensorTypes": [
+            0,
+            12,
+            14
+          ],
+          "tokenizerOnly": true
+        },
+        "reference": {
+          "repository": "mlx-community/translategemma-4b-it-4bit",
+          "revision": "5788ec08c047f3f2e17808101b8d9566ac930d58",
+          "files": [
+            {
+              "path": "README.md",
+              "size": 1209,
+              "sha256": "ad0e6bbffb1b7840a42eda394d64df67a2e25ad7f5e07ef4fceebb09ea8ad231"
+            },
+            {
+              "path": "added_tokens.json",
+              "size": 35,
+              "sha256": "50b2f405ba56a26d4913fd772089992252d7f942123cc0a034d96424221ba946"
+            },
+            {
+              "path": "chat_template.jinja",
+              "size": 16982,
+              "sha256": "5e85514635b80a62b64c9982810bfdfbdd482be9a59ed12c25ded2bf3aabddaf"
+            },
+            {
+              "path": "config.json",
+              "size": 2815,
+              "sha256": "033e1d370b223272e880fc9ba20c570f8464be7ada7b6177d2c8e5be9a10f90c"
+            },
+            {
+              "path": "special_tokens_map.json",
+              "size": 662,
+              "sha256": "2f7b0adf4fb469770bb1490e3e35df87b1dc578246c5e7e6fc76ecf33213a397"
+            },
+            {
+              "path": "tokenizer.json",
+              "size": 33384568,
+              "sha256": "4667f2089529e8e7657cfb6d1c19910ae71ff5f28aa7ab2ff2763330affad795"
+            },
+            {
+              "path": "tokenizer_config.json",
+              "size": 1155413,
+              "sha256": "120c4a25aed6436edaac2e3966c9aa026bc13b5f7d3d9a81fc7afe2569b9e28b"
+            }
+          ],
+          "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+        },
+        "cases": [
+          {
+            "source": "en",
+            "target": "de",
+            "count": 87,
+            "matches": true
+          },
+          {
+            "source": "ja",
+            "target": "en",
+            "count": 85,
+            "matches": true
+          },
+          {
+            "source": "zh-Hant",
+            "target": "en",
+            "count": 92,
+            "matches": true
+          },
+          {
+            "source": "ar",
+            "target": "en",
+            "count": 87,
+            "matches": true
+          },
+          {
+            "source": "ta",
+            "target": "en",
+            "count": 89,
+            "matches": true
+          }
+        ],
+        "tokenizerOnlyInferenceRejected": true
+      },
+      {
+        "profile": "translategemma-12b",
+        "header": {
+          "architecture": "gemma3",
+          "fileBytes": 7300794112,
+          "parameters": 11766034176,
+          "profile": "translategemma-12b",
+          "quantizationType": 15,
+          "ready": true,
+          "tensorTypes": [
+            0,
+            12,
+            14
+          ],
+          "tokenizerOnly": true
+        },
+        "reference": {
+          "repository": "mlx-community/translategemma-4b-it-4bit",
+          "revision": "5788ec08c047f3f2e17808101b8d9566ac930d58",
+          "files": [
+            {
+              "path": "README.md",
+              "size": 1209,
+              "sha256": "ad0e6bbffb1b7840a42eda394d64df67a2e25ad7f5e07ef4fceebb09ea8ad231"
+            },
+            {
+              "path": "added_tokens.json",
+              "size": 35,
+              "sha256": "50b2f405ba56a26d4913fd772089992252d7f942123cc0a034d96424221ba946"
+            },
+            {
+              "path": "chat_template.jinja",
+              "size": 16982,
+              "sha256": "5e85514635b80a62b64c9982810bfdfbdd482be9a59ed12c25ded2bf3aabddaf"
+            },
+            {
+              "path": "config.json",
+              "size": 2815,
+              "sha256": "033e1d370b223272e880fc9ba20c570f8464be7ada7b6177d2c8e5be9a10f90c"
+            },
+            {
+              "path": "special_tokens_map.json",
+              "size": 662,
+              "sha256": "2f7b0adf4fb469770bb1490e3e35df87b1dc578246c5e7e6fc76ecf33213a397"
+            },
+            {
+              "path": "tokenizer.json",
+              "size": 33384568,
+              "sha256": "4667f2089529e8e7657cfb6d1c19910ae71ff5f28aa7ab2ff2763330affad795"
+            },
+            {
+              "path": "tokenizer_config.json",
+              "size": 1155413,
+              "sha256": "120c4a25aed6436edaac2e3966c9aa026bc13b5f7d3d9a81fc7afe2569b9e28b"
+            }
+          ],
+          "status": "acquired and integrity checked; native inference and quality acceptance remain separate"
+        },
+        "cases": [
+          {
+            "source": "en",
+            "target": "de",
+            "count": 87,
+            "matches": true
+          },
+          {
+            "source": "ja",
+            "target": "en",
+            "count": 85,
+            "matches": true
+          },
+          {
+            "source": "zh-Hant",
+            "target": "en",
+            "count": 92,
+            "matches": true
+          },
+          {
+            "source": "ar",
+            "target": "en",
+            "count": 87,
+            "matches": true
+          },
+          {
+            "source": "ta",
+            "target": "en",
+            "count": 89,
+            "matches": true
+          }
+        ],
+        "tokenizerOnlyInferenceRejected": true
+      }
+    ]
+  },
+  "superseded": [
+    {
+      "report": "hymt2-1.8b-quality.json",
+      "reason": "Native formatter misplaced Hy-MT 1.8B role markers; replaced with exact pinned variant template. Original data retained externally."
+    }
+  ],
+  "remaining": [
+    "full precision quantization comparison",
+    "broader authored semantic and script checks",
+    "global production residency and resource admission",
+    "validated import integration and app workflows",
+    "signed packaging and update path",
+    "minimum macOS native hardware acceptance"
+  ]
+}

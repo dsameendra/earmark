@@ -25,6 +25,12 @@ jobs:
           persist-credentials: false
       - name: Package dependency boundaries
         run: python3 scripts/check-dependencies.py
+      - name: Language profile provenance
+        run: python3 scripts/verify-language-profiles.py
+      - name: Native speech provenance
+        run: python3 scripts/verify-speech-native.py
+      - name: Native text provenance
+        run: python3 scripts/verify-text-generation-native.py
       - name: Release script tests
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/tests
       - name: Website validation
@@ -59,3 +65,5 @@ jobs:
         run: scripts/check.sh build
       - name: Package unit tests
         run: scripts/check.sh unit
+      - name: Optimized voice enhancement performance
+        run: scripts/check.sh performance

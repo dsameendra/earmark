@@ -62,7 +62,7 @@ public struct RouterEngineProvider: LiveEngineProviding {
         let request = RoutingRequest(
             languageMode: languageMode, useCase: .live, tier: hardware.profile.tier,
             installedModels: await models.installedModels(), explicitModel: await explicitModel())
-        let plan = try router.plan(for: request)
+        let plan = try await router.preparedPlan(for: request)
         guard let assignment = plan.assignments.first else { throw AppError.other("No engine available for live captions") }
         if assignment.requiresDownload, let model = assignment.model { throw AppError.modelNotInstalled(model) }
         guard let engine = engine(assignment.engine) else {
@@ -81,18 +81,21 @@ public struct LiveSessionOptions: Sendable {
     public var drainTimeout: Duration
     /// Minimum gap between translation updates (LIVE-AC-13: at most 1 update per second).
     public var translationMinInterval: Duration
+    /// Pending finalized captions waiting for translation; older overflow retains its original text.
+    public var maxPendingTranslations: Int
     public var maxRetainedLines: Int
     public var vocabulary: [String]
     public var now: @Sendable () -> Date
 
     public init(
         checkpointInterval: Duration = .seconds(3), drainTimeout: Duration = .seconds(2),
-        translationMinInterval: Duration = .seconds(1), maxRetainedLines: Int = 200, vocabulary: [String] = [],
+        translationMinInterval: Duration = .seconds(1), maxPendingTranslations: Int = 32, maxRetainedLines: Int = 200, vocabulary: [String] = [],
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.checkpointInterval = checkpointInterval
         self.drainTimeout = drainTimeout
         self.translationMinInterval = translationMinInterval
+        self.maxPendingTranslations = max(1, maxPendingTranslations)
         self.maxRetainedLines = maxRetainedLines
         self.vocabulary = vocabulary
         self.now = now
@@ -112,6 +115,8 @@ public enum LiveSessionEvent: Sendable, Equatable {
     /// The engine router chose a fallback or has another note for the user (`EnginePlan.warnings`), for example that Apple
     /// Speech is unavailable and Whisper is used instead.
     case engineNotice(String)
+    /// Translation failed while recognition continues; retain the original caption and offer recovery.
+    case translationFailed(reason: String)
 }
 
 /// Shown on the translation line when the engine flags a weak direction (LIVE-AC-13). The contract's `CaptionLine`

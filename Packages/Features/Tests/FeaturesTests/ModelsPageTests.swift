@@ -48,6 +48,15 @@ private func descriptor(_ id: String, kind: ModelKind = .asr, caps: ModelCapabil
         #expect(model.rows(of: .diarization).map { $0.id.rawValue } == ["sd"])
     }
 
+    @Test func compactLandingPageKeepsRecommendationsAndInstalledModelsSeparate() async {
+        let (model, _) = await make(installed: ["installed", "best"])
+        #expect(model.recommendedRows.isEmpty)
+        #expect(Set(model.managedRows.map(\.id)) == ["best", "installed"])
+        #expect(model.browseRows(query: "English", kind: .asr).count == 3)
+        #expect(model.browseRows(query: "other", kind: .asr).map(\.id) == ["other"])
+        #expect(model.browseRows(query: "other", kind: .translation).isEmpty)
+    }
+
     @Test func tooLittleDiskIsRefusedClearlyAndNeverStarts() async {
         let (model, mock) = await make(free: 10)
         let outcome = await model.download("best")
@@ -65,6 +74,21 @@ private func descriptor(_ id: String, kind: ModelKind = .asr, caps: ModelCapabil
         let (model, mock) = await make()
         #expect(await model.download("best", confirmed: true) == .completed)
         #expect(await mock.consentedModels() == ["best"])
+    }
+
+    @Test func hardwareConfirmationCannotBypassShareAlikeLicenceAcknowledgement() async {
+        let descriptor = ModelDescriptor(
+            id: "share-alike", displayName: "Shared model", kind: .asr, runtime: .mlx, languages: ["si"], sizeBytes: 100,
+            license: LicenseInfo(spdx: "CC-BY-SA-4.0", attribution: "Model author"), minTier: .tier32Plus)
+        let mock = MockModelManager(descriptors: [descriptor])
+        let model = ModelManagerModel(manager: mock, hardware: PlaceholderHardware(), store: InMemorySettingsStore(), freeDiskBytes: { .max })
+        await model.load()
+        let expected: [DownloadWarning] = [.licenseNotice(spdx: "CC-BY-SA-4.0", attribution: "Model author"), .hardwareTier(required: .tier32Plus)]
+        #expect(await model.download("share-alike") == .needsConfirmation(expected))
+        #expect(await mock.ensureAvailableCalls().isEmpty)
+        #expect(await mock.consentedModels().isEmpty)
+        #expect(await model.download("share-alike", confirmed: true) == .completed)
+        #expect(await mock.consentedModels() == ["share-alike"])
     }
 
     @Test func aFailedRowRetriesAndCancelDiscardsIt() async {

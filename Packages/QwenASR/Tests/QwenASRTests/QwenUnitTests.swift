@@ -72,52 +72,71 @@ func silence(_ seconds: Double) -> [Float] { [Float](repeating: 0, count: Int(se
 
 @Suite("UtteranceSegmenter")
 struct UtteranceSegmenterTests {
+    @Test("detector failure is surfaced without discarding buffered speech")
+    func detectorFailure() async throws {
+        var seg = UtteranceSegmenter(vad: FailingVAD())
+        seg.append(AudioChunk(samples: tone(2), startSeconds: 0, source: .file))
+        await #expect(throws: AppError.engineFailure("silero-vad", reason: "test failure")) {
+            try await seg.drain(final: true)
+        }
+        #expect(seg.bufferedSeconds == 2)
+        await #expect(throws: AppError.engineFailure("silero-vad", reason: "test failure")) {
+            try await seg.openUtterance()
+        }
+    }
+
     @Test("releases a finished utterance after the minimum silence and keeps media times")
-    func closes() async {
+    func closes() async throws {
         var seg = UtteranceSegmenter(vad: AmplitudeVAD())
         seg.append(AudioChunk(samples: silence(1) + tone(2) + silence(0.8), startSeconds: 10, source: .file))
-        let out = await seg.drain(final: false)
+        let out = try await seg.drain(final: false)
         #expect(out.count == 1)
         #expect(abs((out.first?.start ?? 0) - (11 - 0.15)) < 0.05)
         #expect(abs((out.first?.duration ?? 0) - (2 + 0.3)) < 0.1)
     }
 
     @Test("an utterance without trailing silence stays open until final")
-    func open() async {
+    func open() async throws {
         var seg = UtteranceSegmenter(vad: AmplitudeVAD())
         seg.append(AudioChunk(samples: tone(2), startSeconds: 0, source: .file))
-        #expect(await seg.drain(final: false).isEmpty)
-        #expect(await seg.openUtterance() != nil)
-        #expect(await seg.drain(final: true).count == 1)
+        #expect(try await seg.drain(final: false).isEmpty)
+        #expect(try await seg.openUtterance() != nil)
+        #expect(try await seg.drain(final: true).count == 1)
     }
 
     @Test("two utterances separated by a pause are split; short gaps merge")
-    func splits() async {
+    func splits() async throws {
         var seg = UtteranceSegmenter(vad: AmplitudeVAD())
         seg.append(AudioChunk(samples: tone(1) + silence(0.2) + tone(1) + silence(1.0) + tone(1) + silence(0.7), startSeconds: 0, source: .file))
-        let out = await seg.drain(final: false)
+        let out = try await seg.drain(final: false)
         #expect(out.count == 2)
     }
 
     @Test("overlong speech is split at the cap and buffer stays bounded")
-    func cap() async {
+    func cap() async throws {
         var seg = UtteranceSegmenter(vad: AmplitudeVAD())
         seg.maxUtterance = 5
         seg.append(AudioChunk(samples: tone(12) + silence(1), startSeconds: 0, source: .file))
-        let out = await seg.drain(final: false)
+        let out = try await seg.drain(final: false)
         #expect(out.count == 3)
         #expect(out.allSatisfy { $0.duration <= 5.4 })
         #expect(seg.bufferedSeconds <= 1.1)
     }
 
     @Test("pure silence is dropped, not accumulated")
-    func silent() async {
+    func silent() async throws {
         var seg = UtteranceSegmenter(vad: AmplitudeVAD())
         for i in 0..<20 {
             seg.append(AudioChunk(samples: silence(1), startSeconds: Double(i), source: .file))
-            #expect(await seg.drain(final: false).isEmpty)
+            #expect(try await seg.drain(final: false).isEmpty)
         }
         #expect(seg.bufferedSeconds <= 1.1)
+    }
+}
+
+private struct FailingVAD: VoiceActivityDetector {
+    func speechRanges(in chunk: AudioChunk) async throws -> [TimeRange] {
+        throw AppError.engineFailure("silero-vad", reason: "test failure")
     }
 }
 

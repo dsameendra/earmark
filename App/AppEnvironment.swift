@@ -178,7 +178,10 @@ final class AppEnvironment {
         #if DEBUG
             if usesMocks {
                 let mocks = mockServices()
-                return Composition(services: mocks, settingsDependencies: .standalone(store: mocks.settings))
+                var settings = SettingsDependencies.standalone(store: mocks.settings)
+                settings.models = MockModelManager(descriptors: BuiltInCatalog.models, installed: [RoutingTargets.whisperSmall])
+                settings.reviewedHuggingFaceModels = { try ReviewedHuggingFaceModels.resolve($0) }
+                return Composition(services: mocks, settingsDependencies: settings)
             }
         #endif
         let database: AppDatabase
@@ -213,10 +216,19 @@ final class AppEnvironment {
         let whisper = WhisperKitEngine(models: models, tokenizerFolder: models.tokenizerFolder)
         // Sinhala goes to Qwen3-ASR (MLX), never to stock Whisper (ADR-004). The model loads lazily on first use.
         let qwen = QwenSinhalaEngine(models: models)
-        let engines: [EngineID: any TranscriptionEngine] = [whisper.id: whisper, apple.id: apple, qwen.id: qwen]
-        let translation = TranslationRuntime.make(models: models, nllbPython: nil)
+        let parakeet = ParakeetEngine(models: models)
+        let cohere = CohereEngine(models: models)
+        let parakeetEOU = ParakeetEOUEngine(models: models)
+        let nativeSpeech = NativeSpeechEngine(models: models, helper: { NativeSpeechEngine.bundledHelper() })
+        // Large on-device models are admitted one at a time: starting one releases idle peers. Whisper keeps its own lifecycle.
+        let residency = ResidencyCoordinator()
+        let engines: [EngineID: any TranscriptionEngine] = [
+            whisper.id: whisper, apple.id: apple, qwen.id: residency.managing(qwen), parakeet.id: residency.managing(parakeet),
+            cohere.id: residency.managing(cohere), parakeetEOU.id: residency.managing(parakeetEOU), nativeSpeech.id: residency.managing(nativeSpeech),
+        ]
+        let translation = TranslationRuntime.make(models: models, settings: settings, nllbPython: nil)
         // Live and dictation leave Apple Speech for Whisper (with a notice) when it cannot be used on this Mac.
-        let router = AppleAwareEngineRouter(readiness: appleReadiness)
+        let router = AppleAwareEngineRouter(readiness: appleReadiness, engine: apple)
 
         let live = makeLive(
             database: database, models: models, hardware: hardware, settings: settings, permissions: permissions,
@@ -272,6 +284,7 @@ final class AppEnvironment {
             microphonePreview: { uid in MicrophoneSource(deviceUID: uid, permissions: permissions, deviceProvider: audioDevices) })
         settingsDependencies.mediaPurger = MediaPurger(
             transcripts: database.transcripts, media: database.media, meetings: database.meetings, roots: services.mediaRoots)
+        settingsDependencies.reviewedHuggingFaceModels = { try ReviewedHuggingFaceModels.resolve($0) }
         settingsDependencies.meetingDiagnostics = MeetingDiagnosticsAdapter(detector: meetings.detector, prompter: meetingPrompter)
         return Composition(
             services: services, settingsDependencies: settingsDependencies, live: live, dictation: dictation, meetings: meetings,

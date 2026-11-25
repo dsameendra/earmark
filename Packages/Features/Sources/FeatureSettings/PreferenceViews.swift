@@ -481,10 +481,8 @@ struct TranslationSettingsView: View {
                     TextField("Default target language", text: model.targetLanguage.binding, prompt: Text("Language code, such as es or si"))
                         .help("Leave blank to choose the language each time you translate")
                     Picker("Engine", selection: model.engine.binding) {
-                        Text("Auto").tag("auto")
-                        Text("Apple Translation").tag("apple")
-                        Text("NLLB (non-commercial)").tag("nllb")
-                    }
+                        ForEach(model.engineChoices) { choice in Text(choice.title).tag(choice.id).disabled(choice.isUnavailable) }
+                    }.accessibilityIdentifier("settings.translation.engine")
                     Toggle("Allow non-commercial models (CC-BY-NC)", isOn: model.allowNonCommercial.binding)
                     Toggle("Keep translation as a parallel track", isOn: model.parallelTrack.binding)
                 }

@@ -48,7 +48,9 @@ public final class SettingsEnvironment {
         automaticUpdateChecks = deps.automaticUpdateChecks
         setAutomaticUpdateChecks = deps.setAutomaticUpdateChecks
         general = GeneralSettingsModel(store: deps.store, loginItem: deps.launchAtLogin)
-        modelManager = ModelManagerModel(manager: deps.models, hardware: deps.hardware, store: deps.store)
+        modelManager = ModelManagerModel(
+            manager: deps.models, hardware: deps.hardware, store: deps.store,
+            reviewedHuggingFaceModels: deps.reviewedHuggingFaceModels)
         languages = LanguageSelectionModel(manager: modelManager, store: deps.store)
         audio = AudioSettingsModel(
             provider: deps.audioDevices, store: deps.store, microphonePreview: deps.microphonePreview,
@@ -66,7 +68,7 @@ public final class SettingsEnvironment {
         ignored = IgnoredSegmentsModel(
             repository: deps.rules, store: deps.store, rederive: Self.rederiveAction(deps))
         replacements = ReplacementsModel(repository: deps.rules, store: deps.store)
-        translation = TranslationSettingsModel(store: deps.store)
+        translation = TranslationSettingsModel(store: deps.store, models: deps.models)
         exportDefaults = ExportDefaultsModel(repository: deps.presets, store: deps.store)
         storage = StorageSettingsModel(
             store: deps.store, models: deps.models, transcripts: deps.transcripts, purger: deps.mediaPurger, clearCaches: deps.clearCaches)

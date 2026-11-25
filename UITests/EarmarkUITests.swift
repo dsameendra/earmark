@@ -132,6 +132,114 @@ final class EarmarkUITests: XCTestCase {
         XCTAssertFalse(app.buttons["onboarding.finish"].waitForExistence(timeout: 1))
     }
 
+    func testCompactModelCatalogCanBeSearchedAndDismissed() throws {
+        let app = launch(appearance: "light")
+        defer { app.terminate() }
+        app.typeKey(",", modifierFlags: .command)
+        let models = app.buttons["settings.section.models"]
+        XCTAssertTrue(models.waitForExistence(timeout: 5))
+        models.click()
+        let browse = app.buttons["models.browse"]
+        XCTAssertTrue(browse.waitForExistence(timeout: 5))
+        browse.click()
+        let browser = app.sheets.firstMatch
+        XCTAssertTrue(browser.waitForExistence(timeout: 5))
+        let search = browser.textFields["models.browse.search"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.click()
+        search.typeText("Whisper")
+        XCTAssertTrue(browser.buttons["models.delete.whisperkit/small"].waitForExistence(timeout: 5))
+        XCTAssertFalse(browser.buttons["models.download.apple/speech-analyzer"].exists)
+        capture(app, "models-browser-whisper-light")
+        search.typeKey("a", modifierFlags: .command)
+        search.typeText("no-such-language-model")
+        XCTAssertTrue(browser.staticTexts["models.browse.empty"].waitForExistence(timeout: 5))
+        XCTAssertFalse(browser.buttons["models.delete.whisperkit/small"].exists)
+        search.typeKey("a", modifierFlags: .command)
+        search.typeText("Apple")
+        XCTAssertTrue(browser.staticTexts["models.systemTranslation.managed"].waitForExistence(timeout: 5))
+        XCTAssertFalse(browser.buttons["models.download.apple/translation"].exists)
+        search.typeKey("a", modifierFlags: .command)
+        search.typeText("OPUS")
+        XCTAssertTrue(browser.popUpButtons["models.opus.source"].waitForExistence(timeout: 5))
+        XCTAssertTrue(browser.popUpButtons["models.opus.target"].exists)
+        let reverse = browser.descendants(matching: .any).matching(identifier: "models.opus.reverse").firstMatch
+        capture(app, "models-opus-pair-light")
+        XCTAssertTrue(reverse.exists, browser.debugDescription)
+        XCTAssertTrue(browser.buttons["models.download.opus/en-de-ct2-int8"].exists)
+        XCTAssertTrue(browser.buttons["models.download.opus/de-en-ct2-int8"].exists)
+        reverse.click()
+        XCTAssertFalse(browser.buttons["models.download.opus/de-en-ct2-int8"].exists)
+        XCTAssertTrue(browser.buttons["models.opus.add"].isEnabled)
+        browser.buttons["models.browse.done"].click()
+        XCTAssertTrue(browse.waitForExistence(timeout: 5))
+        capture(app, "models-compact-light")
+    }
+
+    func testModelFamiliesAreBrowsableForSpeechAndTranslation() throws { try modelFamilies(appearance: "light") }
+    func testModelFamiliesAreBrowsableInDarkAppearance() throws { try modelFamilies(appearance: "dark") }
+
+    /// The 1.1.0 families appear as grouped, searchable entries. Window captures feed the website.
+    private func modelFamilies(appearance: String) throws {
+        let app = launch(appearance: appearance)
+        defer { app.terminate() }
+        app.typeKey(",", modifierFlags: .command)
+        let models = app.buttons["settings.section.models"]
+        XCTAssertTrue(models.waitForExistence(timeout: 5))
+        models.click()
+        let browse = app.buttons["models.browse"]
+        XCTAssertTrue(browse.waitForExistence(timeout: 5))
+        browse.click()
+        let browser = app.sheets.firstMatch
+        XCTAssertTrue(browser.waitForExistence(timeout: 5))
+        let search = browser.textFields["models.browse.search"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.click()
+        search.typeText("Parakeet")
+        XCTAssertTrue(browser.buttons["models.download.fluidaudio/parakeet-ultra"].waitForExistence(timeout: 5))
+        XCTAssertTrue(browser.buttons["models.download.fluidaudio/parakeet-eou-120m"].exists)
+        capture(app, "models-parakeet-\(appearance)")
+        search.typeKey("a", modifierFlags: .command)
+        search.typeText("Gemma")
+        XCTAssertTrue(browser.buttons["models.download.translategemma/4b-it-gguf-q4-k-m"].waitForExistence(timeout: 5))
+        capture(app, "models-gemma-\(appearance)")
+        search.typeKey("a", modifierFlags: .command)
+        search.typeText("Nemotron")
+        XCTAssertTrue(browser.buttons["models.download.native/nemotron-3.5-asr-q4"].waitForExistence(timeout: 5))
+        capture(app, "models-nemotron-\(appearance)")
+        browser.buttons["models.browse.done"].click()
+    }
+
+    func testReviewedHuggingFacePreviewDoesNotAcceptUnknownRevisions() throws {
+        let app = launch(appearance: "light", width: 1100, height: 800)
+        defer { app.terminate() }
+        app.typeKey(",", modifierFlags: .command)
+        let models = app.buttons["settings.section.models"]
+        XCTAssertTrue(models.waitForExistence(timeout: 5))
+        models.click()
+        let intake = app.buttons["models.import.huggingface"]
+        XCTAssertTrue(intake.waitForExistence(timeout: 5))
+        intake.click()
+        let browser = app.sheets.firstMatch
+        let input = browser.textFields["models.huggingface.input"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.click()
+        input.typeText("argmaxinc/whisperkit-coreml")
+        browser.buttons["models.huggingface.review"].click()
+        XCTAssertTrue(browser.buttons["models.delete.whisperkit/small"].waitForExistence(timeout: 5))
+        XCTAssertTrue(browser.staticTexts["models.huggingface.source.whisperkit/small"].exists)
+        capture(app, "models-reviewed-huggingface-light")
+        input.click()
+        input.typeKey("a", modifierFlags: .command)
+        input.typeText("https://huggingface.co/argmaxinc/whisperkit-coreml/tree/dev")
+        browser.buttons["models.huggingface.review"].click()
+        XCTAssertTrue(browser.descendants(matching: .any)["models.huggingface.error"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(browser.buttons["models.delete.whisperkit/small"].exists)
+        XCTAssertFalse(browser.buttons["models.download.whisperkit/large-v3-v20240930_626MB"].exists)
+        browser.buttons["models.browse.done"].click()
+        XCTAssertTrue(intake.waitForExistence(timeout: 5))
+    }
+
     func testSettingsSectionsRemainAvailable() throws {
         let app = launch(appearance: "light")
         defer { app.terminate() }

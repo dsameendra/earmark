@@ -32,8 +32,8 @@ public struct SystemAppleTranslationBackend: AppleTranslationBackend {
         let langs = await LanguageAvailability().supportedLanguages
         return Set(
             langs.compactMap { lang -> LanguageCode? in
-                guard let code = lang.languageCode?.identifier else { return nil }
-                return LanguageCode(code)
+                guard lang.languageCode != nil else { return nil }
+                return LanguageCode(lang.minimalIdentifier.replacingOccurrences(of: "_", with: "-"))
             })
     }
 
@@ -50,12 +50,25 @@ public struct SystemAppleTranslationBackend: AppleTranslationBackend {
         let session = TranslationSession(installedSource: Self.language(from), target: Self.language(to))
         let requests = texts.enumerated().map { TranslationSession.Request(sourceText: $1, clientIdentifier: String($0)) }
         let responses = try await session.translations(from: requests)
-        var out = [String](repeating: "", count: texts.count)
-        for response in responses {
-            if let id = response.clientIdentifier, let i = Int(id), out.indices.contains(i) { out[i] = response.targetText }
-        }
-        return out
+        return try Self.orderedResponses(responses.map { ($0.clientIdentifier, $0.targetText) }, count: texts.count)
     }
+    /// Apple may return results in a different order. Every identifier must be
+    /// unique and in range before any result is attached to a transcript row.
+    static func orderedResponses(_ responses: [(String?, String)], count: Int) throws -> [String] {
+        var result = [String?](repeating: nil, count: count)
+        for (id, text) in responses {
+            guard let id, let index = Int(id), result.indices.contains(index), result[index] == nil,
+                  !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw AppError.engineFailure(TranslationEngineIDs.apple, reason: "Apple returned an invalid or empty translation response. Original text has been kept.")
+            }
+            result[index] = text
+        }
+        guard result.allSatisfy({ $0 != nil }) else {
+            throw AppError.engineFailure(TranslationEngineIDs.apple, reason: "Apple returned an incomplete translation batch. Original text has been kept.")
+        }
+        return result.compactMap { $0 }
+    }
+
 }
 
 /// Apple Translation engine (router priority one). Errors: not-installed packs surface as `AppError.modelNotInstalled`.
@@ -72,8 +85,8 @@ public struct AppleTranslationEngine: TranslationEngine, PairSupportChecking {
     }
 
     public func supports(_ pair: LanguagePair) async -> Bool {
-        guard pair.source.primary != .sinhala, pair.target.primary != .sinhala, pair.source.primary != pair.target.primary else { return false }
-        return await backend.status(from: pair.source.primary, to: pair.target.primary) != .unsupported
+        guard pair.source.primary != .sinhala, pair.target.primary != .sinhala, !pair.isSameWrittenLanguage else { return false }
+        return await backend.status(from: pair.source.translationIdentity, to: pair.target.translationIdentity) != .unsupported
     }
 
     /// All ordered pairs Apple can serve (can be slow: one availability query per pair; prefer `supports`).
@@ -90,12 +103,12 @@ public struct AppleTranslationEngine: TranslationEngine, PairSupportChecking {
 
     public func translate(items: [TranslationItem], from: LanguageCode, to: LanguageCode) -> AsyncThrowingStream<TranslatedSegment, any Error> {
         let backend = backend
-        let (source, target) = (from.primary, to.primary)
+        let (source, target) = (from.translationIdentity, to.translationIdentity)
         let engine = id
         return streamInBatches(
             items: items, maxItems: maxItems, maxCharacters: maxCharacters, engine: engine, lowConfidence: false
         ) { texts in
-            if source == .sinhala || target == .sinhala { throw AppError.unsupportedLanguage(.sinhala) }
+            if source.primary == .sinhala || target.primary == .sinhala { throw AppError.unsupportedLanguage(.sinhala) }
             switch await backend.status(from: source, to: target) {
             case .unsupported: throw AppError.unsupportedLanguage(to)
             case .supported: throw AppError.modelNotInstalled(TranslationEngineIDs.appleModel)

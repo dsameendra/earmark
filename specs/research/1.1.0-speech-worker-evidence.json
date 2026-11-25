@@ -1,0 +1,199 @@
+{
+  "status": "failed initial overlap probe; no catalog activation or app registration",
+  "runtimeRevision": "cfa237c2551a4b2d3a56ff8fe5461e3c67c51772",
+  "modelRepository": "handy-computer/multitalker-parakeet-streaming-0.6b-v1-gguf",
+  "modelRevision": "d9ed2931bc10058f79809bd88139a27c2ef09a53",
+  "fixture": {
+    "kind": "authored synthetic overlap plumbing probe",
+    "os": "macOS-27.2.1-arm64-arm-64bit-Mach-O",
+    "voices": [
+      "Daniel",
+      "Samantha"
+    ],
+    "rate": 160,
+    "secondVoiceOffsetMS": 3000,
+    "gainPerVoice": 0.6,
+    "texts": [
+      "The blue train leaves the station at nine o'clock. Please keep the window open until the last passenger arrives.",
+      "I need three red notebooks for the meeting tomorrow. The small package belongs on the wooden table beside the door."
+    ],
+    "durationSeconds": 9.0798125,
+    "distribution": "Authored text; system voice outputs retained privately and not bundled or redistributed.",
+    "files": [
+      {
+        "path": "blue-train.aiff",
+        "bytes": 288670,
+        "sha256": "23083aedcc7e50760ae6db80a9a131b16c50e5d42f47fe36d8ef0229063bc04a"
+      },
+      {
+        "path": "mix.wav",
+        "bytes": 290632,
+        "sha256": "4499206e6fde10a0714388d68ea101f3dda33082bfb2e6e339eae25707755b3a"
+      },
+      {
+        "path": "red-notebooks.aiff",
+        "bytes": 272214,
+        "sha256": "7bfaa26aeea1b69ed3048c80ee717a2cf59b4600f52e6e681be15b6b80466e53"
+      }
+    ]
+  },
+  "probes": [
+    {
+      "protocol": 1,
+      "fixtureSHA256": "4499206e6fde10a0714388d68ea101f3dda33082bfb2e6e339eae25707755b3a",
+      "helperSHA256": "c3ef3c485a769d93eaa6667b32f65542c69b22b8740001076633682d3e165284",
+      "modelSHA256": "d24307ac22e9e691c146a7e2339891638a44a8492a765e4b6c11cff8960cd998",
+      "texts": [
+        "The blue train leaves the station at nine o'clock. Please keep the window open until the last passenger arrives.",
+        "I need three red notebooks for the meeting tomorrow. The small package belongs on the wooden table beside the door."
+      ],
+      "scope": "synthetic authored structural/semantic probe; not natural-meeting accuracy or real-time acceptance",
+      "ready": {
+        "version": 1,
+        "ready": {
+          "translationTargets": [],
+          "architecture": "parakeet",
+          "canDetectLanguage": false,
+          "variant": "multitalker-parakeet-streaming-0.6b-v1",
+          "languages": [
+            "en"
+          ],
+          "canStream": true,
+          "nativeVersion": "0.4.2",
+          "backend": "MTL0",
+          "canDiarize": true,
+          "canTranslate": false,
+          "canStreamWithSpeakers": false
+        },
+        "id": 0
+      },
+      "offline": {
+        "cpWER": 0.5384615384615384,
+        "speakerCount": 1,
+        "maxCrossSpeakerSegmentOverlapMS": 0,
+        "validInputRelativeTimes": true,
+        "passesInitialProbe": false,
+        "timestampKind": "token"
+      },
+      "streamingOverlapSupported": false,
+      "streaming": {
+        "cpWER": 1.0,
+        "speakerCount": 0,
+        "maxCrossSpeakerSegmentOverlapMS": 0,
+        "validInputRelativeTimes": true,
+        "passesInitialProbe": false,
+        "timestampKind": "token"
+      },
+      "monotonicRevisions": true,
+      "resetSucceeded": true,
+      "supervisionModeFromInvocation": "kernel"
+    },
+    {
+      "protocol": 1,
+      "fixtureSHA256": "4499206e6fde10a0714388d68ea101f3dda33082bfb2e6e339eae25707755b3a",
+      "helperSHA256": "c3ef3c485a769d93eaa6667b32f65542c69b22b8740001076633682d3e165284",
+      "modelSHA256": "18116241c595891bccf44cd0207cd749e9ba9e6025ee73ab59606633ec730304",
+      "texts": [
+        "The blue train leaves the station at nine o'clock. Please keep the window open until the last passenger arrives.",
+        "I need three red notebooks for the meeting tomorrow. The small package belongs on the wooden table beside the door."
+      ],
+      "scope": "synthetic authored structural/semantic probe; not natural-meeting accuracy or real-time acceptance",
+      "ready": {
+        "ready": {
+          "canStream": true,
+          "canDetectLanguage": false,
+          "canStreamWithSpeakers": false,
+          "nativeVersion": "0.4.2",
+          "variant": "multitalker-parakeet-streaming-0.6b-v1",
+          "canTranslate": false,
+          "translationTargets": [],
+          "backend": "MTL0",
+          "architecture": "parakeet",
+          "canDiarize": true,
+          "languages": [
+            "en"
+          ]
+        },
+        "version": 1,
+        "id": 0
+      },
+      "offline": {
+        "cpWER": 0.5384615384615384,
+        "speakerCount": 1,
+        "maxCrossSpeakerSegmentOverlapMS": 0,
+        "validInputRelativeTimes": true,
+        "passesInitialProbe": false,
+        "timestampKind": "token"
+      },
+      "streamingOverlapSupported": false,
+      "streaming": {
+        "cpWER": 1.0,
+        "speakerCount": 0,
+        "maxCrossSpeakerSegmentOverlapMS": 0,
+        "validInputRelativeTimes": true,
+        "passesInitialProbe": false,
+        "timestampKind": "token"
+      },
+      "monotonicRevisions": true,
+      "resetSucceeded": true,
+      "supervisionModeFromInvocation": "kernel"
+    },
+    {
+      "protocol": 1,
+      "fixtureSHA256": "4499206e6fde10a0714388d68ea101f3dda33082bfb2e6e339eae25707755b3a",
+      "helperSHA256": "c3ef3c485a769d93eaa6667b32f65542c69b22b8740001076633682d3e165284",
+      "modelSHA256": "18116241c595891bccf44cd0207cd749e9ba9e6025ee73ab59606633ec730304",
+      "texts": [
+        "The blue train leaves the station at nine o'clock. Please keep the window open until the last passenger arrives.",
+        "I need three red notebooks for the meeting tomorrow. The small package belongs on the wooden table beside the door."
+      ],
+      "scope": "synthetic authored structural/semantic probe; not natural-meeting accuracy or real-time acceptance",
+      "ready": {
+        "ready": {
+          "architecture": "parakeet",
+          "translationTargets": [],
+          "nativeVersion": "0.4.2",
+          "canTranslate": false,
+          "canDetectLanguage": false,
+          "variant": "multitalker-parakeet-streaming-0.6b-v1",
+          "canStream": true,
+          "backend": "MTL0",
+          "languages": [
+            "en"
+          ],
+          "canStreamWithSpeakers": false,
+          "canDiarize": true
+        },
+        "id": 0,
+        "version": 1
+      },
+      "offline": {
+        "cpWER": 0.5384615384615384,
+        "speakerCount": 1,
+        "maxCrossSpeakerSegmentOverlapMS": 0,
+        "validInputRelativeTimes": true,
+        "passesInitialProbe": false,
+        "timestampKind": "token"
+      },
+      "streamingOverlapSupported": false,
+      "streaming": {
+        "cpWER": 1.0,
+        "speakerCount": 0,
+        "maxCrossSpeakerSegmentOverlapMS": 0,
+        "validInputRelativeTimes": true,
+        "passesInitialProbe": false,
+        "timestampKind": "token"
+      },
+      "monotonicRevisions": true,
+      "resetSucceeded": true,
+      "supervisionModeFromInvocation": "masked"
+    }
+  ],
+  "findings": [
+    "Pinned upstream model.cpp explicitly warns that diarize=ON is unsupported by its streaming API and decodes one speaker.",
+    "The worker rejects speaker-attributed streaming rather than inheriting that silent downgrade.",
+    "Q4 and F16 on the same frozen synthetic fixture both fail the declared offline overlap floor; the diagnostic masked F16 mode also fails.",
+    "An earlier pre-manifest synthetic take had a different audio digest; its result is not used for the quantization comparison.",
+    "Natural licensed overlap, reference comparison, native streaming port, app speaker contracts and product acceptance remain required."
+  ]
+}

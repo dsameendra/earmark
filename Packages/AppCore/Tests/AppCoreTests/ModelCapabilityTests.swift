@@ -15,6 +15,24 @@ private func model(
 
 @Suite("ModelCapabilities and ModelDescriptor decoding")
 struct ModelCapabilitiesDecodingTests {
+    @Test("finite mapped aliases preserve scripts, cannot chain, and survive persistence")
+    func mappedTranslationAliases() throws {
+        let capabilities = ModelCapabilities(translation: true, translationPairs: [LanguagePair(source: "en", target: "zh-Hant")], translationLanguageMatching: .mapped,
+            translationLanguageAliases: ["eng": "en", "en-Latn": "en", "zh-Hans": "zh", "bad": "unknown", "chain": "eng"])
+        let original = model("mapped", kind: .translation, languages: ["en", "zh", "zh-Hant"], capabilities: capabilities)
+        let restored = try JSONDecoder().decode(ModelDescriptor.self, from: JSONEncoder().encode(original))
+        #expect(restored == original)
+        #expect(restored.supportsTranslation(LanguagePair(source: "eng", target: "zh-TW")))
+        #expect(restored.supportsTranslation(LanguagePair(source: "en-US", target: "zh-Hant")))
+        #expect(!restored.supportsTranslation(LanguagePair(source: "zh-TW", target: "en")))
+        #expect(!restored.supportsTranslation(LanguagePair(source: "en-Cyrl", target: "zh-TW")))
+        #expect(!restored.supportsTranslation(LanguagePair(source: "en-Latn", target: "en")))
+        #expect(restored.canonicalTranslationLanguage("bad") == nil)
+        #expect(restored.canonicalTranslationLanguage("chain") == nil)
+        let legacy = try JSONDecoder().decode(ModelCapabilities.self, from: Data("{}".utf8))
+        #expect(legacy.translationLanguageAliases.isEmpty && legacy.translationLanguageMatching == .primary)
+    }
+
     @Test("a descriptor persisted before SCR-011 decodes with standard capabilities and no include list")
     func legacyDescriptorDecodes() throws {
         // Encode today's descriptor, then strip the SCR-011 keys to get exactly what an old state.json holds.
@@ -194,6 +212,16 @@ struct ModelRecommenderTests {
             ModelRecommender.recommendedModel(for: .tier16, useCase: .file, language: "en", in: [plain, bigger], allowFallback: false) == nil)
     }
 
+    @Test func experimentalCoverageAloneNeverBecomesARecommendation() {
+        let unreviewed = model("new-tamil", languages: ["ta"], experimental: true)
+        let result = ModelRecommender.recommendedModel(for: .tier16, useCase: .file, language: "ta", in: [unreviewed])
+        #expect(result == nil)
+        let explicit = model("reviewed-tamil", languages: ["ta"], experimental: true,
+                             capabilities: ModelCapabilities(file: true, recommendedUse: [RecommendedUse(.file)]))
+        let selected = ModelRecommender.recommendedModel(for: .tier16, useCase: .file, language: "ta", in: [explicit])
+        #expect(selected?.id == explicit.id)
+    }
+
     @Test func fallbackRespectsTier() {
         let heavy = model("heavy", minTier: .tier16, size: 900)
         let light = model("light", size: 10)
@@ -230,6 +258,9 @@ struct ModelPreflightTypeTests {
     }
 
     @Test func licenceAcknowledgement() {
+        #expect(LicenseInfo(spdx: "LicenseRef-Gemma").needsAcknowledgement)
+        #expect(LicenseInfo(spdx: "LicenseRef-OpenMDW-1.1").needsAcknowledgement)
+        #expect(!LicenseInfo(spdx: "LicenseRef-Apple-System").needsAcknowledgement)
         #expect(LicenseInfo(spdx: "CC-BY-SA-4.0").needsAcknowledgement)
         #expect(LicenseInfo(spdx: "NOASSERTION").needsAcknowledgement)
         #expect(!LicenseInfo(spdx: "MIT").needsAcknowledgement)

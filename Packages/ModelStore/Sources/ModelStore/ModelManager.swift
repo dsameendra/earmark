@@ -295,8 +295,13 @@ public actor ModelManager: ModelManaging {
             throw AppError.unsupportedFormat("\(descriptor.displayName) is managed by macOS and cannot be deleted here.")
         }
         await cancelDownload(model)
-        await residency.evict(model)
-        await residency.markUnloaded(model)
+        try await residency.beginRemoval(model)
+        do { try removeFilesAndRecord(model, descriptor: descriptor) }
+        catch { await residency.endRemoval(model); throw error }
+        await residency.endRemoval(model)
+    }
+
+    private func removeFilesAndRecord(_ model: ModelID, descriptor: ModelDescriptor) throws {
         let dir = folder(for: model)
         if fm.fileExists(atPath: dir.path) { try fm.removeItem(at: dir) }
         removePartial(model)
@@ -358,6 +363,7 @@ public actor ModelManager: ModelManaging {
         guard persisted.installed[model.rawValue] != nil, fm.fileExists(atPath: folder(for: model).path) else {
             throw AppError.modelNotInstalled(model)
         }
+        if model == "fluidaudio/parakeet-tdt-v3" { try ParakeetVocabularyCompatibility.repair(in: folder(for: model)) }
         return folder(for: model)
     }
 

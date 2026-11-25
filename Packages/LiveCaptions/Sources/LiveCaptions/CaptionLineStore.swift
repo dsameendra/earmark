@@ -44,6 +44,7 @@ struct CaptionLineStore: Sendable {
     ) -> UUID {
         let shown = Self.rollingTail(text)
         if let i = volatileIndex(lane: lane) {
+            if entries[i].line.text != shown || (language != nil && entries[i].line.language != language) { entries[i].line.translation = nil }
             entries[i].line.text = shown
             entries[i].line.language = language ?? entries[i].line.language
             return entries[i].line.id
@@ -60,7 +61,16 @@ struct CaptionLineStore: Sendable {
         lane: Int, text: String, start: TimeInterval, end: TimeInterval, language: LanguageCode?,
         segmentID: SegmentID, laneLabel: String?, reuseVolatile: Bool = true
     ) -> UUID {
+        if let i = entries.firstIndex(where: { $0.segmentID == segmentID }) {
+            if entries[i].line.text != text || entries[i].line.language != language { entries[i].line.translation = nil }
+            entries[i].line.text = text
+            entries[i].line.language = language
+            entries[i].start = start
+            entries[i].end = end
+            return entries[i].line.id
+        }
         if reuseVolatile, let i = volatileIndex(lane: lane) {
+            if entries[i].line.text != text || (language != nil && entries[i].line.language != language) { entries[i].line.translation = nil }
             entries[i].line.text = text
             entries[i].line.isVolatile = false
             entries[i].line.language = language ?? entries[i].line.language
@@ -79,6 +89,8 @@ struct CaptionLineStore: Sendable {
     mutating func removeVolatile(lane: Int) {
         if let i = volatileIndex(lane: lane) { entries.remove(at: i) }
     }
+
+    mutating func removeFinal(_ id: SegmentID) { entries.removeAll { $0.segmentID == id } }
 
     func volatileEntry(lane: Int) -> Entry? { volatileIndex(lane: lane).map { entries[$0] } }
 

@@ -48,7 +48,7 @@ public struct TranslatedTrack: Sendable, Hashable {
     public init(language: LanguageCode, segments: [Segment]) {
         self.language = language
         self.entries = segments.map { segment in
-            let existing = segment.translations.first { $0.language.primary == language.primary }
+            let existing = segment.translations.first { $0.language.translationIdentity == language.translationIdentity }
             return TranslatedTrackEntry(
                 id: segment.id, original: segment.text, translated: existing?.text, engine: existing?.engine,
                 isLowConfidence: existing.map { Self.isLowConfidence(engine: $0.engine, target: language) } ?? false,
@@ -126,7 +126,7 @@ public struct TranslatedTrack: Sendable, Hashable {
         segments.map { segment in
             guard let translation = segmentTranslation(for: segment.id) else { return segment }
             var copy = segment
-            copy.translations.removeAll { $0.language.primary == language.primary }
+            copy.translations.removeAll { $0.language.translationIdentity == language.translationIdentity }
             copy.translations.append(translation)
             return copy
         }
@@ -166,7 +166,7 @@ public struct TranslationCoordinator: Sendable {
                         continuation.finish()
                         return
                     }
-                    if source.primary == target.primary {
+                    if LanguagePair(source: source, target: target).isSameWrittenLanguage {
                         continuation.yield(.skipped(.sameLanguage, message: TranslationFailure.sameLanguage(source.primary).description))
                         continuation.finish()
                         return

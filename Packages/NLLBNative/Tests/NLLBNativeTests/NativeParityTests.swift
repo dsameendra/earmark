@@ -26,6 +26,13 @@ struct NativeParityTests {
         let golden = try JSONDecoder().decode(Golden.self, from: Data(contentsOf: file))
         let folder = try #require(modelFolder)
         let model = try NativeNLLBModel(folder: URL(fileURLWithPath: folder))
+        #expect(throws: NativeNLLBError.self) { try model.translate("hello\0world", source: "eng_Latn", target: "sin_Sinh") }
+        #expect(throws: NativeNLLBError.self) { try model.tokens(for: "hello\0world") }
+        #expect(model.languageTags?.count == 202)
+        #expect(model.languageTags?.contains("zho_Hant") == true)
+        #expect(model.languageTags?.contains("kas_Deva") == true)
+        #expect(throws: NativeNLLBError.self) { try model.translate("hello", source: "not-a-token", target: "sin_Sinh") }
+        #expect(throws: NativeNLLBError.self) { try model.translate("hello", source: "eng_Latn", target: "not-a-token") }
         for row in golden.tokens { #expect(try model.tokens(for: row.text) == row.pieces) }
         for row in golden.translations { #expect(try model.translate(row.text, source: row.source, target: row.target) == row.translation) }
     }

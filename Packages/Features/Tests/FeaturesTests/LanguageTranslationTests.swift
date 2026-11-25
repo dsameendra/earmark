@@ -45,6 +45,19 @@ private final class FakeTranslation: TranslationPreparing, @unchecked Sendable {
 }
 
 @Suite @MainActor struct EditorLanguageTests {
+    @Test func translatedViewDoesNotSubstituteAnotherWritingSystem() async {
+        var segment = Fixtures.segment("Original", start: 0, language: "en")
+        segment.translations = [SegmentTranslation(language: "zh-Hans", text: "简体", engine: "test")]
+        let (model, _) = await Fixtures.model(segments: [segment])
+        model.setTranslationMode(.translated)
+        model.setTranslationTarget("zh-TW")
+        #expect(model.translationDisplay(for: segment) == nil)
+        #expect(model.isMissingTranslation(segment))
+        model.setTranslationTarget("zh-CN")
+        #expect(model.translationDisplay(for: segment)?.text == "简体")
+        #expect(!model.isMissingTranslation(segment))
+    }
+
     private func mixedModel() async -> (TranscriptEditorModel, FakeTranscriptRepository, Segment) {
         var transcript = Fixtures.transcript()
         transcript.languages = ["en", "si"]

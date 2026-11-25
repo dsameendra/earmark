@@ -18,8 +18,8 @@ settings:
     SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
     CODE_SIGN_STYLE: Automatic
     ENABLE_HARDENED_RUNTIME: YES
-    MARKETING_VERSION: "1.0.1"
-    CURRENT_PROJECT_VERSION: "2"
+    MARKETING_VERSION: "1.1.0"
+    CURRENT_PROJECT_VERSION: "3"
     EARMARK_UPDATE_FEED_URL: ""
     EARMARK_SPARKLE_PUBLIC_KEY: ""
 packages:
@@ -41,6 +41,10 @@ packages:
   Translation: { path: Packages/Translation }
   QwenASR: { path: Packages/QwenASR }
   NLLBNative: { path: Packages/NLLBNative }
+  NativeWorkerKit: { path: Packages/NativeWorkerKit }
+  TextGenerationNative: { path: Packages/TextGenerationNative }
+  ModelFormats: { path: Packages/ModelFormats }
+  SpeechNative: { path: Packages/SpeechNative }
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     exactVersion: 2.10.1
@@ -73,6 +77,39 @@ targets:
     dependencies:
       - package: NLLBNative
         product: NLLBNative
+      - package: NativeWorkerKit
+  EarmarkTextWorker:
+    type: tool
+    platform: macOS
+    sources: [Packages/TextGenerationNative/Sources/EarmarkTextWorker]
+    settings:
+      base:
+        ARCHS: arm64
+        PRODUCT_BUNDLE_IDENTIFIER: lk.dumindu.earmark.text-worker
+        GENERATE_INFOPLIST_FILE: YES
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path @executable_path/../Frameworks"
+    dependencies:
+      - package: TextGenerationNative
+        product: TextGenerationNative
+      - package: NativeWorkerKit
+  EarmarkSpeechWorker:
+    type: tool
+    platform: macOS
+    sources: [Packages/SpeechNative/Sources/EarmarkSpeechWorker]
+    settings:
+      base:
+        ARCHS: arm64
+        PRODUCT_BUNDLE_IDENTIFIER: lk.dumindu.earmark.speech-worker
+        GENERATE_INFOPLIST_FILE: YES
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path @executable_path/../Frameworks"
+    dependencies:
+      - package: SpeechNative
+        product: SpeechNative
+      - package: SpeechNative
+        product: TranscribeCpp
+      - package: NativeWorkerKit
   Earmark:
     type: application
     platform: macOS
@@ -107,6 +144,10 @@ targets:
         NSAudioCaptureUsageDescription: Earmark captures meeting and system audio on this Mac for live captions and transcripts. Nothing leaves your device.
     dependencies:
       - target: EarmarkNLLBWorker
+        embed: false
+      - target: EarmarkTextWorker
+        embed: false
+      - target: EarmarkSpeechWorker
         embed: false
       - package: Sparkle
       - package: AppCore
@@ -157,14 +198,23 @@ targets:
           set -eu
           destination="$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers"
           mkdir -p "$destination"
-          /usr/bin/ditto "$BUILT_PRODUCTS_DIR/EarmarkNLLBWorker" "$destination/EarmarkNLLBWorker"
+          frameworks="$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks"
+          mkdir -p "$frameworks"
+          /usr/bin/ditto "$SRCROOT/Packages/TextGenerationNative/Vendor/EarmarkLlama.xcframework/macos-arm64/EarmarkLlama.framework" "$frameworks/EarmarkLlama.framework"
+          /usr/bin/ditto "$SRCROOT/Packages/SpeechNative/Vendor/TranscribeCpp.xcframework/macos-arm64/CTranscribe.framework" "$frameworks/CTranscribe.framework"
+          for helper in EarmarkNLLBWorker EarmarkTextWorker EarmarkSpeechWorker; do
+            /usr/bin/ditto "$BUILT_PRODUCTS_DIR/$helper" "$destination/$helper"
+          done
           if [ "$CODE_SIGNING_ALLOWED" != "NO" ] && [ -n "${EXPANDED_CODE_SIGN_IDENTITY:-}" ]; then
-            if [ "$EXPANDED_CODE_SIGN_IDENTITY" = "-" ]; then
-              /usr/bin/codesign --force --sign - --options runtime --timestamp=none "$destination/EarmarkNLLBWorker"
-            else
-              /usr/bin/codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --options runtime --timestamp "$destination/EarmarkNLLBWorker"
-            fi
+            for code in "$frameworks/EarmarkLlama.framework" "$frameworks/CTranscribe.framework" "$destination/EarmarkNLLBWorker" "$destination/EarmarkTextWorker" "$destination/EarmarkSpeechWorker"; do
+              if [ "$EXPANDED_CODE_SIGN_IDENTITY" = "-" ]; then
+                /usr/bin/codesign --force --sign - --options runtime --timestamp=none "$code"
+              else
+                /usr/bin/codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --options runtime --timestamp "$code"
+              fi
+            done
           fi
+
 schemes:
   Earmark:
     build:

@@ -129,6 +129,15 @@ private func catalog() -> [ModelDescriptor] {
         #expect(!small.contains("speed"))  // unmeasured stays absent, nothing invented
     }
 
+    @Test func systemTranslationUsesDynamicLanguagesAndSystemStorageLabels() {
+        let model = ModelDescriptor(id: "apple/translation", displayName: "Apple Translation", kind: .translation,
+                                    runtime: .appleAsset, engine: "apple.translation", languages: [], sizeBytes: 0,
+                                    license: LicenseInfo(spdx: "LicenseRef-Apple-System"), capabilities: ModelCapabilities(translation: true))
+        let chips = ModelCapabilitySummary.chips(for: model)
+        #expect(!chips.contains { $0.id == "languages" })
+        #expect(chips.first { $0.id == "size" }?.text == "System-managed")
+    }
+
     @Test func licenceAndExperimentalWarningsAreExplicit() {
         let nonCommercial = asr(
             "nc", ["en"], caps: ModelCapabilities(), license: LicenseInfo(spdx: "CC-BY-NC-4.0", isNonCommercial: true))
@@ -139,6 +148,26 @@ private func catalog() -> [ModelDescriptor] {
         let sinhala = ModelCapabilitySummary.chips(for: catalog()[2]).map(\.id)
         #expect(sinhala.contains("experimental"))
         #expect(ModelCapabilitySummary.chips(for: catalog()[3]).map(\.id).contains("tier"))
+    }
+
+    @Test func scriptChoicesAreVisibleAndCustomLicencesAreNeverCalledShareAlike() {
+        let variants = asr("variants", ["zh-Hans", "zh-Hant", "en-US", "en-GB"], caps: ModelCapabilities())
+        #expect(ModelCapabilitySummary.languageNames(variants).count == 4)
+        #expect(ModelCapabilitySummary.languageCountLabel(variants) == "4 language options")
+        #expect(ModelCapabilitySummary.languageNames(variants).contains(ModelCapabilitySummary.languageName("zh-Hant")))
+        #expect(ModelCapabilitySummary.languageName("zh-Hant") != ModelCapabilitySummary.languageName("zh-Hans"))
+        for identifier in ["LicenseRef-Gemma", "LicenseRef-OpenMDW", "NOASSERTION"] {
+            let chip = ModelCapabilitySummary.licenseChip(LicenseInfo(spdx: identifier))
+            #expect(!chip.text.contains("share-alike"))
+            #expect(chip.spoken.contains("Review"))
+        }
+    }
+
+    @Test func knownCustomLicencesUseReadableNamesAndUnknownOnesStayVisible() {
+        #expect(ModelCapabilitySummary.licenseChip(LicenseInfo(spdx: "LicenseRef-NVIDIA-Open-Model-License")).text == "NVIDIA Open Model License · custom terms")
+        #expect(ModelCapabilitySummary.licenseChip(LicenseInfo(spdx: "LicenseRef-Gemma")).text == "Gemma Terms of Use · custom terms")
+        #expect(ModelCapabilitySummary.licenseChip(LicenseInfo(spdx: "LicenseRef-OpenMDW-1.1")).text == "OpenMDW 1.1 · custom terms")
+        #expect(ModelCapabilitySummary.licenseChip(LicenseInfo(spdx: "LicenseRef-Other")).text == "LicenseRef-Other · custom terms")
     }
 
     @Test func languageSummaryListsFewAndCountsMany() {
@@ -438,7 +467,7 @@ private func catalog() -> [ModelDescriptor] {
 
     @Test func theAppInstallsTheConsentHookOnTheModelManager() throws {
         let env = try String(contentsOf: Self.repoRoot.appendingPathComponent("App/AppEnvironment.swift"), encoding: .utf8)
-        let start = try #require(env.range(of: "ModelManager("))
+        let start = try #require(env.range(of: "let models = ModelManager("))
         let call = env[start.lowerBound...].prefix(400)
         #expect(call.contains("consent: PromptingModelConsent"), "ModelManager(...) must be created with the consent hook")
     }

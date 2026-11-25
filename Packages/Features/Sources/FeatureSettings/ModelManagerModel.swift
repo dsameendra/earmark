@@ -7,6 +7,8 @@ import Observation
 public enum DownloadWarning: Hashable, Sendable {
     /// CC-BY-NC or similar: shown before download.
     case nonCommercial(spdx: String)
+    /// Share-alike or unverified licence terms also need acknowledgement.
+    case licenseNotice(spdx: String, attribution: String?)
     /// The model's `minTier` exceeds this Mac's tier.
     case hardwareTier(required: HardwareTier)
     /// Free disk space is below the model size (plus headroom).
@@ -73,15 +75,31 @@ public final class ModelManagerModel {
     @ObservationIgnored private let hardware: any HardwareTierProviding
     @ObservationIgnored private let store: any SettingsStore
     @ObservationIgnored private let freeDiskBytes: @Sendable () -> Int64?
+    @ObservationIgnored private let reviewedHuggingFaceModels: (@Sendable (String) throws -> [ModelID])?
+    public var canBrowseHuggingFace: Bool { reviewedHuggingFaceModels != nil }
 
     public init(
         manager: any ModelManaging, hardware: any HardwareTierProviding, store: any SettingsStore,
-        freeDiskBytes: @escaping @Sendable () -> Int64? = ModelManagerModel.systemFreeDiskBytes
+        freeDiskBytes: @escaping @Sendable () -> Int64? = ModelManagerModel.systemFreeDiskBytes,
+        reviewedHuggingFaceModels: (@Sendable (String) throws -> [ModelID])? = nil
     ) {
         self.manager = manager
         self.hardware = hardware
         self.store = store
         self.freeDiskBytes = freeDiskBytes
+        self.reviewedHuggingFaceModels = reviewedHuggingFaceModels
+    }
+
+    /// Preview current catalog rows only. Download remains a separate explicit action
+    /// through the normal disk, hardware, licence and checksum checks.
+    public func previewHuggingFace(_ source: String) throws -> [Row] {
+        guard let reviewedHuggingFaceModels else { throw AppError.other("Hugging Face model lookup is unavailable.") }
+        let ids = try reviewedHuggingFaceModels(source)
+        let selected = rows.filter { ids.contains($0.id) && $0.descriptor.isRunnable && !$0.descriptor.isCustom }
+        guard !selected.isEmpty, Set(selected.map(\.id)) == Set(ids) else {
+            throw AppError.other("The reviewed model recipe is unavailable in this catalog.")
+        }
+        return selected
     }
 
     public nonisolated static func systemFreeDiskBytes() -> Int64? {
@@ -133,6 +151,49 @@ public final class ModelManagerModel {
         return ofKind.enumerated().sorted { (band($0.element), $0.offset) < (band($1.element), $1.offset) }.map(\.element)
     }
 
+    /// The compact landing page retains installed models, in-flight operations and failures needing recovery.
+    public var managedRows: [Row] {
+        rows.filter { row in if case .notInstalled = row.state { return false }; return true }
+    }
+
+    public var recommendedRows: [Row] {
+        let ids = Set(recommendations.map(\.model))
+        return Array(rows.filter { row in
+            guard case .notInstalled = row.state, row.descriptor.isRunnable else { return false }
+            return ids.contains(row.id) || row.id == "apple/translation"
+        }.prefix(5))
+    }
+
+    public static func familyName(for descriptor: ModelDescriptor) -> String {
+        switch descriptor.engine?.rawValue {
+        case "whisperkit": "Whisper"
+        case "qwen3-asr": "Qwen"
+        case "apple.speech", "apple.translation": "Apple"
+        case "nllb": "NLLB"
+        case "madlad": "MADLAD-400"
+        case "opus-mt": "OPUS language packs"
+        case "fluidaudio.parakeet": "Parakeet"
+        case "hymt2-1.8b", "hymt2-7b": "Hy-MT2"
+        case "translategemma-4b", "translategemma-12b": "TranslateGemma"
+        case "fluidaudio.cohere": "Cohere"
+        case "fluidaudio.parakeet-eou": "Parakeet"
+        case "native.speech": descriptor.displayName.hasPrefix("Nemotron") ? "Nemotron" : descriptor.displayName.hasPrefix("Voxtral") ? "Voxtral" : "Canary"
+        default: descriptor.kind == .diarization ? "Speaker models" : descriptor.displayName
+        }
+    }
+
+    public func browseRows(query: String, kind: ModelKind?) -> [Row] {
+        let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        return rows.filter { row in
+            guard kind == nil || row.descriptor.kind == kind else { return false }
+            guard !term.isEmpty else { return true }
+            let d = row.descriptor
+            let languageNames = d.languages.map { LanguageSelectionModel.displayName($0) }.joined(separator: " ")
+            return [d.displayName, Self.familyName(for: d), d.notes, languageNames, d.languages.map(\.rawValue).joined(separator: " ")]
+                .contains { $0.localizedCaseInsensitiveContains(term) }
+        }
+    }
+
     private func apply(state: ModelState, to id: ModelID) {
         guard let index = rows.firstIndex(where: { $0.id == id }) else { return }
         rows[index].state = state
@@ -156,11 +217,74 @@ public final class ModelManagerModel {
         guard let descriptor = row(id)?.descriptor else { return [] }
         var warnings: [DownloadWarning] = []
         if descriptor.license.isNonCommercial { warnings.append(.nonCommercial(spdx: descriptor.license.spdx)) }
+        if descriptor.license.needsAcknowledgement {
+            warnings.append(.licenseNotice(spdx: descriptor.license.spdx, attribution: descriptor.license.attribution))
+        }
         if descriptor.minTier > hardware.profile.tier { warnings.append(.hardwareTier(required: descriptor.minTier)) }
         if let free = freeDiskBytes(), free < descriptor.sizeBytes + descriptor.sizeBytes / 5 {
             warnings.append(.lowDiskSpace(needed: descriptor.sizeBytes, available: free))
         }
         return warnings
+    }
+
+    /// Only curated, runnable, one-direction OPUS recipes participate in the pair chooser.
+    public var pairPackRows: [Row] {
+        rows.filter {
+            $0.descriptor.engine == "opus-mt" && $0.descriptor.isRunnable
+                && $0.descriptor.capabilities.translationPairs?.count == 1
+        }
+    }
+
+    public func pairPacks(source: LanguageCode, target: LanguageCode, bothDirections: Bool) -> [Row] {
+        let forward = LanguagePair(source: source, target: target)
+        let reverse = LanguagePair(source: target, target: source)
+        let packs = pairPackRows
+        guard let first = packs.first(where: { $0.descriptor.capabilities.translationPairs == [forward] }) else { return [] }
+        guard bothDirections else { return [first] }
+        guard let second = packs.first(where: { $0.descriptor.capabilities.translationPairs == [reverse] }) else { return [] }
+        return [first, second]
+    }
+
+    public private(set) var activePairPackIDs: [ModelID] = []
+    @ObservationIgnored private var pairPackCancelled = false
+    @ObservationIgnored private var currentPairPackID: ModelID?
+
+    /// Preflight the entire selection before starting either direction. Completed packs remain installed on cancellation.
+    public func downloadPairPacks(
+        source: LanguageCode, target: LanguageCode, bothDirections: Bool, confirmed: Bool = false
+    ) async -> DownloadOutcome {
+        guard activePairPackIDs.isEmpty else { return .failed("A language-pack download is already running.") }
+        let selection = pairPacks(source: source, target: target, bothDirections: bothDirections)
+        guard !selection.isEmpty else { return .failed("This language direction has no supported pack.") }
+        let needed = selection.filter { !$0.isInstalled }
+        let bytes = needed.reduce(Int64(0)) { $0 + $1.descriptor.sizeBytes }
+        if let free = freeDiskBytes(), free < bytes + bytes / 5 {
+            let reason = "There is not enough free disk space for the selected language packs. Free up space and try again."
+            errorMessage = reason
+            return .failed(reason)
+        }
+        let warnings = needed.flatMap { preflight($0.id) }.reduce(into: [DownloadWarning]()) { result, warning in
+            if !result.contains(warning) { result.append(warning) }
+        }
+        if !confirmed, !warnings.isEmpty { return .needsConfirmation(warnings) }
+        activePairPackIDs = needed.map(\.id)
+        pairPackCancelled = false
+        defer { activePairPackIDs = []; pairPackCancelled = false; currentPairPackID = nil }
+        for pack in needed {
+            guard !pairPackCancelled, !Task.isCancelled else { return .cancelled }
+            currentPairPackID = pack.id
+            let result = await download(pack.id, confirmed: confirmed)
+            guard result == .completed else { return result }
+        }
+        return pairPackCancelled || Task.isCancelled ? .cancelled : .completed
+    }
+
+    public func cancelPairPackDownloads() async {
+        guard !activePairPackIDs.isEmpty else { return }
+        pairPackCancelled = true
+        guard let id = currentPairPackID else { return }
+        if case .installed = await manager.state(of: id) { return }
+        await cancel(id)
     }
 
     // MARK: Download

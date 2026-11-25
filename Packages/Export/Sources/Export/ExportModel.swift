@@ -96,7 +96,7 @@ enum ExportPipeline {
                 start: seg.start, end: seg.end, speakerID: seg.speakerID, speaker: seg.speakerID.flatMap { speakers[$0] },
                 language: seg.languageCode, text: seg.text, translation: nil, translationLanguage: nil, words: seg.words)
             if options.translation != .none, let target = options.translationLanguage {
-                let match = seg.translations.first { $0.language == target } ?? seg.translations.first { $0.language.primary == target.primary }
+                let match = seg.translations.first { $0.language == target } ?? seg.translations.first { $0.language.translationIdentity == target.translationIdentity }
                 switch options.translation {
                 case .replace:
                     if let match {

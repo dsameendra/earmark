@@ -5,6 +5,8 @@ import Foundation
 
 // MARK: - Capabilities
 
+public enum ModelTranslationLanguageMatching: String, Codable, Sendable, Hashable { case primary, exact, mapped }
+
 /// Whether a model can label speakers, and how.
 public enum SpeakerSupport: String, Codable, Sendable, Hashable { case none, offline, streaming }
 
@@ -70,11 +72,20 @@ public struct ModelCapabilities: Codable, Hashable, Sendable {
     public var memory: MemoryTier?
     /// Where this model is the recommended default (see ``ModelRecommender``).
     public var recommendedUse: [RecommendedUse]
+    public var translationPairs: Set<LanguagePair>?
+    public var speechTranslationPairs: Set<LanguagePair>
+    public var streaming: ModelStreamingImplementation?
+    public var overlapRecognitionSpeakers: Int?
+    public var translationLanguageMatching: ModelTranslationLanguageMatching
+    public var translationLanguageAliases: [LanguageCode: LanguageCode]
 
     public init(
         live: Bool = false, file: Bool = true, wordTimestamps: Bool = false, autoDetectLanguage: Bool = false,
         speakerLabels: SpeakerSupport = .none, translation: Bool = false, speed: SpeedTier? = nil, memory: MemoryTier? = nil,
-        recommendedUse: [RecommendedUse] = []
+        recommendedUse: [RecommendedUse] = [], translationPairs: Set<LanguagePair>? = nil,
+        speechTranslationPairs: Set<LanguagePair> = [], streaming: ModelStreamingImplementation? = nil,
+        overlapRecognitionSpeakers: Int? = nil, translationLanguageMatching: ModelTranslationLanguageMatching = .primary,
+        translationLanguageAliases: [LanguageCode: LanguageCode] = [:]
     ) {
         self.live = live
         self.file = file
@@ -85,6 +96,12 @@ public struct ModelCapabilities: Codable, Hashable, Sendable {
         self.speed = speed
         self.memory = memory
         self.recommendedUse = recommendedUse
+        self.translationPairs = translationPairs
+        self.speechTranslationPairs = speechTranslationPairs
+        self.streaming = streaming
+        self.overlapRecognitionSpeakers = overlapRecognitionSpeakers
+        self.translationLanguageMatching = translationLanguageMatching
+        self.translationLanguageAliases = translationLanguageAliases
     }
 
     /// Conservative default for models with no recorded capabilities (custom imports, legacy state): file transcription only.
@@ -101,7 +118,13 @@ public struct ModelCapabilities: Codable, Hashable, Sendable {
             speakerLabels: try c.decodeIfPresent(SpeakerSupport.self, forKey: .speakerLabels) ?? base.speakerLabels,
             translation: try c.decodeIfPresent(Bool.self, forKey: .translation) ?? base.translation,
             speed: try c.decodeIfPresent(SpeedTier.self, forKey: .speed), memory: try c.decodeIfPresent(MemoryTier.self, forKey: .memory),
-            recommendedUse: try c.decodeIfPresent([RecommendedUse].self, forKey: .recommendedUse) ?? [])
+            recommendedUse: try c.decodeIfPresent([RecommendedUse].self, forKey: .recommendedUse) ?? [],
+            translationPairs: try c.decodeIfPresent(Set<LanguagePair>.self, forKey: .translationPairs),
+            speechTranslationPairs: try c.decodeIfPresent(Set<LanguagePair>.self, forKey: .speechTranslationPairs) ?? [],
+            streaming: try c.decodeIfPresent(ModelStreamingImplementation.self, forKey: .streaming),
+            overlapRecognitionSpeakers: try c.decodeIfPresent(Int.self, forKey: .overlapRecognitionSpeakers),
+            translationLanguageMatching: try c.decodeIfPresent(ModelTranslationLanguageMatching.self, forKey: .translationLanguageMatching) ?? .primary,
+            translationLanguageAliases: try c.decodeIfPresent([LanguageCode: LanguageCode].self, forKey: .translationLanguageAliases) ?? [:])
     }
 }
 
@@ -109,6 +132,32 @@ extension ModelDescriptor {
     /// `true` when this build can actually run the model. A listed model with neither `live` nor `file` capability is
     /// hidden from language pickers and never recommended (e.g. Parakeet, which has no registered engine yet).
     public var isRunnable: Bool { capabilities.live || capabilities.file }
+
+    public func supportsTranslation(_ pair: LanguagePair) -> Bool {
+        guard kind == .translation, isRunnable, capabilities.translation, pair.source != pair.target else { return false }
+        if capabilities.translationLanguageMatching == .mapped {
+            guard let source = canonicalTranslationLanguage(pair.source), let target = canonicalTranslationLanguage(pair.target), source != target else { return false }
+            return capabilities.translationPairs?.contains(LanguagePair(source: source, target: target)) ?? true
+        }
+        if capabilities.translationLanguageMatching == .exact {
+            guard languages.contains(pair.source), languages.contains(pair.target) else { return false }
+            return capabilities.translationPairs?.contains(pair) ?? true
+        }
+        if let pairs = capabilities.translationPairs {
+            return pairs.contains(pair) || pairs.contains(LanguagePair(source: pair.source.primary, target: pair.target.primary))
+        }
+        return pair.source.primary != pair.target.primary && covers(pair.source) && covers(pair.target)
+    }
+
+    /// Finite mapped translation identities. Aliases cannot create languages or
+    /// follow an untrusted chain to capabilities outside the descriptor.
+    public func canonicalTranslationLanguage(_ language: LanguageCode) -> LanguageCode? {
+        for candidate in [language, language.translationIdentity] {
+            if languages.contains(candidate) { return candidate }
+            if let canonical = capabilities.translationLanguageAliases[candidate], languages.contains(canonical) { return canonical }
+        }
+        return nil
+    }
 
     /// `true` when the model covers `language` exactly or by its primary subtag.
     public func covers(_ language: LanguageCode) -> Bool { languages.contains(language) || languages.contains(language.primary) }
@@ -238,8 +287,8 @@ public enum ModelRecommender {
         }
         if let best = ruled.min(by: { ($0.2 ? 1 : 0, $0.0, $0.1) < ($1.2 ? 1 : 0, $1.0, $1.1) }) { return best.3 }
         guard allowFallback else { return nil }
-        // No explicit rule: best compatible model that fits this Mac (non-experimental first, then larger).
-        let fitting = eligible.map(\.element).filter { $0.minTier <= tier }
+        // No explicit rule: only established models qualify for automatic fallback.
+        let fitting = eligible.map(\.element).filter { $0.minTier <= tier && !$0.isExperimental }
         return fitting.min { a, b in
             (a.isExperimental ? 1 : 0, -a.sizeBytes, a.id.rawValue) < (b.isExperimental ? 1 : 0, -b.sizeBytes, b.id.rawValue)
         }
@@ -250,7 +299,11 @@ public enum ModelRecommender {
 
 extension LicenseInfo {
     /// Licences that need an explicit acknowledgement before download: share-alike terms or an unverified licence.
-    public var needsAcknowledgement: Bool { spdx.uppercased().contains("-SA") || spdx.uppercased() == "NOASSERTION" }
+    public var needsAcknowledgement: Bool {
+        let identifier = spdx.uppercased()
+        return identifier.contains("-SA") || identifier == "NOASSERTION"
+            || (identifier.hasPrefix("LICENSEREF-") && identifier != "LICENSEREF-APPLE-SYSTEM")
+    }
 }
 
 public enum ModelPreflightIssue: Hashable, Sendable {

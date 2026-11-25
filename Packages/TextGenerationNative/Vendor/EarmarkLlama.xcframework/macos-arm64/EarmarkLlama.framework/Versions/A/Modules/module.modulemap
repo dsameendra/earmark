@@ -1,0 +1,4 @@
+framework module EarmarkLlama {
+  header "EarmarkLlama.h"
+  export *
+}

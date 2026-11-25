@@ -112,3 +112,25 @@ func items(_ texts: [String]) -> [TranslationItem] { texts.map { TranslationItem
 func seg(_ text: String, ignored: Bool = false, translations: [SegmentTranslation] = []) -> Segment {
     Segment(start: 0, end: 1, text: text, isIgnored: ignored, translations: translations)
 }
+
+struct FolderModelManager: ModelManaging {
+    let folder: URL
+    var modelID: ModelID = TranslationEngineIDs.nllbModel
+    func catalog() async -> [ModelDescriptor] { [] }
+    func state(of model: ModelID) async -> ModelState { model == modelID ? .installed(bytesOnDisk: 1) : .notInstalled }
+    func stateChanges() -> AsyncStream<(ModelID, ModelState)> { AsyncStream { $0.finish() } }
+    func installedModels() async -> Set<ModelID> { [modelID] }
+    func ensureAvailable(_ model: ModelID) -> AsyncThrowingStream<ModelDownloadEvent, any Error> { AsyncThrowingStream { $0.finish() } }
+    func pauseDownload(_ model: ModelID) async {}
+    func resumeDownload(_ model: ModelID) async {}
+    func cancelDownload(_ model: ModelID) async {}
+    func delete(_ model: ModelID) async throws {}
+    func importModel(folder: URL, displayName: String, languages: Set<LanguageCode>) async throws -> ModelDescriptor {
+        throw AppError.other("unsupported")
+    }
+    func diskUsage() async -> DiskUsage { DiskUsage(totalBytes: 0, perModel: [:]) }
+    func location(of model: ModelID) async throws -> URL {
+        guard model == modelID else { throw AppError.modelNotInstalled(model) }
+        return folder
+    }
+}

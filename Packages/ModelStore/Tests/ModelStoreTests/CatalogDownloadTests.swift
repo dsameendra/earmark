@@ -15,10 +15,30 @@ private let listings: [ModelID: CatalogFixtures.Listing] = [
     "fluidaudio/ls-eend-ami": CatalogFixtures.lseend,
     "fluidaudio/sortformer-v2": CatalogFixtures.sortformer,
     "fluidaudio/parakeet-tdt-v3": CatalogFixtures.parakeet,
+    "native/nemotron-3.5-asr-q4": CatalogFixtures.nemotron,
+    "native/canary-1b-v2-q4": CatalogFixtures.canary,
+    "fluidaudio/parakeet-eou-120m": CatalogFixtures.parakeetEOU,
+    "hymt2/1.8b-gguf-q4-k-m": CatalogFixtures.hymt18,
+    "hymt2/7b-gguf-q4-k-m": CatalogFixtures.hymt7,
+    "translategemma/4b-it-gguf-q4-k-m": CatalogFixtures.gemma4,
+    "translategemma/12b-it-gguf-q4-k-m": CatalogFixtures.gemma12,
+    "native/voxtral-mini-4b-realtime-q4": CatalogFixtures.voxtral,
+    "fluidaudio/cohere-transcribe-2b": CatalogFixtures.cohere,
+    "fluidaudio/parakeet-ultra": CatalogFixtures.parakeetUltra,
+    "fluidaudio/parakeet-redux": CatalogFixtures.parakeetRedux,
+    "mlx/qwen3-asr-0.6b-4bit": CatalogFixtures.qwenGeneral,
+    "mlx/qwen3-asr-1.7b-4bit": CatalogFixtures.qwenGeneral17,
     "whisperkit/large-v3-v20240930_626MB": CatalogFixtures.whisperLarge,
     "whisperkit/large-v3-v20240930_turbo_632MB": CatalogFixtures.whisperTurbo,
     "whisperkit/small": CatalogFixtures.whisperSmall,
+    "opus/en-de-ct2-int8": CatalogFixtures.opusEnDe,
+    "opus/de-en-ct2-int8": CatalogFixtures.opusDeEn,
+    "opus/en-fr-ct2-int8": CatalogFixtures.opusEnFr,
+    "opus/fr-en-ct2-int8": CatalogFixtures.opusFrEn,
+    "opus/en-es-ct2-int8": CatalogFixtures.opusEnEs,
+    "opus/es-en-ct2-int8": CatalogFixtures.opusEsEn,
     "nllb/200-distilled-600M": CatalogFixtures.nllb,
+    "madlad/400-3b-mt-ct2-int8": CatalogFixtures.madladNative,
     "mlx/qwen3-asr-0.6b-sinhala-8bit": CatalogFixtures.qwen,
 ]
 
@@ -38,6 +58,27 @@ private func resolve(_ id: ModelID, dropping dropped: String? = nil) async throw
 
 @Suite("Catalog downloads: subpaths, pinned revisions and real sizes (SCR-011)")
 struct CatalogDownloadTests {
+    @Test("general Qwen atomically includes its pinned neural detector; the Sinhala specialist stays unchanged")
+    func qwenSpeechDetector() async throws {
+        for id: ModelID in ["mlx/qwen3-asr-0.6b-4bit", "mlx/qwen3-asr-1.7b-4bit"] {
+            let files = try await resolve(id)
+            let support = files.filter { $0.relativePath.hasPrefix("EarmarkSupport/") }
+            #expect(support.count == 5)
+            #expect(support.allSatisfy { $0.sha256?.count == 64 && $0.sizeBytes != nil && $0.hasSafeRelativePath })
+            #expect(support.allSatisfy { $0.url.absoluteString.contains("/resolve/b419383c55c110e2c9271fa6ee0ea83d03c70d96/") })
+            let descriptor = try #require(BuiltInCatalog.models.first { $0.id == id })
+            #expect(files.compactMap(\.sizeBytes).reduce(0, +) == descriptor.sizeBytes)
+            if id == "mlx/qwen3-asr-1.7b-4bit" {
+                #expect(files.count == 15)
+                #expect(files.allSatisfy { $0.sha256?.count == 64 })
+                #expect(descriptor.provenance?.validation == .nativeInferenceChecked)
+                #expect(descriptor.isExperimental && !descriptor.languages.contains("si"))
+            }
+        }
+        let specialist = try await resolve("mlx/qwen3-asr-0.6b-sinhala-8bit")
+        #expect(!specialist.contains { $0.relativePath.hasPrefix("EarmarkSupport/") })
+    }
+
     @Test("every tree-sourced entry has a recorded listing, and its real download size is within 15% of the catalog size")
     func sizesMatchManifests() async throws {
         let treeEntries = BuiltInCatalog.models.filter { $0.sourceURL?.absoluteString.contains("/tree/") == true }
@@ -147,28 +188,37 @@ struct CatalogDownloadTests {
 @Suite("Catalog capabilities, Parakeet and the shared recommender")
 struct CatalogCapabilityTests {
     private let catalog = BuiltInCatalog.models
+
+    @Test("native MADLAD is distinct from the legacy download and keeps exact language coverage")
+    func nativeMADLADRecipe() throws {
+        let native = try #require(catalog.first { $0.id == "madlad/400-3b-mt-ct2-int8" })
+        let legacy = try #require(catalog.first { $0.id == "madlad/400-3b-mt-q4k" })
+        #expect(native.isRunnable && native.engine == "madlad")
+        #expect(native.languages.count == 27)
+        #expect(native.supportsTranslation(LanguagePair(source: "ta", target: "si")))
+        #expect(!native.supportsTranslation(LanguagePair(source: "en-US", target: "si")))
+        #expect(!native.supportsTranslation(LanguagePair(source: "en", target: "zh-Hant")))
+        #expect(!legacy.isRunnable)
+        #expect(!native.license.isNonCommercial)
+    }
     private func recommend(_ tier: HardwareTier, _ use: UseCase, _ language: LanguageCode?) -> ModelID? {
         ModelRecommender.recommendedModel(for: tier, useCase: use, language: language, in: catalog)?.id
     }
 
-    @Test("Parakeet is not advertised: no registered engine can run it")
-    func parakeetHidden() throws {
+    @Test("validated Parakeet is available for its languages and accurately describes buffered streaming")
+    func parakeetReady() throws {
         let parakeet = try #require(catalog.first { $0.id == "fluidaudio/parakeet-tdt-v3" })
-        #expect(!parakeet.isRunnable)
+        #expect(parakeet.isRunnable)
+        #expect(parakeet.capabilities.streaming == .buffered)
+        #expect(!parakeet.capabilities.autoDetectLanguage)
         let table = LanguageCapabilityTable(models: catalog)
-        for language: LanguageCode in ["sk", "hr", "mt", "bg", "et", "lv", "lt", "sl"] {
-            #expect(!table.languages().contains(language), "\(language) is only covered by Parakeet")
-        }
-        #expect(table.languages().contains("en") && table.languages().contains("si"))
-        #expect(table.models(coveringAll: ["sk"]).isEmpty)
-        #expect(
-            ModelCompatibility.evaluate(parakeet, for: ModelRequirement(useCase: .file, languages: ["de"]), tier: .tier16).reasons
-                .contains(.notRunnableInThisBuild))
+        #expect(table.models(coveringAll: ["sk"]).contains { $0.id == parakeet.id })
+        #expect(ModelCompatibility.evaluate(parakeet, for: ModelRequirement(useCase: .file, languages: ["de"]), tier: .tier16).isOK)
     }
 
     @Test("every ASR model that is runnable names an engine the app registers")
     func runnableModelsUseRegisteredEngines() {
-        let registered: Set<EngineID> = ["whisperkit", "apple.speech", "qwen3-asr"]  // App/AppEnvironment.swift
+        let registered: Set<EngineID> = ["whisperkit", "apple.speech", "qwen3-asr", "fluidaudio.parakeet", "fluidaudio.cohere", "native.speech", "fluidaudio.parakeet-eou"]  // App/AppEnvironment.swift
         for model in catalog where model.kind == .asr && model.isRunnable {
             #expect(model.engine.map(registered.contains) == true, "\(model.id) advertises an engine nobody registers")
         }

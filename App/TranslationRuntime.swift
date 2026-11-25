@@ -29,9 +29,12 @@ struct TranslationRuntime: Sendable {
         let nllb = runtime.map { NLLBEngine(models: models, runtime: $0) }
         let madlad = nativePool.map { MADLADEngine(models: models, runtime: $0.runtime(profile: .madlad)) }
         let opus = nativePool.map { OPUSTranslationEngine(models: models, runtime: $0.runtime(profile: .marian)) }
+        // Hy-MT2 and TranslateGemma run in the isolated text worker and offer only their screened directions.
+        let generative = nativePool.map { GenerativeTranslationEngine.all(models: models, pool: $0) } ?? []
         var additional: [any TranslationEngine] = []
         if let opus { additional.append(opus) }
         if let madlad { additional.append(madlad) }
+        additional.append(contentsOf: generative)
         let router = DefaultTranslationRouter(
             apple: apple, nllb: nllb,
             additional: additional,
@@ -58,14 +61,14 @@ struct TranslationRuntime: Sendable {
                 case TranslationEngineIDs.nllb: model = TranslationEngineIDs.nllbModel
                 case "madlad": model = MADLADEngine.modelID
                 case "opus-mt": model = OPUSTranslationEngine.model(for: pair)
-                default: model = nil
+                default: model = generative.first { $0.id == engine }?.modelID
                 }
                 guard let model else { return false }
                 if case .installed = await models.state(of: model) { return true }
                 return false
             })
         let packs = ApplePackInstaller()
-        let service = AppTranslationService(models: models, nllb: nllb, madlad: madlad, opus: opus, packs: packs, settings: settings)
+        let service = AppTranslationService(models: models, nllb: nllb, madlad: madlad, opus: opus, generative: generative, packs: packs, settings: settings)
         return TranslationRuntime(router: router, service: service, packs: packs, nllbEnabled: nllb != nil)
     }
 }
@@ -78,15 +81,17 @@ final class AppTranslationService: TranslationPreparing, Sendable {
     private let nllb: NLLBEngine?
     private let madlad: MADLADEngine?
     private let opus: OPUSTranslationEngine?
+    private let generative: [GenerativeTranslationEngine]
     private let packs: ApplePackInstaller
     private let backend = SystemAppleTranslationBackend()
     private let settings: any SettingsStore
 
-    init(models: any ModelManaging, nllb: NLLBEngine?, madlad: MADLADEngine? = nil, opus: OPUSTranslationEngine? = nil, packs: ApplePackInstaller, settings: any SettingsStore) {
+    init(models: any ModelManaging, nllb: NLLBEngine?, madlad: MADLADEngine? = nil, opus: OPUSTranslationEngine? = nil, generative: [GenerativeTranslationEngine] = [], packs: ApplePackInstaller, settings: any SettingsStore) {
         self.models = models
         self.nllb = nllb
         self.madlad = madlad
         self.opus = opus
+        self.generative = generative
         self.packs = packs
         self.settings = settings
     }
@@ -97,6 +102,9 @@ final class AppTranslationService: TranslationPreparing, Sendable {
         if madlad != nil { candidates.formUnion(MADLADLanguages.languages.filter { !LanguagePair(source: source, target: $0).isSameWrittenLanguage }) }
         if opus != nil {
             candidates.formUnion(OPUSTranslationEngine.modelsByPair.keys.filter { $0.source == source }.map(\.target))
+        }
+        for engine in generative {
+            candidates.formUnion(await engine.supportedPairs().filter { $0.source == source }.map(\.target))
         }
         var out: [(language: LanguageCode, readiness: TranslationReadiness)] = []
         for language in candidates.sorted() {
@@ -121,6 +129,12 @@ final class AppTranslationService: TranslationPreparing, Sendable {
                 return .unavailable(reason: "MADLAD does not support this language pair or language variant in this build.")
             }
             return await modelReadiness(MADLADEngine.modelID)
+        }
+        if let engine = generative.first(where: { $0.id.rawValue == choice }) {
+            guard await engine.supports(LanguagePair(source: source, target: target)) else {
+                return .unavailable(reason: "This model has not passed Earmark's quality screen for this language direction.")
+            }
+            return await modelReadiness(engine.modelID)
         }
         if choice == "nllb" {
             guard await nllbAllowed else { return .unavailable(reason: "Enable non-commercial models in Settings > Translation to use NLLB.") }
@@ -160,6 +174,7 @@ final class AppTranslationService: TranslationPreparing, Sendable {
         if let nllb, await nllbAllowed, await nllb.supports(pair) { candidates.append(TranslationEngineIDs.nllbModel) }
         if let opus, await opus.supports(pair), let model = OPUSTranslationEngine.model(for: pair) { candidates.append(model) }
         if let madlad, await madlad.supports(pair) { candidates.append(MADLADEngine.modelID) }
+        for engine in generative where await engine.supports(pair) { candidates.append(engine.modelID) }
         for model in candidates {
             if case .installed = await models.state(of: model) { return .ready }
         }

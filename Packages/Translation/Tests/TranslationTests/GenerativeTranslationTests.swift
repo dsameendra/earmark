@@ -30,7 +30,11 @@ struct GenerativeTranslationTests {
         #expect(await !engine.supports(pair("si", "en")))
         #expect(await !engine.supports(pair("en", "en-US")))
         #expect(await engine.supports(pair("en", "de")))
-        #expect(await engine.supports(pair("zh-Hant", "en")))
+        #expect(await !engine.supports(pair("zh-Hant", "en")))  // Traditional Chinese was not screened.
+        #expect(await engine.supports(pair("zh-Hans", "en")))
+        #expect(await !engine.supports(pair("en", "ja")))  // English to Japanese failed the screen for this checkpoint.
+        #expect(await !engine.supports(pair("de", "fr")))  // Only English-centred directions were screened.
+        #expect(await engine.supportedPairs().count == 8)
         #expect(await engine.supportedPairs().count < 10_000)
         await #expect(throws: AppError.modelNotInstalled(engine.modelID)) {
             _ = try await collect(engine.translate(items: items(["Hello"]), from: "en", to: "de"))

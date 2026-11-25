@@ -234,6 +234,36 @@ enum CatalogFixtures {
             ("160ms/vocab.json", 17437),
         ])
 
+    static let hymt18 = Listing(
+        repo: "tencent/Hy-MT2-1.8B-GGUF", revision: "a0c709d9fac510f2c807aa3af52872340dc37a4a",
+        files: [
+            ("Hy-MT2-1.8B-Q4_K_M.gguf", 1133080448),
+            ("LICENSE.txt", 11639),
+            ("README.md", 15305),
+        ])
+
+    static let hymt7 = Listing(
+        repo: "tencent/Hy-MT2-7B-GGUF", revision: "ab8472660ac61fac25f1af43fac2599d52a8a775",
+        files: [
+            ("Hy-MT2-7B-Q4_K_M.gguf", 4624648896),
+            ("LICENSE.txt", 11635),
+            ("README.md", 15276),
+        ])
+
+    static let gemma4 = Listing(
+        repo: "mradermacher/translategemma-4b-it-GGUF", revision: "d37868f759d2f817a43d28dd80cf9f982ffa62fd",
+        files: [
+            ("README.md", 4521),
+            ("translategemma-4b-it.Q4_K_M.gguf", 2489909760),
+        ])
+
+    static let gemma12 = Listing(
+        repo: "mradermacher/translategemma-12b-it-GGUF", revision: "41d7c8aa650b26791225ad9d0597e674e680da96",
+        files: [
+            ("README.md", 4404),
+            ("translategemma-12b-it.Q4_K_M.gguf", 7300794112),
+        ])
+
     static let whisperLarge = Listing(
         repo: "argmaxinc/whisperkit-coreml", revision: "0f63a7800b00dd0226abd051b906c246e1907482",
         files: [

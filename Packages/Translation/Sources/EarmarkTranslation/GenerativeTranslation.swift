@@ -18,6 +18,13 @@ public actor GenerativeTranslationEngine: TranslationEngine, PairSupportChecking
         self.runtime = runtime
     }
 
+    /// One engine per shipped checkpoint, all sharing the pool's single resident text worker.
+    public static func all(models: any ModelManaging, pool: CTranslate2RuntimePool) -> [GenerativeTranslationEngine] {
+        [GenerativeProfile.hymt18, .hymt7, .gemma4, .gemma12].map {
+            GenerativeTranslationEngine(profile: $0, models: models, runtime: pool.runtime(profile: $0))
+        }
+    }
+
     public nonisolated static func engineID(for profile: GenerativeProfile) -> EngineID { EngineID(profile.rawValue) }
     public nonisolated static func modelID(for profile: GenerativeProfile) -> ModelID {
         switch profile {
@@ -28,19 +35,37 @@ public actor GenerativeTranslationEngine: TranslationEngine, PairSupportChecking
         }
     }
 
-    public func supports(_ pair: LanguagePair) async -> Bool {
-        !pair.isSameWrittenLanguage && profile.supports(source: pair.source.rawValue, target: pair.target.rawValue)
+    /// Directions that passed the frozen 30-sentence FLORES screen for each checkpoint (see
+    /// `specs/research/1.1.0-generative-evidence.json`). English to Japanese and Chinese failed every model but Hy-MT2 7B's
+    /// Japanese direction, and no other direction was screened, so nothing else is offered.
+    public nonisolated static func screenedDirections(for profile: GenerativeProfile) -> Set<LanguagePair> {
+        var pairs: Set<LanguagePair> = []
+        for other in ["de", "fr", "es"] {
+            pairs.insert(LanguagePair(source: "en", target: LanguageCode(other)))
+            pairs.insert(LanguagePair(source: LanguageCode(other), target: "en"))
+        }
+        pairs.insert(LanguagePair(source: "ja", target: "en"))
+        pairs.insert(LanguagePair(source: "zh", target: "en"))
+        if profile == .hymt7 { pairs.insert(LanguagePair(source: "en", target: "ja")) }
+        return pairs
     }
 
-    public func supportedPairs() async -> Set<LanguagePair> {
-        // Canonical base/script identities avoid a quadratic regional-alias list.
-        // Exact regional requests are still checked by supports(_:).
-        let languages = profile.languages.keys.map { LanguageCode($0) }.filter { $0 == $0.translationIdentity }
-        return Set(languages.flatMap { source in
-            languages.filter { !LanguagePair(source: source, target: $0).isSameWrittenLanguage }
-                .map { LanguagePair(source: source, target: $0) }
-        })
+    /// Screened base direction; Traditional Chinese and other scripts were not screened.
+    private func isScreened(_ pair: LanguagePair) -> Bool {
+        func base(_ code: LanguageCode) -> LanguageCode? {
+            if code.primary == "zh" { return ["zh", "zh-Hans", "zh-CN"].contains(code.rawValue) ? "zh" : nil }
+            return code.primary
+        }
+        guard let source = base(pair.source), let target = base(pair.target) else { return false }
+        return Self.screenedDirections(for: profile).contains(LanguagePair(source: source, target: target))
     }
+
+    public func supports(_ pair: LanguagePair) async -> Bool {
+        !pair.isSameWrittenLanguage && isScreened(pair)
+            && profile.supports(source: pair.source.rawValue, target: pair.target.rawValue)
+    }
+
+    public func supportedPairs() async -> Set<LanguagePair> { Self.screenedDirections(for: profile) }
 
     public nonisolated func translate(items: [TranslationItem], from: LanguageCode, to: LanguageCode) -> AsyncThrowingStream<TranslatedSegment, any Error> {
         // Generative helpers translate one segment at a time; never concatenate
@@ -58,6 +83,9 @@ public actor GenerativeTranslationEngine: TranslationEngine, PairSupportChecking
         guard !LanguagePair(source: from, target: to).isSameWrittenLanguage else { throw TranslationFailure.sameLanguage(from) }
         guard profile.languages[from.rawValue] != nil else { throw AppError.unsupportedLanguage(from) }
         guard profile.languages[to.rawValue] != nil else { throw AppError.unsupportedLanguage(to) }
+        guard isScreened(LanguagePair(source: from, target: to)) else {
+            throw AppError.engineFailure(id, reason: "This direction has not passed Earmark's quality screen for this model.")
+        }
         // Validate the real prompt before loading expensive weights.
         for text in texts { _ = try profile.content(text: text, source: from.rawValue, target: to.rawValue) }
         try Task.checkCancellation()

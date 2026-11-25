@@ -35,6 +35,10 @@ public enum BuiltInCatalog {
         static let parakeet = "7dd20fe6b1797d35f5e3307e8b1732d9a178edfe"
         static let madlad = "bb45f1851bf13a0b8f4fcd9ecadf2cdb7cf22439"
         static let parakeetEOU = "40a23f4c0b333aa17ad8c0f2ea47ec2347f2f355"
+        static let hymt18 = "a0c709d9fac510f2c807aa3af52872340dc37a4a"
+        static let hymt7 = "ab8472660ac61fac25f1af43fac2599d52a8a775"
+        static let gemma4 = "d37868f759d2f817a43d28dd80cf9f982ffa62fd"
+        static let gemma12 = "41d7c8aa650b26791225ad9d0597e674e680da96"
         static let nemotron = "53ce288f69326b415aeef030cfcb02a08a8096dd"
         static let canary = "692af661b140183b60e44f55ad03c59e1e77d078"
         static let cohere = "e1ce10d4cae2ca9a8b36cef5786fa3660f070050"
@@ -277,7 +281,7 @@ public enum BuiltInCatalog {
             id: "fluidaudio/parakeet-redux", name: "Parakeet Redux", repo: "parakeet-redux-coreml",
             revision: Revision.parakeetRedux, size: 220_309_623, minTier: .tier8,
             note: "Compact low-bit re-training of Parakeet v3: the same 25 European languages and word alignment in a much smaller download. The first load compiles for this Mac and can take several minutes; later loads are fast. Buffered Live captions; choose the spoken language explicitly."),
-    ] + OPUSCatalog.models + QwenCatalog.models
+    ] + OPUSCatalog.models + QwenCatalog.models + GenerativeTranslationCatalog.models
 
     /// Ultra and Redux share v3's vocabulary, decoder and joint and ship a single encoder build.
     private static func parakeetVariant(

@@ -173,6 +173,8 @@ public final class ModelManagerModel {
         case "madlad": "MADLAD-400"
         case "opus-mt": "OPUS language packs"
         case "fluidaudio.parakeet": "Parakeet"
+        case "hymt2-1.8b", "hymt2-7b": "Hy-MT2"
+        case "translategemma-4b", "translategemma-12b": "TranslateGemma"
         case "fluidaudio.cohere": "Cohere"
         case "fluidaudio.parakeet-eou": "Parakeet"
         case "native.speech": descriptor.displayName.hasPrefix("Nemotron") ? "Nemotron" : "Canary"

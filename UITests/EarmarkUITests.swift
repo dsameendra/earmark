@@ -176,6 +176,36 @@ final class EarmarkUITests: XCTestCase {
         capture(app, "models-compact-light")
     }
 
+    func testReviewedHuggingFacePreviewDoesNotAcceptUnknownRevisions() throws {
+        let app = launch(appearance: "light", width: 1100, height: 800)
+        defer { app.terminate() }
+        app.typeKey(",", modifierFlags: .command)
+        let models = app.buttons["settings.section.models"]
+        XCTAssertTrue(models.waitForExistence(timeout: 5))
+        models.click()
+        let intake = app.buttons["models.import.huggingface"]
+        XCTAssertTrue(intake.waitForExistence(timeout: 5))
+        intake.click()
+        let browser = app.sheets.firstMatch
+        let input = browser.textFields["models.huggingface.input"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.click()
+        input.typeText("argmaxinc/whisperkit-coreml")
+        browser.buttons["models.huggingface.review"].click()
+        XCTAssertTrue(browser.buttons["models.delete.whisperkit/small"].waitForExistence(timeout: 5))
+        XCTAssertTrue(browser.staticTexts["models.huggingface.source.whisperkit/small"].exists)
+        capture(app, "models-reviewed-huggingface-light")
+        input.click()
+        input.typeKey("a", modifierFlags: .command)
+        input.typeText("https://huggingface.co/argmaxinc/whisperkit-coreml/tree/dev")
+        browser.buttons["models.huggingface.review"].click()
+        XCTAssertTrue(browser.descendants(matching: .any)["models.huggingface.error"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(browser.buttons["models.delete.whisperkit/small"].exists)
+        XCTAssertFalse(browser.buttons["models.download.whisperkit/large-v3-v20240930_626MB"].exists)
+        browser.buttons["models.browse.done"].click()
+        XCTAssertTrue(intake.waitForExistence(timeout: 5))
+    }
+
     func testSettingsSectionsRemainAvailable() throws {
         let app = launch(appearance: "light")
         defer { app.terminate() }

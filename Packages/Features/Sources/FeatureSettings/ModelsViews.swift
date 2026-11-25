@@ -159,19 +159,23 @@ struct ModelRowView: View {
         .accessibilityLabel(chip?.spoken ?? "Languages")
         .accessibilityHint("Shows the full list")
         .accessibilityIdentifier("models.languages.\(row.id.rawValue)")
-        .popover(isPresented: $showsLanguages) {
+        .popover(isPresented: $showsLanguages, arrowEdge: .bottom) {
             let names = ModelCapabilitySummary.languageNames(row.descriptor)
             VStack(alignment: .leading, spacing: DSSpacing.sm) {
                 Text(ModelCapabilitySummary.languageCountLabel(row.descriptor)).font(DSTypography.headline)
                 ScrollView {
-                    Text(names.joined(separator: ", ")).font(DSTypography.body)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .fixedSize(horizontal: false, vertical: true)
+                    LazyVStack(alignment: .leading, spacing: DSSpacing.xs) {
+                        ForEach(names, id: \.self) { name in
+                            Text(name).font(DSTypography.body)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                 }
                 .frame(minHeight: 100, idealHeight: 200, maxHeight: 280)
             }
             .padding(DSSpacing.lg)
-            .frame(minWidth: 340, idealWidth: 360)
+            .frame(width: 360)
         }
     }
 
@@ -267,6 +271,10 @@ struct ModelsSettingsView: View {
     @State private var browseQuery = ""
     @State private var installedQuery = ""
     @State private var browseKind = "all"
+    @State private var huggingFaceMode = false
+    @State private var huggingFaceSource = ""
+    @State private var huggingFaceMatches: [ModelID]?
+    @State private var huggingFaceError: String?
     @State private var showImporter = false
     @State private var importFolder: URL?
     @State private var importName = ""
@@ -299,7 +307,7 @@ struct ModelsSettingsView: View {
         Form {
             Section {
                 ForEach(recommendedRows) { row in modelRow(row, compact: true) }
-                Button("Add models…", systemImage: "plus.circle") { showBrowser = true }
+                Button("Add models…", systemImage: "plus.circle") { huggingFaceMode = false; showBrowser = true }
                     .accessibilityIdentifier("models.browse")
             } header: { Text("Recommended") } footer: {
                 Text("Browse speech models, translation models and language packs. Downloads start only when you choose them.")
@@ -322,6 +330,10 @@ struct ModelsSettingsView: View {
             }
             if kinds == nil {
                 Section("Import") {
+                    if model.canBrowseHuggingFace {
+                        Button("Add from Hugging Face…", systemImage: "link") { huggingFaceMode = true; showBrowser = true }
+                            .accessibilityIdentifier("models.import.huggingface")
+                    }
                     Button("Import WhisperKit CoreML folder…", systemImage: "folder.badge.plus") { showImporter = true }
                         .accessibilityIdentifier("models.import.whisperkit")
                 }
@@ -379,32 +391,32 @@ struct ModelsSettingsView: View {
     private var modelBrowser: some View {
         VStack(alignment: .leading, spacing: DSSpacing.md) {
             HStack {
-                Text("Add models").font(DSTypography.title)
+                Text(huggingFaceMode ? "Add from Hugging Face" : "Add models").font(DSTypography.title)
                 Spacer()
                 Button("Done") { showBrowser = false }.accessibilityIdentifier("models.browse.done")
             }
-            TextField("Search models or languages", text: $browseQuery)
-                .accessibilityIdentifier("models.browse.search")
-            Picker("Task", selection: $browseKind) {
-                Text("All models").tag("all")
-                Text("Speech recognition").tag(ModelKind.asr.rawValue)
-                Text("Translation").tag(ModelKind.translation.rawValue)
-                Text("Speaker labels").tag(ModelKind.diarization.rawValue)
-            }.accessibilityIdentifier("models.browse.task")
-            let rows = model.browseRows(query: browseQuery, kind: ModelKind(rawValue: browseKind))
-                .filter(isVisible)
+            browserControls
+            let rows = browserRows
             let families = Dictionary(grouping: rows) { ModelManagerModel.familyName(for: $0.descriptor) }
             Form {
                 if rows.isEmpty {
-                    Text("No models match this search.").foregroundStyle(DSColor.secondaryText)
+                    Text(huggingFaceMode ? "Review a supported source to see its model variants." : "No models match this search.").foregroundStyle(DSColor.secondaryText)
                         .accessibilityIdentifier("models.browse.empty")
                 }
                 ForEach(families.keys.sorted(), id: \.self) { family in
                     Section(family) {
-                        if family == "OPUS language packs" {
+                        if family == "OPUS language packs" && !huggingFaceMode {
                             OPUSPairPackBrowser(model: model, rows: families[family] ?? []) { row in modelRow(row, compact: true) }
                         } else {
-                            ForEach(families[family] ?? []) { row in modelRow(row) }
+                            ForEach(families[family] ?? []) { row in
+                                modelRow(row)
+                                if huggingFaceMode, let source = row.descriptor.sourceURL {
+                                    Text("Reviewed source: \(source.absoluteString)")
+                                        .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                                        .accessibilityIdentifier("models.huggingface.source.\(row.id.rawValue)")
+                                }
+                            }
                         }
                     }
                 }
@@ -429,6 +441,50 @@ struct ModelsSettingsView: View {
             Button("Delete", role: .destructive) { Task { await model.confirmPendingDeletion() } }
             Button("Cancel", role: .cancel) { model.pendingDeletion = nil }
         } message: { Text("This is your default model. Transcription will download it again when needed.") }
+    }
+
+    private var browserRows: [ModelManagerModel.Row] {
+        if huggingFaceMode {
+            return model.rows.filter { huggingFaceMatches?.contains($0.id) == true && isVisible($0) }
+        }
+        return model.browseRows(query: browseQuery, kind: ModelKind(rawValue: browseKind)).filter(isVisible)
+    }
+
+    @ViewBuilder private var browserControls: some View {
+        if huggingFaceMode {
+            Text("Paste a repository or variant link. Earmark offers only reviewed versions supported by this build. A main link uses the reviewed commit shown below, which may differ from the latest upstream version. Downloads start only when you choose Download.")
+                .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+            HStack {
+                TextField("Hugging Face repository or link", text: $huggingFaceSource)
+                    .accessibilityIdentifier("models.huggingface.input")
+                    .onChange(of: huggingFaceSource) { _, _ in huggingFaceMatches = nil; huggingFaceError = nil }
+                Button("Review source") {
+                    do {
+                        huggingFaceMatches = try model.previewHuggingFace(huggingFaceSource).map(\.id)
+                        huggingFaceError = nil
+                    } catch {
+                        huggingFaceMatches = nil
+                        huggingFaceError = error.localizedDescription
+                    }
+                }.disabled(huggingFaceSource.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier("models.huggingface.review")
+            }
+            if let error = huggingFaceError {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .font(DSTypography.caption).foregroundStyle(DSColor.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("models.huggingface.error")
+            }
+        } else {
+            TextField("Search models or languages", text: $browseQuery)
+                .accessibilityIdentifier("models.browse.search")
+            Picker("Task", selection: $browseKind) {
+                Text("All models").tag("all")
+                Text("Speech recognition").tag(ModelKind.asr.rawValue)
+                Text("Translation").tag(ModelKind.translation.rawValue)
+                Text("Speaker labels").tag(ModelKind.diarization.rawValue)
+            }.accessibilityIdentifier("models.browse.task")
+        }
     }
 
     private func start(_ id: ModelID) {

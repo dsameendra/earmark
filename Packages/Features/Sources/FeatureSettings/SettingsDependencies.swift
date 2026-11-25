@@ -38,6 +38,8 @@ public struct SettingsDependencies: Sendable {
     public var mediaPurger: MediaPurger?
     public var store: any SettingsStore
     public var models: any ModelManaging
+    /// Offline lookup of reviewed recipes. Never acquires weights or executes repository code.
+    public var reviewedHuggingFaceModels: (@Sendable (String) throws -> [ModelID])?
     public var hardware: any HardwareTierProviding
     public var audioDevices: any AudioDeviceProviding
     /// Creates a microphone source only after the user chooses Test Microphone. Capture requests its permission at start.

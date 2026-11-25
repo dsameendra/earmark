@@ -75,15 +75,31 @@ public final class ModelManagerModel {
     @ObservationIgnored private let hardware: any HardwareTierProviding
     @ObservationIgnored private let store: any SettingsStore
     @ObservationIgnored private let freeDiskBytes: @Sendable () -> Int64?
+    @ObservationIgnored private let reviewedHuggingFaceModels: (@Sendable (String) throws -> [ModelID])?
+    public var canBrowseHuggingFace: Bool { reviewedHuggingFaceModels != nil }
 
     public init(
         manager: any ModelManaging, hardware: any HardwareTierProviding, store: any SettingsStore,
-        freeDiskBytes: @escaping @Sendable () -> Int64? = ModelManagerModel.systemFreeDiskBytes
+        freeDiskBytes: @escaping @Sendable () -> Int64? = ModelManagerModel.systemFreeDiskBytes,
+        reviewedHuggingFaceModels: (@Sendable (String) throws -> [ModelID])? = nil
     ) {
         self.manager = manager
         self.hardware = hardware
         self.store = store
         self.freeDiskBytes = freeDiskBytes
+        self.reviewedHuggingFaceModels = reviewedHuggingFaceModels
+    }
+
+    /// Preview current catalog rows only. Download remains a separate explicit action
+    /// through the normal disk, hardware, licence and checksum checks.
+    public func previewHuggingFace(_ source: String) throws -> [Row] {
+        guard let reviewedHuggingFaceModels else { throw AppError.other("Hugging Face model lookup is unavailable.") }
+        let ids = try reviewedHuggingFaceModels(source)
+        let selected = rows.filter { ids.contains($0.id) && $0.descriptor.isRunnable && !$0.descriptor.isCustom }
+        guard !selected.isEmpty, Set(selected.map(\.id)) == Set(ids) else {
+            throw AppError.other("The reviewed model recipe is unavailable in this catalog.")
+        }
+        return selected
     }
 
     public nonisolated static func systemFreeDiskBytes() -> Int64? {

@@ -180,6 +180,7 @@ final class AppEnvironment {
                 let mocks = mockServices()
                 var settings = SettingsDependencies.standalone(store: mocks.settings)
                 settings.models = MockModelManager(descriptors: BuiltInCatalog.models, installed: [RoutingTargets.whisperSmall])
+                settings.reviewedHuggingFaceModels = { try ReviewedHuggingFaceModels.resolve($0) }
                 return Composition(services: mocks, settingsDependencies: settings)
             }
         #endif
@@ -275,6 +276,7 @@ final class AppEnvironment {
             microphonePreview: { uid in MicrophoneSource(deviceUID: uid, permissions: permissions, deviceProvider: audioDevices) })
         settingsDependencies.mediaPurger = MediaPurger(
             transcripts: database.transcripts, media: database.media, meetings: database.meetings, roots: services.mediaRoots)
+        settingsDependencies.reviewedHuggingFaceModels = { try ReviewedHuggingFaceModels.resolve($0) }
         settingsDependencies.meetingDiagnostics = MeetingDiagnosticsAdapter(detector: meetings.detector, prompter: meetingPrompter)
         return Composition(
             services: services, settingsDependencies: settingsDependencies, live: live, dictation: dictation, meetings: meetings,

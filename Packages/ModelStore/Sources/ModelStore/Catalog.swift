@@ -106,7 +106,8 @@ public enum BuiltInCatalog {
             minTier: .tier8, isExperimental: true,
             notes:
                 "Upstream is PyTorch and needs CoreML conversion (see spikes/sinhala). "
-                + "Import the converted folder. Licence unverified; treated as non-commercial."
+                + "Import the converted folder. Licence unverified; treated as non-commercial.",
+            capabilities: ModelCapabilities(live: false, file: false)
         ),
         ModelDescriptor(
             id: "fluidaudio/diarization-community-1", displayName: "Diarization Community-1 (offline)", kind: .diarization,

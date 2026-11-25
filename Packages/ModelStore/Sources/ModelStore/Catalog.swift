@@ -39,6 +39,7 @@ public enum BuiltInCatalog {
         static let hymt7 = "ab8472660ac61fac25f1af43fac2599d52a8a775"
         static let gemma4 = "d37868f759d2f817a43d28dd80cf9f982ffa62fd"
         static let gemma12 = "41d7c8aa650b26791225ad9d0597e674e680da96"
+        static let voxtral = "7fd3d424fc558edca2c53808578b0541ef52a81a"
         static let nemotron = "53ce288f69326b415aeef030cfcb02a08a8096dd"
         static let canary = "692af661b140183b60e44f55ad03c59e1e77d078"
         static let cohere = "e1ce10d4cae2ca9a8b36cef5786fa3660f070050"
@@ -252,6 +253,25 @@ public enum BuiltInCatalog {
                     ModelArtifactDigest(path: "NOTICE", bytes: 411, sha256: "e6ffd58bf2373a13db1f59ed9d96399e49b6c97a3e88aca340c054ed55fa4bac"),
                     ModelArtifactDigest(path: "README.md", bytes: 50786, sha256: "63912eb14dcb1e87a85ae256664134dee97a5503675953034d21c1fd0dc48344"),
                     ModelArtifactDigest(path: "nemotron-3.5-asr-streaming-0.6b-Q4_K_M.gguf", bytes: 495_831_520, sha256: "41c99fa5fb6f3d35f68e79adc3e755eca2232a8d921178bd647b71194792b8fd"),
+                ], validation: .nativeInferenceChecked)),
+        ModelDescriptor(
+            id: "native/voxtral-mini-4b-realtime-q4", displayName: "Voxtral Mini 4B Realtime (Q4)", kind: .asr, runtime: .other,
+            engine: "native.speech", languages: ["en", "fr", "es", "de", "ru", "zh", "ja", "it", "pt", "nl", "ar", "hi", "ko"],
+            sizeBytes: 2_830_524_042,
+            license: LicenseInfo(spdx: "Apache-2.0", attribution: "Mistral Voxtral Mini 4B Realtime (2602), Apache 2.0; GGUF conversion by handy-computer. Weights were converted and quantized, not retrained."),
+            minTier: .tier16, sourceURL: hf("handy-computer/Voxtral-Mini-4B-Realtime-2602-gguf/tree/\(Revision.voxtral)"),
+            isExperimental: true,
+            notes: "Native streaming captions and file transcription in 13 languages with punctuation. Choose the spoken language explicitly. Large model: needs about 3 GB of memory and a 16 GB Mac is recommended. No word timing.",
+            capabilities: ModelCapabilities(live: true, file: true, wordTimestamps: false, autoDetectLanguage: false, streaming: .native),
+            downloadInclude: ["Voxtral-Mini-4B-Realtime-2602-Q4_K_M.gguf", "LICENSE", "NOTICE", "README.md"],
+            provenance: ModelProvenance(
+                repository: "handy-computer/Voxtral-Mini-4B-Realtime-2602-gguf", revision: Revision.voxtral,
+                profileID: "native.speech.voxtral-realtime", profileVersion: 1,
+                artifacts: [
+                    ModelArtifactDigest(path: "LICENSE", bytes: 11_358, sha256: "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"),
+                    ModelArtifactDigest(path: "NOTICE", bytes: 412, sha256: "43d42b6a876505f92d7c3f115e58d4f1d5b5452643bde6e1d6e8be9a82e6ed1b"),
+                    ModelArtifactDigest(path: "README.md", bytes: 20_272, sha256: "24f971383ae53fcefc0de0ec3a726664e76796a54ecf52d343ed8bb23019ce4d"),
+                    ModelArtifactDigest(path: "Voxtral-Mini-4B-Realtime-2602-Q4_K_M.gguf", bytes: 2_830_493_984, sha256: "39dc1f65539373a406edea7490505822d77c12edff521744678717eef4da4723"),
                 ], validation: .nativeInferenceChecked)),
         ModelDescriptor(
             id: "native/canary-1b-v2-q4", displayName: "Canary 1B v2 (Q4)", kind: .asr, runtime: .other,

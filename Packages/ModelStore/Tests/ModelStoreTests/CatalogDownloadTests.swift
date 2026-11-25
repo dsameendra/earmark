@@ -22,6 +22,7 @@ private let listings: [ModelID: CatalogFixtures.Listing] = [
     "hymt2/7b-gguf-q4-k-m": CatalogFixtures.hymt7,
     "translategemma/4b-it-gguf-q4-k-m": CatalogFixtures.gemma4,
     "translategemma/12b-it-gguf-q4-k-m": CatalogFixtures.gemma12,
+    "native/voxtral-mini-4b-realtime-q4": CatalogFixtures.voxtral,
     "fluidaudio/cohere-transcribe-2b": CatalogFixtures.cohere,
     "fluidaudio/parakeet-ultra": CatalogFixtures.parakeetUltra,
     "fluidaudio/parakeet-redux": CatalogFixtures.parakeetRedux,

@@ -177,7 +177,7 @@ public final class ModelManagerModel {
         case "translategemma-4b", "translategemma-12b": "TranslateGemma"
         case "fluidaudio.cohere": "Cohere"
         case "fluidaudio.parakeet-eou": "Parakeet"
-        case "native.speech": descriptor.displayName.hasPrefix("Nemotron") ? "Nemotron" : "Canary"
+        case "native.speech": descriptor.displayName.hasPrefix("Nemotron") ? "Nemotron" : descriptor.displayName.hasPrefix("Voxtral") ? "Voxtral" : "Canary"
         default: descriptor.kind == .diarization ? "Speaker models" : descriptor.displayName
         }
     }

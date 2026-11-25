@@ -264,6 +264,15 @@ enum CatalogFixtures {
             ("translategemma-12b-it.Q4_K_M.gguf", 7300794112),
         ])
 
+    static let voxtral = Listing(
+        repo: "handy-computer/Voxtral-Mini-4B-Realtime-2602-gguf", revision: "7fd3d424fc558edca2c53808578b0541ef52a81a",
+        files: [
+            ("LICENSE", 11358),
+            ("NOTICE", 412),
+            ("README.md", 20272),
+            ("Voxtral-Mini-4B-Realtime-2602-Q4_K_M.gguf", 2830493984),
+        ])
+
     static let whisperLarge = Listing(
         repo: "argmaxinc/whisperkit-coreml", revision: "0f63a7800b00dd0226abd051b906c246e1907482",
         files: [

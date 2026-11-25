@@ -9,6 +9,7 @@ private let parakeetUltraFolder = ProcessInfo.processInfo.environment["EARMARK_P
 private let parakeetReduxFolder = ProcessInfo.processInfo.environment["EARMARK_PARAKEET_REDUX_MODEL"]
 private let speechHelper = ProcessInfo.processInfo.environment["EARMARK_SPEECH_HELPER"]
 private let nemotronFolder = ProcessInfo.processInfo.environment["EARMARK_NEMOTRON_MODEL"]
+private let voxtralFolder = ProcessInfo.processInfo.environment["EARMARK_VOXTRAL_MODEL"]
 private let canaryFolder = ProcessInfo.processInfo.environment["EARMARK_CANARY_MODEL"]
 private let eouFolder = ProcessInfo.processInfo.environment["EARMARK_PARAKEET_EOU_MODEL"]
 private let cohereFolder = ProcessInfo.processInfo.environment["EARMARK_COHERE_MODEL"]
@@ -108,5 +109,11 @@ struct NativeSpeechAcceptanceTests {
         let folder = URL(fileURLWithPath: try #require(eouFolder))
         try await evaluate(ParakeetEOUEngine(locate: { _ in folder }), model: ParakeetEOUEngine.modelID, streamed: true)
         try await evaluate(ParakeetEOUEngine(locate: { _ in folder }), model: ParakeetEOUEngine.modelID)
+    }
+
+    @Test("Voxtral Realtime streams and transcribes real speech through the native worker", .enabled(if: voxtralFolder != nil && speechHelper != nil), .timeLimit(.minutes(10)))
+    func voxtral() async throws {
+        try await evaluate(try nativeEngine(voxtralFolder), model: NativeSpeechEngine.voxtralModel, streamed: true)
+        try await evaluate(try nativeEngine(voxtralFolder), model: NativeSpeechEngine.voxtralModel)
     }
 }

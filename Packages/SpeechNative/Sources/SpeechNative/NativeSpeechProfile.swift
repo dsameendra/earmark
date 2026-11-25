@@ -5,12 +5,14 @@ public enum NativeSpeechProfile: String, Sendable {
     case nemotron35 = "nemotron-3.5"
     case cohere202603 = "cohere-2026-03"
     case canaryV2 = "canary-v2"
+    case voxtralRealtime = "voxtral-realtime"
 
     public var architecture: String {
         switch self {
         case .multitalkerV1, .nemotron35: "parakeet"
         case .cohere202603: "cohere_asr"
         case .canaryV2: "canary"
+        case .voxtralRealtime: "voxtral_realtime"
         }
     }
     public var variant: String {
@@ -19,12 +21,14 @@ public enum NativeSpeechProfile: String, Sendable {
         case .nemotron35: "nemotron-3.5-asr-streaming-0.6b"
         case .cohere202603: "cohere-transcribe-03-2026"
         case .canaryV2: "canary-1b-v2"
+        case .voxtralRealtime: "voxtral-mini-4b-realtime-2602"
         }
     }
 
     public var languages: [String] {
         switch self {
         case .multitalkerV1: ["en"]
+        case .voxtralRealtime: ["en", "fr", "es", "de", "ru", "zh", "ja", "it", "pt", "nl", "ar", "hi", "ko"]
         case .cohere202603: ["en", "fr", "de", "es", "it", "pt", "nl", "pl", "el", "ar", "ja", "zh", "vi", "ko"]
         case .canaryV2:
             ["bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it",
@@ -59,8 +63,8 @@ public enum NativeSpeechProfile: String, Sendable {
         self == .canaryV2 ? languages.filter { $0 != "lv" } : []
     }
 
-    public var canStream: Bool { self == .multitalkerV1 || self == .nemotron35 }
-    public var canDetectLanguage: Bool { self == .nemotron35 }
+    public var canStream: Bool { self == .multitalkerV1 || self == .nemotron35 || self == .voxtralRealtime }
+    public var canDetectLanguage: Bool { self == .nemotron35 || self == .voxtralRealtime }
     public var canDiarize: Bool { self == .multitalkerV1 }
 
     public func supportsTranslation(source: String, target: String) -> Bool {

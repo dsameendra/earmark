@@ -10,6 +10,7 @@ public actor NativeSpeechEngine: TranscriptionEngine {
     public nonisolated let id: EngineID = "native.speech"
     public static let nemotronModel: ModelID = "native/nemotron-3.5-asr-q4"
     public static let canaryModel: ModelID = "native/canary-1b-v2-q4"
+    public static let voxtralModel: ModelID = "native/voxtral-mini-4b-realtime-q4"
 
     struct Binding: Sendable {
         let profile: NativeSpeechProfile
@@ -19,6 +20,7 @@ public actor NativeSpeechEngine: TranscriptionEngine {
     static let bindings: [ModelID: Binding] = [
         nemotronModel: Binding(profile: .nemotron35, file: "nemotron-3.5-asr-streaming-0.6b-Q4_K_M.gguf"),
         canaryModel: Binding(profile: .canaryV2, file: "canary-1b-v2-Q4_K_M.gguf"),
+        voxtralModel: Binding(profile: .voxtralRealtime, file: "Voxtral-Mini-4B-Realtime-2602-Q4_K_M.gguf"),
     ]
 
     /// Base language codes each model accepts.

@@ -179,6 +179,22 @@ enum CatalogFixtures {
             ("parakeet_vocab.json", 151122),
         ])
 
+    static let cohere = Listing(
+        repo: "FluidInference/cohere-transcribe-03-2026-coreml", revision: "e1ce10d4cae2ca9a8b36cef5786fa3660f070050",
+        files: [
+            ("q8/cohere_decoder_cache_external_v3.mlmodelc/analytics/coremldata.bin", 243),
+            ("q8/cohere_decoder_cache_external_v3.mlmodelc/coremldata.bin", 1688),
+            ("q8/cohere_decoder_cache_external_v3.mlmodelc/metadata.json", 13693),
+            ("q8/cohere_decoder_cache_external_v3.mlmodelc/model.mil", 203705),
+            ("q8/cohere_decoder_cache_external_v3.mlmodelc/weights/weight.bin", 304453120),
+            ("q8/cohere_encoder.mlmodelc/analytics/coremldata.bin", 243),
+            ("q8/cohere_encoder.mlmodelc/coremldata.bin", 421),
+            ("q8/cohere_encoder.mlmodelc/metadata.json", 2587),
+            ("q8/cohere_encoder.mlmodelc/model.mil", 2444649),
+            ("q8/cohere_encoder.mlmodelc/weights/weight.bin", 1881964672),
+            ("vocab.json", 338520),
+        ])
+
     static let whisperLarge = Listing(
         repo: "argmaxinc/whisperkit-coreml", revision: "0f63a7800b00dd0226abd051b906c246e1907482",
         files: [

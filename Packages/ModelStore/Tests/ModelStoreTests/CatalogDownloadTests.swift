@@ -15,6 +15,7 @@ private let listings: [ModelID: CatalogFixtures.Listing] = [
     "fluidaudio/ls-eend-ami": CatalogFixtures.lseend,
     "fluidaudio/sortformer-v2": CatalogFixtures.sortformer,
     "fluidaudio/parakeet-tdt-v3": CatalogFixtures.parakeet,
+    "fluidaudio/cohere-transcribe-2b": CatalogFixtures.cohere,
     "fluidaudio/parakeet-ultra": CatalogFixtures.parakeetUltra,
     "fluidaudio/parakeet-redux": CatalogFixtures.parakeetRedux,
     "mlx/qwen3-asr-0.6b-4bit": CatalogFixtures.qwenGeneral,
@@ -209,7 +210,7 @@ struct CatalogCapabilityTests {
 
     @Test("every ASR model that is runnable names an engine the app registers")
     func runnableModelsUseRegisteredEngines() {
-        let registered: Set<EngineID> = ["whisperkit", "apple.speech", "qwen3-asr", "fluidaudio.parakeet"]  // App/AppEnvironment.swift
+        let registered: Set<EngineID> = ["whisperkit", "apple.speech", "qwen3-asr", "fluidaudio.parakeet", "fluidaudio.cohere"]  // App/AppEnvironment.swift
         for model in catalog where model.kind == .asr && model.isRunnable {
             #expect(model.engine.map(registered.contains) == true, "\(model.id) advertises an engine nobody registers")
         }

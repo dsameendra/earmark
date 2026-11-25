@@ -22,7 +22,10 @@ public actor CohereEngine: TranscriptionEngine {
     private func models() async throws -> CoherePipeline.LoadedModels {
         if let loaded { return loaded }
         let folder = try await locate(Self.modelID)
-        let models = try await CoherePipeline.loadModels(encoderDir: folder, decoderDir: folder, vocabDir: folder)
+        // The catalog installs the int8 build under `q8/`; a flat folder of compiled models is also accepted.
+        let q8 = folder.appendingPathComponent("q8")
+        let compiled = FileManager.default.fileExists(atPath: q8.appendingPathComponent("cohere_encoder.mlmodelc").path) ? q8 : folder
+        let models = try await CoherePipeline.loadModels(encoderDir: compiled, decoderDir: compiled, vocabDir: folder)
         loaded = models
         return models
     }

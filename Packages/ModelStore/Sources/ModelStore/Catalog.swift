@@ -34,6 +34,7 @@ public enum BuiltInCatalog {
         static let sortformer = "ae9a27ab45dc0aa3abede7d2d6bad2b7a69aa6d1"
         static let parakeet = "7dd20fe6b1797d35f5e3307e8b1732d9a178edfe"
         static let madlad = "bb45f1851bf13a0b8f4fcd9ecadf2cdb7cf22439"
+        static let cohere = "e1ce10d4cae2ca9a8b36cef5786fa3660f070050"
         static let parakeetUltra = "95eaa59a39d4394f047a4dc5cce480388a60d1b6"
         static let parakeetRedux = "8c5ef97a29cd120dc76b354b3f22b7fec3b486f9"
     }
@@ -206,6 +207,16 @@ public enum BuiltInCatalog {
             downloadInclude: [
                 "Preprocessor.mlmodelc", "Encoder.mlmodelc", "Decoder.mlmodelc", "JointDecisionv3.mlmodelc", "parakeet_vocab.json",
             ]),
+        ModelDescriptor(
+            id: "fluidaudio/cohere-transcribe-2b", displayName: "Cohere Transcribe (2B, int8)", kind: .asr, runtime: .coreML,
+            engine: "fluidaudio.cohere", languages: ["en", "fr", "de", "es", "it", "pt", "nl", "pl", "el", "ar", "ja", "zh", "vi", "ko"],
+            sizeBytes: 2_189_432_063,
+            license: LicenseInfo(spdx: "Apache-2.0", attribution: "Cohere Transcribe (March 2026), Apache 2.0; Core ML int8 conversion by FluidInference."),
+            minTier: .tier16, sourceURL: hf("FluidInference/cohere-transcribe-03-2026-coreml/tree/\(Revision.cohere)"),
+            isExperimental: true,
+            notes: "File transcription in 14 languages with high accuracy. Choose the spoken language explicitly; no word timing and no live captions. Large download and memory use: best on Macs with 16 GB or more.",
+            capabilities: ModelCapabilities(live: false, file: true, wordTimestamps: false, autoDetectLanguage: false),
+            downloadInclude: ["q8/cohere_encoder.mlmodelc", "q8/cohere_decoder_cache_external_v3.mlmodelc", "vocab.json"]),
         parakeetVariant(
             id: "fluidaudio/parakeet-ultra", name: "Parakeet Ultra", repo: "parakeet-ultra-coreml",
             revision: Revision.parakeetUltra, size: 632_165_613, minTier: .tier8,

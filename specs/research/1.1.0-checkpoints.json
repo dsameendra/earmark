@@ -4498,6 +4498,564 @@
           "size": 23540
         }
       ]
+    },
+    {
+      "repo": "mistralai/Voxtral-Mini-4B-Realtime-2602",
+      "revision": "2769294da9567371363522aac9bbcfdd19447add",
+      "observedAt": "2026-11-25T05:16:53.098088+00:00",
+      "licenseMetadata": "apache-2.0",
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1567
+        },
+        {
+          "path": "README.md",
+          "size": 14942
+        },
+        {
+          "path": "config.json",
+          "size": 1572
+        },
+        {
+          "path": "consolidated.safetensors",
+          "size": 8859462744,
+          "sha256": "263f178fe752c90a2ae58f037a95ed092db8b14768b0978b8c48f66979c8345d"
+        },
+        {
+          "path": "generation_config.json",
+          "size": 191
+        },
+        {
+          "path": "model.safetensors",
+          "size": 8859446848,
+          "sha256": "e745e4902df6a4c48f29f2f8dc1f6d0fb4cc73c7156bc45923451a5bcdfcd1d6"
+        },
+        {
+          "path": "params.json",
+          "size": 1343
+        },
+        {
+          "path": "processor_config.json",
+          "size": 384
+        },
+        {
+          "path": "tekken.json",
+          "size": 14910348,
+          "sha256": "8434af1d39eba99f0ef46cf1450bf1a63fa941a26933a1ef5dbbf4adf0d00e44"
+        }
+      ],
+      "status": "source inventory only; native compatibility and product acceptance pending"
+    },
+    {
+      "repo": "nvidia/parakeet_realtime_eou_120m-v1",
+      "revision": "a7e2b4629593dce0ec19f600e00e9904353fda2d",
+      "observedAt": "2026-11-25T05:16:54.323052+00:00",
+      "licenseMetadata": "other",
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1642
+        },
+        {
+          "path": "README.md",
+          "size": 8514
+        },
+        {
+          "path": "figure-streaming.png",
+          "size": 58717
+        },
+        {
+          "path": "parakeet_realtime_eou_120m-v1.nemo",
+          "size": 460062720,
+          "sha256": "6603a22a53b7c1a4bac4736cb24628fb568a7102ba931a28c799e2e72f109893"
+        },
+        {
+          "path": "voice-agent.png",
+          "size": 159571,
+          "sha256": "91ba46c05bf6a211b340a361e1f0c853210b008975743942796c08203c1a16f3"
+        }
+      ],
+      "status": "source inventory only; native compatibility and product acceptance pending"
+    },
+    {
+      "repo": "FluidInference/parakeet-realtime-eou-120m-coreml",
+      "revision": "40a23f4c0b333aa17ad8c0f2ea47ec2347f2f355",
+      "observedAt": "2026-11-25T05:16:55.370199+00:00",
+      "licenseMetadata": "other",
+      "files": [
+        {
+          "path": ".gitattributes",
+          "size": 1519
+        },
+        {
+          "path": "1280ms/.DS_Store",
+          "size": 6148
+        },
+        {
+          "path": "1280ms/convert_parakeet_eou.py",
+          "size": 27191
+        },
+        {
+          "path": "1280ms/convert_streaming_encoder.py",
+          "size": 7605
+        },
+        {
+          "path": "1280ms/decoder.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "3996975a8cbc1949159c55605b3132b39b2484f51acbd55d796d93c70de02b49"
+        },
+        {
+          "path": "1280ms/decoder.mlmodelc/coremldata.bin",
+          "size": 497,
+          "sha256": "c3ccbff963d8cf07e2be2bd56ea3384a89ea49628922c6bd95ff62e2ae57dc34"
+        },
+        {
+          "path": "1280ms/decoder.mlmodelc/metadata.json",
+          "size": 3283
+        },
+        {
+          "path": "1280ms/decoder.mlmodelc/model.mil",
+          "size": 7409
+        },
+        {
+          "path": "1280ms/decoder.mlmodelc/weights/weight.bin",
+          "size": 7873600,
+          "sha256": "0b4cacecdcd9df79ab1e56de67230baf5a8664d2afe0bb8f3408eefa972cb2f4"
+        },
+        {
+          "path": "1280ms/individual_components.py",
+          "size": 8432
+        },
+        {
+          "path": "1280ms/joint_decision.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "5bca32ad130dcad6605cc00044c752aa5b45ef57d14c17f2d1a2fa49d6cf55b5"
+        },
+        {
+          "path": "1280ms/joint_decision.mlmodelc/coremldata.bin",
+          "size": 493,
+          "sha256": "22d4abc4625b935ee035b5f8ce7cb28d1041b9b01c12173e287bf4b5f5d99625"
+        },
+        {
+          "path": "1280ms/joint_decision.mlmodelc/metadata.json",
+          "size": 3181
+        },
+        {
+          "path": "1280ms/joint_decision.mlmodelc/model.mil",
+          "size": 9608
+        },
+        {
+          "path": "1280ms/joint_decision.mlmodelc/weights/weight.bin",
+          "size": 2794182,
+          "sha256": "7039b2010a269153f5a96edf28637f921a86ef8822f248f2d6712f7a6bce84b4"
+        },
+        {
+          "path": "1280ms/parakeet_eou_preprocessor.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "f4ada8b0b99ac1d2ba7acbffacfbbf1a06cb69d30e9410d237ee0aa4c2b0ad63"
+        },
+        {
+          "path": "1280ms/parakeet_eou_preprocessor.mlmodelc/coremldata.bin",
+          "size": 422,
+          "sha256": "dc7252fa47622fe39577361233627062019a3bb740fdbb5366a7bae09df0ec5e"
+        },
+        {
+          "path": "1280ms/parakeet_eou_preprocessor.mlmodelc/metadata.json",
+          "size": 2764
+        },
+        {
+          "path": "1280ms/parakeet_eou_preprocessor.mlmodelc/model.mil",
+          "size": 13429
+        },
+        {
+          "path": "1280ms/parakeet_eou_preprocessor.mlmodelc/weights/weight.bin",
+          "size": 1184512,
+          "sha256": "009bba4fde82dc55db9b55d77cf3ba5f791ce366c49f079285fe25a3b6e2291d"
+        },
+        {
+          "path": "1280ms/streaming_encoder.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "d0a3c84022a9d2dc769d38cf8f45e93423e20734d092e3c16db11fbf6dca4004"
+        },
+        {
+          "path": "1280ms/streaming_encoder.mlmodelc/coremldata.bin",
+          "size": 671,
+          "sha256": "41ce3f96c3d6b3333796fc4ed82cb0c9b4ea99396b88f8eec3ba24394ba2bb78"
+        },
+        {
+          "path": "1280ms/streaming_encoder.mlmodelc/metadata.json",
+          "size": 5331
+        },
+        {
+          "path": "1280ms/streaming_encoder.mlmodelc/model.mil",
+          "size": 630085
+        },
+        {
+          "path": "1280ms/streaming_encoder.mlmodelc/weights/weight.bin",
+          "size": 213179200,
+          "sha256": "6c71acb590ceb2af449de5c7e3516e76057eaf4589d1f16edba774831db74b17"
+        },
+        {
+          "path": "1280ms/streaming_encoder.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 508252,
+          "sha256": "9181d223091aa592cb656d49346e640a38ec2426de5ec2d06edbc14e92b8968b"
+        },
+        {
+          "path": "1280ms/streaming_encoder.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 213179200,
+          "sha256": "6c71acb590ceb2af449de5c7e3516e76057eaf4589d1f16edba774831db74b17"
+        },
+        {
+          "path": "1280ms/streaming_encoder.mlpackage/Manifest.json",
+          "size": 617
+        },
+        {
+          "path": "1280ms/vocab.json",
+          "size": 17437
+        },
+        {
+          "path": "160ms/.DS_Store",
+          "size": 8196
+        },
+        {
+          "path": "160ms/convert_parakeet_eou.py",
+          "size": 27191
+        },
+        {
+          "path": "160ms/convert_streaming_encoder.py",
+          "size": 7605
+        },
+        {
+          "path": "160ms/decoder.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "3996975a8cbc1949159c55605b3132b39b2484f51acbd55d796d93c70de02b49"
+        },
+        {
+          "path": "160ms/decoder.mlmodelc/coremldata.bin",
+          "size": 497,
+          "sha256": "c3ccbff963d8cf07e2be2bd56ea3384a89ea49628922c6bd95ff62e2ae57dc34"
+        },
+        {
+          "path": "160ms/decoder.mlmodelc/metadata.json",
+          "size": 3283
+        },
+        {
+          "path": "160ms/decoder.mlmodelc/model.mil",
+          "size": 7409
+        },
+        {
+          "path": "160ms/decoder.mlmodelc/weights/weight.bin",
+          "size": 7873600,
+          "sha256": "0b4cacecdcd9df79ab1e56de67230baf5a8664d2afe0bb8f3408eefa972cb2f4"
+        },
+        {
+          "path": "160ms/decoder.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 6728,
+          "sha256": "09f2dbd1f6a06faa6995f71d4b25d7c446996b6059cfac5ecc889853bdc7c6e5"
+        },
+        {
+          "path": "160ms/decoder.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 7873600,
+          "sha256": "0b4cacecdcd9df79ab1e56de67230baf5a8664d2afe0bb8f3408eefa972cb2f4"
+        },
+        {
+          "path": "160ms/decoder.mlpackage/Manifest.json",
+          "size": 617
+        },
+        {
+          "path": "160ms/individual_components.py",
+          "size": 8432
+        },
+        {
+          "path": "160ms/joint_decision.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "5bca32ad130dcad6605cc00044c752aa5b45ef57d14c17f2d1a2fa49d6cf55b5"
+        },
+        {
+          "path": "160ms/joint_decision.mlmodelc/coremldata.bin",
+          "size": 493,
+          "sha256": "22d4abc4625b935ee035b5f8ce7cb28d1041b9b01c12173e287bf4b5f5d99625"
+        },
+        {
+          "path": "160ms/joint_decision.mlmodelc/metadata.json",
+          "size": 3181
+        },
+        {
+          "path": "160ms/joint_decision.mlmodelc/model.mil",
+          "size": 9608
+        },
+        {
+          "path": "160ms/joint_decision.mlmodelc/weights/weight.bin",
+          "size": 2794182,
+          "sha256": "7039b2010a269153f5a96edf28637f921a86ef8822f248f2d6712f7a6bce84b4"
+        },
+        {
+          "path": "160ms/joint_decision.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 8701,
+          "sha256": "25d4d7be6eeb60c7de1d3a1278a5a4700cbe34017e1a8c1cab33204ddb2e4d5e"
+        },
+        {
+          "path": "160ms/joint_decision.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 2794182,
+          "sha256": "7039b2010a269153f5a96edf28637f921a86ef8822f248f2d6712f7a6bce84b4"
+        },
+        {
+          "path": "160ms/joint_decision.mlpackage/Manifest.json",
+          "size": 617
+        },
+        {
+          "path": "160ms/parakeet_eou_preprocessor.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "f4ada8b0b99ac1d2ba7acbffacfbbf1a06cb69d30e9410d237ee0aa4c2b0ad63"
+        },
+        {
+          "path": "160ms/parakeet_eou_preprocessor.mlmodelc/coremldata.bin",
+          "size": 422,
+          "sha256": "dc7252fa47622fe39577361233627062019a3bb740fdbb5366a7bae09df0ec5e"
+        },
+        {
+          "path": "160ms/parakeet_eou_preprocessor.mlmodelc/metadata.json",
+          "size": 2764
+        },
+        {
+          "path": "160ms/parakeet_eou_preprocessor.mlmodelc/model.mil",
+          "size": 13429
+        },
+        {
+          "path": "160ms/parakeet_eou_preprocessor.mlmodelc/weights/weight.bin",
+          "size": 1184512,
+          "sha256": "009bba4fde82dc55db9b55d77cf3ba5f791ce366c49f079285fe25a3b6e2291d"
+        },
+        {
+          "path": "160ms/parakeet_eou_preprocessor.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 16111,
+          "sha256": "0849137cc7b828554ddf85d6bc7923b76e8ade3a8f111e72dcedecc9889b21ba"
+        },
+        {
+          "path": "160ms/parakeet_eou_preprocessor.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 592384,
+          "sha256": "f257ad1ac11575d73a6ffda555319b2c96b0a224f0dc03ddd8c62950e9b18e53"
+        },
+        {
+          "path": "160ms/parakeet_eou_preprocessor.mlpackage/Manifest.json",
+          "size": 617
+        },
+        {
+          "path": "160ms/streaming_encoder.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "a981b257db79b4f86e6fa06a92562160a0ae71554746c24af24d8634b85f0356"
+        },
+        {
+          "path": "160ms/streaming_encoder.mlmodelc/coremldata.bin",
+          "size": 670,
+          "sha256": "e762abc60d999bcd10aab985b68191a602f2e8e03165cf08671c60f93936037a"
+        },
+        {
+          "path": "160ms/streaming_encoder.mlmodelc/metadata.json",
+          "size": 5327
+        },
+        {
+          "path": "160ms/streaming_encoder.mlmodelc/model.mil",
+          "size": 639646
+        },
+        {
+          "path": "160ms/streaming_encoder.mlmodelc/weights/weight.bin",
+          "size": 212691776,
+          "sha256": "12cd781a4300b52b6687587b7d8e37e0ce5c8ccb1dbea036008275e6abf5070c"
+        },
+        {
+          "path": "160ms/streaming_encoder.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 539800,
+          "sha256": "9ca562061f63b3e908e835f45da5ea7668b560678c57c5279d7abd7d1e150846"
+        },
+        {
+          "path": "160ms/streaming_encoder.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 212691776,
+          "sha256": "12cd781a4300b52b6687587b7d8e37e0ce5c8ccb1dbea036008275e6abf5070c"
+        },
+        {
+          "path": "160ms/streaming_encoder.mlpackage/Manifest.json",
+          "size": 617
+        },
+        {
+          "path": "160ms/vocab.json",
+          "size": 17437
+        },
+        {
+          "path": "320ms/.DS_Store",
+          "size": 8196
+        },
+        {
+          "path": "320ms/convert_parakeet_eou.py",
+          "size": 27191
+        },
+        {
+          "path": "320ms/convert_streaming_encoder.py",
+          "size": 7605
+        },
+        {
+          "path": "320ms/convert_streaming_encoder_unified.py",
+          "size": 11810
+        },
+        {
+          "path": "320ms/decoder.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "3996975a8cbc1949159c55605b3132b39b2484f51acbd55d796d93c70de02b49"
+        },
+        {
+          "path": "320ms/decoder.mlmodelc/coremldata.bin",
+          "size": 497,
+          "sha256": "c3ccbff963d8cf07e2be2bd56ea3384a89ea49628922c6bd95ff62e2ae57dc34"
+        },
+        {
+          "path": "320ms/decoder.mlmodelc/metadata.json",
+          "size": 3283
+        },
+        {
+          "path": "320ms/decoder.mlmodelc/model.mil",
+          "size": 7409
+        },
+        {
+          "path": "320ms/decoder.mlmodelc/weights/weight.bin",
+          "size": 7873600,
+          "sha256": "0b4cacecdcd9df79ab1e56de67230baf5a8664d2afe0bb8f3408eefa972cb2f4"
+        },
+        {
+          "path": "320ms/decoder.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 6728,
+          "sha256": "09f2dbd1f6a06faa6995f71d4b25d7c446996b6059cfac5ecc889853bdc7c6e5"
+        },
+        {
+          "path": "320ms/decoder.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 7873600,
+          "sha256": "0b4cacecdcd9df79ab1e56de67230baf5a8664d2afe0bb8f3408eefa972cb2f4"
+        },
+        {
+          "path": "320ms/decoder.mlpackage/Manifest.json",
+          "size": 617
+        },
+        {
+          "path": "320ms/individual_components.py",
+          "size": 8432
+        },
+        {
+          "path": "320ms/joint_decision.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "5bca32ad130dcad6605cc00044c752aa5b45ef57d14c17f2d1a2fa49d6cf55b5"
+        },
+        {
+          "path": "320ms/joint_decision.mlmodelc/coremldata.bin",
+          "size": 493,
+          "sha256": "22d4abc4625b935ee035b5f8ce7cb28d1041b9b01c12173e287bf4b5f5d99625"
+        },
+        {
+          "path": "320ms/joint_decision.mlmodelc/metadata.json",
+          "size": 3181
+        },
+        {
+          "path": "320ms/joint_decision.mlmodelc/model.mil",
+          "size": 9608
+        },
+        {
+          "path": "320ms/joint_decision.mlmodelc/weights/weight.bin",
+          "size": 2794182,
+          "sha256": "7039b2010a269153f5a96edf28637f921a86ef8822f248f2d6712f7a6bce84b4"
+        },
+        {
+          "path": "320ms/joint_decision.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 8701,
+          "sha256": "25d4d7be6eeb60c7de1d3a1278a5a4700cbe34017e1a8c1cab33204ddb2e4d5e"
+        },
+        {
+          "path": "320ms/joint_decision.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 2794182,
+          "sha256": "7039b2010a269153f5a96edf28637f921a86ef8822f248f2d6712f7a6bce84b4"
+        },
+        {
+          "path": "320ms/joint_decision.mlpackage/Manifest.json",
+          "size": 617
+        },
+        {
+          "path": "320ms/streaming_encoder.mlmodelc/analytics/coremldata.bin",
+          "size": 243,
+          "sha256": "ae0a559f8d53c43fe13c5c142b15ca237b97812febde71a36475b7b9612baec5"
+        },
+        {
+          "path": "320ms/streaming_encoder.mlmodelc/coremldata.bin",
+          "size": 670,
+          "sha256": "b57dfe32ed2acb0081f97d7a9e410117005823e3d2d995e21feb9e60775443c3"
+        },
+        {
+          "path": "320ms/streaming_encoder.mlmodelc/metadata.json",
+          "size": 5327
+        },
+        {
+          "path": "320ms/streaming_encoder.mlmodelc/model.mil",
+          "size": 655998
+        },
+        {
+          "path": "320ms/streaming_encoder.mlmodelc/weights/weight.bin",
+          "size": 212865856,
+          "sha256": "ff553fcb4f4560cfce1e558e16bb9d856e4b4f6a4c08f800d5c126fce4196822"
+        },
+        {
+          "path": "320ms/streaming_encoder.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+          "size": 539070,
+          "sha256": "2579ec91db1c064c91973e33c01a226d1243eaae3ae204ccc81951ad350b2698"
+        },
+        {
+          "path": "320ms/streaming_encoder.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+          "size": 212865856,
+          "sha256": "ff553fcb4f4560cfce1e558e16bb9d856e4b4f6a4c08f800d5c126fce4196822"
+        },
+        {
+          "path": "320ms/streaming_encoder.mlpackage/Manifest.json",
+          "size": 617
+        },
+        {
+          "path": "320ms/streaming_encoder_metadata.json",
+          "size": 263
+        },
+        {
+          "path": "320ms/vocab.json",
+          "size": 17437
+        },
+        {
+          "path": "README.md",
+          "size": 4410
+        },
+        {
+          "path": "config.json",
+          "size": 2
+        },
+        {
+          "path": "convert_parakeet_eou.py",
+          "size": 27191
+        },
+        {
+          "path": "convert_streaming_encoder.py",
+          "size": 7605
+        },
+        {
+          "path": "individual_components.py",
+          "size": 8432
+        },
+        {
+          "path": "metadata.json",
+          "size": 651
+        },
+        {
+          "path": "tokenizer.model",
+          "size": 258183,
+          "sha256": "d556e51ba5b89db64a8cb2be6798fb29974edcadb58b0c7b80418eb5d8752303"
+        },
+        {
+          "path": "vocab.json",
+          "size": 17437
+        }
+      ],
+      "status": "source inventory only; native compatibility and product acceptance pending"
     }
   ]
 }

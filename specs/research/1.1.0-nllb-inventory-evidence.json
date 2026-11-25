@@ -1,0 +1,27 @@
+{
+  "recordedAt": "2026-11-25T04:43:24.108130+00:00",
+  "status": "native_request_failures",
+  "scope": "native execution on one frozen parallel FLORES row; not independent translation quality or latency acceptance",
+  "report": "nllb-complete-inventory-native.json",
+  "reportSHA256": "14a133cab73c2278155c5c78db8c24205d2d6b26465a46c45d65069e3426920b",
+  "datasetArchiveSHA256": "b8b0b76783024b85797e5cc75064eb83fc5288b41e9654dabc7be6ae944011f6",
+  "rowIndex": 0,
+  "helperSHA256": "85cb8d962fbbb9eee9289e1f428cbccd4cc8e9cb87ddaf94623cec5ca9d0b178",
+  "inventorySHA256": "5678fa1fcb7d530e4a97fed066e2495dd1ad2fdc0cce622decfce5f4d32ca9ce",
+  "modelSHA256": "ed1beaf75134de7505315a5223162f56acff397eff6b50638a500d3936fe707b",
+  "requests": 400,
+  "nonempty": 399,
+  "failedRequests": [
+    {
+      "source": "eng_Latn",
+      "target": "bam_Latn",
+      "error": "Native request failed: {'error': 'Translation reached the decoding limit; split the source into shorter segments', 'id': 43}"
+    }
+  ],
+  "missingMatchingFixtures": [
+    {
+      "token": "sat_Beng",
+      "reason": "No matching script fixture in the pinned original FLORES archive; no substitution performed"
+    }
+  ]
+}

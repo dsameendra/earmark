@@ -18,11 +18,11 @@ func reply(_ object: [String: Any]) throws {
 
 do {
     let arguments = CommandLine.arguments
-    guard arguments.count == 4, let threads = Int(arguments[2]), let profile = GenerativeProfile(rawValue: arguments[3]) else {
+    guard (arguments.count == 4 || (arguments.count == 5 && arguments[4] == "--tokenizer-only")), let threads = Int(arguments[2]), let profile = GenerativeProfile(rawValue: arguments[3]) else {
         throw NativeTextError(message: "Expected a local model folder, thread count and supported generative profile.")
     }
-    let model = try NativeTextModel(folder: URL(fileURLWithPath: arguments[1]), profile: profile, threads: threads)
-    try reply(["ready": true, "profile": profile.rawValue])
+    let model = try NativeTextModel(folder: URL(fileURLWithPath: arguments[1]), profile: profile, threads: threads, tokenizerOnly: arguments.count == 5)
+    try reply(["ready": true, "profile": profile.rawValue, "tokenizerOnly": model.tokenizerOnly, "architecture": model.inspection.architecture, "parameters": model.inspection.parameters, "quantizationType": model.inspection.quantizationType ?? 0, "fileBytes": model.inspection.fileBytes, "tensorTypes": model.inspection.tensorTypes.sorted()])
     try WorkerInput.forEachLine { data in
         var id = -1
         do {
@@ -33,7 +33,7 @@ do {
                 throw NativeTextError(message: "Invalid native translation request.")
             }
             if request.op == "tokens" {
-                try reply(["id": id, "tokens": try request.texts.map { try model.tokens(text: $0, source: request.src, target: request.tgt) }])
+                try reply(["id": id, "tokens": try request.texts.map { try model.tokens(text: $0, source: request.src, target: request.tgt) }, "prompts": try request.texts.map { try model.prompt(text: $0, source: request.src, target: request.tgt) }])
                 return
             }
             let output = try request.texts.map { try model.translate(text: $0, source: request.src, target: request.tgt) }

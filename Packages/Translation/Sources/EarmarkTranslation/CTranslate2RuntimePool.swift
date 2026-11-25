@@ -1,6 +1,7 @@
 import AppCore
 import Foundation
 import TextModelProfiles
+import NativeWorkerKit
 
 enum TranslationWorkerProfile: Sendable, Equatable {
     case ctranslate2(CTranslate2ModelProfile)
@@ -16,6 +17,7 @@ public actor CTranslate2RuntimePool {
         let folder: URL
         let profile: TranslationWorkerProfile
         let runtime: any NLLBRuntime
+        var ready: Bool
     }
     private let makeRuntime: @Sendable (TranslationWorkerProfile) -> any NLLBRuntime
     private var active: Active?
@@ -53,6 +55,11 @@ public actor CTranslate2RuntimePool {
         PooledCTranslate2Runtime(pool: self, profile: .generative(profile))
     }
 
+    func workerProcessIdentifier() async -> Int32? {
+        guard let runtime = active?.runtime as? CTranslate2WorkerRuntime else { return nil }
+        return await runtime.workerProcessIdentifier()
+    }
+
     fileprivate func prepare(owner: UUID, folder: URL, profile: TranslationWorkerProfile) async throws {
         try await gate.withLease { _ = try await self.select(owner: owner, folder: folder, profile: profile) }
     }
@@ -74,18 +81,22 @@ public actor CTranslate2RuntimePool {
 
     private func select(owner: UUID, folder: URL, profile: TranslationWorkerProfile) async throws -> any NLLBRuntime {
         try Task.checkCancellation()
-        if let active, active.owner == owner, active.folder == folder, active.profile == profile { return active.runtime }
+        if let active, active.ready, active.owner == owner, active.folder == folder, active.profile == profile { return active.runtime }
         if let previous = active {
+            guard await stop(previous.runtime) else {
+                active?.ready = false
+                throw AppError.other("The previous translation worker has not stopped. A replacement cannot load until it exits.")
+            }
             active = nil
-            await previous.runtime.unload()
         }
         try Task.checkCancellation()
         let runtime = makeRuntime(profile)
+        active = Active(owner: owner, folder: folder, profile: profile, runtime: runtime, ready: false)
         do { try await runtime.load(modelFolder: folder) } catch {
-            await runtime.unload()
+            if await stop(runtime) { active = nil }
             throw error
         }
-        active = Active(owner: owner, folder: folder, profile: profile, runtime: runtime)
+        active?.ready = true
         return runtime
     }
 
@@ -95,8 +106,14 @@ public actor CTranslate2RuntimePool {
 
     private func unloadLocked(owner: UUID) async {
         guard let previous = active, previous.owner == owner else { return }
-        active = nil
-        await previous.runtime.unload()
+        if await stop(previous.runtime) { active = nil }
+        else { active?.ready = false }
+    }
+
+    private func stop(_ runtime: any NLLBRuntime) async -> Bool {
+        if let worker = runtime as? any WorkerStopping { return await worker.stop() }
+        await runtime.unload()
+        return true
     }
 
 }

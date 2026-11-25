@@ -26,8 +26,8 @@ def digest(path):
 
 
 class Worker:
-    def __init__(self, executable, folder, profile, error_file, threads=4):
-        self.process = subprocess.Popen([str(executable), str(folder), str(threads), profile],
+    def __init__(self, executable, folder, profile, error_file, threads=4, extra_arguments=()):
+        self.process = subprocess.Popen([str(executable), str(folder), str(threads), profile, *extra_arguments],
                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=error_file)
         self.selector = selectors.DefaultSelector()
         self.selector.register(self.process.stdout, selectors.EVENT_READ)
@@ -35,6 +35,7 @@ class Worker:
         self.request_id = 0
         try:
             ready = self.read()
+            self.ready = ready
             if ready.get('ready') is not True or ready.get('profile') != profile:
                 raise RuntimeError('Native helper rejected the requested model profile: ' + str(ready))
         except BaseException:

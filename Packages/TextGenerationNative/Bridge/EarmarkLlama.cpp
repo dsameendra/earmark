@@ -54,14 +54,16 @@ void decode(Runtime & runtime, const llama_token * tokens, int count, int positi
 }
 }
 
-extern "C" void * earmark_llama_load(const char * path, const char * architecture, uint64_t minimum_parameters, uint64_t maximum_parameters, int32_t threads, char ** error) {
+extern "C" void * earmark_llama_load(const char * path, const char * architecture, uint64_t minimum_parameters, uint64_t maximum_parameters, int32_t threads, int32_t tokenizer_only, char ** error) {
+    if (error) *error = nullptr;
     try {
-        if (!path || !architecture || threads < 1 || threads > 64) throw std::runtime_error("Invalid native text model configuration.");
+        if (!path || !architecture || threads < 1 || threads > 64 || tokenizer_only < 0 || tokenizer_only > 1) throw std::runtime_error("Invalid native text model configuration.");
         static std::once_flag initialized;
         std::call_once(initialized, [] { llama_log_set(quiet_log, nullptr); llama_backend_init(); });
         auto runtime = std::make_unique<Runtime>();
         auto model_options = llama_model_default_params();
-        model_options.n_gpu_layers = 99;
+        model_options.n_gpu_layers = tokenizer_only ? 0 : 99;
+        model_options.vocab_only = tokenizer_only != 0;
         runtime->model = llama_model_load_from_file(path, model_options);
         if (!runtime->model) throw std::runtime_error("Could not load the installed GGUF text model.");
         char actual[128] = {};
@@ -69,6 +71,7 @@ extern "C" void * earmark_llama_load(const char * path, const char * architectur
         if (size <= 0 || size >= static_cast<int>(sizeof(actual)) || std::string(actual) != architecture || llama_model_has_encoder(runtime->model)) {
             throw std::runtime_error("The GGUF architecture does not match the selected translation profile.");
         }
+        if (tokenizer_only) return runtime.release();
         const uint64_t parameters = llama_model_n_params(runtime->model);
         if (parameters < minimum_parameters || parameters > maximum_parameters) throw std::runtime_error("The model size does not match the selected translation variant.");
         auto options = llama_context_default_params();
@@ -89,28 +92,14 @@ extern "C" void * earmark_llama_load(const char * path, const char * architectur
     return nullptr;
 }
 
-extern "C" char * earmark_llama_chat_prompt(void * handle, const char * content, char ** error) {
-    try {
-        if (!handle || !content || std::strlen(content) > 64 * 1024) throw std::runtime_error("Invalid translation prompt size.");
-        auto & runtime = *static_cast<Runtime *>(handle);
-        const char * format = llama_model_chat_template(runtime.model, nullptr);
-        if (!format) throw std::runtime_error("The model has no supported chat template.");
-        const llama_chat_message message = {"user", content};
-        std::vector<char> buffer(128 * 1024);
-        const int count = llama_chat_apply_template(format, &message, 1, true, buffer.data(), static_cast<int>(buffer.size()));
-        if (count <= 0 || count >= static_cast<int>(buffer.size())) throw std::runtime_error("Unsupported or oversized model chat template.");
-        return copy(std::string(buffer.data(), count));
-    } catch (const std::exception & exception) { fail(error, exception.what()); }
-    catch (...) { fail(error, "Unknown native chat template failure."); }
-    return nullptr;
-}
-
 extern "C" char * earmark_llama_generate(void * handle, const char * prompt, int32_t maximum_input_tokens, int32_t maximum_tokens, char ** error) {
+    if (error) *error = nullptr;
     try {
         if (!handle || !prompt || std::strlen(prompt) > 128 * 1024 || maximum_tokens < 1 || maximum_tokens > 1024 || maximum_input_tokens < 1 || maximum_input_tokens > context_tokens) {
             throw std::runtime_error("Invalid native generation limits.");
         }
         auto & runtime = *static_cast<Runtime *>(handle);
+        if (!runtime.context || !runtime.sampler || !runtime.batch) throw std::runtime_error("Tokenizer-only diagnostics cannot run inference.");
         const auto * vocabulary = llama_model_get_vocab(runtime.model);
         const int length = static_cast<int>(std::strlen(prompt));
         const int required = -llama_tokenize(vocabulary, prompt, length, nullptr, 0, true, true);
@@ -150,6 +139,7 @@ extern "C" char * earmark_llama_generate(void * handle, const char * prompt, int
 }
 
 extern "C" char * earmark_llama_tokens(void * handle, const char * prompt, char ** error) {
+    if (error) *error = nullptr;
     try {
         if (!handle || !prompt || std::strlen(prompt) > 128 * 1024) throw std::runtime_error("Invalid tokenization input size.");
         auto & runtime = *static_cast<Runtime *>(handle);

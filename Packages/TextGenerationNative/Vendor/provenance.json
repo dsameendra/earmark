@@ -13,8 +13,8 @@
   "networkRuntime": false,
   "buildScript": "scripts/build-text-generation-native.sh",
   "bridge": {
-    "EarmarkLlama.h": "5cbfba4407ab8b1341d01ae86cfb789a675b42adc2543e3b00c96a7dc652bdcb",
-    "EarmarkLlama.cpp": "1b3906c50574a78c537c65d8ce8f3f8e3b61018d58d8b6339d2d3dc736633410"
+    "EarmarkLlama.h": "0e0b2078cc88e03bd3e4157189d3c560dfac9fad8b15532a047936c8eb1400db",
+    "EarmarkLlama.cpp": "68f12cdb7894c5d1bf196aa8c3e095a19fe2c0e110ff0cf43d948fc720046c83"
   },
   "files": [
     {
@@ -24,13 +24,13 @@
     },
     {
       "path": "EarmarkLlama.xcframework/macos-arm64/EarmarkLlama.framework/Versions/A/EarmarkLlama",
-      "bytes": 12014080,
-      "sha256": "73610e08b969fa03acd1730dd4679dad29edd935c4c09cc1b19cde6994545ea1"
+      "bytes": 12013872,
+      "sha256": "f422606a1bb52c23ccf8cd59a712eb64789bbe47c18f8784d5a70b1bff7c26df"
     },
     {
       "path": "EarmarkLlama.xcframework/macos-arm64/EarmarkLlama.framework/Versions/A/Headers/EarmarkLlama.h",
-      "bytes": 650,
-      "sha256": "5cbfba4407ab8b1341d01ae86cfb789a675b42adc2543e3b00c96a7dc652bdcb"
+      "bytes": 588,
+      "sha256": "0e0b2078cc88e03bd3e4157189d3c560dfac9fad8b15532a047936c8eb1400db"
     },
     {
       "path": "EarmarkLlama.xcframework/macos-arm64/EarmarkLlama.framework/Versions/A/Modules/module.modulemap",
@@ -45,7 +45,7 @@
     {
       "path": "EarmarkLlama.xcframework/macos-arm64/EarmarkLlama.framework/Versions/A/_CodeSignature/CodeResources",
       "bytes": 2732,
-      "sha256": "1c2ae856241778ab3b8a826364651c536669943f8590ad6d920e862c5bc0d0bc"
+      "sha256": "eb1486bc8cc84dec1d6526843d71258fe2f735ab9b35a095fe9ae85eb68b4b91"
     },
     {
       "path": "Licences/llama.cpp-and-ggml-MIT.txt",

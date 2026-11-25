@@ -65,3 +65,5 @@ jobs:
         run: scripts/check.sh build
       - name: Package unit tests
         run: scripts/check.sh unit
+      - name: Optimized voice enhancement performance
+        run: scripts/check.sh performance

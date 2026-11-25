@@ -138,7 +138,7 @@ public actor NLLBEngine: TranslationEngine, PairSupportChecking {
 /// Both use the same serial JSON-lines protocol; cancellation terminates the helper to release inference promptly.
 public enum CTranslate2ModelProfile: String, Sendable { case nllb, madlad, marian }
 
-public actor CTranslate2WorkerRuntime: NLLBRuntime {
+public actor CTranslate2WorkerRuntime: NLLBRuntime, WorkerStopping {
     public static let workerScript = #"""
         import sys, json
         import ctranslate2, sentencepiece as spm
@@ -171,6 +171,7 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
     private let isNative: Bool
     private let profile: String
     private let engineID: EngineID
+    private let generativeProfile: GenerativeProfile?
     private let threads: Int
     private let timeout: Duration
     private let gate = TranslationOperationGate()
@@ -179,20 +180,23 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
     private var nextID = 0
 
     public init(pythonExecutable: URL, threads: Int = 0) {
-        executable = pythonExecutable; isNative = false; profile = "nllb"; engineID = TranslationEngineIDs.nllb
+        executable = pythonExecutable; isNative = false; profile = "nllb"; engineID = TranslationEngineIDs.nllb; generativeProfile = nil
         self.threads = max(1, min(threads == 0 ? 4 : threads, 64)); timeout = .seconds(120)
     }
 
     public init(nativeExecutable: URL, threads: Int = 4, profile: CTranslate2ModelProfile = .nllb, requestTimeout: Duration = .seconds(120)) {
-        executable = nativeExecutable; isNative = true; self.profile = profile.rawValue; engineID = EngineID(profile.rawValue)
+        executable = nativeExecutable; isNative = true; self.profile = profile.rawValue; engineID = EngineID(profile.rawValue); generativeProfile = nil
         self.threads = max(1, min(threads, 64)); timeout = requestTimeout
     }
 
     public init(nativeExecutable: URL, generativeProfile: GenerativeProfile, threads: Int = 4, requestTimeout: Duration = .seconds(120)) {
         executable = nativeExecutable; isNative = true; profile = generativeProfile.rawValue
         engineID = GenerativeTranslationEngine.engineID(for: generativeProfile)
+        self.generativeProfile = generativeProfile
         self.threads = max(1, min(threads, 64)); timeout = requestTimeout
     }
+
+    func workerProcessIdentifier() async -> Int32? { await transport?.processIdentifier() }
 
     public func load(modelFolder: URL) async throws {
         try await gate.withLease { try await self.loadLocked(modelFolder) }
@@ -201,7 +205,9 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
     private func loadLocked(_ folder: URL) async throws {
         try Task.checkCancellation()
         guard folder.isFileURL else { throw AppError.other("Translation models must be local folders.") }
-        if modelFolder != folder { await stopWorker() }
+        if modelFolder != folder, await !stopWorker() {
+            throw AppError.engineFailure(engineID, reason: "The previous translation worker has not stopped. Try again after it exits.")
+        }
         modelFolder = folder
         do { try await startWorker() }
         catch { await stopWorker(); throw error }
@@ -217,11 +223,20 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
         }
         guard let transport else { throw AppError.other("The translation worker is unavailable.") }
         let first = try await transport.start()
-        struct Ready: Decodable { let ready: Bool?; let profile: String?; let error: String? }
+        struct Ready: Decodable {
+            let ready: Bool?; let profile: String?; let error: String?
+            let tokenizerOnly: Bool?; let architecture: String?; let parameters: UInt64?; let quantizationType: UInt32?
+        }
         let value = try JSONDecoder().decode(Ready.self, from: first)
         if let error = value.error { throw AppError.engineFailure(engineID, reason: error) }
         guard value.ready == true, !isNative || value.profile == profile else {
             throw AppError.engineFailure(engineID, reason: "The translation worker could not load the selected model profile.")
+        }
+        if let generativeProfile {
+            guard value.tokenizerOnly == false, value.architecture == generativeProfile.architecture,
+                  let parameters = value.parameters, generativeProfile.parameterRange.contains(parameters), value.quantizationType == 15 else {
+                throw AppError.engineFailure(engineID, reason: "The native translation worker did not load the selected inference variant and quantization.")
+            }
         }
     }
 
@@ -263,17 +278,24 @@ public actor CTranslate2WorkerRuntime: NLLBRuntime {
         }
     }
 
-    public func unload() async {
-        await gate.cleanup {
-            await self.stopWorker()
-            await self.clearFolder()
-        }
+    public func unload() async { _ = await stop() }
+
+    @discardableResult
+    public func stop() async -> Bool {
+        await gate.cleanup { await self.unloadLocked() }
     }
 
-    private func clearFolder() { modelFolder = nil }
+    private func unloadLocked() async -> Bool {
+        let stopped = await stopWorker()
+        if stopped { modelFolder = nil }
+        return stopped
+    }
 
-    private func stopWorker() async {
-        await transport?.stop()
-        transport = nil
+    @discardableResult
+    private func stopWorker() async -> Bool {
+        guard let transport else { return true }
+        let stopped = await transport.stop()
+        if stopped { self.transport = nil }
+        return stopped
     }
 }

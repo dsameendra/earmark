@@ -8,7 +8,12 @@ public enum WorkerTransportError: Error, LocalizedError, Equatable, Sendable {
 
 /// One local child, one outstanding JSON-line operation. Payload interpretation
 /// and session ownership belong to the caller; this layer bounds bytes/lifetime.
-public actor WorkerTransport {
+/// `false` retains ownership: a resource manager must not admit a replacement.
+public protocol WorkerStopping: Sendable {
+    @discardableResult func stop() async -> Bool
+}
+
+public actor WorkerTransport: WorkerStopping {
     public static let maximumMessageBytes = 4 * 1_024 * 1_024
     private let executable: URL
     private let arguments: [String]
@@ -33,6 +38,12 @@ public actor WorkerTransport {
         if let process { Self.terminate(process) }
     }
 
+    /// Diagnostic identity of the owned live child; never used to control unrelated processes.
+    public func processIdentifier() -> Int32? {
+        guard let process, process.isRunning else { return nil }
+        return process.processIdentifier
+    }
+
     public func isRunning() -> Bool { process?.isRunning == true && handshake != nil }
 
     public func start() async throws -> Data {
@@ -43,8 +54,9 @@ public actor WorkerTransport {
         try await gate.withLease { try await self.requestLocked(data) }
     }
 
-    public func stop() async {
-        await gate.cleanup { _ = await self.stopLocked() }
+    @discardableResult
+    public func stop() async -> Bool {
+        await gate.cleanup { await self.stopLocked() }
     }
 
     private func startLocked() async throws -> Data {

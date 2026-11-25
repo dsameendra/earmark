@@ -15,7 +15,16 @@ struct WorkerFailureTests {
         case "$1" in
           */wrong-profile) printf '%s\n' '{"ready":true,"profile":"nllb"}' ;;
           */bool-ready) printf '%s\n' '{"ready":1,"profile":"nllb"}' ;;
-          *) printf '{"ready":true,"profile":"%s"}\n' "$3" ;;
+          */tokenizer-only) printf '%s\n' '{"ready":true,"profile":"translategemma-4b","architecture":"gemma3","parameters":4000000000,"quantizationType":15,"tokenizerOnly":true}' ;;
+          */wrong-variant) printf '%s\n' '{"ready":true,"profile":"translategemma-4b","architecture":"gemma3","parameters":12000000000,"quantizationType":15,"tokenizerOnly":false}' ;;
+          */wrong-quantization) printf '%s\n' '{"ready":true,"profile":"translategemma-4b","architecture":"gemma3","parameters":4000000000,"quantizationType":1,"tokenizerOnly":false}' ;;
+          *)
+            if [ "$3" = "translategemma-4b" ]; then
+              printf '{"ready":true,"profile":"%s","architecture":"gemma3","parameters":4000000000,"quantizationType":15,"tokenizerOnly":false}\n' "$3"
+            else
+              printf '{"ready":true,"profile":"%s"}\n' "$3"
+            fi ;;
+
         esac
         case "$1" in
           */blocked) trap '' TERM; : > "$1.started"; while :; do :; done ;;
@@ -42,7 +51,9 @@ struct WorkerFailureTests {
         let (root, helper) = try fixture()
         defer { try? FileManager.default.removeItem(at: root) }
         let runtime = CTranslate2WorkerRuntime(nativeExecutable: helper, generativeProfile: .gemma4)
-        await #expect(throws: (any Error).self) { try await runtime.load(modelFolder: root.appendingPathComponent("wrong-profile")) }
+        for folder in ["wrong-profile", "tokenizer-only", "wrong-variant", "wrong-quantization"] {
+            await #expect(throws: (any Error).self) { try await runtime.load(modelFolder: root.appendingPathComponent(folder)) }
+        }
         try await runtime.load(modelFolder: root.appendingPathComponent("normal"))
         #expect(try await runtime.translate(["hello"], source: "en", target: "de") == ["translated"])
         for folder in ["bool-id", "blank"] {

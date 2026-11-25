@@ -26,6 +26,12 @@ struct GenerativeProfileTests {
         #expect(try GenerativeProfile.gemma12.content(text: "Hello world.", source: "en", target: "de") == prompt)
     }
 
+    @Test func hymtVariantsUseTheirOwnRoleBoundaries() throws {
+        let instruction = try GenerativeProfile.hymt18.content(text: "Hello world.", source: "en", target: "de")
+        #expect(try GenerativeProfile.hymt18.prompt(text: "Hello world.", source: "en", target: "de") == "<｜hy_begin▁of▁sentence｜><｜hy_User｜>" + instruction + "<｜hy_Assistant｜>")
+        #expect(try GenerativeProfile.hymt7.prompt(text: "Hello world.", source: "en", target: "de") == "<|startoftext|>" + instruction + "<|extra_0|>")
+    }
+
     @Test func hymtUsesThePinnedDefaultInstructionWithoutASystemPrompt() throws {
         let expected = "Translate the following text into German. Note that you should only output the translated result without any additional explanation:\n\nHello world."
         #expect(try GenerativeProfile.hymt18.content(text: "Hello world.", source: "en", target: "de") == expected)

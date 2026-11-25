@@ -3,7 +3,7 @@ import NativeWorkerKit
 
 /// Owns one isolated model/session. The engine must keep a session lease from begin through finish;
 /// this transport additionally serializes commands and cancels only the admitted request's child.
-public actor SpeechWorkerClient {
+public actor SpeechWorkerClient: WorkerStopping {
     private let executable: URL
     private let timeout: Duration
     private let gate = SpeechOperationGate()
@@ -25,7 +25,8 @@ public actor SpeechWorkerClient {
         try await gate.withLease { try await self.sendLocked(request) }
     }
 
-    public func stop() async {
+    @discardableResult
+    public func stop() async -> Bool {
         await gate.cleanup { await self.stopLocked() }
     }
 
@@ -36,7 +37,7 @@ public actor SpeechWorkerClient {
         }
         if self.modelFile == modelFile, self.profile == profile, let transport,
            await transport.isRunning(), let readiness { return readiness }
-        await stopLocked()
+        guard await stopLocked() else { throw SpeechWireError.invalid("The previous speech worker has not stopped. Try again after it exits.") }
         guard executable.isFileURL, modelFile.isFileURL else { throw SpeechWireError.invalid("Native workers and models must be local files.") }
         let channel = WorkerTransport(executable: executable, arguments: [modelFile.path, profile], timeout: timeout)
         transport = channel
@@ -95,9 +96,12 @@ public actor SpeechWorkerClient {
         return error
     }
 
-    private func stopLocked() async {
-        await transport?.stop()
-        transport = nil
+    @discardableResult
+    private func stopLocked() async -> Bool {
         modelFile = nil; profile = nil; readiness = nil
+        guard let transport else { return true }
+        let stopped = await transport.stop()
+        if stopped { self.transport = nil }
+        return stopped
     }
 }

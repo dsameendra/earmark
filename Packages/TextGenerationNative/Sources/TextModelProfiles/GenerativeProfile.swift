@@ -16,6 +16,15 @@ public enum GenerativeProfile: String, Sendable {
         case .gemma12: 9_000_000_000...14_000_000_000
         }
     }
+    public var maximumFileBytes: UInt64 {
+        let gib: UInt64 = 1_024 * 1_024 * 1_024
+        return switch self {
+        case .hymt18: 2 * gib
+        case .hymt7: 6 * gib
+        case .gemma4: 4 * gib
+        case .gemma12: 10 * gib
+        }
+    }
     public var languages: [String: String] {
         guard isGemma else { return TranslationLanguageNames.hymt }
         return TranslationLanguageNames.gemma.filter { entry in
@@ -33,6 +42,17 @@ public enum GenerativeProfile: String, Sendable {
 
     public func supports(source: String, target: String) -> Bool {
         source != target && languages[source] != nil && languages[target] != nil
+    }
+
+    /// Exact pinned data-only chat templates. Do not route these through a
+    /// heuristic library formatter: the two Hy-MT variants use different tokens.
+    public func prompt(text: String, source: String, target: String) throws -> String {
+        let content = try content(text: text, source: source, target: target)
+        switch self {
+        case .hymt18: return "<｜hy_begin▁of▁sentence｜><｜hy_User｜>" + content + "<｜hy_Assistant｜>"
+        case .hymt7: return "<|startoftext|>" + content + "<|extra_0|>"
+        case .gemma4, .gemma12: return content
+        }
     }
 
     public func content(text: String, source: String, target: String) throws -> String {

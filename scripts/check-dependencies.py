@@ -5,7 +5,7 @@ root=Path(__file__).resolve().parent.parent
 approved={
  'AppCore':set(),'Persistence':{'AppCore'},'DesignSystem':{'AppCore'},'ModelStore':{'AppCore','NativeWorkerKit'},
  'AudioCapture':{'AppCore'},'Permissions':{'AppCore'},'Processing':{'AppCore'},'Export':{'AppCore'},
- 'Meetings':{'AppCore'},'Translation':{'AppCore','NativeWorkerKit','TextGenerationNative','ModelStore'},'NLLBNative':{'NativeWorkerKit','ModelStore'},'SpeechNative':{'NativeWorkerKit'},'NativeWorkerKit':set(),'TextGenerationNative':{'NativeWorkerKit'},
+ 'Meetings':{'AppCore'},'Translation':{'AppCore','NativeWorkerKit','TextGenerationNative','ModelStore'},'NLLBNative':{'NativeWorkerKit','ModelStore'},'SpeechNative':{'NativeWorkerKit'},'NativeWorkerKit':set(),'TextGenerationNative':{'NativeWorkerKit','ModelFormats'},'ModelFormats':set(),
  'LiveCaptions':{'AppCore','DesignSystem'},'Dictation':{'AppCore','DesignSystem','Features'},
  'Transcription':{'AppCore','AudioCapture','ModelStore'},'Diarization':{'AppCore','AudioCapture','ModelStore'},
  'QwenASR':{'AppCore','AudioCapture'},

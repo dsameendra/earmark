@@ -9,7 +9,7 @@
 #   <screen>-<appearance>.png
 #   <screen>-<appearance>-1440x900.png
 #   <screen>-<appearance>-expanded.png
-#   settings-general.png            (settings only; appearance-agnostic)
+#   settings-general-<appearance>.png, then settings-general.png (settings only)
 # A missing appearance falls back to the other one. A screen with neither is an error.
 #
 # Output in docs/assets/screens/: <screen>-<appearance>.webp (1600 px wide)
@@ -29,6 +29,7 @@ find_src() { # screen appearance
   for c in "$s-$a.png" "$s-$a-1440x900.png" "$s-$a-expanded.png"; do
     if [ -f "$SRC/$c" ]; then echo "$SRC/$c"; return; fi
   done
+  if [ "$s" = settings ] && [ -f "$SRC/settings-general-$a.png" ]; then echo "$SRC/settings-general-$a.png"; return; fi
   if [ "$s" = settings ] && [ -f "$SRC/settings-general.png" ]; then echo "$SRC/settings-general.png"; fi
   return 0
 }

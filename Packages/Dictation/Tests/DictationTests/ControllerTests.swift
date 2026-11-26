@@ -21,7 +21,7 @@ private struct Harness {
         events: [TranscriptionEvent] = [.final(seg("hello world"))], failure: AppError? = nil,
         accessibility: PermissionStatus = .granted, insertError: (any Error)? = nil, sourceFails: Bool = false,
         configure: (inout DictationSettings) -> Void = { _ in }, rules: MemoryRules = MemoryRules(),
-        translation: (any TranslationRouter)? = nil, warnings: [String] = [], permissionDelay: Duration = .zero
+        translation: (any TranslationRouter)? = nil, warnings: [String] = [], holdAccessibilityCheck: Bool = false
     ) async {
         let source = FakeEventSource(failStart: sourceFails)
         let inserter = FakeInserter(error: insertError)
@@ -29,7 +29,7 @@ private struct Harness {
         let hud = FakeHUD()
         let notifier = FakeNotifier()
         let onboarding = FakeOnboarding()
-        let permissions = FakePermissions(accessibility: accessibility, delay: permissionDelay)
+        let permissions = FakePermissions(accessibility: accessibility, holdCheck: holdAccessibilityCheck)
         let clock = ManualClock()
         let settings = MemorySettings()
         var s = DictationSettings()
@@ -102,12 +102,13 @@ struct ControllerTests {
     }
 
     @Test func releaseDuringAccessibilityCheckDoesNotLeaveDictationListening() async {
-        let h = await Harness(permissionDelay: .milliseconds(200))
+        let h = await Harness(holdAccessibilityCheck: true)
         await h.controller.start()
         let pressed = Task { await h.controller.handle(.pressed) }
-        try? await Task.sleep(for: .milliseconds(50))
+        await h.permissions.checkStarted()
         h.clock.advance(1)
         await h.controller.handle(.released)  // arrives while the Accessibility check is still running
+        h.permissions.releaseCheck()
         await pressed.value
         #expect(!h.hud.log.contains { $0.hasPrefix("show") })
         var states = h.controller.states().makeAsyncIterator()
@@ -119,11 +120,12 @@ struct ControllerTests {
     }
 
     @Test func cancelDuringAccessibilityCheckIsHonoured() async {
-        let h = await Harness(permissionDelay: .milliseconds(200))
+        let h = await Harness(holdAccessibilityCheck: true)
         await h.controller.start()
         let pressed = Task { await h.controller.handle(.pressed) }
-        try? await Task.sleep(for: .milliseconds(50))
-        await h.controller.cancel()
+        await h.permissions.checkStarted()
+        await h.controller.cancel()  // arrives while the Accessibility check is still running
+        h.permissions.releaseCheck()
         await pressed.value
         #expect(!h.hud.log.contains { $0.hasPrefix("show") })
         var states = h.controller.states().makeAsyncIterator()

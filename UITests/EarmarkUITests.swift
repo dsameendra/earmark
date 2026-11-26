@@ -338,7 +338,7 @@ final class EarmarkUITests: XCTestCase {
         XCTAssertTrue(app.buttons["settings.section.general"].waitForExistence(timeout: 5))
         app.buttons["settings.section.general"].click()
         let sections = [
-            "general", "models", "languages", "audio", "meetings", "liveCaptions", "dictation", "transcriptAppearance",
+            "general", "models", "intelligence", "languages", "audio", "meetings", "liveCaptions", "dictation", "transcriptAppearance",
             "ignoredSegments", "replacements", "translation", "exportDefaults", "storage", "keyboardShortcuts", "privacyPermissions",
         ]
         for (index, section) in sections.enumerated() {

@@ -115,6 +115,7 @@ public struct SQLiteTranscriptRepository: TranscriptRepository {
                     JOIN segment s ON s.rowid = segmentFTS.rowid
                     JOIN transcript t ON t.id = s.transcriptID
                     WHERE segmentFTS MATCH ? AND t.deletedAt IS NULL AND s.isIgnored = 0
+                      AND NOT EXISTS (SELECT 1 FROM transcript r WHERE r.revisionOf = t.id)
                     ORDER BY bm25(segmentFTS), t.createdAt DESC, s.start
                     LIMIT ?
                     """
@@ -213,6 +214,9 @@ public struct SQLiteTranscriptRepository: TranscriptRepository {
     /// WHERE-clause fragments (AND-ed) and their arguments for a library query.
     static func filters(for query: LibraryQuery) -> ([String], StatementArguments) {
         var clauses: [String] = [query.deletedOnly ? "t.deletedAt IS NOT NULL" : "t.deletedAt IS NULL"]
+        // A live transcript that a meeting's final transcript revised is that transcript's draft: listing both showed every
+        // meeting twice. The draft stays in the database (a retry falls back to it) but is not listed or searched.
+        if !query.deletedOnly { clauses.append("NOT EXISTS (SELECT 1 FROM transcript r WHERE r.revisionOf = t.id)") }
         var args = StatementArguments()
         if !query.sources.isEmpty {
             clauses.append("t.source IN (\(placeholders(query.sources.count)))")

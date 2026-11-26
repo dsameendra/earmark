@@ -16,6 +16,13 @@ extension MeetingApp {
         case .browser: "Browser call"
         }
     }
+    /// What to call one occurrence: "Zoom meeting", "Google Meet call". Names that already say it are not followed by "meeting".
+    public var occurrenceName: String {
+        switch self {
+        case .meet, .browser: title + (self == .meet ? " call" : "")
+        case .zoom, .teams, .discord: "\(title) meeting"
+        }
+    }
     /// Short badge text.
     public var badgeTitle: String {
         switch self {
@@ -165,7 +172,7 @@ public struct MeetingPrompt: Sendable, Equatable {
     public var identifier: String { Self.identifier(for: app) }
     public static func identifier(for app: MeetingApp) -> String { "earmark.meeting.detected.\(app.rawValue)" }
     public static let categoryPrefix = "earmark.meeting.detected"
-    public var title: String { "\(app.badgeTitle) meeting detected" }
+    public var title: String { "\(app.occurrenceName) detected" }
     public var body: String { "Transcribe? Record? Nothing is recorded until you choose." }
 }
 

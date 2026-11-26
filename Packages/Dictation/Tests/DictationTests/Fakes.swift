@@ -169,15 +169,28 @@ final class SpyProcessor: TranscriptPostProcessor, @unchecked Sendable {
 
 final class FakePermissions: PermissionsServicing, @unchecked Sendable {
     private let state = Mutex<(status: PermissionStatus, cont: AsyncStream<(PermissionKind, PermissionStatus)>.Continuation?)>((.granted, nil))
-    /// How long `status` takes, to model a slow Accessibility check.
-    private let delay: Duration
-    init(accessibility: PermissionStatus = .granted, delay: Duration = .zero) {
-        self.delay = delay
+    /// A held check models a slow Accessibility check without timing: `status` signals that it started, then waits for
+    /// `releaseCheck()`. Tests order their events around those two points instead of sleeping.
+    private let holdCheck: Bool
+    private let started = AsyncStream<Void>.makeStream()
+    private let opened = AsyncStream<Void>.makeStream()
+    private let released = Mutex(false)
+    init(accessibility: PermissionStatus = .granted, holdCheck: Bool = false) {
+        self.holdCheck = holdCheck
         state.withLock { $0.status = accessibility }
     }
     func status(_ kind: PermissionKind) async -> PermissionStatus {
-        if delay > .zero { try? await Task.sleep(for: delay) }
+        if holdCheck, !released.withLock({ $0 }) {
+            started.continuation.yield()
+            for await _ in opened.stream { break }
+        }
         return state.withLock { $0.status }
+    }
+    /// Returns once a held `status` call is waiting.
+    func checkStarted() async { for await _ in started.stream { return } }
+    func releaseCheck() {
+        released.withLock { $0 = true }
+        opened.continuation.yield()
     }
     func request(_ kind: PermissionKind) async -> PermissionStatus { state.withLock { $0.status } }
     func settingsURL(for kind: PermissionKind) -> URL { URL(string: "x-apple.systempreferences:test")! }

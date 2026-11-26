@@ -4,11 +4,24 @@ import Foundation
 
 public enum MeetingApp: String, Codable, Sendable, CaseIterable {
     case zoom, teams
+    /// Google Meet in a web browser (SCR-017). Detected from the browser's microphone use plus a Meet window title.
+    case meet
+    case discord
+    /// A call in a browser that Earmark could not tie to a known service. Never detected automatically: the user picks it
+    /// from Detect meetings (SCR-017), so it has no policy, no prompt and no Settings row.
+    case browser
+
+    /// The apps Earmark watches on its own. Every settings, policy and prompt list iterates these; `.browser` is manual only.
+    public static var allCases: [MeetingApp] { [.zoom, .teams, .meet, .discord] }
+
     public var bundleIDs: [String] {
         switch self {
         case .zoom: ["us.zoom.xos"]
         // New Teams (`teams2`, executable MSTeams) first, then classic Teams. SCR-012.
         case .teams: ["com.microsoft.teams2", "com.microsoft.teams"]
+        // Discord's stable, PTB and Canary builds share the `com.hnc.Discord` family; the browser apps have no single ID.
+        case .discord: ["com.hnc.Discord"]
+        case .meet, .browser: []
         }
     }
 }
@@ -37,12 +50,13 @@ public struct MeetingPolicy: Codable, Sendable, Hashable {
     public var quietHours: ClosedRange<Int>?
     public var excludedKeywords: [String]
     public init(
-        app: MeetingApp, behavior: MeetingBehavior = .askFirst, autoStopGraceSeconds: TimeInterval = 15,
+        app: MeetingApp, behavior: MeetingBehavior = .askFirst, autoStopGraceSeconds: TimeInterval? = nil,
         recordVideo: Bool = false, quietHours: ClosedRange<Int>? = nil, excludedKeywords: [String] = []
     ) {
         self.app = app
         self.behavior = behavior
-        self.autoStopGraceSeconds = autoStopGraceSeconds
+        // Discord voice channels go quiet for long stretches, so a longer default grace avoids splitting one call in two.
+        self.autoStopGraceSeconds = autoStopGraceSeconds ?? (app == .discord ? 30 : 15)
         self.recordVideo = recordVideo
         self.quietHours = quietHours
         self.excludedKeywords = excludedKeywords

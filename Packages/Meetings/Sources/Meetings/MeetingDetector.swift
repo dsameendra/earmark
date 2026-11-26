@@ -36,10 +36,16 @@ public protocol MeetingProbe: Sendable {
     func changes() -> AsyncStream<Void>
     /// Audio processes that currently have input or output running, for the diagnostics list. Defaults to none.
     func activeAudioProcesses() async -> [AudioProcessActivity]
+    func browserReadings() async -> [BrowserReading]
+    var canReadTitles: Bool { get }
 }
 
 extension MeetingProbe {
     public func activeAudioProcesses() async -> [AudioProcessActivity] { [] }
+    /// Browser state for Meet and browser calls. Defaults to none (tests that only model native apps).
+    public func browserReadings() async -> [BrowserReading] { [] }
+    /// Whether window titles can be read (Accessibility granted). Defaults to false.
+    public var canReadTitles: Bool { false }
 }
 
 /// One Core Audio process with a running stream (bundle ID and flags only; never audio content).
@@ -83,16 +89,21 @@ public struct MeetingDetectorConfig: Sendable {
     public var outputOnlyDebounce: TimeInterval
     /// A pending start survives signal gaps shorter than this (one weak sample must not reset it).
     public var candidateGrace: TimeInterval
+    /// Apps that never start on playback alone. A Discord voice channel is long-lived and bots play music into it, so only a
+    /// microphone stream (or a corroborated one) opens a Discord call; the user can still pick it from Detect meetings.
+    public var outputOnlyDisabled: Set<MeetingApp>
 
     public init(
         startDebounce: TimeInterval = 3, defaultEndGrace: TimeInterval = 15,
         requireDeviceCorroboration: Bool = false,
         corroboratedDebounce: TimeInterval = 5, outputOnlyDebounce: TimeInterval = 15, candidateGrace: TimeInterval = 3,
+        outputOnlyDisabled: Set<MeetingApp> = [.discord],
         endGrace: (@Sendable (MeetingApp) async -> TimeInterval)? = nil
     ) {
         self.corroboratedDebounce = corroboratedDebounce
         self.outputOnlyDebounce = outputOnlyDebounce
         self.candidateGrace = candidateGrace
+        self.outputOnlyDisabled = outputOnlyDisabled
         self.startDebounce = startDebounce
         self.defaultEndGrace = defaultEndGrace
         self.requireDeviceCorroboration = requireDeviceCorroboration
@@ -138,6 +149,8 @@ public actor ProbeMeetingDetector: MeetingDetector {
     private let config: MeetingDetectorConfig
     private let apps: [MeetingApp]
     private let broadcaster = Broadcaster<MeetingEvent>()
+    private let scanBroadcaster = Broadcaster<MeetingScan>()
+    private var lastScan: MeetingScan?
     private var phases: [MeetingApp: Phase] = [:]
     private var lastActivity: [MeetingApp: AppAudioActivity] = [:]
     private var lastSignalAt: [MeetingApp: Date] = [:]
@@ -205,6 +218,72 @@ public actor ProbeMeetingDetector: MeetingDetector {
 
     public func audioProcesses() async -> [AudioProcessActivity] { await probe.activeAudioProcesses() }
 
+    // MARK: Scan (Detect meetings)
+
+    /// Calls Earmark can see right now, without any debounce: the user asked, so a clear signal is enough. Native apps use the
+    /// same rule as automatic detection minus the waiting; browsers use their microphone state plus a Meet title.
+    public func scan() async -> MeetingScan {
+        var calls: [DetectedCall] = []
+        var notes: [String] = []
+        for app in apps where app != .meet {
+            let activity = await probe.activity(for: app)
+            lastActivity[app] = activity
+            if qualifies(activity, elapsed: .infinity, app: app) || (app == .discord && activity.isAppRunning && activity.micInput) {
+                calls.append(
+                    DetectedCall(id: app.rawValue, app: app, label: Self.name(of: app), captureBundleID: nil, detail: "Call audio is running"))
+            } else if activity.isAppRunning {
+                notes.append("\(Self.name(of: app)): running, no call audio")
+            } else {
+                notes.append("\(Self.name(of: app)): not running")
+            }
+        }
+        let readings = await probe.browserReadings()
+        var needsAccessibility = false
+        for reading in readings {
+            let name = reading.browser.name
+            guard reading.micInput else {
+                notes.append("\(name): open, microphone not in use")
+                continue
+            }
+            if reading.meetWindowOpen {
+                calls.append(
+                    DetectedCall(
+                        id: "meet.\(reading.browser.captureBundleID)", app: .meet, label: "Google Meet in \(name)",
+                        captureBundleID: reading.browser.captureBundleID, detail: "Microphone in use and a Meet window is open"))
+            } else {
+                if !probe.canReadTitles { needsAccessibility = true }
+                let detail = probe.canReadTitles ? "Microphone in use; no Meet window found" : "Microphone in use"
+                calls.append(
+                    DetectedCall(
+                        id: "browser.\(reading.browser.captureBundleID)", app: .browser, label: "Browser call in \(name)",
+                        captureBundleID: reading.browser.captureBundleID, detail: detail))
+            }
+        }
+        if readings.isEmpty { notes.append("No supported browser is open") }
+        return MeetingScan(calls: calls, notes: notes, needsAccessibilityForMeet: needsAccessibility)
+    }
+
+    /// Emits the scan result whenever it changes, driven by the probe's change signal (no polling). Call ``scan()`` for the
+    /// current value; this stream only reports later changes.
+    public nonisolated func scans() -> AsyncStream<MeetingScan> { scanBroadcaster.stream() }
+
+    private func publishScan() async {
+        let next = await scan()
+        guard next != lastScan else { return }
+        lastScan = next
+        scanBroadcaster.send(next)
+    }
+
+    static func name(of app: MeetingApp) -> String {
+        switch app {
+        case .zoom: "Zoom"
+        case .teams: "Microsoft Teams"
+        case .meet: "Google Meet"
+        case .discord: "Discord"
+        case .browser: "Browser call"
+        }
+    }
+
     // MARK: Signals
 
     /// Enough to open a pending start: the app is running and shows output, or a mic stream together with a call helper.
@@ -213,12 +292,13 @@ public actor ProbeMeetingDetector: MeetingDetector {
     }
 
     /// Whether the readings justify `.started` after `elapsed` seconds of continuous signal.
-    private func qualifies(_ a: AppAudioActivity, elapsed: TimeInterval) -> Bool {
+    private func qualifies(_ a: AppAudioActivity, elapsed: TimeInterval, app: MeetingApp) -> Bool {
         guard a.isAppRunning else { return false }
         let slack = 0.001
         if a.micInput && a.audioOutput && elapsed + slack >= config.startDebounce { return true }
         let corroborated = (a.audioOutput && (a.micInput || a.deviceMicInUse)) || (a.helperPresent && (a.audioOutput || a.micInput))
         if corroborated && elapsed + slack >= config.corroboratedDebounce { return true }
+        if config.outputOnlyDisabled.contains(app) { return false }
         return a.audioOutput && elapsed + slack >= config.outputOnlyDebounce
     }
 
@@ -229,6 +309,7 @@ public actor ProbeMeetingDetector: MeetingDetector {
 
     private func evaluateAll() async {
         for app in apps { await evaluate(app) }
+        await publishScan()
     }
 
     private func evaluate(_ app: MeetingApp) async {
@@ -319,7 +400,7 @@ public actor ProbeMeetingDetector: MeetingDetector {
             phases[app] = .candidate(candidate)
             return true
         }
-        if qualifies(activity, elapsed: now.timeIntervalSince(candidate.since)) {
+        if qualifies(activity, elapsed: now.timeIntervalSince(candidate.since), app: app) {
             phases[app] = .active(since: candidate.since)
             lastStartedAt[app] = candidate.since
             log.info("meeting started: \(app.rawValue, privacy: .public)")

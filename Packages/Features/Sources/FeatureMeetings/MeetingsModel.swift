@@ -89,6 +89,14 @@ public final class MeetingsModel {
     public private(set) var consentReminder: MeetingApp?
     public private(set) var finishedTranscriptID: TranscriptID?
     public private(set) var actionError: String?
+    /// Calls running right now that can be transcribed (the "Available now" list), kept live by the scanner.
+    public private(set) var available: [LiveMeetingCandidate] = []
+    /// What the last scan saw, shown when it found nothing.
+    public private(set) var scanNotes: [String] = []
+    public private(set) var needsAccessibilityForMeet = false
+    public private(set) var isDetecting = false
+    /// Set once the user pressed Detect meetings and nothing was found (cleared by the next scan that finds something).
+    public private(set) var detectFoundNothing = false
     public let consent: MeetingConsentModel
     /// Asks the shell to bring the Meetings section forward (set by the shell).
     @ObservationIgnored public var navigate: (@MainActor () -> Void)?
@@ -97,6 +105,7 @@ public final class MeetingsModel {
     @ObservationIgnored private let transcripts: any TranscriptRepository
     @ObservationIgnored private let detector: any MeetingDetector
     @ObservationIgnored private let capture: (any MeetingCapturing)?
+    @ObservationIgnored private let scanner: (any MeetingScanning)?
     @ObservationIgnored private let prompter: (any MeetingPromptPresenting)?
     @ObservationIgnored private let live: any LiveSessionControlling
     @ObservationIgnored private let settings: any SettingsStore
@@ -119,6 +128,7 @@ public final class MeetingsModel {
         transcripts = services.transcripts
         detector = services.meetingDetector
         capture = services.meetingCapture
+        scanner = services.meetingScanner
         prompter = services.meetingPrompts
         live = services.live
         settings = services.settings
@@ -155,6 +165,7 @@ public final class MeetingsModel {
     }
 
     @ObservationIgnored private var lastApp: MeetingApp?
+    @ObservationIgnored private var pendingTarget: String?
     private var pendingApp: MeetingApp? { lastApp }
 
     public var isRecording: Bool {
@@ -190,6 +201,7 @@ public final class MeetingsModel {
             group.addTask { await self.watchCapture() }
             group.addTask { await self.watchLines() }
             group.addTask { await self.watchLive() }
+            group.addTask { await self.watchScans() }
         }
     }
 
@@ -230,6 +242,40 @@ public final class MeetingsModel {
     private func watchResponses() async {
         guard let prompter else { return }
         for await response in prompter.responses() { await handle(response) }
+    }
+
+    private func watchScans() async {
+        guard let scanner else { return }
+        apply(scan: await scanner.scan())
+        for await result in scanner.results() { apply(scan: result) }
+    }
+
+    private func apply(scan result: MeetingScanResult) {
+        available = result.candidates
+        scanNotes = result.notes
+        needsAccessibilityForMeet = result.needsAccessibilityForMeet
+        if !result.candidates.isEmpty { detectFoundNothing = false }
+    }
+
+    /// "Detect meetings": looks again right now (no waiting) and lists every call that can be transcribed. Always answers:
+    /// when nothing is found, ``scanNotes`` says what was seen.
+    public func detect() async {
+        guard let scanner, !isDetecting else { return }
+        isDetecting = true
+        let result = await scanner.scan()
+        apply(scan: result)
+        detectFoundNothing = result.candidates.isEmpty
+        isDetecting = false
+    }
+
+    public func dismissDetectResult() { detectFoundNothing = false }
+
+    /// Starts capture of a listed call. An explicit choice from the list is the consent to be asked, so the per-app behaviour
+    /// ("Do nothing", an earlier Ignore) does not apply; recording still goes through the consent notice.
+    public func startCapture(_ candidate: LiveMeetingCandidate, mode: MeetingCaptureMode) async {
+        pendingTarget = candidate.targetBundleID
+        // `begin` clears the target when it starts; it survives the consent notice in between.
+        await startCapture(candidate.app, mode: mode)
     }
 
     private func watchCapture() async {
@@ -338,7 +384,10 @@ public final class MeetingsModel {
         await begin(pending.app, mode: pending.mode)
     }
 
-    public func cancelConsent() { pendingRecording = nil }
+    public func cancelConsent() {
+        pendingRecording = nil
+        pendingTarget = nil
+    }
 
     public func dismissConsentReminder() { consentReminder = nil }
 
@@ -393,9 +442,10 @@ public final class MeetingsModel {
         lastApp = app
         await prompter?.withdraw(app: app)
         apply(captureState: .starting)
+        defer { pendingTarget = nil }
         if let capture {
             do {
-                try await capture.start(app: app, mode: mode)
+                try await capture.start(app: app, mode: mode, targetBundleID: pendingTarget)
             } catch {
                 actionError = String(describing: error)
                 apply(captureState: .failed(actionError ?? "Capture failed"))

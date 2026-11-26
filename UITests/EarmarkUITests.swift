@@ -404,18 +404,47 @@ final class EarmarkUITests: XCTestCase {
         let app = launch(appearance: "dark")
         defer { app.terminate() }
         app.typeKey("3", modifierFlags: .command)
-        let zoom = app.descendants(matching: .any)["meetings.policy.zoom"].firstMatch
+        let zoom = app.descendants(matching: .any)["meetings.policy"].firstMatch
         XCTAssertTrue(zoom.waitForExistence(timeout: 8))
         capture(app, "meetings-policy-before")
         let before = zoom.value as? String ?? ""
         zoom.click()
-        let auto = app.descendants(matching: .any)["meetings.policy.zoom.autoTranscribeAndRecord"].firstMatch
+        // Menu items carry no custom identifier; the first section is Zoom's.
+        let auto = app.menuItems["Auto-transcribe + record"].firstMatch
         XCTAssertTrue(auto.waitForExistence(timeout: 5), "policy choices must open")
         auto.click()
         Thread.sleep(forTimeInterval: 1)
         capture(app, "meetings-policy-after")
-        let after = app.descendants(matching: .any)["meetings.policy.zoom"].firstMatch.value as? String ?? ""
+        let after = app.descendants(matching: .any)["meetings.policy"].firstMatch.value as? String ?? ""
         XCTAssertNotEqual(before, after, "label must reflect the new policy (was \(before), now \(after))")
+    }
+
+    /// Detect meetings: the live list shows every call that can be transcribed, each with its own actions.
+    func testAvailableNowListsLiveCalls() throws {
+        let app = launch(appearance: "dark", arguments: ["-EarmarkTestMeetingScan", "found"])
+        defer { app.terminate() }
+        app.typeKey("3", modifierFlags: .command)
+        XCTAssertTrue(app.buttons["meetings.detect"].waitForExistence(timeout: 8))
+        let zoom = app.buttons["meetings.available.zoom.transcribe"]
+        XCTAssertTrue(zoom.waitForExistence(timeout: 8), "a live Zoom call must be listed")
+        XCTAssertTrue(app.buttons["meetings.available.meet.com.google.Chrome.transcribe"].exists, "a Meet call must be listed")
+        XCTAssertTrue(app.buttons["meetings.available.browser.org.mozilla.firefox.record"].exists, "a plain browser call must be listed")
+        capture(app, "meetings-available-now")
+        app.buttons["meetings.detect"].click()
+        XCTAssertTrue(zoom.waitForExistence(timeout: 5), "Detect keeps the list")
+    }
+
+    /// Detect meetings never fails silently: when nothing is running it says what it looked at.
+    func testDetectMeetingsExplainsWhenNothingIsFound() throws {
+        let app = launch(appearance: "light", arguments: ["-EarmarkTestMeetingScan", "none"])
+        defer { app.terminate() }
+        app.typeKey("3", modifierFlags: .command)
+        let detect = app.buttons["meetings.detect"]
+        XCTAssertTrue(detect.waitForExistence(timeout: 8))
+        XCTAssertFalse(app.descendants(matching: .any)["meetings.available.nothing"].exists)
+        detect.click()
+        XCTAssertTrue(app.descendants(matching: .any)["meetings.available.nothing"].waitForExistence(timeout: 5))
+        capture(app, "meetings-detect-nothing")
     }
 
     func testExpandedLightWorkspace() { expandedWorkspace(appearance: "light") }

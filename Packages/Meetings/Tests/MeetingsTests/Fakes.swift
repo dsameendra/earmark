@@ -102,6 +102,14 @@ final class FakeProbe: MeetingProbe {
     }
     func activity(for app: MeetingApp) async -> AppAudioActivity { values.withLock { $0[app] } ?? .inactive }
     func changes() -> AsyncStream<Void> { broadcaster.stream() }
+
+    private let browsers = OSAllocatedUnfairLock(initialState: (readings: [BrowserReading](), titles: false))
+    func setBrowsers(_ readings: [BrowserReading], canReadTitles: Bool = true) {
+        browsers.withLock { $0 = (readings, canReadTitles) }
+        broadcaster.send(())
+    }
+    func browserReadings() async -> [BrowserReading] { browsers.withLock { $0.readings } }
+    var canReadTitles: Bool { browsers.withLock { $0.titles } }
 }
 
 extension AppAudioActivity {

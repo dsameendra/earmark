@@ -25,6 +25,8 @@ public struct AppServices: Sendable {
     public var dictation: DictationMenuControl?
     /// Meeting capture (record / transcribe a detected meeting); `nil` until the Meetings runtime (T23) is wired.
     public var meetingCapture: (any MeetingCapturing)?
+    /// Live call scanning for the Meetings page ("Detect meetings"); `nil` where unavailable.
+    public var meetingScanner: (any MeetingScanning)?
     /// Notification prompts for detected meetings; `nil` where unavailable (the inline banner is the fallback).
     public var meetingPrompts: (any MeetingPromptPresenting)?
     /// Voice profile storage; `nil` hides the voice profile controls.
@@ -42,7 +44,7 @@ public struct AppServices: Sendable {
         permissions: any PermissionsServicing, audioDevices: any AudioDeviceProviding, settings: any SettingsStore,
         media: (any MediaRepository)? = nil, presets: (any PresetRepository)? = nil,
         liveExtras: (any LiveSessionExtras)? = nil, dictation: DictationMenuControl? = nil,
-        meetingCapture: (any MeetingCapturing)? = nil, meetingPrompts: (any MeetingPromptPresenting)? = nil,
+        meetingCapture: (any MeetingCapturing)? = nil, meetingScanner: (any MeetingScanning)? = nil, meetingPrompts: (any MeetingPromptPresenting)? = nil,
         voiceProfiles: (any VoiceProfileRepository)? = nil, speakerEmbeddings: (any SpeakerEmbeddingProvider)? = nil,
         segmentRetranscriber: (any SegmentRetranscriptionService)? = nil, translation: (any TranslationPreparing)? = nil,
         mediaRoots: @escaping @Sendable () async -> [URL] = { MediaFiles.defaultRoots }
@@ -51,6 +53,7 @@ public struct AppServices: Sendable {
         self.segmentRetranscriber = segmentRetranscriber
         self.translation = translation
         self.meetingCapture = meetingCapture
+        self.meetingScanner = meetingScanner
         self.meetingPrompts = meetingPrompts
         self.voiceProfiles = voiceProfiles
         self.speakerEmbeddings = speakerEmbeddings

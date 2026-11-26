@@ -269,7 +269,11 @@ public final class ScreenCaptureKitBackend: AudioCaptureBackend, @unchecked Send
         case .system:
             filter = SCContentFilter(display: display, excludingApplications: [], exceptingWindows: [])
         case .app(let bundleID):
-            let apps = content.applications.filter { $0.bundleIdentifier == bundleID || $0.bundleIdentifier.hasPrefix(bundleID + ".") }
+            let apps = content.applications.filter {
+                let id = $0.bundleIdentifier.lowercased()
+                let target = bundleID.lowercased()
+                return id == target || id.hasPrefix(target + ".")
+            }
             guard !apps.isEmpty else { throw AppError.deviceUnavailable }
             filter = SCContentFilter(display: display, including: apps, exceptingWindows: [])
         }

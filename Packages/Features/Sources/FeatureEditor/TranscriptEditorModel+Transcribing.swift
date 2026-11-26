@@ -121,7 +121,7 @@ extension TranscriptEditorModel {
     }
 
     /// Re-reads what the queue has saved so far. A no-op when nothing changed.
-    private func reloadLiveSegments() async {
+    func reloadLiveSegments() async {
         guard let loaded = try? await repository.segments(for: transcriptID) else { return }
         let sorted = loaded.enumerated().sorted { ($0.element.start, $0.offset) < ($1.element.start, $1.offset) }.map(\.element)
         guard sorted != segments else { return }
@@ -175,4 +175,10 @@ extension TranscriptEditorModel {
         guard isTranscribing, followsLatest else { return }
         followsLatest = false
     }
+}
+
+
+extension TranscriptEditorModel {
+    /// A running meeting or live session keeps saving segments to this transcript: pull what it has saved so far into the list.
+    public func refreshSegmentsFromStore() async { await reloadLiveSegments() }
 }

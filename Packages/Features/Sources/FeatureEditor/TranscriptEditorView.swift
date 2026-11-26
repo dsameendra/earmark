@@ -2,6 +2,7 @@ import AppCore
 import AppKit
 import DesignSystem
 import FeatureSupport
+import FeatureWorkspace
 import SwiftUI
 
 /// The transcript editor and player for one transcript (T12, EDIT-AC-01...19).
@@ -12,15 +13,21 @@ public struct TranscriptEditorView: View {
     private let services: AppServices
 
     private let playbackCenter: PlaybackCenter?
+    private let onNavigate: (TranscriptID) -> Void
 
-    public init(transcriptID: TranscriptID, services: AppServices, playbackCenter: PlaybackCenter? = nil) {
+    /// - Parameter onNavigate: opens another transcript (a meeting's final transcript replacing the live draft that is open).
+    public init(
+        transcriptID: TranscriptID, services: AppServices, playbackCenter: PlaybackCenter? = nil,
+        onNavigate: @escaping (TranscriptID) -> Void = { _ in }
+    ) {
         self.transcriptID = transcriptID
         self.services = services
         self.playbackCenter = playbackCenter
+        self.onNavigate = onNavigate
     }
 
     public var body: some View {
-        EditorContent(transcriptID: transcriptID, services: services, playbackCenter: playbackCenter).id(transcriptID)
+        EditorContent(transcriptID: transcriptID, services: services, playbackCenter: playbackCenter, onNavigate: onNavigate).id(transcriptID)
     }
 }
 
@@ -37,6 +44,9 @@ private struct EditorContent: View {
     @Environment(\.inspectorPresented) private var inspectorPresented
     @Environment(\.inspectorToggle) private var inspectorToggle
     @State private var model: TranscriptEditorModel
+    @State private var workspace: WorkspaceModel
+    @State private var wasLive = false
+    private let services: AppServices
     @State private var find: FindReplaceModel
     @State private var export: EditorExportModel
     @State private var activeTool: EditorTool?
@@ -46,8 +56,18 @@ private struct EditorContent: View {
     @FocusState private var findFocused: Bool
     @FocusState private var listFocused: Bool
 
-    init(transcriptID: TranscriptID, services: AppServices, playbackCenter: PlaybackCenter?) {
+    init(transcriptID: TranscriptID, services: AppServices, playbackCenter: PlaybackCenter?, onNavigate: @escaping (TranscriptID) -> Void) {
         let model = TranscriptEditorModel(transcriptID: transcriptID, services: services, playbackCenter: playbackCenter)
+        self.services = services
+        let workspace = WorkspaceModel(transcriptID: transcriptID, services: services)
+        workspace.currentTime = { [weak model] in
+            guard let model else { return nil }
+            if model.playback.canPlay { return model.playback.currentTime }
+            return workspace.isLive ? model.segments.last?.end : nil
+        }
+        workspace.seek = { [weak model] time in _ = model?.playback.seek(to: time) }
+        workspace.onSuperseded = { final in onNavigate(final) }
+        _workspace = State(initialValue: workspace)
         _model = State(initialValue: model)
         _find = State(initialValue: FindReplaceModel(editor: model))
         _export = State(initialValue: EditorExportModel(editor: model))
@@ -63,6 +83,9 @@ private struct EditorContent: View {
                 }.allowsHitTesting(false)
             )
             .task { await model.load() }
+            .task { await workspace.start() }
+            .task(id: workspace.isLive) { await followLiveSession() }
+            .onChange(of: model.playback.currentTime) { workspace.follow(time: model.playback.currentTime) }
             .onChange(of: model.revision) { find.refresh() }
             .onChange(of: model.selection) { if find.scope == .selection { find.refresh() } }
             .onChange(of: model.showIgnored) { find.refresh() }
@@ -96,7 +119,10 @@ private struct EditorContent: View {
                 playerWindow?.close()
                 playerWindow = nil
                 model.leaveEditor()
-                Task { await model.flush() }
+                Task {
+                    await model.flush()
+                    await workspace.stop()
+                }
             }
             .sheet(isPresented: $showExport) { ExportSheet(export: export) { showExport = false }.dsEntrance() }
             // The More menu sits at the trailing window edge, where a popover centred on it would hang outside the window. Its panels
@@ -163,7 +189,7 @@ private struct EditorContent: View {
                 // The transport bar is laid out below the transcript, not as a safe-area inset: the video layout's AppKit split
                 // view ignores that inset, so the list ran underneath the bar and its last lines could never be scrolled into view.
                 VStack(spacing: 0) {
-                    content
+                    workspaceContent
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .clipShape(RoundedRectangle(cornerRadius: DSRadius.panel))
                     TransportBar(model: model).padding(DSSpacing.md)
@@ -264,6 +290,12 @@ private struct EditorContent: View {
                 .help(model.lockedHelp ?? "Export this transcript")
                 .accessibilityIdentifier("editor.export")
         }
+        ToolbarSpacer(.fixed)
+        ToolbarItemGroup {
+            EditorPinButton(model: model, services: services)
+            EditorFolderMenu(model: model, services: services)
+            WorkspaceSummarizeButton(workspace: workspace)
+        }
     }
 
     /// The inspector cards. Inline, their panels hang off the card's own button; inside the collapsed-inspector popover they
@@ -317,19 +349,67 @@ private struct EditorContent: View {
         case .failed(let message):
             ErrorState(message: message) { Task { await model.load() } }
         case .loaded:
-            if !model.playback.isDetached && model.playback.isVideo {
-                VSplitView {
-                    PlayerPanelView(model: model, onRelink: relink).frame(minHeight: 90, idealHeight: 240)
-                    transcriptArea.frame(minHeight: 160)
-                }
-            } else {
-                VStack(spacing: 0) {
-                    if !model.playback.isDetached && !model.playback.canPlay {
-                        PlayerPanelView(model: model, onRelink: relink).frame(height: 110)
-                    }
-                    transcriptArea.frame(minHeight: 160)
-                }
+            stagedLayout { transcriptArea }
+        }
+    }
+
+    /// The tab bar over the active tab. The Transcript tab is the editor's own list; the other tabs sit under the same stage
+    /// (video or slides) so the recording stays in view while writing notes or asking questions.
+    @ViewBuilder
+    private var workspaceContent: some View {
+        VStack(spacing: 0) {
+            if model.loadState == .loaded {
+                WorkspaceTabBar(workspace: workspace, hasMedia: model.playback.canPlay)
+                WorkspaceFinalizingBanner(workspace: workspace)
             }
+            switch workspace.tab {
+            case .transcript: content
+            default: stagedLayout { WorkspaceTabContent(workspace: workspace) }
+            }
+        }
+    }
+
+    /// Stage on top (slides, or the video player), `body` below. Audio-only recordings show the compact player strip.
+    @ViewBuilder
+    private func stagedLayout<Body: View>(@ViewBuilder _ body: () -> Body) -> some View {
+        if workspace.showsSlides {
+            VSplitView {
+                WorkspaceSlideStage(workspace: workspace).frame(minHeight: 140, idealHeight: 300)
+                body().frame(minHeight: 160)
+            }
+        } else if !model.playback.isDetached && model.playback.isVideo {
+            VSplitView {
+                PlayerPanelView(model: model, onRelink: relink).frame(minHeight: 90, idealHeight: 240)
+                body().frame(minHeight: 160)
+            }
+        } else {
+            VStack(spacing: 0) {
+                if !model.playback.isDetached && !model.playback.canPlay && !workspace.isLive {
+                    PlayerPanelView(model: model, onRelink: relink).frame(height: 110)
+                }
+                body().frame(minHeight: 160)
+            }
+        }
+    }
+
+    /// While a meeting or live session is writing this transcript: read-only, and the list follows what has been said.
+    private func followLiveSession() async {
+        guard workspace.isLive else {
+            if wasLive {
+                wasLive = false
+                model.setReadOnly(false)
+                await model.refreshSegmentsFromStore()
+            }
+            return
+        }
+        wasLive = true
+        model.setReadOnly(true)
+        let lines = services.live.lines()
+        var last = ContinuousClock.now
+        for await _ in lines {
+            if ContinuousClock.now - last < .seconds(1) { continue }
+            last = .now
+            await model.refreshSegmentsFromStore()
         }
     }
 
@@ -401,6 +481,70 @@ private extension View {
             arrowEdge: edge
         ) {
             content(tool).dsEntrance().presentationBackground(DSColor.contentBackground).presentationSizing(.fitted)
+        }
+    }
+}
+
+
+/// Pins the transcript to the sidebar (or unpins it). Goes through the editor's header so a later title edit cannot undo it.
+private struct EditorPinButton: View {
+    let model: TranscriptEditorModel
+    let services: AppServices
+
+    var body: some View {
+        let pinned = model.transcript?.pinOrder != nil
+        Button {
+            Task {
+                let order = await PinOrder.next(services: services)
+                model.updateHeader { $0.pinOrder = pinned ? nil : order }
+                try? await Task.sleep(for: .milliseconds(400))
+                services.workspace.events.send(.libraryChanged)
+            }
+        } label: {
+            DSToolbarLabel(pinned ? "Unpin" : "Pin", systemImage: pinned ? "pin.slash" : "pin", iconOnly: true)  // stock-chrome: pin
+        }
+        .labelStyle(.iconOnly)
+        .dsToolbarControl()
+        .help(pinned ? "Remove from the sidebar" : "Pin to the sidebar")
+        .accessibilityLabel(pinned ? "Unpin from sidebar" : "Pin to sidebar")
+        .accessibilityIdentifier("editor.pin")
+    }
+}
+
+/// Moves the transcript into a folder.
+private struct EditorFolderMenu: View {
+    let model: TranscriptEditorModel
+    let services: AppServices
+    @State private var folders: [Folder] = []
+
+    var body: some View {
+        let current = folders.first { $0.id == model.transcript?.folderID }
+        Menu {
+            Button("Library (no folder)") { move(to: nil) }
+            Divider()
+            ForEach(folders) { folder in
+                Button { move(to: folder.id) } label: {
+                    if folder.id == current?.id { Label(folder.name, systemImage: "checkmark") } else { Text(folder.name) }
+                }
+            }
+        } label: {
+            DSToolbarLabel(current?.name ?? "Folder", systemImage: "folder")  // stock-chrome: folder chip
+        }
+        .labelStyle(.titleAndIcon)
+        .dsToolbarControl()
+        .help("Move this transcript to a folder")
+        .accessibilityIdentifier("editor.folder")
+        .task { folders = (try? await services.workspace.folders.folders()) ?? [] }
+        .task {
+            for await _ in services.workspace.folders.changes() { folders = (try? await services.workspace.folders.folders()) ?? [] }
+        }
+    }
+
+    private func move(to folder: FolderID?) {
+        model.updateHeader { $0.folderID = folder }
+        Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            services.workspace.events.send(.libraryChanged)
         }
     }
 }

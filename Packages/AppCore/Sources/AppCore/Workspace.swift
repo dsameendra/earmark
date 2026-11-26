@@ -313,7 +313,7 @@ public protocol IntelligenceServicing: Sendable {
     func supports(language: LanguageCode?) async -> Bool
     func summarize(_ request: SummaryRequest) -> AsyncThrowingStream<SummaryEvent, any Error>
     /// Summary of one attached file; the result is stored on the attachment by the caller.
-    func summarize(attachment: AttachmentID) -> AsyncThrowingStream<SummaryEvent, any Error>
+    func summarize(attachment: Attachment) -> AsyncThrowingStream<SummaryEvent, any Error>
     func answer(_ request: ChatRequest) -> AsyncThrowingStream<ChatEvent, any Error>
 }
 

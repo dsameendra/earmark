@@ -164,7 +164,7 @@ public struct ScriptedIntelligence: IntelligenceServicing {
         }
     }
 
-    public func summarize(attachment: AttachmentID) -> AsyncThrowingStream<SummaryEvent, any Error> {
+    public func summarize(attachment: Attachment) -> AsyncThrowingStream<SummaryEvent, any Error> {
         AsyncThrowingStream { continuation in
             continuation.yield(.finished(markdown: "- Key point one\n- Key point two"))
             continuation.finish()
@@ -191,4 +191,16 @@ public struct DraggedTranscripts: Codable, Sendable, Transferable {
     public var ids: [TranscriptID]
     public init(ids: [TranscriptID]) { self.ids = ids }
     public static var transferRepresentation: some TransferRepresentation { CodableRepresentation(contentType: .json) }
+}
+
+
+/// The next free pin position, after every pinned folder and transcript (SCR-018).
+public enum PinOrder {
+    public static func next(services: AppServices) async -> Int {
+        var query = LibraryQuery()
+        query.pinnedOnly = true
+        let transcripts = ((try? await services.transcripts.list(query)) ?? []).compactMap(\.pinOrder)
+        let folders = ((try? await services.workspace.folders.folders()) ?? []).compactMap(\.pinOrder)
+        return (transcripts + folders).max().map { $0 + 1 } ?? 0
+    }
 }

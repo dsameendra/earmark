@@ -147,7 +147,7 @@ public struct ShellView: View {
 
     @ViewBuilder private var detail: some View {
         if let id = model.openedTranscript {
-            TranscriptEditorView(transcriptID: id, services: model.services, playbackCenter: model.playback)
+            TranscriptEditorView(transcriptID: id, services: model.services, playbackCenter: model.playback, onNavigate: { model.openTranscript($0) })
                 .id(id)
         } else {
             sectionDetail

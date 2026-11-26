@@ -118,6 +118,7 @@ import Testing
     /// Files allowed to build colours from data (not from design values), with the reason.
     static let literalColorAllowlist: [String: String] = [
         "FeatureEditor/WordFlow.swift": "renders a user-chosen speaker colour persisted as hex (SpeakerColorSpec.hex)",
+        "FeatureWorkspace/MarkdownTextEditor.swift": "bridges DSColor tokens to NSColor for the AppKit text view (no literal values)",
         "FeatureSettings/PreferenceViews.swift": "caption preset text colour is user data (hex string) in the live preview",
         "LiveCaptions/LiveCaptions/CaptionPresets.swift": "decodes the user-chosen caption colour persisted as a hex string (CaptionStyle.color)",
     ]

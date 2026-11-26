@@ -353,8 +353,25 @@ struct LiveLineRow: View {
 struct MeetingRow: View {
     let row: MeetingRowInfo
     let onOpen: () -> Void
+    private var canOpen: Bool { row.meeting.transcriptID != nil }
 
     var body: some View {
+        if canOpen {
+            Button(action: onOpen) { content }
+                .buttonStyle(.dsHover(shape: .rounded(DSRadius.small)))
+                .help("Open transcript")
+                .accessibilityIdentifier("meetings.row.\(row.id).open")
+                .listRowSeparator(.hidden)
+                .listRowBackground(DSColor.contentBackground)
+        } else {
+            content
+                .listRowSeparator(.hidden)
+                .listRowBackground(DSColor.contentBackground)
+                .accessibilityIdentifier("meetings.row.\(row.id)")
+        }
+    }
+
+    private var content: some View {
         HStack(spacing: DSSpacing.md) {
             DSIcon(row.isRecorded ? MeetingsSymbol.recorded : nil, orStock: MeetingsSymbol.transcriptOnly).dsSymbolStyle(.monochrome)
                 .foregroundStyle(row.isRecorded ? DSColor.recording : DSColor.secondaryText)
@@ -373,17 +390,12 @@ struct MeetingRow: View {
                     .font(DSTypography.timestamp).foregroundStyle(DSColor.secondaryText)
             }
             StatusPill(LocalizedStringKey(row.meeting.app.badgeTitle))
-            if row.meeting.transcriptID != nil {
-                Button("Open", symbol: MeetingsSymbol.openTranscript) { onOpen() }.labelStyle(.iconOnly)
-                    .buttonStyle(.borderless).help("Open transcript")
-                    .accessibilityIdentifier("meetings.row.\(row.id).open")
+            if canOpen {
+                DSIcon(MeetingsSymbol.openTranscript).foregroundStyle(DSColor.tertiaryText).accessibilityHidden(true)
             }
         }
         .padding(.vertical, DSSpacing.md)
-        .listRowSeparator(.hidden)
-        .listRowBackground(DSColor.contentBackground)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("meetings.row.\(row.id)")
+        .contentShape(Rectangle())
     }
 }
 

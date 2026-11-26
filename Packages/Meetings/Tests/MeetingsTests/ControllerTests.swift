@@ -193,6 +193,19 @@ struct ControllerTests {
         #expect(session?.recording == false)
     }
 
+    @Test("a transcribe-only meeting is saved as a meeting transcript named after the service")
+    func transcribeOnlyIsNamed() async throws {
+        let rig = Rig()
+        await rig.setBehavior(.autoTranscribe)
+        await rig.zoomStarted()
+        try await rig.transcripts.save(Transcript(id: rig.live.transcriptID, title: "Live captions", source: .liveCaptions))
+        _ = await rig.controller.stopSession()
+        let saved = try #require(await rig.transcripts.transcript(rig.live.transcriptID))
+        #expect(saved.source == .meeting)
+        #expect(saved.title.hasPrefix("Zoom meeting, "))
+        #expect(saved.meetingID != nil)
+    }
+
     @Test("autoTranscribeAndRecord records both tracks, shows the indicator and the one-time consent reminder")
     func autoRecord() async {
         let rig = Rig()

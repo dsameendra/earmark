@@ -11,18 +11,21 @@ public struct MenuBarActions {
     public var openQueue: () -> Void
     public var openLibrary: () -> Void
     public var openMeetings: () -> Void
+    /// Opens Meetings and looks for calls that can be transcribed right now.
+    public var detectMeetings: () -> Void
     public var openMainWindow: () -> Void
     public var openSettings: () -> Void
     public var quit: () -> Void
     public init(
         transcribeFile: @escaping () -> Void = {}, openQueue: @escaping () -> Void = {}, openLibrary: @escaping () -> Void = {},
-        openMeetings: @escaping () -> Void = {}, openMainWindow: @escaping () -> Void = {}, openSettings: @escaping () -> Void = {},
+        openMeetings: @escaping () -> Void = {}, detectMeetings: @escaping () -> Void = {}, openMainWindow: @escaping () -> Void = {}, openSettings: @escaping () -> Void = {},
         quit: @escaping () -> Void = {}
     ) {
         self.transcribeFile = transcribeFile
         self.openQueue = openQueue
         self.openLibrary = openLibrary
         self.openMeetings = openMeetings
+        self.detectMeetings = detectMeetings
         self.openMainWindow = openMainWindow
         self.openSettings = openSettings
         self.quit = quit
@@ -256,6 +259,7 @@ public struct MenuBarContentView: View {
             navigationRow("Library", symbol: .library, identifier: "menuBar.library", action: actions.openLibrary)
             navigationRow("Queue", symbol: .queue, identifier: "menuBar.queue", action: actions.openQueue, count: model.inputs.runningJobs)
             navigationRow("Meetings", symbol: .meetings, identifier: "menuBar.meetings", action: actions.openMeetings)
+            navigationRow("Detect meetings", symbol: .retry, identifier: "menuBar.detectMeetings", action: actions.detectMeetings)
         }
     }
 

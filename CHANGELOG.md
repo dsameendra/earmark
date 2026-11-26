@@ -9,6 +9,11 @@ Releases are listed newest first. The website carries the same history: https://
 - Discord voice and video calls are supported like Zoom and Teams.
 - A new Detect meetings button on the Meetings page looks again right now and lists every call that can be transcribed, including a browser call Earmark could not tie to a service (Safari included). Each row has Transcribe and Transcribe and record. If nothing is found it says what it looked at.
 - One Detection menu on the Meetings page sets what Earmark does for each of Zoom, Teams, Meet and Discord.
+- Meetings and recordings are named after the service: "Discord meeting", "Google Meet", "Browser call" and so on, in the transcript title and in the recording's folder name. Discord calls were wrongly called Teams.
+- A call that is only transcribed (not recorded) is now saved as a meeting under the same name, not as an anonymous live-captions session.
+- The final transcript of a meeting keeps the language that live captions already heard. With language detection on, a short English call could come out in the wrong script.
+- Detect meetings is also in the menu bar.
+- In Meetings, clicking anywhere on a past meeting opens its transcript.
 - Note: after recording a Meet or Discord meeting, older versions of Earmark cannot open that meeting, so do not downgrade.
 
 ## 1.1.1

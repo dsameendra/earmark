@@ -231,18 +231,24 @@ public actor MeetingFinalizer {
         let modelID = try await prepareModel(&warnings)
         try Task.checkCancellation()
 
-        // 2. Offline re-transcription, mic then remote.
+        // 2. Offline re-transcription, mic then remote. Auto-detect on a short clip can pick the wrong language (English
+        // speech came back in Devanagari), so a language the live pass already settled on is kept.
+        var liveLanguages: [LanguageCode?] = []
+        if let liveID = input.live?.transcriptID, let live = try? await deps.transcripts.segments(for: liveID) {
+            liveLanguages = live.filter { !$0.isIgnored }.map(\.languageCode)
+        }
+        let languageMode = Self.resolvedLanguageMode(config.languageMode, liveLanguages: liveLanguages)
         var micSegments: [Segment]?
         var remoteSegments: [Segment]?
         if let micURL {
-            do { micSegments = try await transcribe(micURL, model: modelID, stage: .transcribingMic, from: 0.05, to: 0.30) } catch {
+            do { micSegments = try await transcribe(micURL, model: modelID, mode: languageMode, stage: .transcribingMic, from: 0.05, to: 0.30) } catch {
                 if error is CancellationError { throw error }
                 warnings.append(.retranscriptionFailed(track: .mic, reason: String(describing: error)))
             }
         }
         if let remoteSource {
             do {
-                remoteSegments = try await transcribe(remoteSource, model: modelID, stage: .transcribingRemote, from: 0.30, to: 0.70)
+                remoteSegments = try await transcribe(remoteSource, model: modelID, mode: languageMode, stage: .transcribingRemote, from: 0.30, to: 0.70)
             } catch {
                 if error is CancellationError { throw error }
                 warnings.append(.retranscriptionFailed(track: .remote, reason: String(describing: error)))
@@ -419,10 +425,10 @@ public actor MeetingFinalizer {
         return suggestions
     }
 
-    private func transcribe(_ url: URL, model: ModelID?, stage: FinalizationStage, from: Double, to: Double) async throws -> [Segment] {
+    private func transcribe(_ url: URL, model: ModelID?, mode: LanguageMode, stage: FinalizationStage, from: Double, to: Double) async throws -> [Segment] {
         var segments: [Segment] = []
         let options = TranscriptionOptions(
-            languageMode: config.languageMode, useCase: .file, modelID: model, vocabulary: config.vocabulary, wordTimestamps: true)
+            languageMode: mode, useCase: .file, modelID: model, vocabulary: config.vocabulary, wordTimestamps: true)
         report(stage, from)
         for try await event in deps.engine.transcribe(file: url, options: options) {
             switch event {
@@ -492,6 +498,15 @@ public actor MeetingFinalizer {
         return TranscriptID()
     }
 
+    /// With auto-detect, a live pass that heard exactly one language fixes the offline pass to it. Any other setting, or a live
+    /// pass that heard several languages or none, is left as the user set it.
+    static func resolvedLanguageMode(_ mode: LanguageMode, liveLanguages: [LanguageCode?]) -> LanguageMode {
+        guard case .autoDetect = mode else { return mode }
+        let heard = Set(liveLanguages.compactMap { $0 })
+        guard heard.count == 1, let only = heard.first else { return mode }
+        return .single(only)
+    }
+
     static func languages(of mode: LanguageMode) -> Set<LanguageCode> {
         switch mode {
         case .single(let language): [language]
@@ -500,12 +515,21 @@ public actor MeetingFinalizer {
         }
     }
 
-    static func title(for meeting: Meeting) -> String {
-        let name = meeting.app == .zoom ? "Zoom" : "Teams"
+    public static func title(for meeting: Meeting) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
-        return "\(name) meeting, \(formatter.string(from: meeting.startedAt))"
+        return "\(titleName(for: meeting.app)), \(formatter.string(from: meeting.startedAt))"
+    }
+
+    /// "Zoom meeting", "Discord meeting", "Google Meet", "Browser call": the service, without repeating "meeting" for names
+    /// that already say what they are.
+    static func titleName(for app: MeetingApp) -> String {
+        let name = ProbeMeetingDetector.name(of: app)
+        switch app {
+        case .zoom, .teams, .discord: return "\(name) meeting"
+        case .meet, .browser: return name
+        }
     }
 
     private func report(_ stage: FinalizationStage, _ fraction: Double) {

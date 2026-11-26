@@ -97,7 +97,20 @@ New **Intelligence** pane (placed after Models):
 
 Library settings gain: default grouping, show folders row. General gains: "Show pinned items in the sidebar" (on).
 
-### 3.6 Export and search
+### 3.6 During a live meeting or recording (added at the owner's request)
+
+While a meeting is being transcribed or recorded, the same redesigned page is available for it, not only after it ends:
+
+- **Open it from** the Meetings page (the current-meeting card gets "Open workspace"), the sidebar recording row, and the menu bar.
+- **Notes:** write by hand at any time. Autosaved.
+- **Files:** add slides or PDFs at any time and page through them; "Slide changes here" links slides to the live clock.
+- **Chat:** ask about what was said so far. Each question retrieves from the transcript as it exists at that moment (re-read on every question, so new speech is included) plus notes and files. A line under the box says "Up to 14:32 of the live transcript".
+- **Transcript tab:** follows the live text (auto-scroll with a "Jump to latest" pill when the user has scrolled away). Editing is read-only until the meeting ends, as today.
+- **Summarise is disabled** with the reason "Available when the meeting ends and the full transcript is ready". It enables when the final transcript has been produced (the Queue shows the finalisation job).
+- **Hand-over:** notes, files, slide links and chat are stored on the live draft and **move to the final transcript** when finalisation creates it, so nothing typed during the call is lost (tested, including a call that is recorded, a transcribe-only call and a crash recovery).
+- Works for every meeting app Earmark supports (Zoom, Teams, Meet, Discord, browser calls) and for plain Live captions sessions.
+
+### 3.7 Export and search
 
 Notes and summaries can be included in Export (TXT, Markdown, DOCX, PDF) behind two toggles, off by default so existing export presets behave as before.
 
@@ -121,7 +134,7 @@ Notes and summaries can be included in Export (TXT, Markdown, DOCX, PDF) behind 
 - **Accuracy harness** (`scripts/eval-intelligence`): synthetic meeting and lecture documents with planted facts, unanswerable questions and long inputs; reports fact recall, invented-fact rate, refusal correctness, latency and chunk counts. Release gate: recall of planted dates, numbers and owners at least 90%, no invented answer on unanswerable questions in the standard set, run on the release Mac and recorded in `specs/qa/`.
 - **Guardrails**: handled `guardrailViolation` and `exceededContextWindowSize` errors (retry a chunk smaller, skip with a visible note, never fail silently). Output is clearly labelled "Generated on this Mac. Check important details against the transcript."
 - **Accessibility**: every control has an identifier; tabs, chat list and the slide viewer are keyboard operable and VoiceOver labelled; streaming text announces completion, not every token; Reduce Motion, Increase Contrast and Reduce Transparency respected; DesignSystem tokens only; at most three glass layers per screen.
-- **Unit tests** for chunking, templates, retrieval ranking, citation mapping, notes round-trip (rich text to Markdown and back), version history, migration (settings folders to table), pinning order, grouping, attachment extraction, finalisation hand-over. **UI tests** (with `-EarmarkTestIntelligence`) for the sidebar, folder drag, grouping, Notes, Summarise with undo, Slides stage, Chat with sources, Settings pane.
+- **Unit tests** for chunking, templates, retrieval ranking, citation mapping, notes round-trip (rich text to Markdown and back), version history, migration (settings folders to table), pinning order, grouping, attachment extraction, finalisation hand-over (notes, files, links and chat), live-transcript retrieval, Summarise gating. **UI tests** (with `-EarmarkTestIntelligence`; including the live-meeting flow) for the sidebar, folder drag, grouping, Notes, Summarise with undo, Slides stage, Chat with sources, Settings pane.
 
 ## 6. Phases (each ends with tests green and a pushed PR)
 
@@ -133,7 +146,7 @@ Notes and summaries can be included in Export (TXT, Markdown, DOCX, PDF) behind 
 | 3 | `Intelligence` package, availability, Summariser with templates, Summarise UI, accuracy harness. |
 | 4 | Attachments: import, extraction (PDFKit, Vision), Files tab, Slides stage, time links, per-file summaries. |
 | 5 | Chat: retrieval, source scope, streaming, source chips, saved conversations. |
-| 6 | Meetings integration (notes during a live meeting, hand-over to the final transcript), Settings pane, docs, website, release. |
+| 6 | Live-meeting workspace (open from Meetings, sidebar and menu bar; notes, files and chat against the live transcript; Summarise gated until the final transcript exists; hand-over to the final transcript), Settings pane, docs, website, release. |
 
 ## 7. Risks
 

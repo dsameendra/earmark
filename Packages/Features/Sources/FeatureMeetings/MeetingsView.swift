@@ -10,6 +10,7 @@ enum MeetingsSymbol {
     static let stop = "stop.fill"
     static let openTranscript = DSSymbol.library
     static let policy = DSSymbol.settings
+    static let detect = DSSymbol.retry
     static let error = "exclamationmark.triangle"
     static let emptyState = DSSymbol.meetings
 }
@@ -70,6 +71,13 @@ public struct MeetingsView: View {
     // MARK: List
 
     @ViewBuilder private var content: some View {
+        VStack(spacing: 0) {
+            AvailableNowSection(model: model)
+            storedContent
+        }
+    }
+
+    @ViewBuilder private var storedContent: some View {
         if model.isLoading {
             VStack(alignment: .leading, spacing: DSSpacing.md) {
                 ForEach(0..<4, id: \.self) { _ in Skeleton(height: 26) }
@@ -81,7 +89,7 @@ public struct MeetingsView: View {
         } else if model.rows.isEmpty {
             EmptyState(
                 systemImage: MeetingsSymbol.emptyState.systemImageName, title: "No meetings yet",
-                message: "Zoom and Microsoft Teams meetings that Earmark transcribes or records appear here. You choose what happens.")
+                message: "Zoom, Microsoft Teams, Google Meet and Discord meetings that Earmark transcribes or records appear here. You choose what happens.")
         } else {
             List(model.rows) { row in
                 MeetingRow(row: row) { if let id = row.meeting.transcriptID { onOpenTranscript(id) } }
@@ -93,44 +101,65 @@ public struct MeetingsView: View {
     }
 
     @ToolbarContentBuilder private var policyToolbar: some ToolbarContent {
-        // One item per app (like every other screen): two menus never share a single glass capsule. Each menu is its own
-        // View so it observes the policy itself; reading it inside the toolbar builder's closures was never tracked, which
-        // left the label and the checkmark stuck on "Ask first" after a choice.
-        // Written out (not ForEach): Swift 6.3 (Xcode 26.x) cannot resolve a ForEach of ToolbarItems in this builder. A unit
-        // test asserts these two cover every `MeetingApp` so a new app cannot be forgotten.
-        ToolbarItem { MeetingPolicyMenu(model: model, app: .zoom) }
-        ToolbarItem { MeetingPolicyMenu(model: model, app: .teams) }
+        // Each control is its own View so it observes the model itself: reading it inside the toolbar builder's closures is
+        // not tracked. Written out (not ForEach): Swift 6.3 (Xcode 26.x) cannot resolve a ForEach of ToolbarItems here.
+        ToolbarItem { DetectMeetingsButton(model: model) }
+        ToolbarItem { MeetingPolicyMenu(model: model) }
     }
 }
 
-/// The "Zoom · Ask first" style toolbar menu for one meeting app.
-struct MeetingPolicyMenu: View {
+/// "Detect meetings": looks again right now and lists every live call that can be transcribed. For a missed notification,
+/// a muted join, or a call Earmark does not start on its own (Meet in a tab, a Discord channel).
+struct DetectMeetingsButton: View {
     let model: MeetingsModel
-    let app: MeetingApp
 
     var body: some View {
-        let current = model.policy(for: app).behavior
-        Menu {
-            ForEach(MeetingBehavior.allCases, id: \.self) { behavior in
-                Button {
-                    Task { await model.setBehavior(behavior, for: app) }
-                } label: {
-                    if current == behavior {
-                        Label(behavior.title, systemImage: "checkmark")
-                    } else {
-                        Text(behavior.title)
-                    }
-                }
-                .accessibilityIdentifier("meetings.policy.\(app.rawValue).\(behavior.rawValue)")
-            }
+        Button {
+            Task { await model.detect() }
         } label: {
-            DSToolbarLabel("\(app.badgeTitle) · \(current.title)", symbol: MeetingsSymbol.policy)
+            DSToolbarLabel(model.isDetecting ? "Detecting…" : "Detect meetings", symbol: MeetingsSymbol.detect)
         }
         .labelStyle(.titleAndIcon)
         .dsToolbarControl()
-        .accessibilityIdentifier("meetings.policy.\(app.rawValue)")
-        .accessibilityValue(current.title)
-        .help("What Earmark does when a \(app.title) meeting starts")
+        .disabled(model.isDetecting)
+        .accessibilityIdentifier("meetings.detect")
+        .help("Look for meetings that are running now (Zoom, Teams, Meet, Discord, other browser calls)")
+    }
+}
+
+/// One "Detection" menu for what Earmark does when a meeting starts, per app. Flat sections (no submenus) with a checkmark on
+/// the current choice. Four apps do not fit as four toolbar menus.
+struct MeetingPolicyMenu: View {
+    let model: MeetingsModel
+
+    var body: some View {
+        let summary = MeetingApp.allCases.map { "\($0.badgeTitle) \(model.policy(for: $0).behavior.title)" }.joined(separator: ", ")
+        Menu {
+            ForEach(MeetingApp.allCases, id: \.self) { app in
+                let current = model.policy(for: app).behavior
+                Section(app.title) {
+                    ForEach(MeetingBehavior.allCases, id: \.self) { behavior in
+                        Button {
+                            Task { await model.setBehavior(behavior, for: app) }
+                        } label: {
+                            if current == behavior {
+                                Label(behavior.title, systemImage: "checkmark")
+                            } else {
+                                Text(behavior.title)
+                            }
+                        }
+                        .accessibilityIdentifier("meetings.policy.\(app.rawValue).\(behavior.rawValue)")
+                    }
+                }
+            }
+        } label: {
+            DSToolbarLabel("Detection", symbol: MeetingsSymbol.policy)
+        }
+        .labelStyle(.titleAndIcon)
+        .dsToolbarControl()
+        .accessibilityIdentifier("meetings.policy")
+        .accessibilityValue(summary)
+        .help("What Earmark does when a Zoom, Teams, Meet or Discord meeting starts")
     }
 }
 
@@ -363,4 +392,106 @@ struct MeetingRow: View {
 #Preview("Meetings - list") {
     MeetingsView(model: MeetingsModel(services: .preview(meetings: [Meeting(app: .zoom, startedAt: Date())]))).frame(
         width: 760, height: 460)
+}
+
+
+// MARK: - Available now
+
+/// Live calls Earmark can see right now, each with its own Transcribe actions. Stays empty (no section) until there is
+/// something to show or the user pressed Detect meetings.
+struct AvailableNowSection: View {
+    let model: MeetingsModel
+
+    var body: some View {
+        let items = model.available
+        if !items.isEmpty || model.detectFoundNothing {
+            VStack(alignment: .leading, spacing: DSSpacing.sm) {
+                HStack {
+                    Text("Available now").font(DSTypography.headline).accessibilityAddTraits(.isHeader)
+                    Spacer()
+                    if model.detectFoundNothing {
+                        Button("Dismiss") { model.dismissDetectResult() }.accessibilityIdentifier("meetings.available.dismiss")
+                    }
+                }
+                if items.isEmpty {
+                    NothingFound(model: model)
+                } else {
+                    ForEach(items) { item in AvailableRow(model: model, item: item) }
+                    if items.contains(where: { $0.app == .meet || $0.app == .browser }) {
+                        Text("A browser call captures all audio from that browser, including other tabs. Your microphone is recorded separately.")
+                            .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                            .accessibilityIdentifier("meetings.available.browserNote")
+                    }
+                    if model.needsAccessibilityForMeet { AccessibilityHint() }
+                }
+            }
+            .padding(DSSpacing.lg)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("meetings.available")
+        }
+    }
+}
+
+struct AvailableRow: View {
+    let model: MeetingsModel
+    let item: LiveMeetingCandidate
+
+    var body: some View {
+        let busy = model.captureState.isActive
+        HStack(spacing: DSSpacing.md) {
+            DSIcon(item.app.symbol)
+            VStack(alignment: .leading, spacing: DSSpacing.xxs) {
+                Text(item.label).font(DSTypography.body.weight(.medium))
+                Text(item.detail).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+            }
+            Spacer()
+            Button("Transcribe") { Task { await model.startCapture(item, mode: .transcribeOnly) } }
+                .disabled(busy)
+                .accessibilityIdentifier("meetings.available.\(item.id).transcribe")
+            Button("Transcribe and record") { Task { await model.startCapture(item, mode: .transcribeAndRecord) } }
+                .dsProminentButton().tint(DSColor.recording)
+                .disabled(busy)
+                .accessibilityIdentifier("meetings.available.\(item.id).record")
+        }
+        .padding(DSSpacing.md)
+        .background(DSColor.contentBackground, in: RoundedRectangle(cornerRadius: DSRadius.medium))
+        .overlay(RoundedRectangle(cornerRadius: DSRadius.medium).stroke(DSColor.hairline))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(item.label), available to transcribe")
+        .accessibilityIdentifier("meetings.available.\(item.id)")
+    }
+}
+
+struct NothingFound: View {
+    let model: MeetingsModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.xs) {
+            Text("No meeting found").font(DSTypography.body.weight(.medium))
+            Text("Earmark looked at Zoom, Teams, Discord and your browsers. Join the call first, then try again.")
+                .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+            ForEach(model.scanNotes, id: \.self) { note in
+                Text(note).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+            }
+        }
+        .padding(DSSpacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DSColor.contentBackground, in: RoundedRectangle(cornerRadius: DSRadius.medium))
+        .overlay(RoundedRectangle(cornerRadius: DSRadius.medium).stroke(DSColor.hairline))
+        .accessibilityIdentifier("meetings.available.nothing")
+    }
+}
+
+/// Shown when a browser call is listed as a plain "Browser call" because window titles cannot be read.
+struct AccessibilityHint: View {
+    var body: some View {
+        HStack(spacing: DSSpacing.sm) {
+            Text("To recognise Google Meet calls, allow Earmark in Accessibility.")
+                .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                Link("Open Accessibility settings", destination: url).font(DSTypography.caption)
+                    .accessibilityIdentifier("meetings.available.accessibility")
+            }
+        }
+    }
 }

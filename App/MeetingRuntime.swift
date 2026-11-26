@@ -32,20 +32,21 @@ enum MeetingRuntimeFactory {
         live: LiveSessionOrchestrator, prompts: (any MeetingPromptPresenting)?
     ) -> MeetingRuntime {
         let policies = MeetingPolicyStore(store: settings)
+        let targets = MeetingCaptureTargets()
         // The end grace follows each app's policy (default 15 s), read when a meeting goes quiet.
         let detector = ProbeMeetingDetector(
-            probe: CoreAudioMeetingProbe(),
+            probe: CoreAudioMeetingProbe(context: AccessibilityMeetingContext()),
             config: MeetingDetectorConfig(endGrace: { app in await policies.policy(for: app).autoStopGraceSeconds }))
         let root: @Sendable () async -> URL = { await recordingsRoot(settings: settings) }
         let controller = MeetingSessionController(
             detector: detector, policies: policies, consent: MeetingConsentStore(store: settings),
-            sources: SystemMeetingSources(permissions: permissions, settings: settings),
+            sources: SystemMeetingSources(permissions: permissions, settings: settings, targets: targets),
             // Video is opt-in (policy `recordVideo`): the recorder only starts it when the session asks for it, which is
             // when the policy allows it; Screen Recording permission is requested at that first start, never at launch.
             makeRecorder: { session in MeetingRecorder(session: session, video: ScreenCaptureVideoRecorder()) },
             recordingsRoot: root, meetings: database.meetings, jobs: jobs, live: live, transcripts: database.transcripts)
         let capture = MeetingCaptureAdapter(
-            controller: controller, policies: policies, meetings: database.meetings, live: live, prompts: prompts)
+            controller: controller, policies: policies, meetings: database.meetings, live: live, prompts: prompts, targets: targets)
         return MeetingRuntime(detector: detector, controller: controller, capture: capture, recordingsRoot: root)
     }
 
@@ -106,6 +107,8 @@ enum MeetingRuntimeFactory {
 struct SystemMeetingSources: MeetingAudioSourceProviding {
     let permissions: any PermissionsServicing
     let settings: any SettingsStore
+    /// The browser the user chose for a Meet or browser call (set just before the session starts).
+    let targets: MeetingCaptureTargets
 
     /// The Meetings microphone override, else the global device, kept while it is unplugged: capture then falls back to the
     /// system default on its own and returns to the chosen device when it reappears.
@@ -124,21 +127,37 @@ struct SystemMeetingSources: MeetingAudioSourceProviding {
     }
 
     func remoteSource(for app: MeetingApp) -> any AudioSource {
-        SystemAudioSource(target: .app(bundleID: Self.bundleID(for: app)), permissions: permissions)
+        SystemAudioSource(target: .app(bundleID: Self.bundleID(for: app, chosen: targets.target(for: app))), permissions: permissions)
     }
 
-    /// The running app matching the product (Zoom, new or classic Teams); the primary bundle ID when none is running.
-    static func bundleID(for app: MeetingApp) -> String {
+    /// What to capture for `app`: the source the user picked, else the running app matching the product (Zoom, new or classic
+    /// Teams, Discord stable/PTB/Canary), else for browser calls the browser using the microphone now.
+    static func bundleID(for app: MeetingApp, chosen: String? = nil) -> String {
+        if let chosen { return chosen }
+        if app == .meet || app == .browser {
+            return CoreAudioMeetingProbe.browserUsingMicrophone()?.captureBundleID ?? "com.google.Chrome"
+        }
         let signature = MeetingAppSignature.defaults.first { $0.app == app }
         let running = NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier)
         if let match = running.first(where: { id in signature?.matches(id) == true && !Self.isHelper(id) }) { return match }
         switch app {
         case .zoom: return "us.zoom.xos"
         case .teams: return "com.microsoft.teams2"
+        case .discord: return "com.hnc.Discord"
+        case .meet, .browser: return "com.google.Chrome"
         }
     }
 
-    private static func isHelper(_ id: String) -> Bool { id.contains("CptHost") || id.contains("caphost") }
+    private static func isHelper(_ id: String) -> Bool {
+        id.contains("CptHost") || id.contains("caphost") || id.lowercased().contains(".helper")
+    }
+}
+
+/// The source a user picked from Detect meetings, remembered until the session has started.
+final class MeetingCaptureTargets: Sendable {
+    private let values = OSAllocatedUnfairLock<[MeetingApp: String]>(initialState: [:])
+    func set(_ bundleID: String?, for app: MeetingApp) { values.withLock { $0[app] = bundleID } }
+    func target(for app: MeetingApp) -> String? { values.withLock { $0[app] } }
 }
 
 // MARK: - Capture adapter for the Meetings UI
@@ -147,6 +166,7 @@ struct SystemMeetingSources: MeetingAudioSourceProviding {
 /// bookmark hotkey. Failures the controller reports as events (microphone, remote audio, recorder) become the thrown error
 /// of `start` or a state the UI shows.
 final class MeetingCaptureAdapter: MeetingCapturing, Sendable {
+    private let targets: MeetingCaptureTargets
     private let controller: MeetingSessionController
     private let policies: MeetingPolicyStore
     private let meetings: any MeetingRepository
@@ -159,8 +179,9 @@ final class MeetingCaptureAdapter: MeetingCapturing, Sendable {
 
     init(
         controller: MeetingSessionController, policies: MeetingPolicyStore, meetings: any MeetingRepository,
-        live: LiveSessionOrchestrator, prompts: (any MeetingPromptPresenting)?
+        live: LiveSessionOrchestrator, prompts: (any MeetingPromptPresenting)?, targets: MeetingCaptureTargets
     ) {
+        self.targets = targets
         self.controller = controller
         self.policies = policies
         self.meetings = meetings
@@ -175,6 +196,11 @@ final class MeetingCaptureAdapter: MeetingCapturing, Sendable {
     // MARK: MeetingCapturing
 
     func start(app: MeetingApp, mode: MeetingCaptureMode) async throws {
+        try await start(app: app, mode: mode, targetBundleID: nil)
+    }
+
+    func start(app: MeetingApp, mode: MeetingCaptureMode, targetBundleID: String?) async throws {
+        targets.set(targetBundleID, for: app)
         lastFailure.withLock { $0 = nil }
         publish(.starting)
         let video = mode.recordsAudio ? await policies.policy(for: app).recordVideo : false
@@ -276,7 +302,7 @@ struct MeetingFinalization: Sendable {
             defer { follower.cancel() }
             let result = try await finalizer.run(job: context.job)
             return JobHandlerResult(
-                transcriptID: result.transcriptID, title: "\(result.meeting.app == .zoom ? "Zoom" : "Teams") meeting")
+                transcriptID: result.transcriptID, title: "\(result.meeting.app.title) meeting")
         }
     }
 

@@ -28,9 +28,14 @@ public struct MeetingAppSignature: Sendable, Equatable {
             app: .zoom, bundleIDPrefixes: ["us.zoom."], executableNames: ["zoom.us"], callHelperNames: ["CptHost", "caphost"]),
         MeetingAppSignature(
             app: .teams, bundleIDPrefixes: ["com.microsoft.teams"], executableNames: ["MSTeams", "Microsoft Teams"]),
+        // Discord is Electron: its audio runs in `com.hnc.Discord.helper*` processes. Canary and PTB share the family ID.
+        MeetingAppSignature(app: .discord, bundleIDPrefixes: ["com.hnc.Discord"], executableNames: ["Discord"]),
     ]
 
-    public func matches(_ bundleID: String) -> Bool { bundleIDPrefixes.contains { bundleID.hasPrefix($0) } }
+    public func matches(_ bundleID: String) -> Bool {
+        let lower = bundleID.lowercased()
+        return bundleIDPrefixes.contains { lower.hasPrefix($0.lowercased()) }
+    }
 
     /// Executable names match exactly or as a prefix followed by a space (helper processes are named `MSTeams Helper ...`).
     public func matchesExecutable(_ name: String) -> Bool {
@@ -43,14 +48,63 @@ public struct MeetingAppSignature: Sendable, Equatable {
 /// listeners signal changes. Listening and reading need no TCC permission (research §4).
 public final class CoreAudioMeetingProbe: MeetingProbe {
     private let signatures: [MeetingAppSignature]
+    private let browsers: [BrowserSignature]
+    private let context: any MeetingContextChecking
     private let hub: AudioListenerHub
 
-    public init(signatures: [MeetingAppSignature] = MeetingAppSignature.defaults) {
+    public init(
+        signatures: [MeetingAppSignature] = MeetingAppSignature.defaults, browsers: [BrowserSignature] = BrowserSignature.defaults,
+        context: any MeetingContextChecking = NoMeetingContext()
+    ) {
         self.signatures = signatures
+        self.browsers = browsers
+        self.context = context
         self.hub = AudioListenerHub()
     }
 
+    public var canReadTitles: Bool { context.canReadTitles }
+
+    /// The browser that has the microphone open right now (the likely carrier of a call), for choosing what to capture when
+    /// the user did not pick one. Prefers a browser Earmark detects automatically.
+    public static func browserUsingMicrophone(browsers: [BrowserSignature] = BrowserSignature.defaults) -> BrowserSignature? {
+        let active = browsers.filter { browser in
+            let signature = MeetingAppSignature(app: .browser, bundleIDPrefixes: browser.bundleIDPrefixes, executableNames: browser.executableNames)
+            return snapshot(signature).micInput
+        }
+        return active.first(where: \.detectsAutomatically) ?? active.first
+    }
+
+    /// Every browser's state. Window titles are read only for a browser that has the microphone open, so an idle browser
+    /// costs nothing.
+    public func browserReadings() async -> [BrowserReading] {
+        var readings: [BrowserReading] = []
+        for browser in browsers {
+            let signature = MeetingAppSignature(app: .browser, bundleIDPrefixes: browser.bundleIDPrefixes, executableNames: browser.executableNames)
+            let activity = Self.snapshot(signature)
+            guard activity.isAppRunning else { continue }
+            var meetOpen = false
+            if activity.micInput, context.canReadTitles {
+                let titles = await context.windowTitles(bundleIDPrefixes: browser.bundleIDPrefixes)
+                meetOpen = titles.contains(where: MeetTitle.isMeetCall)
+            }
+            readings.append(
+                BrowserReading(
+                    browser: browser, isRunning: true, micInput: activity.micInput, audioOutput: activity.audioOutput,
+                    deviceMicInUse: activity.deviceMicInUse, meetWindowOpen: meetOpen))
+        }
+        return readings
+    }
+
     public func activity(for app: MeetingApp) async -> AppAudioActivity {
+        if app == .browser { return .inactive }  // never detected on its own
+        if app == .meet {
+            // Meet is a browser tab: only a browser that has the microphone open AND a Meet window counts.
+            let readings = await browserReadings().filter { $0.browser.detectsAutomatically }
+            if let call = readings.first(where: { $0.micInput && $0.meetWindowOpen }) {
+                return AppAudioActivity(isAppRunning: true, micInput: true, audioOutput: call.audioOutput, deviceMicInUse: call.deviceMicInUse)
+            }
+            return readings.isEmpty ? .inactive : AppAudioActivity(isAppRunning: true)
+        }
         guard let signature = signatures.first(where: { $0.app == app }) else { return .inactive }
         return Self.snapshot(signature)
     }

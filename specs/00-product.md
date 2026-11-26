@@ -23,10 +23,10 @@ A privacy-first native macOS app that turns speech into accurate, editable, expo
 
 ## 4. Scope
 ### In scope (v1)
-Files & batch transcription · Meetings (Zoom, Teams) · Live Captions overlay · Dictation · diarization · multilingual/code-switching · translation · ignored segments · find/replace & global replacements · synced player/editor · rich export · Library with soft delete · menu bar app · Model Manager · onboarding · Developer ID distribution with Sparkle.
+Files & batch transcription · Meetings (Zoom, Teams, Google Meet, Discord) · Live Captions overlay · Dictation · diarization · multilingual/code-switching · translation · ignored segments · find/replace & global replacements · synced player/editor · rich export · Library with soft delete · menu bar app · Model Manager · onboarding · Developer ID distribution with Sparkle.
 
 ### Out of scope (v1)
-Mac App Store (non-sandboxed by necessity); cloud sync; iOS/iPadOS; Google Meet/Webex detection (architecture should allow later); LLM summarization; collaborative editing; voice cloning.
+Mac App Store (non-sandboxed by necessity); cloud sync; iOS/iPadOS; Webex detection (architecture should allow later); LLM summarization; collaborative editing; voice cloning.
 
 ## 5. Feature areas and user stories
 (Detailed EARS criteria live in `/specs/features/NN-*.md`, Phase 4. IDs below reserve the prefixes.)
@@ -39,7 +39,7 @@ Mac App Store (non-sandboxed by necessity); cloud sync; iOS/iPadOS; Google Meet/
 | `ENG` | Engines & models | "Auto" picks the right engine per language/use case; I download, verify, delete, import custom CoreML models |
 | `LANG` | Languages | I pick single / auto-detect / multilingual sets; segments carry language badges and can be re-transcribed |
 | `DIA` | Diarization | I toggle speaker labels, rename/merge/reassign speakers, optionally save local voice profiles |
-| `MTG` | Meetings | Zoom/Teams detection → notify / auto-transcribe / auto-record; dual-track; finalization pass |
+| `MTG` | Meetings | Zoom/Teams/Meet/Discord detection and Detect meetings → notify / auto-transcribe / auto-record; dual-track; finalization pass |
 | `LIVE` | Live captions | A click-through, non-activating glass overlay captions mic, system audio, or both |
 | `DICT` | Dictation | Hold/toggle a global hotkey, see a HUD, text is inserted into the focused app |
 | `AUD` | Audio input | I pick devices per feature with level meters; unplug falls back gracefully |

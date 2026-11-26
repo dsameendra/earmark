@@ -122,7 +122,12 @@ enum HAL {
 
     /// Process objects whose bundle ID is `bundleID` or one of its helpers (`bundleID.something`).
     static func processObjects(bundleID: String) -> [AudioObjectID] {
-        audioProcesses().filter { $0.bundleID == bundleID || $0.bundleID.hasPrefix(bundleID + ".") }.map(\.objectID)
+        audioProcesses().filter {
+            // Case-insensitive: some browsers name their helpers in a different case than the app (Arc).
+            let id = $0.bundleID.lowercased()
+            let target = bundleID.lowercased()
+            return id == target || id.hasPrefix(target + ".")
+        }.map(\.objectID)
     }
 
     static func ownProcessObject() -> AudioObjectID? {

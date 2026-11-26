@@ -11,6 +11,9 @@ extension MeetingApp {
         switch self {
         case .zoom: "Zoom"
         case .teams: "Microsoft Teams"
+        case .meet: "Google Meet"
+        case .discord: "Discord"
+        case .browser: "Browser call"
         }
     }
     /// Short badge text.
@@ -18,6 +21,9 @@ extension MeetingApp {
         switch self {
         case .zoom: "Zoom"
         case .teams: "Teams"
+        case .meet: "Meet"
+        case .discord: "Discord"
+        case .browser: "Browser call"
         }
     }
     /// Symbol name for rows and banners (rule A3).
@@ -54,17 +60,69 @@ public enum MeetingCaptureState: Sendable, Equatable {
         case .idle, .failed: false
         }
     }
+    public var isFailed: Bool {
+        if case .failed = self { return true }
+        return false
+    }
 }
 
 /// Starts and stops a meeting capture: dual-track audio (mic = "You", remote diarized), live transcript, optional
 /// recording, and the finalization pass on stop. Implemented by the Meetings runtime (T23).
 public protocol MeetingCapturing: Sendable {
     func start(app: MeetingApp, mode: MeetingCaptureMode) async throws
+    /// Starts capture of one specific source: the browser a Meet or browser call runs in. `nil` lets the runtime resolve it.
+    func start(app: MeetingApp, mode: MeetingCaptureMode, targetBundleID: String?) async throws
     /// Stops capture and returns the transcript being finalized, if any.
     func stop() async -> TranscriptID?
     func state() -> AsyncStream<MeetingCaptureState>
     /// Live caption lines with speaker labels (mic is "You", remote speakers are provisional slots).
     func lines() -> AsyncStream<[CaptionLine]>
+}
+
+extension MeetingCapturing {
+    public func start(app: MeetingApp, mode: MeetingCaptureMode, targetBundleID: String?) async throws {
+        try await start(app: app, mode: mode)
+    }
+}
+
+// MARK: - Detect meetings
+
+/// A call that is running right now and can be transcribed.
+public struct LiveMeetingCandidate: Sendable, Equatable, Identifiable {
+    public var id: String
+    public var app: MeetingApp
+    /// "Zoom", "Google Meet in Chrome", "Browser call in Safari".
+    public var label: String
+    /// Why Earmark lists it, in plain words.
+    public var detail: String
+    /// The browser whose audio is captured for Meet and browser calls.
+    public var targetBundleID: String?
+    public init(id: String, app: MeetingApp, label: String, detail: String, targetBundleID: String? = nil) {
+        self.id = id
+        self.app = app
+        self.label = label
+        self.detail = detail
+        self.targetBundleID = targetBundleID
+    }
+}
+
+/// The outcome of one look at the Mac: the calls found and, otherwise, what was seen.
+public struct MeetingScanResult: Sendable, Equatable {
+    public var candidates: [LiveMeetingCandidate]
+    public var notes: [String]
+    /// A browser has the microphone open but window titles cannot be read, so Meet cannot be told apart from other calls.
+    public var needsAccessibilityForMeet: Bool
+    public init(candidates: [LiveMeetingCandidate] = [], notes: [String] = [], needsAccessibilityForMeet: Bool = false) {
+        self.candidates = candidates
+        self.notes = notes
+        self.needsAccessibilityForMeet = needsAccessibilityForMeet
+    }
+}
+
+/// Looks for live calls on demand and reports changes. Implemented by the Meetings runtime.
+public protocol MeetingScanning: Sendable {
+    func scan() async -> MeetingScanResult
+    func results() -> AsyncStream<MeetingScanResult>
 }
 
 // MARK: - Notification prompts

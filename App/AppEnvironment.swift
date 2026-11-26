@@ -269,7 +269,7 @@ final class AppEnvironment {
             jobQueue: queue, transcripts: database.transcripts, meetings: database.meetings, models: models, live: live.session,
             meetingDetector: meetings.detector, hardware: hardware, permissions: permissions, audioDevices: audioDevices,
             settings: settings, media: database.media, presets: database.presets, liveExtras: live.extras, dictation: dictationControl,
-            meetingCapture: meetings.capture, meetingPrompts: meetingPrompter, voiceProfiles: database.voiceProfiles,
+            meetingCapture: meetings.capture, meetingScanner: MeetingScanner(detector: meetings.detector), meetingPrompts: meetingPrompter, voiceProfiles: database.voiceProfiles,
             speakerEmbeddings: embeddings,
             segmentRetranscriber: SegmentRetranscriptionAdapter(
                 router: DefaultEngineRouter(), hardware: hardware, models: models, engines: engines, explicitModel: explicitModel),
@@ -450,6 +450,9 @@ final class AppEnvironment {
             }
             services.transcripts = InMemoryTranscripts(items: [transcript, sample[1]], segments: [transcript.id: segments])
             services.models = MockModelManager(descriptors: [model])
+            if let scenario = UITestConfiguration.value("-EarmarkTestMeetingScan") {
+                services.meetingScanner = MockMeetingScanner(scenario: scenario)
+            }
             if UITestConfiguration.value("-EarmarkTestQueue") == "YES" {
                 let states: [(String, JobState)] = [
                     ("Running interview.wav", .running), ("Paused notes.wav", .paused), ("Waiting clip.wav", .pending),
@@ -466,6 +469,31 @@ final class AppEnvironment {
         }
     #endif
 }
+
+#if DEBUG
+    /// Fixed Detect meetings results for UI tests: `found` lists a Zoom call, a Meet call and a plain browser call; `none`
+    /// finds nothing.
+    struct MockMeetingScanner: MeetingScanning {
+        let scenario: String
+        private var found: MeetingScanResult {
+            MeetingScanResult(
+                candidates: [
+                    LiveMeetingCandidate(id: "zoom", app: .zoom, label: "Zoom", detail: "Call audio is running"),
+                    LiveMeetingCandidate(
+                        id: "meet.com.google.Chrome", app: .meet, label: "Google Meet in Chrome",
+                        detail: "Microphone in use and a Meet window is open", targetBundleID: "com.google.Chrome"),
+                    LiveMeetingCandidate(
+                        id: "browser.org.mozilla.firefox", app: .browser, label: "Browser call in Firefox", detail: "Microphone in use",
+                        targetBundleID: "org.mozilla.firefox"),
+                ])
+        }
+        private var none: MeetingScanResult {
+            MeetingScanResult(notes: ["Zoom: not running", "Chrome: open, microphone not in use", "Discord: not running"])
+        }
+        func scan() async -> MeetingScanResult { scenario == "found" ? found : none }
+        func results() -> AsyncStream<MeetingScanResult> { AsyncStream { _ in } }
+    }
+#endif
 
 /// Applies the Dock-icon preference as the app's activation policy (MENU-AC-08) and follows changes.
 @MainActor

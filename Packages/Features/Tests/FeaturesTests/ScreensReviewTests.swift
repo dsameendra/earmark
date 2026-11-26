@@ -132,17 +132,18 @@ struct ScreensReviewTests {
     }
 }
 
-/// The Meetings toolbar lists its policy menus explicitly (a ForEach does not compile with Swift 6.3), so it must be
-/// revisited when a meeting app is added.
+/// The Meetings toolbar has one Detect button and one Detection menu that lists every watched meeting app.
 @Suite("Meetings toolbar coverage")
 struct MeetingsToolbarCoverageTests {
     @Test func toolbarCoversEveryMeetingApp() throws {
-        #expect(MeetingApp.allCases == [.zoom, .teams], "add a MeetingPolicyMenu for the new app in MeetingsView.policyToolbar")
+        // One Detection menu iterates `MeetingApp.allCases` (the apps Earmark watches by itself), so a new app appears in it
+        // without a toolbar edit. `.browser` is manual only and has no policy.
+        #expect(MeetingApp.allCases == [.zoom, .teams, .meet, .discord])
+        #expect(!MeetingApp.allCases.contains(.browser))
         let source = try String(
             contentsOf: URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
                 .appendingPathComponent("Sources/FeatureMeetings/MeetingsView.swift"), encoding: .utf8)
-        for app in MeetingApp.allCases {
-            #expect(source.contains("MeetingPolicyMenu(model: model, app: .\(app.rawValue))"), "missing toolbar item for \(app)")
-        }
+        #expect(source.contains("ForEach(MeetingApp.allCases"))
+        #expect(source.contains("DetectMeetingsButton(model: model)"))
     }
 }

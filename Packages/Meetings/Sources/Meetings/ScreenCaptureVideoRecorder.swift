@@ -30,11 +30,24 @@ public final class ScreenCaptureVideoRecorder: MeetingVideoRecording, @unchecked
     }
 
     public func start(app: MeetingApp, to url: URL) async throws {
-        guard let signature = signatures.first(where: { $0.app == app }) else { throw VideoRecordingError.noMeetingWindow }
+        // Meet and browser calls live in a browser window: any known browser counts, and a window titled like a Meet call wins.
+        let isBrowserCall = app == .meet || app == .browser
+        let signature: MeetingAppSignature
+        if isBrowserCall {
+            signature = MeetingAppSignature(app: app, bundleIDPrefixes: BrowserSignature.defaults.flatMap(\.bundleIDPrefixes))
+        } else if let found = signatures.first(where: { $0.app == app }) {
+            signature = found
+        } else {
+            throw VideoRecordingError.noMeetingWindow
+        }
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-        let windows = content.windows.filter { window in
+        var windows = content.windows.filter { window in
             window.isOnScreen && window.frame.width >= 200 && window.frame.height >= 150
                 && (window.owningApplication?.bundleIdentifier).map(signature.matches) == true
+        }
+        if isBrowserCall {
+            let meetWindows = windows.filter { MeetTitle.isMeetCall($0.title ?? "") }
+            if !meetWindows.isEmpty { windows = meetWindows }
         }
         guard let window = windows.max(by: { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }) else {
             throw VideoRecordingError.noMeetingWindow

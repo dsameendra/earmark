@@ -18,6 +18,14 @@ final class FakeCapture: MeetingCapturing {
     let transcriptID: TranscriptID? = TranscriptID()
     init(failure: AppError? = nil) { self.failure = failure }
     var starts: [(MeetingApp, MeetingCaptureMode)] { lock.withLock { $0 } }
+    private let targetLock = OSAllocatedUnfairLock<[String?]>(initialState: [])
+    /// The source passed with each start (nil when none was chosen).
+    var targets: [String?] { targetLock.withLock { $0 } }
+
+    func start(app: MeetingApp, mode: MeetingCaptureMode, targetBundleID: String?) async throws {
+        targetLock.withLock { $0.append(targetBundleID) }
+        try await start(app: app, mode: mode)
+    }
 
     func start(app: MeetingApp, mode: MeetingCaptureMode) async throws {
         if let failure { throw failure }

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Changelog: Earmark</title>
-<meta name="description" content="What changed in each Earmark release: new speech and translation models, fixes and known limits.">
+<meta name="description" content="What changed in each Earmark release: new speech and translation models and fixes.">
 <link rel="canonical" href="https://dsameendra.github.io/earmark/changelog.html">
 <meta name="theme-color" content="#f3eee5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#12110f" media="(prefers-color-scheme: dark)">
@@ -114,14 +114,6 @@
         <li>Large models are loaded one at a time, so starting one releases idle ones.</li>
       </ul>
 
-      <h3>Known limits</h3>
-      <ul>
-        <li>Most new models are marked experimental. Accuracy was checked on real recordings, mostly English, so quality in other languages varies.</li>
-        <li>Seamless M4T v2 and overlapping-speech recognition (Multitalker) are not included: neither has a reliable native Mac runtime or passed its quality bar. They are planned for a later release.</li>
-        <li>Hy-MT2 and TranslateGemma do not offer English into Chinese, and only Hy-MT2 7B offers English into Japanese, because those directions did not pass the quality checks.</li>
-        <li>Canary does not translate speech, and Cohere and Canary have no live mode or word timing.</li>
-        <li>Earmark is self-signed and not notarized. First-time installs need <em>Open Anyway</em> in System Settings, Privacy and Security.</li>
-      </ul>
       <p class="fine-print">Requires macOS 26 or later on Apple silicon. Existing installations can update through Settings, General, Check for Updates.</p>
     </article>
 

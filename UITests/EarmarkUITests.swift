@@ -592,6 +592,7 @@ final class EarmarkUITests: XCTestCase {
         status.click()
         XCTAssertTrue(app.buttons["menuBar.transcribe"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["menuBar.open"].exists)
+        XCTAssertTrue(app.buttons["menuBar.detectMeetings"].exists)
         let panel = app.descendants(matching: .any)["menuBar.panel"].firstMatch
         XCTAssertTrue(panel.exists)
         if panel.frame.minY >= 0 {

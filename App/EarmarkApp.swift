@@ -159,6 +159,11 @@ private struct MenuBarHost: View {
                     showMainWindow()
                     environment.shell.select(.meetings)
                 },
+                detectMeetings: {
+                    showMainWindow()
+                    environment.shell.select(.meetings)
+                    Task { await environment.shell.meetings.detect() }
+                },
                 openMainWindow: showMainWindow,
                 openSettings: {
                     NSApplication.shared.activate()

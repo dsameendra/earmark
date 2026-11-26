@@ -216,13 +216,17 @@ public actor MeetingSessionController {
         if endedWhileStarting { _ = await stopSession() }
     }
 
+    /// "2026-11-26 19.13.06 Discord 8845C6FD": when, which service, and a short id that keeps two calls apart.
+    static func recordingFolderName(app: MeetingApp, startedAt: Date, meetingID: MeetingID) -> String {
+        let stamp = DateFormatter()
+        stamp.dateFormat = "yyyy-MM-dd HH.mm.ss"
+        return "\(stamp.string(from: startedAt)) \(ProbeMeetingDetector.name(of: app)) \(meetingID.rawValue.uuidString.prefix(8))"
+    }
+
     private func beginRecording(_ state: inout Active, video: Bool) async {
         let app = state.info.app
         let root = await recordingsRoot()
-        let stamp = DateFormatter()
-        stamp.dateFormat = "yyyy-MM-dd HH.mm.ss"
-        let folder =
-            "\(stamp.string(from: state.info.startedAt)) \(app == .zoom ? "Zoom" : "Teams") \(state.info.meetingID.rawValue.uuidString.prefix(8))"
+        let folder = Self.recordingFolderName(app: app, startedAt: state.info.startedAt, meetingID: state.info.meetingID)
         let directory = root.appendingPathComponent(folder, isDirectory: true)
         startingDirectory = directory
         let recorder = makeRecorder(
@@ -283,6 +287,15 @@ public actor MeetingSessionController {
             }
         }
         let liveID = await live?.stop()
+        if recording == nil, let liveID, let transcripts {
+            // A transcribe-only meeting has no finalization pass, so its live transcript is the meeting: name it as one.
+            if var header = try? await transcripts.transcript(liveID) {
+                header.title = MeetingFinalizer.title(for: state.meeting)
+                header.source = .meeting
+                header.meetingID = state.meeting.id
+                try? await transcripts.save(header)
+            }
+        }
         if recording == nil, let liveID, let transcripts {
             // No recorder manifest carries the bookmarks, so attach them to the live transcript.
             for bookmark in state.bookmarks {

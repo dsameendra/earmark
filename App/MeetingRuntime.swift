@@ -302,7 +302,7 @@ struct MeetingFinalization: Sendable {
             defer { follower.cancel() }
             let result = try await finalizer.run(job: context.job)
             return JobHandlerResult(
-                transcriptID: result.transcriptID, title: "\(result.meeting.app.title) meeting")
+                transcriptID: result.transcriptID, title: MeetingFinalizer.title(for: result.meeting))
         }
     }
 

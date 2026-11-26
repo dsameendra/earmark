@@ -2,6 +2,20 @@
 
 Releases are listed newest first. The website carries the same history: https://dsameendra.github.io/earmark/changelog.html
 
+## 1.1.1
+
+### Fixes and polish
+- The last lines of a transcript can now be scrolled into view. In the video layout they used to sit behind the player bar.
+- Speakers, Translate, Re-transcribe, Bookmarks, View options and the inspector cards open their panel right next to the button you used, inside the window. They no longer open somewhere else in the app.
+- Re-transcribe keeps its Start button in view while the options scroll.
+- Home now has the same margins as Queue, Meetings, Live and Library.
+- Buttons on the orange accent are readable in dark mode.
+- Links use Earmark's accent colour instead of system blue.
+- Speaker colours match between the inspector, the transcript and the Library.
+- Replacements has visible text fields and clear option checkboxes.
+- The Export sheet opens on its main action, not inside the preset field.
+- Smaller touches: the Dictation card explains how to set it up, colour swatches are easier to hit, Storage shows 0 KB instead of Zero KB, and the Settings window no longer shows a white strip at the top.
+
 ## 1.1.0
 
 ### New speech models

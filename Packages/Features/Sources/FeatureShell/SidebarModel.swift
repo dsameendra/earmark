@@ -101,13 +101,41 @@ public struct SidebarModelChip: Equatable, Sendable {
     }
 }
 
+/// One pinned entry under Library: a folder or a transcript, in the user's order (SCR-018).
+public enum PinnedItem: Identifiable, Equatable, Sendable {
+    case folder(Folder, count: Int)
+    case transcript(Transcript)
+
+    public var id: String {
+        switch self {
+        case .folder(let folder, _): "folder-\(folder.id)"
+        case .transcript(let transcript): "transcript-\(transcript.id)"
+        }
+    }
+    public var order: Int {
+        switch self {
+        case .folder(let folder, _): folder.pinOrder ?? Int.max
+        case .transcript(let transcript): transcript.pinOrder ?? Int.max
+        }
+    }
+    public var title: String {
+        switch self {
+        case .folder(let folder, _): folder.name
+        case .transcript(let transcript): transcript.title
+        }
+    }
+}
+
 /// Live data behind the sidebar: Queue badge, folders and the model chip. Subscribes on its own so the sidebar is
 /// correct before Home, Queue or Library have appeared; no polling (jobs and model state are event streams).
 @MainActor @Observable
 public final class SidebarModel {
     /// Running plus waiting jobs (the Queue badge).
     public private(set) var activeJobs = 0
-    public private(set) var folders: [LibraryFolder] = []
+    /// Pinned folders and transcripts, in pin order.
+    public private(set) var pinned: [PinnedItem] = []
+    /// "Show pinned items in the sidebar" (Settings > General).
+    public private(set) var showsPinned = true
     public private(set) var modelChip: SidebarModelChip?
 
     /// The model chip's popover: per-use-case model choice, greying and downloads.
@@ -128,11 +156,13 @@ public final class SidebarModel {
         let stateChanges = services.models.stateChanges()
         let preferredChanges = services.settings.changes(for: SettingsKey.preferredModelFile)
         let languageChanges = services.settings.changes(for: SettingsKey.languageMode)
-        let folderChanges = services.settings.changes(for: SettingsKey.libraryFolders)
+        let folderChanges = services.workspace.folders.changes()
+        let workspaceEvents = services.workspace.events.stream()
+        let showPinnedChanges = services.settings.changes(for: SettingsKey.sidebarShowPinned)
         var jobs: [JobID: Job] = [:]
         for job in await services.jobQueue.jobs() { jobs[job.id] = job }
         activeJobs = Self.activeCount(jobs)
-        await reloadFolders()
+        await reloadPinned()
         await reloadModel()
         await picker.reload()
         let watcher = Task { [weak self] in
@@ -159,7 +189,18 @@ public final class SidebarModel {
             }
         }
         let folderWatcher = Task { [weak self] in
-            for await _ in folderChanges { await self?.reloadFolders() }
+            for await _ in folderChanges { await self?.reloadPinned() }
+        }
+        let workspaceWatcher = Task { [weak self] in
+            for await event in workspaceEvents {
+                switch event {
+                case .libraryChanged, .foldersChanged: await self?.reloadPinned()
+                default: break
+                }
+            }
+        }
+        let showPinnedWatcher = Task { [weak self] in
+            for await _ in showPinnedChanges { await self?.reloadPinned() }
         }
         defer {
             watcher.cancel()
@@ -167,6 +208,8 @@ public final class SidebarModel {
             pickerWatchers.forEach { $0.cancel() }
             languageWatcher.cancel()
             folderWatcher.cancel()
+            workspaceWatcher.cancel()
+            showPinnedWatcher.cancel()
         }
         for await event in events {
             switch event {
@@ -177,9 +220,74 @@ public final class SidebarModel {
         }
     }
 
-    /// Re-reads the folder list from settings (call after the shell selects Library or the folders change).
-    public func reloadFolders() async {
-        folders = await services.settings.value(for: SettingsKey.libraryFolders, as: [LibraryFolder].self) ?? []
+    /// Re-reads the pinned folders and transcripts, in pin order.
+    public func reloadPinned() async {
+        showsPinned = await services.settings.value(for: SettingsKey.sidebarShowPinned, as: Bool.self) ?? true
+        guard showsPinned else {
+            pinned = []
+            return
+        }
+        var items: [PinnedItem] = []
+        let folders = ((try? await services.workspace.folders.folders()) ?? []).filter(\.isPinned)
+        for folder in folders {
+            let count = (try? await services.transcripts.list(LibraryQuery(folderID: folder.id)))?.count ?? 0
+            items.append(.folder(folder, count: count))
+        }
+        var query = LibraryQuery()
+        query.pinnedOnly = true
+        for transcript in (try? await services.transcripts.list(query)) ?? [] { items.append(.transcript(transcript)) }
+        pinned = items.sorted { ($0.order, $0.title) < ($1.order, $1.title) }
+    }
+
+    /// Removes a folder or transcript from the sidebar (it stays in the Library).
+    public func unpin(_ item: PinnedItem) async {
+        switch item {
+        case .folder(var folder, _):
+            folder.pinOrder = nil
+            try? await services.workspace.folders.save(folder)
+            services.workspace.events.send(.foldersChanged)
+        case .transcript(var transcript):
+            transcript.pinOrder = nil
+            try? await services.transcripts.save(transcript)
+            services.workspace.events.send(.libraryChanged)
+        }
+        await reloadPinned()
+    }
+
+    /// Puts `dragged` before `target` (the end when `target` is nil) and saves the new positions.
+    public func movePinned(_ dragged: String, before target: String?) async {
+        var order = pinned
+        guard let from = order.firstIndex(where: { $0.id == dragged }) else { return }
+        let item = order.remove(at: from)
+        let to = target.flatMap { id in order.firstIndex(where: { $0.id == id }) } ?? order.count
+        order.insert(item, at: to)
+        await renumber(order)
+    }
+
+    /// Moves one pinned entry up or down by one place (the keyboard and VoiceOver route to reordering).
+    public func movePinned(_ id: String, by delta: Int) async {
+        var order = pinned
+        guard let from = order.firstIndex(where: { $0.id == id }) else { return }
+        let to = min(max(from + delta, 0), order.count - 1)
+        guard to != from else { return }
+        order.insert(order.remove(at: from), at: to)
+        await renumber(order)
+    }
+
+    private func renumber(_ order: [PinnedItem]) async {
+        for (position, item) in order.enumerated() {
+            switch item {
+            case .folder(var folder, _):
+                guard folder.pinOrder != position else { continue }
+                folder.pinOrder = position
+                try? await services.workspace.folders.save(folder)
+            case .transcript(var transcript):
+                guard transcript.pinOrder != position else { continue }
+                transcript.pinOrder = position
+                try? await services.transcripts.save(transcript)
+            }
+        }
+        await reloadPinned()
     }
 
     func reloadModel(changed: ModelID? = nil) async {

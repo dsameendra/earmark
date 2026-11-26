@@ -129,8 +129,31 @@ public enum SettingsKey {
     public static let librarySort = "library.sort"
     /// `Int`; days soft-deleted items are kept before auto-purge (LIB-AC-08). 0 means never.
     public static let libraryRetentionDays = recentlyDeletedRetentionDays  // one shared setting (Settings > Storage and Library)
-    /// `[LibraryFolder]`; Library folder names (folders have no repository, only `Transcript.folderID`).
+    /// Legacy: folders used to be stored here. They live in the `folder` table since 1.2.0 (migration v4); the key is only read
+    /// by that migration.
     public static let libraryFolders = "library.folders"
+    /// `String` (`LibraryGrouping` raw value); how the Library list is grouped.
+    public static let libraryGrouping = "library.grouping"
+    /// `[String]`; ids of Library groups the user collapsed.
+    public static let libraryCollapsedGroups = "library.collapsedGroups"
+    /// `Bool`; show the folders row at the top of the Library (default true).
+    public static let libraryShowFolders = "library.showFolders"
+    /// `Bool`; list pinned folders and transcripts under Library in the sidebar (default true).
+    public static let sidebarShowPinned = "sidebar.showPinned"
+    /// `String` (`SummaryStyle` raw value or "auto"); the style Summarise starts with.
+    public static let intelligenceSummaryStyle = "intelligence.summaryStyle"
+    /// `String`; "transcript" or the app language: the language summaries are written in.
+    public static let intelligenceSummaryLanguage = "intelligence.summaryLanguage"
+    /// `Bool`; summarise automatically when a meeting finishes (default false).
+    public static let intelligenceAutoSummarize = "intelligence.autoSummarize"
+    /// `Bool`; Summarise and Chat read the user's notes (default true).
+    public static let intelligenceIncludeNotes = "intelligence.includeNotes"
+    /// `Bool`; Summarise and Chat read attached files (default true).
+    public static let intelligenceIncludeFiles = "intelligence.includeFiles"
+    /// `Bool`; chat conversations are kept with the transcript (default true).
+    public static let intelligenceKeepChat = "intelligence.keepChat"
+    /// `Bool`; Export includes the notes page (default false).
+    public static let exportIncludeNotes = "export.includeNotes"
     /// `Bool`; first-run onboarding was completed or skipped (ONB-AC-01). Setting it to `false` shows the welcome flow again.
     public static let onboardingCompleted = "onboarding.completed"
     /// `Int`; raw index of the onboarding step to resume at (absent means the first step).

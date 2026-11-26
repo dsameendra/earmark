@@ -34,7 +34,12 @@ public final class LibraryModel {
         }
     }
     public private(set) var layout: LibraryLayout = .list
-    public private(set) var folders: [LibraryFolder] = []
+    public private(set) var folders: [Folder] = []
+    /// Items per folder (for the folder cards), not narrowed by search or filters.
+    public private(set) var folderCounts: [FolderID: Int] = [:]
+    public private(set) var grouping: LibraryGrouping = .none
+    public private(set) var collapsedGroups: Set<String> = []
+    public private(set) var showsFolders = true
     public private(set) var retentionDays = LibraryModel.defaultRetentionDays
     /// Best full-text hit per transcript for the current search (snippet + time).
     public private(set) var snippets: [TranscriptID: SearchHit] = [:]
@@ -151,7 +156,12 @@ public final class LibraryModel {
             isRestoringSort = false
         }
         if let days = await services.settings.value(for: SettingsKey.libraryRetentionDays, as: Int.self) { retentionDays = max(0, days) }
-        folders = await services.settings.value(for: SettingsKey.libraryFolders, as: [LibraryFolder].self) ?? []
+        if let raw = await services.settings.value(for: SettingsKey.libraryGrouping, as: String.self), let value = LibraryGrouping(rawValue: raw) {
+            grouping = value
+        }
+        collapsedGroups = Set(await services.settings.value(for: SettingsKey.libraryCollapsedGroups, as: [String].self) ?? [])
+        showsFolders = await services.settings.value(for: SettingsKey.libraryShowFolders, as: Bool.self) ?? true
+        await reloadFolders()
         await purgeExpired()
         await reload()
     }
@@ -331,46 +341,132 @@ public final class LibraryModel {
         }
     }
 
-    // MARK: Folders
+    // MARK: Folders (SCR-018)
+
+    /// Folders and how many items each holds.
+    public func reloadFolders() async {
+        folders = (try? await services.workspace.folders.folders()) ?? []
+        var counts: [FolderID: Int] = [:]
+        for folder in folders { counts[folder.id] = (try? await transcripts.list(LibraryQuery(folderID: folder.id)))?.count ?? 0 }
+        folderCounts = counts
+    }
+
+    /// Follows folder changes made elsewhere (the sidebar, another window) until cancelled.
+    public func watchWorkspace() async {
+        let folderChanges = services.workspace.folders.changes()
+        let events = services.workspace.events.stream()
+        let folderTask = Task { [weak self] in for await _ in folderChanges { await self?.reloadFolders() } }
+        defer { folderTask.cancel() }
+        for await event in events {
+            switch event {
+            case .libraryChanged: await refresh()
+            case .foldersChanged: await reloadFolders()
+            default: break
+            }
+        }
+    }
 
     @discardableResult
-    public func createFolder(named name: String) async -> LibraryFolder? {
+    public func createFolder(named name: String) async -> Folder? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
-        let folder = LibraryFolder(name: trimmed)
-        folders.append(folder)
-        await persistFolders()
+        let folder = Folder(name: trimmed, colorIndex: folders.count)
+        await saveFolder(folder)
         return folder
     }
 
     public func renameFolder(_ id: FolderID, to name: String) async {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let index = folders.firstIndex(where: { $0.id == id }) else { return }
-        folders[index].name = trimmed
-        await persistFolders()
+        guard !trimmed.isEmpty, var folder = folders.first(where: { $0.id == id }) else { return }
+        folder.name = trimmed
+        await saveFolder(folder)
+    }
+
+    public func setFolderColor(_ id: FolderID, index: Int) async {
+        guard var folder = folders.first(where: { $0.id == id }) else { return }
+        folder.colorIndex = index
+        await saveFolder(folder)
     }
 
     /// Deletes a folder; its items move to the Library root.
     public func deleteFolder(_ id: FolderID) async {
         do {
-            let members = try await transcripts.list(LibraryQuery(folderID: id))
-            for member in members {
+            for member in try await transcripts.list(LibraryQuery(folderID: id)) {
                 var moved = member
                 moved.folderID = nil
                 try await transcripts.save(moved)
             }
+            try await services.workspace.folders.delete(id)
         } catch {
             errorMessage = String(describing: error)
         }
-        folders.removeAll { $0.id == id }
         if filters.folderID == id { filters.folderID = nil }
-        await persistFolders()
+        await reloadFolders()
+        services.workspace.events.send(.foldersChanged)
         await reload()
     }
 
     public func folderName(for id: FolderID?) -> String? { folders.first { $0.id == id }?.name }
 
-    private func persistFolders() async { await services.settings.set(folders, for: SettingsKey.libraryFolders) }
+    private func saveFolder(_ folder: Folder) async {
+        do { try await services.workspace.folders.save(folder) } catch { errorMessage = String(describing: error) }
+        await reloadFolders()
+        services.workspace.events.send(.foldersChanged)
+    }
+
+    // MARK: Pins (SCR-018)
+
+    /// The next pin position: after every pinned folder and transcript.
+    private func nextPinOrder() async -> Int {
+        var query = LibraryQuery()
+        query.pinnedOnly = true
+        let pinnedTranscripts = ((try? await transcripts.list(query)) ?? []).compactMap(\.pinOrder)
+        let pinnedFolders = ((try? await services.workspace.folders.folders()) ?? []).compactMap(\.pinOrder)
+        return (pinnedTranscripts + pinnedFolders).max().map { $0 + 1 } ?? 0
+    }
+
+    public func togglePin(folder id: FolderID) async {
+        guard var folder = folders.first(where: { $0.id == id }) else { return }
+        folder.pinOrder = folder.isPinned ? nil : await nextPinOrder()
+        await saveFolder(folder)
+    }
+
+    public func togglePin(transcript id: TranscriptID) async {
+        let order = await nextPinOrder()
+        do {
+            guard var item = try await transcripts.transcript(id) else { return }
+            item.pinOrder = item.pinOrder == nil ? order : nil  // pinning is not an edit: modifiedAt stays
+            try await transcripts.save(item)
+        } catch {
+            errorMessage = String(describing: error)
+        }
+        services.workspace.events.send(.libraryChanged)
+        await reload()
+    }
+
+    // MARK: Grouping
+
+    /// The visible items in groups. `.none` is a single headerless group.
+    public var groups: [LibraryGroup] {
+        LibraryGrouper.groups(visibleItems, by: grouping, folders: folders, now: now(), calendar: calendar)
+    }
+
+    public func setGrouping(_ value: LibraryGrouping) async {
+        grouping = value
+        await services.settings.set(value.rawValue, for: SettingsKey.libraryGrouping)
+    }
+
+    public func isCollapsed(_ group: String) -> Bool { collapsedGroups.contains(group) }
+
+    public func toggleCollapsed(_ group: String) async {
+        if collapsedGroups.contains(group) { collapsedGroups.remove(group) } else { collapsedGroups.insert(group) }
+        await services.settings.set(collapsedGroups.sorted(), for: SettingsKey.libraryCollapsedGroups)
+    }
+
+    /// The folder cards show only at the Library root, with no search or filter narrowing the list.
+    public var showsFolderCards: Bool { mode == .library && showsFolders && filters.folderID == nil && !isNarrowed }
+
+    public func openFolder(_ id: FolderID?) { filters.folderID = id }
 
     // MARK: Missing media (LIB-AC-10)
 
@@ -423,6 +519,7 @@ public final class LibraryModel {
         } catch {
             errorMessage = String(describing: error)
         }
+        services.workspace.events.send(.libraryChanged)
         if shouldReload { await reload() }
     }
 
@@ -434,6 +531,7 @@ public final class LibraryModel {
         } catch {
             errorMessage = String(describing: error)
         }
+        services.workspace.events.send(.libraryChanged)
         await reload()
     }
 }

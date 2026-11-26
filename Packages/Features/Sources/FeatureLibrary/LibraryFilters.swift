@@ -1,15 +1,8 @@
 import AppCore
 import Foundation
 
-/// A Library folder. Folders have no repository: only `Transcript.folderID` exists in the domain, so names live in settings.
-public struct LibraryFolder: Codable, Sendable, Hashable, Identifiable {
-    public var id: FolderID
-    public var name: String
-    public init(id: FolderID = FolderID(), name: String) {
-        self.id = id
-        self.name = name
-    }
-}
+/// A Library folder (SCR-018). Kept as an alias so existing call sites read the same.
+public typealias LibraryFolder = Folder
 
 public enum LibraryLayout: String, Codable, Sendable, CaseIterable {
     case list, grid
@@ -85,5 +78,93 @@ public struct LibraryFilters: Equatable, Sendable {
     public var activeCount: Int {
         [!sources.isEmpty, !languages.isEmpty, date != .any, duration != .any, !speakerNames.isEmpty, !tags.isEmpty, folderID != nil]
             .filter { $0 }.count
+    }
+}
+
+
+// MARK: - Grouping
+
+/// How the Library list is grouped (a header per group, collapsible).
+public enum LibraryGrouping: String, Codable, Sendable, CaseIterable, Identifiable {
+    case none, date, folder, type, language, tag
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .none: "None"
+        case .date: "Date"
+        case .folder: "Folder"
+        case .type: "Type"
+        case .language: "Language"
+        case .tag: "Tag"
+        }
+    }
+}
+
+public struct LibraryGroup: Identifiable, Equatable, Sendable {
+    public var id: String
+    public var title: String
+    public var items: [Transcript]
+}
+
+/// Pure grouping of an already filtered and sorted list (kept out of the model so tests pin it).
+public enum LibraryGrouper {
+    public static func groups(
+        _ items: [Transcript], by grouping: LibraryGrouping, folders: [Folder], now: Date, calendar: Calendar
+    ) -> [LibraryGroup] {
+        switch grouping {
+        case .none:
+            return items.isEmpty ? [] : [LibraryGroup(id: "all", title: "", items: items)]
+        case .date:
+            let start = calendar.startOfDay(for: now)
+            let week = calendar.date(byAdding: .day, value: -6, to: start) ?? start
+            let month = calendar.date(byAdding: .day, value: -29, to: start) ?? start
+            func bucket(_ date: Date) -> (Int, String, String) {
+                if date >= start { return (0, "date.today", "Today") }
+                if date >= week { return (1, "date.week", "This week") }
+                if date >= month { return (2, "date.month", "This month") }
+                return (3, "date.older", "Older")
+            }
+            return ordered(items, key: { let b = bucket($0.createdAt); return (b.0, b.1, b.2) })
+        case .folder:
+            let names = Dictionary(uniqueKeysWithValues: folders.map { ($0.id, $0.name) })
+            return ordered(items, key: { item in
+                guard let id = item.folderID, let name = names[id] else { return (Int.max, "folder.none", "No folder") }
+                return (0, "folder.\(id)", name)
+            }, tieBreak: true)
+        case .type:
+            let rank: [TranscriptSource: Int] = [.meeting: 0, .file: 1, .liveCaptions: 2, .dictation: 3]
+            let names: [TranscriptSource: String] = [.meeting: "Meetings", .file: "Files", .liveCaptions: "Live captions", .dictation: "Dictation"]
+            return ordered(items, key: { ((rank[$0.source] ?? 9), "type.\($0.source.rawValue)", names[$0.source] ?? $0.source.rawValue) })
+        case .language:
+            return ordered(items, key: { item in
+                guard let code = item.languages.map(\.rawValue).sorted().first else { return (Int.max, "language.none", "Unknown language") }
+                return (0, "language.\(code)", Locale.current.localizedString(forLanguageCode: code) ?? code)
+            }, tieBreak: true)
+        case .tag:
+            var buckets: [String: LibraryGroup] = [:]
+            var untagged: [Transcript] = []
+            for item in items {
+                if item.tags.isEmpty { untagged.append(item) }
+                for tag in item.tags { buckets["tag.\(tag)", default: LibraryGroup(id: "tag.\(tag)", title: tag, items: [])].items.append(item) }
+            }
+            var result = buckets.values.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+            if !untagged.isEmpty { result.append(LibraryGroup(id: "tag.none", title: "Untagged", items: untagged)) }
+            return result
+        }
+    }
+
+    /// Groups in the order of the rank (then title when `tieBreak`), keeping each group's items in list order.
+    private static func ordered(
+        _ items: [Transcript], key: (Transcript) -> (Int, String, String), tieBreak: Bool = false
+    ) -> [LibraryGroup] {
+        var buckets: [String: (rank: Int, group: LibraryGroup)] = [:]
+        for item in items {
+            let (rank, id, title) = key(item)
+            buckets[id, default: (rank, LibraryGroup(id: id, title: title, items: []))].group.items.append(item)
+        }
+        return buckets.values.sorted {
+            if $0.rank != $1.rank { return $0.rank < $1.rank }
+            return tieBreak ? $0.group.title.localizedCaseInsensitiveCompare($1.group.title) == .orderedAscending : $0.group.id < $1.group.id
+        }.map(\.group)
     }
 }

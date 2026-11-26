@@ -98,7 +98,7 @@ public final class ShellModel {
         isQuickOpenPresented = false
         selection = section
         openedTranscript = nil
-        if section == .library { Task { await sidebar.reloadFolders() } }
+        if section == .library { Task { await sidebar.reloadPinned() } }
         let persistence = persistence
         Task { await persistence.save(section) }
     }

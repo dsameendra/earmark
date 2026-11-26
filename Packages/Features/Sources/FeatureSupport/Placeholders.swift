@@ -195,6 +195,12 @@ public actor InMemoryTranscripts: TranscriptRepository {
 
     public func list(_ query: LibraryQuery) async throws -> [Transcript] {
         var result = items.filter { ($0.deletedAt != nil) == query.deletedOnly }
+        // A meeting's live draft is hidden once its final transcript (a revision of it) exists.
+        if !query.deletedOnly {
+            let revised = Set(items.compactMap(\.revisionOf))
+            result = result.filter { !revised.contains($0.id) }
+        }
+        if query.pinnedOnly { result = result.filter { $0.pinOrder != nil } }
         if !query.sources.isEmpty { result = result.filter { query.sources.contains($0.source) } }
         if !query.languages.isEmpty { result = result.filter { !$0.languages.isDisjoint(with: query.languages) } }
         if let folder = query.folderID { result = result.filter { $0.folderID == folder } }
@@ -215,6 +221,7 @@ public actor InMemoryTranscripts: TranscriptRepository {
         case .durationDesc: result.sort { $0.duration > $1.duration }
         case .modifiedDesc: result.sort { $0.modifiedAt > $1.modifiedAt }
         }
+        if query.pinnedOnly { result.sort { ($0.pinOrder ?? 0) < ($1.pinOrder ?? 0) } }
         if let limit = query.limit { result = Array(result.prefix(limit)) }
         return result
     }

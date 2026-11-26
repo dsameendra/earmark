@@ -24,10 +24,12 @@ private func item(
 
 @MainActor private func makeModel(
     _ items: [Transcript], mode: LibraryMode = .library, segments: [TranscriptID: [Segment]] = [:],
-    store: InMemorySettingsStore = InMemorySettingsStore(), media: InMemoryMedia? = nil, access: FakeMediaAccess = FakeMediaAccess()
+    store: InMemorySettingsStore = InMemorySettingsStore(), media: InMemoryMedia? = nil, access: FakeMediaAccess = FakeMediaAccess(),
+    folders: [Folder] = []
 ) -> (LibraryModel, InMemoryTranscripts) {
     let repo = InMemoryTranscripts(items: items, segments: segments)
     var services = AppServices.preview()
+    services.workspace.folders = InMemoryFolders(items: folders)
     services.transcripts = repo
     services.settings = store
     services.media = media
@@ -184,11 +186,9 @@ private func item(
     }
 
     @Test func deletingFolderMovesItemsToRoot() async throws {  // folder deleted -> Library root
-        let folder = LibraryFolder(name: "Temp")
+        let folder = Folder(name: "Temp")
         let member = item("member", folder: folder.id)
-        let store = InMemorySettingsStore()
-        await store.set([folder], for: SettingsKey.libraryFolders)
-        let (library, repo) = makeModel([member], store: store)
+        let (library, repo) = makeModel([member], folders: [folder])
         await library.start()
         #expect(library.folders == [folder])
         await library.deleteFolder(folder.id)

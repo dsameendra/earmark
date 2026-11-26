@@ -252,3 +252,76 @@ public enum IntelligenceError: Error, Sendable, Equatable {
     case declined(part: Int)
     case failed(String)
 }
+
+// MARK: - Summaries, chat and files seams (SCR-021)
+
+public struct SummaryRequest: Sendable, Hashable {
+    public var transcriptID: TranscriptID
+    public var style: SummaryStyle
+    /// The user's current notes page, read as part of the input when `includeNotes` is on.
+    public var notesMarkdown: String
+    public var includeNotes: Bool
+    public var includeFiles: Bool
+    public init(
+        transcriptID: TranscriptID, style: SummaryStyle, notesMarkdown: String = "", includeNotes: Bool = true, includeFiles: Bool = true
+    ) {
+        self.transcriptID = transcriptID
+        self.style = style
+        self.notesMarkdown = notesMarkdown
+        self.includeNotes = includeNotes
+        self.includeFiles = includeFiles
+    }
+}
+
+public enum SummaryEvent: Sendable, Equatable {
+    /// `fraction` 0...1 and a short description ("Reading part 3 of 5").
+    case progress(fraction: Double, detail: String)
+    /// A part the system declined to process; the summary continues without it.
+    case skipped(part: Int)
+    /// The finished summary as Markdown.
+    case finished(markdown: String)
+}
+
+public struct ChatRequest: Sendable, Hashable {
+    public var transcriptID: TranscriptID
+    public var question: String
+    public var scope: ChatScope
+    /// Earlier turns (oldest first); only the last few are used.
+    public var history: [ChatMessage]
+    /// Current notes page.
+    public var notesMarkdown: String
+    public init(transcriptID: TranscriptID, question: String, scope: ChatScope, history: [ChatMessage] = [], notesMarkdown: String = "") {
+        self.transcriptID = transcriptID
+        self.question = question
+        self.scope = scope
+        self.history = history
+        self.notesMarkdown = notesMarkdown
+    }
+}
+
+public enum ChatEvent: Sendable, Equatable {
+    /// The answer so far (whole text, growing).
+    case partial(String)
+    /// The finished answer with sources computed by Earmark from what was retrieved. `upTo` is how far a live transcript reached.
+    case finished(text: String, sources: [ChatSource], upTo: TimeInterval?)
+}
+
+/// On-device summaries and chat (Apple Foundation Models). The implementation lives in the `Intelligence` package.
+public protocol IntelligenceServicing: Sendable {
+    func availability() async -> IntelligenceAvailability
+    /// Whether the model supports the language of this text (Sinhala and others it does not).
+    func supports(language: LanguageCode?) async -> Bool
+    func summarize(_ request: SummaryRequest) -> AsyncThrowingStream<SummaryEvent, any Error>
+    /// Summary of one attached file; the result is stored on the attachment by the caller.
+    func summarize(attachment: AttachmentID) -> AsyncThrowingStream<SummaryEvent, any Error>
+    func answer(_ request: ChatRequest) -> AsyncThrowingStream<ChatEvent, any Error>
+}
+
+/// Copying attachments into the library and reading their text (PDFKit, Vision).
+public protocol AttachmentFileManaging: Sendable {
+    /// Copies each file into the library, extracts text per page, and saves the attachments and their pages.
+    func attach(_ urls: [URL], role: Attachment.Role, to transcript: TranscriptID) async throws -> [Attachment]
+    /// The file (PDF) or folder (images) on disk.
+    func location(of attachment: Attachment) async -> URL
+    func remove(_ attachment: Attachment) async throws
+}

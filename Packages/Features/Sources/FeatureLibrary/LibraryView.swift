@@ -42,6 +42,8 @@ public struct LibraryView: View {
                 .frame(maxWidth: .infinity, alignment: .leading).padding(DSSpacing.lg)
                 .accessibilityIdentifier("library.retention")
             }
+            if model.showsFolderCards { FolderCardsRow(model: model) { isCreatingFolder = true } }
+            if model.mode == .library, let id = model.filters.folderID { FolderBreadcrumb(model: model, folderID: id) }
             if model.layout == .list && !model.items.isEmpty { LibraryColumnsHeader() }
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -91,6 +93,7 @@ public struct LibraryView: View {
         .dsAnimation(.settle, value: model.items.map(\.id))
         .dsAnimation(.glide, value: model.newlyAddedIDs)
         .task { await model.watchJobCompletions() }
+        .task { await model.watchWorkspace() }
     }
 
     @ViewBuilder private var content: some View {
@@ -126,19 +129,15 @@ public struct LibraryView: View {
     }
 
     private var list: some View {
-        List(model.items, selection: $model.selection) { item in
-            LibraryRow(item: item, model: model)
-                .tag(item.id)
-                .padding(.vertical, DSSpacing.xs)
-                .listRowSeparator(.hidden)
-                .listRowBackground(
-                    model.selection.contains(item.id) || model.newlyAddedIDs.contains(item.id)
-                        ? DSColor.accentTint : DSColor.contentBackground
-                )
-                .dsTransition(.settle)
-                .accessibilityIdentifier("library.item.\(item.id)")
-                .contextMenu { menu(for: item) }
-                .task { await model.checkMedia(for: item) }
+        List(selection: $model.selection) {
+            ForEach(model.groups) { group in
+                if model.grouping != .none {
+                    GroupHeader(group: group, model: model)
+                }
+                if model.grouping == .none || !model.isCollapsed(group.id) {
+                    ForEach(group.items) { item in row(item) }
+                }
+            }
         }
         .contextMenu(forSelectionType: TranscriptID.self) { _ in
         } primaryAction: { ids in
@@ -147,6 +146,23 @@ public struct LibraryView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .accessibilityLabel(Text(title))
+    }
+
+    private func row(_ item: Transcript) -> some View {
+        let dragIDs = model.selection.contains(item.id) ? Array(model.selection) : [item.id]
+        return LibraryRow(item: item, model: model)
+            .tag(item.id)
+            .padding(.vertical, DSSpacing.xs)
+            .listRowSeparator(.hidden)
+            .listRowBackground(
+                model.selection.contains(item.id) || model.newlyAddedIDs.contains(item.id)
+                    ? DSColor.accentTint : DSColor.contentBackground
+            )
+            .dsTransition(.settle)
+            .accessibilityIdentifier("library.item.\(item.id)")
+            .contextMenu { menu(for: item) }
+            .draggable(DraggedTranscripts(ids: dragIDs))
+            .task { await model.checkMedia(for: item) }
     }
 
     private var grid: some View {
@@ -195,6 +211,9 @@ public struct LibraryView: View {
             Button("Rename…", systemImage: "pencil") {
                 renameText = item.title
                 renaming = item
+            }
+            Button(item.pinOrder == nil ? "Pin to Sidebar" : "Unpin from Sidebar", systemImage: item.pinOrder == nil ? "pin" : "pin.slash") {
+                Task { await model.togglePin(transcript: item.id) }
             }
             Button("Duplicate", systemImage: "plus.square.on.square") { Task { await model.duplicate(item.id) } }
             Menu("Move to Folder", symbol: .folder) {
@@ -265,6 +284,24 @@ public struct LibraryView: View {
                 .dsToolbarControl()
                 .help("Choose how the library is ordered")
                 .accessibilityLabel("Sort by")
+            }
+            ToolbarSpacer(.fixed)
+            ToolbarItem {
+                Menu {
+                    Picker(
+                        "Group by", selection: Binding(get: { model.grouping }, set: { value in Task { await model.setGrouping(value) } })
+                    ) {
+                        ForEach(LibraryGrouping.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    DSToolbarLabel(model.grouping == .none ? "Group" : "Group: \(model.grouping.title)", systemImage: "rectangle.3.group")
+                }
+                .labelStyle(.titleAndIcon)
+                .dsToolbarControl()
+                .help("Group the library by date, folder, type, language or tag")
+                .accessibilityIdentifier("library.group")
+                .accessibilityLabel("Group by")
             }
             ToolbarSpacer(.fixed)
             ToolbarItem {

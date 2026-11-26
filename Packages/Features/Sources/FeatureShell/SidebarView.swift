@@ -40,14 +40,16 @@ struct SidebarView: View {
             if model.isRecordingActive { recordingRow }
             ScrollView {
                 VStack(alignment: .leading, spacing: DSSpacing.xs) {
-                    ForEach(AppSection.allCases) { section in row(section) }
-                    if !model.sidebar.folders.isEmpty { folders }
+                    ForEach(AppSection.topSections) { section in row(section) }
+                    row(.library)
+                    if !model.sidebar.pinned.isEmpty { pinnedList }
+                    row(.recentlyDeleted)
                 }
                 .compositingGroup()
             }
             .scrollIndicators(.hidden)
             if let chip = model.sidebar.modelChip {
-                Button { isModelPickerPresented.toggle() } label: { ModelChipView(chip: chip) }
+                Button { isModelPickerPresented.toggle() } label: { CompactModelChipView(chip: chip) }
                     .buttonStyle(.plain)
                     .help("Choose the speech model for files, live captions and dictation")
                     .accessibilityLabel("Speech model, \(chip.name), \(chip.statusText). Opens the model picker.")
@@ -106,6 +108,7 @@ struct SidebarView: View {
     private func row(_ section: AppSection) -> some View {
         let look = SidebarRowAppearance(section: section, selection: model.selection)
         return Button {
+            if section == .library { model.library.filters.folderID = nil }  // the Library row is the whole Library
             model.select(section)
             navigationFocused = true
         } label: {
@@ -165,33 +168,87 @@ struct SidebarView: View {
         .accessibilityIdentifier("sidebar.recording")
     }
 
-    // MARK: Folders
+    // MARK: Pinned
 
-    private var folders: some View {
+    private var pinnedList: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Folders")
-                .font(DSTypography.label).textCase(.uppercase).tracking(DSTypography.labelTracking)
-                .foregroundStyle(DSColor.tertiaryText)
-                .padding(.horizontal, DSSpacing.md).padding(.top, DSSpacing.lg).padding(.bottom, 6)
-                .accessibilityAddTraits(.isHeader)
-            ForEach(Array(model.sidebar.folders.enumerated()), id: \.element.id) { index, folder in
-                Button {
-                    model.openFolder(folder.id)
-                } label: {
-                    HStack(spacing: 10) {
-                        Circle().fill(SpeakerPalette.color(forSlot: index)).frame(width: 8, height: 8).accessibilityHidden(true)
-                        Text(folder.name).lineLimit(1)
-                        Spacer(minLength: 0)
-                    }
-                    .font(.system(size: 13))
-                    .foregroundStyle(DSColor.secondaryText)
-                    .padding(.horizontal, DSSpacing.md).padding(.vertical, 6)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Folder \(folder.name)")
-                .accessibilityIdentifier("sidebar.folder.\(folder.id)")
+            ForEach(model.sidebar.pinned) { item in pinnedRow(item) }
+        }
+        .padding(.leading, DSSpacing.sm)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Pinned")
+        .accessibilityIdentifier("sidebar.pinned")
+    }
+
+    private func isActive(_ item: PinnedItem) -> Bool {
+        switch item {
+        case .folder(let folder, _): model.selection == .library && model.openedTranscript == nil && model.library.filters.folderID == folder.id
+        case .transcript(let transcript): model.openedTranscript == transcript.id
+        }
+    }
+
+    private func pinnedRow(_ item: PinnedItem) -> some View {
+        let active = isActive(item)
+        return Button {
+            switch item {
+            case .folder(let folder, _): model.openFolder(folder.id)
+            case .transcript(let transcript): model.openTranscript(transcript.id)
             }
+            navigationFocused = true
+        } label: {
+            HStack(spacing: 9) {
+                pinnedIcon(item)
+                Text(item.title).lineLimit(1)
+                Spacer(minLength: DSSpacing.xs)
+                if case .folder(_, let count) = item, count > 0 {
+                    Text("\(count)").font(DSTypography.caption).foregroundStyle(DSColor.tertiaryText)
+                }
+            }
+            .font(.system(size: 13, weight: active ? .semibold : .regular))
+            .foregroundStyle(active ? DSColor.primaryText : DSColor.secondaryText)
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .background { if active { RoundedRectangle(cornerRadius: DSRadius.medium, style: .continuous).fill(DSColor.selectionPill) } }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .draggable(PinnedDrag(id: item.id))
+        .dropDestination(for: PinnedDrag.self) { dropped, _ in
+            guard let id = dropped.first?.id, id != item.id else { return false }
+            Task { await model.sidebar.movePinned(id, before: item.id) }
+            return true
+        }
+        .dropDestination(for: DraggedTranscripts.self) { dropped, _ in
+            guard case .folder(let folder, _) = item, let ids = dropped.first?.ids else { return false }
+            Task { await model.library.move(ids, to: folder.id) }
+            return true
+        }
+        .contextMenu {
+            Button("Unpin from Sidebar", systemImage: "pin.slash") { Task { await model.sidebar.unpin(item) } }
+            Button("Move Up", systemImage: "arrow.up") { Task { await model.sidebar.movePinned(item.id, by: -1) } }
+            Button("Move Down", systemImage: "arrow.down") { Task { await model.sidebar.movePinned(item.id, by: 1) } }
+        }
+        .accessibilityLabel(pinnedLabel(item))
+        .accessibilityAddTraits(active ? .isSelected : [])
+        .accessibilityAction(named: "Unpin") { Task { await model.sidebar.unpin(item) } }
+        .accessibilityAction(named: "Move up") { Task { await model.sidebar.movePinned(item.id, by: -1) } }
+        .accessibilityAction(named: "Move down") { Task { await model.sidebar.movePinned(item.id, by: 1) } }
+        .accessibilityIdentifier("sidebar.pinned.\(item.id)")
+    }
+
+    @ViewBuilder private func pinnedIcon(_ item: PinnedItem) -> some View {
+        switch item {
+        case .folder(let folder, _):
+            Circle().fill(SpeakerPalette.color(forSlot: folder.colorIndex)).frame(width: 8, height: 8).frame(width: 14).accessibilityHidden(true)
+        case .transcript:
+            Image(systemName: "doc.text")  // stock-chrome: pinned transcript
+                .font(.system(size: 12)).frame(width: 14).accessibilityHidden(true)
+        }
+    }
+
+    private func pinnedLabel(_ item: PinnedItem) -> String {
+        switch item {
+        case .folder(let folder, let count): "Pinned folder \(folder.name), \(count) items"
+        case .transcript(let transcript): "Pinned transcript \(transcript.title)"
         }
     }
 
@@ -280,4 +337,47 @@ struct ModelChipView: View {
         case .notInstalled: DSColor.secondaryText
         }
     }
+}
+
+
+/// The speech model as one compact line (name, status dot, short status); the picker opens from it.
+struct CompactModelChipView: View {
+    let chip: SidebarModelChip
+
+    var body: some View {
+        HStack(spacing: DSSpacing.xs) {
+            Circle().fill(statusColor).frame(width: 7, height: 7).accessibilityHidden(true)
+            Text(chip.name).font(.system(size: 12, weight: .medium)).foregroundStyle(DSColor.primaryText).lineLimit(1)
+            Spacer(minLength: DSSpacing.xs)
+            Text(shortStatus).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText).lineLimit(1)
+        }
+        .padding(.horizontal, 10)
+        .frame(minHeight: DSLayout.minControlHeight)
+        .dsSolidSurface(.inset, radius: DSRadius.medium)
+        .padding(.horizontal, 4)
+        .dsAnimation(.glide, value: chip)
+    }
+
+    private var shortStatus: String {
+        switch chip.status {
+        case .downloading(let fraction): "\(Int(fraction * 100))%"
+        default: chip.statusText
+        }
+    }
+
+    private var statusColor: Color {
+        switch chip.status {
+        case .ready: DSColor.success
+        case .failed: DSColor.danger
+        case .paused: DSColor.warning
+        case .downloading: DSColor.accentText
+        case .notInstalled: DSColor.secondaryText
+        }
+    }
+}
+
+/// Reordering a pinned entry by dragging it onto another one.
+struct PinnedDrag: Codable, Transferable {
+    var id: String
+    static var transferRepresentation: some TransferRepresentation { CodableRepresentation(contentType: .json) }
 }

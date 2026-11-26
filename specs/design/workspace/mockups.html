@@ -1,0 +1,376 @@
+<title>Earmark Workspace Design</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Concept: a faithful macOS-window mock of Earmark. Warm paper, ink text, one Ember accent; the plan's screens as tabs. */
+:root{
+  --paper:#f3eee5; --win:#fbf8f2; --side:#ece6da; --card:#ffffff; --ink:#1f1c17; --ink2:#5f594e; --ink3:#6f685b;
+  --line:#e0d8c8; --ember:#d9553c; --ember-ink:#a8361f; --ember-soft:#f8e0d9; --ok:#3d7a54; --warn:#b4791f; --sel:#ffffff;
+  --shadow:0 1px 2px rgba(40,30,10,.08),0 8px 24px rgba(40,30,10,.10);
+  --serif:"Newsreader",Georgia,serif; --sans:Inter,-apple-system,"SF Pro Text",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#12110f; --win:#1b1916; --side:#171512; --card:#24211d; --ink:#f1ece2; --ink2:#b4ad9f; --ink3:#a29a8b;
+  --line:#2f2b25; --ember:#ee6f55; --ember-ink:#f39a87; --ember-soft:#3a2420; --ok:#6fbf8b; --warn:#e0a54a; --sel:#2a2621;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.45);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#12110f; --win:#1b1916; --side:#171512; --card:#24211d; --ink:#f1ece2; --ink2:#b4ad9f; --ink3:#a29a8b;
+  --line:#2f2b25; --ember:#ee6f55; --ember-ink:#f39a87; --ember-soft:#3a2420; --ok:#6fbf8b; --warn:#e0a54a; --sel:#2a2621;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.45);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 56px}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-family:var(--serif);font-weight:500;font-size:34px;margin:0 0 4px;letter-spacing:-.01em}
+.lede{color:var(--ink2);max-width:70ch;margin:0 0 18px}
+nav.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+nav.tabs button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink2);border-radius:999px;padding:7px 14px;cursor:pointer}
+nav.tabs button[aria-selected=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+nav.tabs button:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+.note{font-size:13px;color:var(--ink2);margin:10px 0 0;max-width:90ch}
+.note b{color:var(--ink)}
+.scroll{overflow-x:auto}
+.win{display:grid;grid-template-columns:232px minmax(640px,1fr);min-width:900px;height:640px;background:var(--win);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.side{background:var(--side);padding:12px 10px;display:flex;flex-direction:column;gap:2px;border-right:1px solid var(--line)}
+.dots{display:flex;gap:6px;padding:2px 6px 12px}.dots i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}
+.brand{display:flex;align-items:center;gap:8px;padding:0 8px 10px;font-family:var(--serif);font-size:20px}
+.logo{width:24px;height:24px;border-radius:7px;background:linear-gradient(140deg,var(--ember),#f1a37c)}
+.row{display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:9px;color:var(--ink2);font-size:13px;white-space:nowrap}
+.row .ic{width:16px;text-align:center;color:var(--ink3)}
+.row.sel{background:var(--sel);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(40,30,10,.12)}
+.row.sel .ic{color:var(--ember)}
+.row.sub{margin-left:14px;padding:4px 9px;font-size:12.5px}
+.row .n{margin-left:auto;font-size:11px;color:var(--ink3)}
+.sep{height:1px;background:var(--line);margin:8px 6px}
+.cap{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);padding:8px 9px 3px}
+.sp{flex:1}
+.chip{display:flex;align-items:center;gap:7px;padding:6px 9px;border-radius:9px;font-size:12px;color:var(--ink2);border:1px solid var(--line);background:var(--card)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.annot{position:relative}
+.tag{display:inline-block;font-size:10.5px;background:var(--ember-soft);color:var(--ember-ink);border-radius:6px;padding:1px 6px;margin-left:6px;font-weight:600}
+.main{display:flex;flex-direction:column;min-width:0}
+.bar{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);min-height:50px}
+.bar h2{margin:0;font-size:15px;font-weight:600}
+.bar .sp{flex:1}
+.btn{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:5px 11px;white-space:nowrap}
+.btn.pri{background:#c4452d;border-color:#c4452d;color:#fff;font-weight:600}
+.btn.ghost{background:transparent}
+.seg{display:inline-flex;background:var(--side);border-radius:9px;padding:2px;gap:2px}
+.seg span{padding:4px 12px;font-size:12.5px;border-radius:7px;color:var(--ink2)}
+.seg span.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(40,30,10,.12)}
+.pill{font-size:11px;border-radius:999px;padding:2px 9px;background:var(--side);color:var(--ink2)}
+.pill.ember{background:var(--ember-soft);color:var(--ember-ink)}
+.body{padding:16px;overflow:hidden;flex:1;min-height:0}
+.small{font-size:12px;color:var(--ink3)}
+.folders{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.fcard{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.fcard b{font-size:13px}.fcard .small{font-size:11.5px}
+.sw{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px}
+.ghd{display:flex;align-items:center;gap:8px;padding:8px 4px 4px;font-size:12px;font-weight:600;color:var(--ink2);border-bottom:1px solid var(--line)}
+.item{display:flex;align-items:center;gap:12px;padding:9px 6px;border-bottom:1px solid var(--line)}
+.item .t{font-weight:600;font-size:13.5px}.item .m{font-size:12px;color:var(--ink3)}
+.item .r{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:12px;color:var(--ink3)}
+.stage-wrap{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:14px;height:100%}
+.stage{background:#14110f;border-radius:12px;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.screen{flex:1;display:grid;place-items:center;color:#cfc7b8;font-size:13px;background:radial-gradient(120% 90% at 30% 10%,#2b2620,#14110f)}
+.slide{width:78%;aspect-ratio:16/9;background:#fffdf8;color:#1f1c17;border-radius:6px;padding:14px 18px;box-shadow:0 8px 30px rgba(0,0,0,.5);font-size:12px}
+.slide h4{margin:0 0 6px;font-family:var(--serif);font-size:19px;font-weight:500}
+.slide li{margin:2px 0}
+.strip{display:flex;gap:6px;padding:8px;background:#1d1915;overflow:hidden}
+.th{width:62px;aspect-ratio:16/9;background:#efe8da;border-radius:3px;flex:none;border:2px solid transparent;font-size:8px;color:#5f594e;padding:3px}
+.th.on{border-color:var(--ember)}
+.transport{display:flex;align-items:center;gap:10px;padding:8px 10px;background:#1d1915;color:#cfc7b8;font-size:12px}
+.wave{flex:1;height:22px;background:repeating-linear-gradient(90deg,#6b6254 0 2px,transparent 2px 5px);opacity:.7;mask:linear-gradient(0deg,#000,#000);border-radius:3px}
+.col{display:flex;flex-direction:column;min-width:0;height:100%}
+.tabs2{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.tabs2 span{padding:7px 14px;font-size:13px;color:var(--ink2);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs2 span.on{color:var(--ink);font-weight:600;border-color:var(--ember)}
+.seg2{padding:6px 0;border-bottom:1px solid var(--line);font-size:13px;display:grid;grid-template-columns:44px 1fr;gap:8px}
+.seg2 .sp2{color:var(--ink3);font-size:11.5px;font-variant-numeric:tabular-nums}
+.seg2 b{font-size:11.5px;color:var(--ember-ink);display:block}
+.doc h3{font-family:var(--serif);font-weight:500;font-size:17px;margin:12px 0 4px}
+.doc h3:first-child{margin-top:0}
+.doc ul{margin:0;padding-left:18px}.doc li{margin:3px 0}
+.doc .chk{list-style:none;padding-left:0}.doc .chk li:before{content:"☐ ";color:var(--ink3)}
+.ts{color:var(--ember-ink);font-variant-numeric:tabular-nums;font-size:12px}
+.fmt{display:flex;gap:4px;margin-bottom:10px;align-items:center}
+.fmt span{width:26px;height:24px;border:1px solid var(--line);border-radius:6px;display:grid;place-items:center;font-size:12px;background:var(--card);color:var(--ink2)}
+.banner{display:flex;align-items:center;gap:10px;background:var(--ember-soft);border-radius:9px;padding:8px 12px;font-size:12.5px;margin-bottom:10px}
+.banner .sp{flex:1}
+.msg{max-width:88%;padding:8px 12px;border-radius:12px;font-size:13px;margin-bottom:8px}
+.msg.u{margin-left:auto;background:#c4452d;color:#fff;border-bottom-right-radius:3px}
+.msg.a{background:var(--card);border:1px solid var(--line);border-bottom-left-radius:3px}
+.src{display:inline-flex;gap:4px;align-items:center;font-size:11px;border:1px solid var(--line);border-radius:999px;padding:1px 8px;margin:6px 4px 0 0;color:var(--ink2);background:var(--win)}
+.sugg{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.sugg span{border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:12px;background:var(--card);color:var(--ink2)}
+.input{margin-top:auto;display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:7px 8px 7px 12px;background:var(--card);color:var(--ink3);font-size:13px}
+.input .btn{margin-left:auto}
+.prog{height:6px;border-radius:3px;background:var(--side);overflow:hidden}.prog i{display:block;height:100%;width:58%;background:var(--ember)}
+.settings{display:grid;grid-template-columns:200px 1fr;height:100%}
+.sl{border-right:1px solid var(--line);padding:12px 10px}
+.set{padding:18px 26px;overflow:hidden}
+.set h3{margin:0 0 12px;font-size:15px}
+.fr{display:flex;align-items:center;gap:14px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.fr .sp{flex:1}.fr small{display:block;color:var(--ink3);font-size:11.5px}
+.tg{width:34px;height:20px;border-radius:999px;background:var(--line);position:relative;flex:none}
+.tg:after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.tg.on{background:var(--ember)}.tg.on:after{left:16px}
+.status{display:flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.mini{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:12px;font-size:12.5px}
+.mini h4{margin:0 0 6px;font-size:13px}
+@media (max-width:700px){h1{font-size:28px}.grid2{grid-template-columns:1fr}}
+</style>
+
+<div class="wrap">
+  <h1>Earmark Workspace</h1>
+  <p class="lede">Proposed design for folders, pinned items, notes, summaries, slides and chat. Mock-ups of the planned screens, drawn with the real layout of the macOS app. Nothing here is built yet.</p>
+
+  <nav class="tabs" role="tablist" aria-label="Screens" id="tabs">
+    <button role="tab" aria-selected="true" data-v="v1">Sidebar and Library</button>
+    <button role="tab" aria-selected="false" data-v="v2">Transcript page</button>
+    <button role="tab" aria-selected="false" data-v="v3">Notes and summary</button>
+    <button role="tab" aria-selected="false" data-v="v4">Slides stage</button>
+    <button role="tab" aria-selected="false" data-v="v5">Chat</button>
+    <button role="tab" aria-selected="false" data-v="v6">Files</button>
+    <button role="tab" aria-selected="false" data-v="v7">Settings</button>
+    <button role="tab" aria-selected="false" data-v="v8">States</button>
+  </nav>
+
+<!-- 1. SIDEBAR + LIBRARY -->
+<section id="v1" class="view">
+ <div class="scroll"><div class="win">
+  <aside class="side">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <div class="brand"><span class="logo"></span>earmark</div>
+    <div class="row"><span class="ic">⌂</span>Home</div>
+    <div class="row"><span class="ic">≡</span>Queue<span class="n">2</span></div>
+    <div class="row"><span class="ic">◎</span>Meetings</div>
+    <div class="row"><span class="ic">◉</span>Live</div>
+    <div class="sep"></div>
+    <div class="row sel"><span class="ic">▤</span>Library<span class="tag">new</span></div>
+    <div class="row sub"><span class="ic" style="color:#3b82a0">●</span>Physics 201<span class="n">14</span></div>
+    <div class="row sub"><span class="ic" style="color:#d9553c">●</span>Product sync<span class="n">31</span></div>
+    <div class="row sub"><span class="ic">▯</span>Q3 planning, 26 Nov</div>
+    <div class="row sub"><span class="ic" style="color:#6b8f3d">●</span>Interviews<span class="n">8</span></div>
+    <div class="sep"></div>
+    <div class="row"><span class="ic">⌫</span>Recently Deleted</div>
+    <div class="sp"></div>
+    <div class="chip"><span class="dot"></span>Whisper small<span class="small" style="margin-left:auto">Ready</span></div>
+    <div class="row"><span class="ic">⚙</span>Settings</div>
+  </aside>
+  <div class="main">
+    <div class="bar"><h2>Library</h2><span class="pill">93 transcripts</span><span class="sp"></span>
+      <span class="btn">Group by: Date ▾</span><span class="btn">Sort ▾</span><span class="seg"><span class="on">List</span><span>Grid</span></span><span class="btn pri">New folder</span></div>
+    <div class="body">
+      <div class="folders">
+        <div class="fcard"><b><span class="sw" style="background:#3b82a0"></span>Physics 201 📌</b><span class="small">14 items · pinned</span></div>
+        <div class="fcard"><b><span class="sw" style="background:#d9553c"></span>Product sync 📌</b><span class="small">31 items · pinned</span></div>
+        <div class="fcard"><b><span class="sw" style="background:#6b8f3d"></span>Interviews</b><span class="small">8 items</span></div>
+        <div class="fcard" style="border-style:dashed;background:transparent"><b>+ New folder</b><span class="small">Drop items here to file them</span></div>
+      </div>
+      <div class="ghd">▾ Today <span class="small">3</span></div>
+      <div class="item"><span>◎</span><div><div class="t">Discord meeting, 26 Nov 2026 at 22:38</div><div class="m">Meeting · 2 speakers · notes · summary</div></div><div class="r"><span class="pill">Product sync</span>0:28</div></div>
+      <div class="item"><span>▤</span><div><div class="t">Lecture 9: Thermodynamics</div><div class="m">File · 48 min · slides (31) · notes</div></div><div class="r"><span class="pill">Physics 201</span>48:12</div></div>
+      <div class="ghd" style="margin-top:8px">▾ This week <span class="small">5</span></div>
+      <div class="item"><span>▤</span><div><div class="t">Candidate call: Sam R.</div><div class="m">Meeting · 41 min</div></div><div class="r"><span class="pill">Interviews</span>41:03</div></div>
+      <div class="ghd" style="margin-top:8px">▸ This month <span class="small">12</span></div>
+    </div>
+  </div>
+ </div></div>
+ <p class="note"><b>Sidebar order:</b> Home, Queue, Meetings, Live; Library with the pinned folders and transcripts under it; Recently Deleted; one compact line for the speech model; Settings. <b>Pin</b> from a context menu, the folder or transcript header, or by dragging onto the sidebar. <b>Group by:</b> None, Date, Folder, Type, Language, Tag; headers collapse. Folders are real objects (colour, rename, pin, delete moves items to the root).</p>
+</section>
+
+<!-- 2. TRANSCRIPT PAGE -->
+<section id="v2" class="view" hidden>
+ <div class="scroll"><div class="win">
+  <aside class="side">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <div class="brand"><span class="logo"></span>earmark</div>
+    <div class="row"><span class="ic">⌂</span>Home</div><div class="row"><span class="ic">≡</span>Queue</div><div class="row"><span class="ic">◎</span>Meetings</div><div class="row"><span class="ic">◉</span>Live</div>
+    <div class="sep"></div>
+    <div class="row sel"><span class="ic">▤</span>Library</div>
+    <div class="row sub"><span class="ic" style="color:#3b82a0">●</span>Physics 201<span class="n">14</span></div>
+    <div class="row sub"><span class="ic">▯</span>Lecture 9: Thermodynamics</div>
+    <div class="sep"></div><div class="row"><span class="ic">⌫</span>Recently Deleted</div><div class="sp"></div>
+    <div class="chip"><span class="dot"></span>Whisper small</div><div class="row"><span class="ic">⚙</span>Settings</div>
+  </aside>
+  <div class="main">
+    <div class="bar"><div><h2>Lecture 9: Thermodynamics</h2><div class="small">Physics 201 ▾ · File · 26 Nov 2026 · 48:12 · English</div></div><span class="sp"></span>
+      <span class="btn ghost">📌 Pin</span><span class="btn">Find</span><span class="btn">Speakers</span><span class="btn">Translate</span><span class="btn">Export</span><span class="btn pri">✦ Summarise</span></div>
+    <div class="body"><div class="stage-wrap">
+      <div class="stage">
+        <div class="screen">▶ Video</div>
+        <div class="strip" style="justify-content:space-between;background:#1d1915"><span class="seg" style="background:#2c2721"><span class="on" style="background:#3a342d;color:#fff">Video</span><span style="color:#cfc7b8">Slides · 31</span></span><span class="small" style="color:#9b9283">Stage</span></div>
+        <div class="transport">⏮ ▶ ⏭ <span class="wave"></span> 12:41 / 48:12 · 1×</div>
+      </div>
+      <div class="col">
+        <div class="tabs2"><span class="on">Transcript</span><span>Notes <span class="pill ember">new</span></span><span>Chat</span><span>Files <span class="small">1</span></span></div>
+        <div class="seg2"><span class="sp2">12:38</span><div><b>Professor</b>So the second law says entropy of an isolated system never decreases.</div></div>
+        <div class="seg2"><span class="sp2">12:52</span><div><b>Student</b>Does that include living things?</div></div>
+        <div class="seg2"><span class="sp2">12:58</span><div><b>Professor</b>Living things are not isolated. They export entropy to their surroundings.</div></div>
+        <div class="seg2"><span class="sp2">13:20</span><div><b>Professor</b>The midterm is on March 14 and covers chapters 1 to 4.</div></div>
+      </div>
+    </div></div>
+  </div>
+ </div></div>
+ <p class="note"><b>Preserved:</b> editing, speakers, translation, re-transcribe, bookmarks, find and replace, view options, export, waveform, transport and inspector all stay. <b>New:</b> a header with folder, pin and Summarise; a <b>Video / Slides</b> switch on the stage; the content area has four tabs, Transcript first and the default. Wide windows can show Notes or Chat beside the Transcript.</p>
+</section>
+
+<!-- 3. NOTES + SUMMARY -->
+<section id="v3" class="view" hidden>
+ <div class="scroll"><div class="win">
+  <aside class="side">
+    <div class="dots"><i></i><i></i><i></i></div><div class="brand"><span class="logo"></span>earmark</div>
+    <div class="row"><span class="ic">⌂</span>Home</div><div class="row"><span class="ic">≡</span>Queue</div><div class="row"><span class="ic">◎</span>Meetings</div><div class="row"><span class="ic">◉</span>Live</div>
+    <div class="sep"></div><div class="row sel"><span class="ic">▤</span>Library</div><div class="row sub"><span class="ic" style="color:#d9553c">●</span>Product sync<span class="n">31</span></div>
+    <div class="sep"></div><div class="row"><span class="ic">⌫</span>Recently Deleted</div><div class="sp"></div><div class="chip"><span class="dot"></span>Whisper small</div><div class="row"><span class="ic">⚙</span>Settings</div>
+  </aside>
+  <div class="main">
+    <div class="bar"><div><h2>Q3 planning sync</h2><div class="small">Product sync ▾ · Meeting · 26 Nov 2026 · 6:15</div></div><span class="sp"></span><span class="btn ghost">📌 Pin</span><span class="btn">Export</span></div>
+    <div class="body"><div class="col">
+      <div class="tabs2"><span>Transcript</span><span class="on">Notes</span><span>Chat</span><span>Files</span></div>
+      <div class="banner">✦ Summary written from the transcript and your notes. <span class="sp"></span><span class="btn">Undo summary</span><span class="btn ghost">Version history</span></div>
+      <div class="fmt"><span><b>B</b></span><span><i>I</i></span><span>H</span><span>•</span><span>1.</span><span>☐</span><span>🔗</span><span class="btn" style="width:auto;padding:0 8px">⏱ Insert time</span><span class="sp"></span><span class="btn pri" style="width:auto;padding:0 12px">✦ Summarise again</span></div>
+      <div class="doc">
+        <h3>Meeting summary</h3>
+        <p style="margin:0">The team moved the Aurora release to September 26 after the payment certification failed twice, agreed to shift $30k from contractors to support hiring, and assigned three follow-ups.</p>
+        <h3>Discussion points</h3>
+        <ul><li>Aurora slipped from Sep 12 to Sep 26; cause was a missing TLS 1.3 setting, fixed Tuesday <span class="ts">[01:05]</span></li><li>Q3 budget: $240k, $85k already spent on contractors <span class="ts">[01:40]</span></li><li>Risk: a third failed certification means the backup provider, about two weeks more <span class="ts">[03:30]</span></li></ul>
+        <h3>Decisions</h3>
+        <ul><li>Move $30k to support hiring; testing contractor stays until Sep 26 <span class="ts">[03:00]</span></li></ul>
+        <h3>Action items</h3>
+        <ul class="chk"><li><b>Tom</b>: post two job listings, share shortlist with Priya, by Friday</li><li><b>Marcus</b>: Aurora release checklist to everyone by Wednesday</li><li><b>Priya</b>: talk to finance about the transfer, report Monday</li></ul>
+        <h3>My notes</h3><ul><li>Ask Elena about the staging maintenance window (Sep 17, 9 to 11)</li></ul>
+      </div>
+    </div></div>
+  </div>
+ </div></div>
+ <p class="note"><b>Hand-written notes are an input.</b> Whatever is on the page when you press Summarise is read together with the transcript (and attached files if ticked); the facts you wrote are kept. The result replaces the page, but the previous page is saved as a version and an Undo banner stays visible. Timestamps are links that jump playback. Meeting style gives Summary, Discussion points, Decisions, Action items, Risks; Lecture style gives Summary, Key concepts, Definitions, Examples, Deadlines, Questions to review.</p>
+ <div class="grid2" style="margin-top:14px">
+   <div class="mini"><h4>Summarise options (sheet)</h4>
+     Style <span class="seg" style="margin-left:6px"><span class="on">Meeting</span><span>Lecture</span><span>General</span></span><br><br>
+     ☑ Transcript &nbsp; ☑ My notes &nbsp; ☑ Slides and files (1)<br><br>
+     <span class="small">Runs on this Mac with Apple Intelligence. About 1 minute for this recording.</span><br><br><span class="btn pri">Summarise</span> <span class="btn ghost">Cancel</span></div>
+   <div class="mini"><h4>Working (long recording)</h4>
+     <div class="prog"><i></i></div><div class="small" style="margin-top:6px">Reading part 3 of 5 · you can keep using Earmark</div><br><span class="btn">Cancel</span>
+     <p class="small" style="margin-bottom:0">Generated on this Mac. Check important details against the transcript.</p></div>
+ </div>
+</section>
+
+<!-- 4. SLIDES STAGE -->
+<section id="v4" class="view" hidden>
+ <div class="scroll"><div class="win">
+  <aside class="side"><div class="dots"><i></i><i></i><i></i></div><div class="brand"><span class="logo"></span>earmark</div>
+    <div class="row"><span class="ic">⌂</span>Home</div><div class="row"><span class="ic">≡</span>Queue</div><div class="row"><span class="ic">◎</span>Meetings</div><div class="row"><span class="ic">◉</span>Live</div>
+    <div class="sep"></div><div class="row sel"><span class="ic">▤</span>Library</div><div class="row sub"><span class="ic" style="color:#3b82a0">●</span>Physics 201</div><div class="sp"></div><div class="chip"><span class="dot"></span>Whisper small</div><div class="row"><span class="ic">⚙</span>Settings</div></aside>
+  <div class="main">
+    <div class="bar"><div><h2>Lecture 9: Thermodynamics</h2><div class="small">Physics 201 ▾ · 48:12</div></div><span class="sp"></span><span class="btn ghost">📌 Pin</span><span class="btn pri">✦ Summarise</span></div>
+    <div class="body"><div class="stage-wrap" style="grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)">
+      <div class="stage">
+        <div class="screen"><div class="slide"><h4>The second law</h4><ul style="margin:0;padding-left:16px"><li>Entropy of an isolated system never decreases</li><li>Heat flows from hot to cold, not the reverse</li><li>ΔS ≥ Q/T</li></ul><div style="margin-top:8px;color:#948c7d;font-size:10px">Slide 12 of 31</div></div></div>
+        <div class="strip"><div class="th">9</div><div class="th">10</div><div class="th">11</div><div class="th on">12</div><div class="th">13</div><div class="th">14</div><div class="th">15</div></div>
+        <div class="transport"><span class="seg" style="background:#2c2721"><span style="color:#cfc7b8">Video</span><span class="on" style="background:#3a342d;color:#fff">Slides</span></span><span class="btn" style="background:#2c2721;color:#fff;border-color:#3a342d">⏱ Slide changes here</span><span class="wave"></span>12:41</div>
+      </div>
+      <div class="col">
+        <div class="tabs2"><span class="on">Transcript</span><span>Notes</span><span>Chat</span><span>Files</span></div>
+        <div class="seg2" style="background:var(--ember-soft);border-radius:8px;padding:6px"><span class="sp2">12:38</span><div><b>Professor · slide 12</b>So the second law says entropy of an isolated system never decreases.</div></div>
+        <div class="seg2"><span class="sp2">12:52</span><div><b>Student</b>Does that include living things?</div></div>
+        <div class="seg2"><span class="sp2">12:58</span><div><b>Professor</b>Living things are not isolated. They export entropy.</div></div>
+      </div>
+    </div></div>
+  </div>
+ </div></div>
+ <p class="note"><b>View slides instead of the video.</b> Switch the stage to Slides, page with the arrow keys or the thumbnail strip. Press <b>Slide changes here</b> while playing to link a slide to a moment; afterwards playback follows the deck, and the transcript shows which slide was up. Transcript, Notes and Chat stay beside it. Without links the deck is simply a viewer.</p>
+</section>
+
+<!-- 5. CHAT -->
+<section id="v5" class="view" hidden>
+ <div class="scroll"><div class="win">
+  <aside class="side"><div class="dots"><i></i><i></i><i></i></div><div class="brand"><span class="logo"></span>earmark</div>
+    <div class="row"><span class="ic">⌂</span>Home</div><div class="row"><span class="ic">≡</span>Queue</div><div class="row"><span class="ic">◎</span>Meetings</div><div class="row"><span class="ic">◉</span>Live</div>
+    <div class="sep"></div><div class="row sel"><span class="ic">▤</span>Library</div><div class="row sub"><span class="ic" style="color:#3b82a0">●</span>Physics 201</div><div class="sp"></div><div class="chip"><span class="dot"></span>Whisper small</div><div class="row"><span class="ic">⚙</span>Settings</div></aside>
+  <div class="main">
+    <div class="bar"><div><h2>Lecture 9: Thermodynamics</h2><div class="small">Physics 201 ▾ · 48:12</div></div><span class="sp"></span><span class="btn pri">✦ Summarise</span></div>
+    <div class="body"><div class="col">
+      <div class="tabs2"><span>Transcript</span><span>Notes</span><span class="on">Chat</span><span>Files</span><span class="sp" style="flex:1"></span><span class="btn" style="margin:2px 0">Sources: Everything ▾</span><span class="btn ghost" style="margin:2px 0 2px 6px">Clear</span></div>
+      <div class="msg u">Does the second law apply to living things?</div>
+      <div class="msg a">Not directly: the professor says living things are not isolated systems, so they can lower their own entropy by exporting it to their surroundings.
+        <br><span class="src">⏱ 12:52</span><span class="src">⏱ 12:58</span><span class="src">▤ Slide 12</span></div>
+      <div class="msg u">What did the professor say about the exam?</div>
+      <div class="msg a">The midterm is on March 14, covers chapters 1 to 4, and is closed book.
+        <br><span class="src">⏱ 13:20</span><span class="src">▤ Syllabus.pdf p.2</span></div>
+      <div class="msg u">Who is the teaching assistant?</div>
+      <div class="msg a">Not stated in the transcript or your files.</div>
+      <div class="sugg"><span>Summarise the key concepts</span><span>Quiz me on this lecture</span><span>List the deadlines</span></div>
+      <div class="small" style="margin:2px 0 6px">Answered on this Mac from the transcript, notes and files. Check important details at the source chips.</div>
+      <div class="input">Ask about this lecture…<span class="btn pri">Send</span></div>
+    </div></div>
+  </div>
+ </div></div>
+ <p class="note"><b>Accuracy by design.</b> Each question retrieves the few most relevant transcript excerpts, slide pages, notes and summary; the answer may use only those. <b>Source chips are produced by Earmark from what was retrieved</b> (the model's own timestamps proved unreliable in testing) and jump to that moment or page. Unanswerable questions get "Not stated". <b>Sources</b> menu: Everything, or Summary and notes only. Meeting presets: "What were the action items?", "What was decided?".</p>
+</section>
+
+<!-- 6. FILES -->
+<section id="v6" class="view" hidden>
+ <div class="scroll"><div class="win">
+  <aside class="side"><div class="dots"><i></i><i></i><i></i></div><div class="brand"><span class="logo"></span>earmark</div>
+    <div class="row"><span class="ic">⌂</span>Home</div><div class="row"><span class="ic">≡</span>Queue</div><div class="row"><span class="ic">◎</span>Meetings</div><div class="row"><span class="ic">◉</span>Live</div>
+    <div class="sep"></div><div class="row sel"><span class="ic">▤</span>Library</div><div class="sp"></div><div class="chip"><span class="dot"></span>Whisper small</div><div class="row"><span class="ic">⚙</span>Settings</div></aside>
+  <div class="main">
+    <div class="bar"><div><h2>Lecture 9: Thermodynamics</h2><div class="small">Physics 201 ▾</div></div><span class="sp"></span><span class="btn pri">✦ Summarise</span></div>
+    <div class="body"><div class="col">
+      <div class="tabs2"><span>Transcript</span><span>Notes</span><span>Chat</span><span class="on">Files</span><span style="flex:1"></span><span class="btn pri" style="margin:2px 0">Add files…</span></div>
+      <div class="item"><span style="font-size:20px">▥</span><div><div class="t">Lecture9-slides.pdf <span class="pill ember">Slides</span></div><div class="m">31 pages · text found on 29, 2 read with text recognition</div></div><div class="r"><span class="btn">✦ Summarise</span><span class="btn ghost">View</span></div></div>
+      <div class="doc" style="padding:6px 6px 12px 34px"><h3 style="font-size:14px;margin-top:4px">Summary of this file</h3><ul><li>Entropy and the second law (slides 9 to 14)</li><li>Heat engines and Carnot efficiency (slides 15 to 22)</li><li>Worked example: ideal gas expansion (slides 23 to 27)</li></ul></div>
+      <div class="item"><span style="font-size:20px">▥</span><div><div class="t">Syllabus.pdf <span class="pill">Reference</span></div><div class="m">4 pages · text</div></div><div class="r"><span class="btn">✦ Summarise</span><span class="tg on" title="Used in chat and summaries"></span></div></div>
+      <div class="small" style="margin-top:12px">PDFs and images are supported. For Keynote or PowerPoint, use File &gt; Export to PDF first. Files are copied into your library, read on this Mac, and used in summaries and chat when switched on.</div>
+      <div style="margin-top:12px;border:1px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--ink3)">Drop PDFs or images here</div>
+    </div></div>
+  </div>
+ </div></div>
+ <p class="note">Each file can be summarised on its own (summary, key points, one line per slide) and asked about. The toggle controls whether the file feeds the transcript summary and chat.</p>
+</section>
+
+<!-- 7. SETTINGS -->
+<section id="v7" class="view" hidden>
+ <div class="scroll"><div class="win" style="grid-template-columns:1fr;min-width:760px"><div class="settings">
+  <div class="sl"><div class="row">General</div><div class="row">Models</div><div class="row sel">Intelligence <span class="tag">new</span></div><div class="row">Library</div><div class="row">Meetings</div><div class="row">Live captions</div><div class="row">Dictation</div><div class="row">Storage</div></div>
+  <div class="set">
+    <h3>Intelligence</h3>
+    <div class="status"><span class="dot"></span><div><b>Apple Intelligence is available</b><div class="small">Summaries and chat run on this Mac. Nothing is sent anywhere.</div></div><span class="sp" style="flex:1"></span><span class="btn">Open System Settings</span></div>
+    <div class="fr"><div class="sp">Default summary style<small>Used when you press Summarise</small></div><span class="btn">Match the transcript ▾</span></div>
+    <div class="fr"><div class="sp">Summary language<small>Apple Intelligence supports about 15 languages</small></div><span class="btn">Same as transcript ▾</span></div>
+    <div class="fr"><div class="sp">Summarise automatically when a meeting finishes</div><span class="tg"></span></div>
+    <div class="fr"><div class="sp">Include my notes in summaries and chat</div><span class="tg on"></span></div>
+    <div class="fr"><div class="sp">Include attached files in summaries and chat</div><span class="tg on"></span></div>
+    <div class="fr"><div class="sp">Keep chat history<small>Conversations are saved with each transcript</small></div><span class="tg on"></span></div>
+    <div class="fr"><div class="sp">Clear all chats</div><span class="btn">Clear…</span></div>
+  </div></div></div></div>
+ <p class="note">Other settings: Library gets default grouping and a folders-row toggle; General gets "Show pinned items in the sidebar". Export gets "Include notes" and "Include summary", off by default.</p>
+</section>
+
+<!-- 8. STATES -->
+<section id="v8" class="view" hidden>
+ <div class="grid2">
+  <div class="mini"><h4>Apple Intelligence is off</h4><div class="status" style="margin:0"><span class="dot" style="background:var(--warn)"></span><div><b>Turn on Apple Intelligence to summarise and chat</b><div class="small">Notes, folders, pins and slides work without it.</div></div></div><br><span class="btn pri">Open System Settings</span></div>
+  <div class="mini"><h4>Model still downloading</h4><div class="prog"><i style="width:34%"></i></div><div class="small" style="margin-top:6px">macOS is preparing Apple Intelligence. Summaries will be available when it finishes.</div></div>
+  <div class="mini"><h4>Language not supported</h4><div class="small" style="font-size:12.5px">This transcript is in Sinhala. Apple's on-device model cannot summarise it yet. You can still write notes, attach slides and use the transcript as normal.</div></div>
+  <div class="mini"><h4>A part could not be summarised</h4><div class="small" style="font-size:12.5px">Part 3 was skipped because the system declined to process it. The summary covers the rest. <u>Retry part 3</u></div></div>
+  <div class="mini"><h4>Empty Notes</h4><div class="small" style="font-size:12.5px">Start typing, or press <b>Summarise</b> to write a summary from the transcript. Your own notes are always kept as a version.</div></div>
+  <div class="mini"><h4>Empty Chat</h4><div class="small" style="font-size:12.5px">Ask anything about this recording. Answers come from the transcript, your notes and attached files, and say when something is not stated.</div><div class="sugg"><span>What were the action items?</span><span>What was decided?</span></div></div>
+ </div>
+</section>
+</div>
+
+<script>
+(function(){
+  var tabs=document.querySelectorAll('#tabs button');
+  function show(id){
+    document.querySelectorAll('.view').forEach(function(v){v.hidden=v.id!==id});
+    tabs.forEach(function(b){b.setAttribute('aria-selected',b.dataset.v===id?'true':'false')});
+    try{history.replaceState(null,'','#'+id)}catch(e){}
+  }
+  tabs.forEach(function(b){b.addEventListener('click',function(){show(b.dataset.v)})});
+  var h=(location.hash||'').slice(1); if(/^v[1-8]$/.test(h)) show(h);
+})();
+</script>

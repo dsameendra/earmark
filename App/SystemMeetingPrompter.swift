@@ -102,7 +102,7 @@ final class SystemMeetingPrompter: NSObject, MeetingPromptPresenting, UNUserNoti
     func remindConsent(app: MeetingApp) async {
         guard await authorized() else { return }
         let content = UNMutableNotificationContent()
-        content.title = "Recording \(app.badgeTitle) meeting"
+        content.title = "Recording \(app.occurrenceName)"
         content.body = "You are responsible for telling participants before you record."
         await add(UNNotificationRequest(identifier: Self.consentIdentifier, content: content, trigger: nil))
     }

@@ -23,6 +23,25 @@ struct TranscriptRepositoryTests {
         #expect(try await repo.transcript(TranscriptID()) == nil)
     }
 
+    @Test func aMeetingsLiveDraftIsNotListedOrSearchedOnceItsFinalTranscriptExists() async throws {
+        let repo = try makeDB().transcripts
+        let live = makeTranscript("Live captions", source: .liveCaptions)
+        var final = makeTranscript("Discord meeting", source: .meeting)
+        final.revisionOf = live.id
+        let other = makeTranscript("Live captions later", source: .liveCaptions)
+        for t in [live, other] { try await repo.save(t) }
+        try await repo.replaceSegments([Segment(start: 0, end: 1, text: "needle words")], for: live.id)
+        #expect(try await repo.list(LibraryQuery()).count == 2)
+        try await repo.save(final)
+        try await repo.replaceSegments([Segment(start: 0, end: 1, text: "needle words")], for: final.id)
+        let titles = try await repo.list(LibraryQuery()).map(\.title)
+        #expect(Set(titles) == ["Discord meeting", "Live captions later"])
+        let hits = try await repo.search("needle", limit: 10)
+        #expect(hits.map(\.transcriptID) == [final.id])
+        // The draft is still stored, for a finalization retry.
+        #expect(try await repo.transcript(live.id) != nil)
+    }
+
     @Test func listFiltersAndSorts() async throws {
         let repo = try makeDB().transcripts
         let folder = FolderID()

@@ -146,6 +146,13 @@ public final class MeetingsModel {
         return detections.values.filter { $0.decision == .prompt && !$0.isDismissed }.sorted { $0.startedAt < $1.startedAt }
     }
 
+    /// The scan results that are not already on screen as a banner or the current-meeting card, so one call is listed once.
+    public var availableNow: [LiveMeetingCandidate] {
+        var shown = Set(bannerDetections.map(\.app))
+        if let current = currentMeeting { shown.insert(current.app) }
+        return available.filter { !shown.contains($0.app) }
+    }
+
     public var currentMeeting: CurrentMeeting? {
         switch captureState {
         case .capturing(let app, let mode, let since): return CurrentMeeting(app: app, phase: .capturing(mode, since: since), startedAt: since)
@@ -159,7 +166,12 @@ public final class MeetingsModel {
             let app = detections.values.min { $0.startedAt < $1.startedAt }?.app ?? pendingApp
             return app.map { CurrentMeeting(app: $0, phase: .failed(message), startedAt: detections[$0]?.startedAt) }
         case .idle:
-            guard let detected = detections.values.filter({ !$0.isDismissed }).min(by: { $0.startedAt < $1.startedAt }) else { return nil }
+            // A call that already has its "meeting detected" banner is not announced a second time as a card.
+            let bannered = Set(bannerDetections.map(\.app))
+            guard
+                let detected = detections.values.filter({ !$0.isDismissed && !bannered.contains($0.app) })
+                    .min(by: { $0.startedAt < $1.startedAt })
+            else { return nil }
             return CurrentMeeting(app: detected.app, phase: .detected, startedAt: detected.startedAt)
         }
     }
@@ -214,7 +226,7 @@ public final class MeetingsModel {
                 if let id = meeting.transcriptID { transcript = try? await transcripts.transcript(id) }
                 built.append(
                     MeetingRowInfo(
-                        meeting: meeting, title: transcript?.title ?? "\(meeting.app.badgeTitle) meeting",
+                        meeting: meeting, title: transcript?.title ?? meeting.app.occurrenceName,
                         speakerCount: transcript.map { $0.speakers.count }))
             }
             rows = built

@@ -2,6 +2,13 @@
 
 Releases are listed newest first. The website carries the same history: https://dsameendra.github.io/earmark/changelog.html
 
+## 1.1.3
+
+### Fixes
+- A call is now listed once on the Meetings page. A Google Meet call used to appear three times: as a detected-meeting banner, as a current-meeting card and under Available now. Names read "Google Meet call detected" and "Discord meeting detected" instead of "Meet meeting detected".
+- Each meeting now appears once. Recording or transcribing a call used to leave two entries in the Library, a "Live captions" draft and the meeting itself. The draft is no longer listed or searched once the meeting transcript exists, including for meetings you already have.
+- The menu bar says "Discord meeting detected", "Google Meet call detected" and so on instead of calling everything Zoom or Teams.
+
 ## 1.1.2
 
 ### Google Meet, Discord and Detect meetings

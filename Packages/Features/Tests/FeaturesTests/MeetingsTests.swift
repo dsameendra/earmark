@@ -84,13 +84,14 @@ final class BroadcastDetector: MeetingDetector {
 private func make(
     store: InMemorySettingsStore = InMemorySettingsStore(), capture: FakeCapture? = FakeCapture(),
     prompter: FakePrompter? = FakePrompter(), detector: (any MeetingDetector)? = nil, meetings: [Meeting] = [],
-    transcripts: [Transcript] = []
+    transcripts: [Transcript] = [], scanner: (any MeetingScanning)? = nil
 ) -> (MeetingsModel, FakeCapture?, FakePrompter?, InMemorySettingsStore) {
     var services = AppServices.preview(transcripts: transcripts, meetings: meetings)
     services.settings = store
     services.meetingCapture = capture
     services.meetingPrompts = prompter
     if let detector { services.meetingDetector = detector }
+    services.meetingScanner = scanner
     return (MeetingsModel(services: services), capture, prompter, store)
 }
 
@@ -460,6 +461,23 @@ private func following(
         #expect(model.bannerDetections.isEmpty)
     }
 
+    @Test func oneCallIsListedOnceAcrossTheBannerTheCardAndTheScan() async {
+        let detector = BroadcastDetector()
+        let meet = LiveMeetingCandidate(id: "meet.chrome", app: .meet, label: "Google Meet in Chrome", detail: "", targetBundleID: "com.google.Chrome")
+        let zoom = LiveMeetingCandidate(id: "zoom", app: .zoom, label: "Zoom", detail: "")
+        let scanner = FakeScanner(MeetingScanResult(candidates: [meet, zoom]))
+        let (model, capture, prompter, _) = make(detector: detector, scanner: scanner)
+        model.start()
+        defer { model.stopFollowing() }
+        #expect(await following(capture: capture, prompter: prompter, detector: detector))
+        detector.bus.send(started(.meet))
+        #expect(await eventually { model.bannerDetections.map(\.app) == [.meet] })
+        // Meet is already announced by its banner: no second card, and no scan row for it. Zoom is not announced yet.
+        #expect(model.currentMeeting == nil)
+        #expect(model.availableNow.map(\.app) == [.zoom])
+        #expect(model.available.count == 2)
+    }
+
     @Test func promptResponsesAreHandledWithoutTheViewBeingOnScreen() async {
         let detector = BroadcastDetector()
         let (model, capture, prompter, _) = make(detector: detector)
@@ -540,7 +558,7 @@ private func following(
         #expect(first.title == "Weekly product sync" && first.speakerCount == 2)
         #expect(first.capturesDescription == "Mic + system audio, video" && first.isRecorded && first.duration == 540)
         let second = model.rows[1]
-        #expect(second.title == "Teams meeting" && second.capturesDescription == "Transcript only" && second.duration == 300)
+        #expect(second.title == "Microsoft Teams meeting" && second.capturesDescription == "Transcript only" && second.duration == 300)
         #expect(!model.isLoading)
     }
 

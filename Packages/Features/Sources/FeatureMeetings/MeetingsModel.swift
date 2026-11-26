@@ -282,6 +282,9 @@ public final class MeetingsModel {
 
     public func dismissDetectResult() { detectFoundNothing = false }
 
+    /// The transcript the running meeting is writing, so the workspace (notes, files, chat) can open next to it.
+    public func liveTranscriptID() async -> TranscriptID? { await live.activeTranscriptID() }
+
     /// Starts capture of a listed call. An explicit choice from the list is the consent to be asked, so the per-app behaviour
     /// ("Do nothing", an earlier Ignore) does not apply; recording still goes through the consent notice.
     public func startCapture(_ candidate: LiveMeetingCandidate, mode: MeetingCaptureMode) async {

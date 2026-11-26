@@ -39,6 +39,7 @@ packages:
   Dictation: { path: Packages/Dictation }
   Meetings: { path: Packages/Meetings }
   Translation: { path: Packages/Translation }
+  Intelligence: { path: Packages/Intelligence }
   QwenASR: { path: Packages/QwenASR }
   NLLBNative: { path: Packages/NLLBNative }
   NativeWorkerKit: { path: Packages/NativeWorkerKit }
@@ -164,11 +165,15 @@ targets:
       - package: Meetings
       - package: Translation
         product: EarmarkTranslation
+      - package: Intelligence
+        product: EarmarkIntelligence
       - package: QwenASR
       - package: AppCore
         product: AppCoreTesting   # debug `-UseMocks` composition only
       - package: Features
         product: FeatureShell
+      - package: Features
+        product: FeatureWorkspace
       - package: Features
         product: FeatureSupport
       - package: Features

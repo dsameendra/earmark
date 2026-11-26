@@ -164,6 +164,13 @@ private struct MenuBarHost: View {
                     environment.shell.select(.meetings)
                     Task { await environment.shell.meetings.detect() }
                 },
+                openLiveWorkspace: {
+                    Task {
+                        guard let id = await environment.services.live.activeTranscriptID() else { return }
+                        showMainWindow()
+                        environment.shell.openTranscript(id)
+                    }
+                },
                 openMainWindow: showMainWindow,
                 openSettings: {
                     NSApplication.shared.activate()

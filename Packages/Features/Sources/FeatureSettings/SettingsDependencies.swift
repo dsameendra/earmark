@@ -70,6 +70,10 @@ public struct SettingsDependencies: Sendable {
     public var clearCaches: @Sendable () async -> Int64
     /// Meeting detection readings and the test prompt for Settings > Meetings (nil hides the diagnostics section).
     public var meetingDiagnostics: (any MeetingDiagnosing)?
+    /// On-device summaries and chat, for the Intelligence pane's status row (nil shows it as unavailable).
+    public var intelligence: (any IntelligenceServicing)?
+    /// Deletes every saved chat conversation.
+    public var clearAllChats: (@Sendable () async -> Void)?
 
     public init(
         store: any SettingsStore, models: any ModelManaging, hardware: any HardwareTierProviding,

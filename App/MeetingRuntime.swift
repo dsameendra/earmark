@@ -1,4 +1,5 @@
 import AppCore
+import EarmarkIntelligence
 import AppKit
 import AudioCapture
 import Diarization
@@ -293,7 +294,7 @@ struct MeetingFinalization: Sendable {
                 dependencies: FinalizerDependencies(
                     engine: engine, diarizer: diarizer, embeddings: embeddings, matcher: DiarizationVoiceMatcher(),
                     transcripts: database.transcripts, meetings: database.meetings, media: database.media,
-                    voiceProfiles: database.voiceProfiles, models: models),
+                    voiceProfiles: database.voiceProfiles, models: models, workspace: database.notes),
                 config: config)
             let progress = finalizer.progress()
             let follower = Task {
@@ -301,8 +302,35 @@ struct MeetingFinalization: Sendable {
             }
             defer { follower.cancel() }
             let result = try await finalizer.run(job: context.job)
+            let draft = result.meeting.transcriptID
+            Task { await autoSummarize(result.transcriptID, draft: draft) }
             return JobHandlerResult(
                 transcriptID: result.transcriptID, title: MeetingFinalizer.title(for: result.meeting))
+        }
+    }
+
+    /// "Summarise automatically when a meeting finishes" (off by default): writes the summary into the notes, keeping whatever
+    /// was on the page as a version. Quietly does nothing when Apple Intelligence or the language is not available.
+    private func autoSummarize(_ id: TranscriptID, draft: TranscriptID?) async {
+        guard await settings.value(for: SettingsKey.intelligenceAutoSummarize, as: Bool.self) == true else { return }
+        let service = IntelligenceService(transcripts: database.transcripts, attachments: database.attachments)
+        guard await service.availability().isAvailable else { return }
+        let existing = try? await database.notes.notes(for: id)
+        let includeNotes = await settings.value(for: SettingsKey.intelligenceIncludeNotes, as: Bool.self) ?? true
+        let includeFiles = await settings.value(for: SettingsKey.intelligenceIncludeFiles, as: Bool.self) ?? true
+        let request = SummaryRequest(
+            transcriptID: id, style: .meeting, notesMarkdown: existing?.markdown ?? "", includeNotes: includeNotes, includeFiles: includeFiles)
+        do {
+            for try await event in service.summarize(request) {
+                guard case .finished(let markdown) = event else { continue }
+                if let existing, !existing.markdown.isEmpty {
+                    try await database.notes.save(NotesVersion(transcriptID: id, markdown: existing.markdown, reason: .beforeSummary))
+                }
+                try await database.notes.save(
+                    TranscriptNotes(transcriptID: id, markdown: markdown, updatedAt: Date(), summarizedAt: Date(), summaryStyle: .meeting))
+            }
+        } catch {
+            AppLog.logger("meetings.autosummary").error("Automatic summary skipped: \(String(describing: error), privacy: .public)")
         }
     }
 

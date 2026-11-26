@@ -9,6 +9,7 @@ import os
 public enum LibraryLocation {
     public static let libraryFolderName = "Library"
     public static let meetingsFolderName = "Meetings"
+    public static let attachmentsFolderName = "Attachments"
     public static let databaseFileName = "earmark.sqlite"
 
     /// `Application Support/Earmark`, the base used when the user has not chosen a location.
@@ -23,6 +24,9 @@ public enum LibraryLocation {
     }
 
     public static func libraryRoot(base: URL) -> URL { base.appending(path: libraryFolderName, directoryHint: .isDirectory) }
+
+    /// Slides and files attached to transcripts (SCR-020).
+    public static func attachmentsRoot(base: URL) -> URL { base.appending(path: attachmentsFolderName, directoryHint: .isDirectory) }
 
     public static func meetingsRoot(base: URL) -> URL { base.appending(path: meetingsFolderName, directoryHint: .isDirectory) }
 

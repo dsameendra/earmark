@@ -62,6 +62,25 @@ struct GeneralSettingsView: View {
                     "Choose the language, model and speaker options each time you add files. When off, the last choices are used. "
                         + VoiceProcessingText.explanation)
             }
+            Section {
+                Toggle("Show pinned items in the sidebar", isOn: model.showPinned.binding)
+                    .accessibilityIdentifier("settings.general.showPinned")
+                Toggle("Show folders at the top of the Library", isOn: model.showFolders.binding)
+                    .accessibilityIdentifier("settings.general.showFolders")
+                Picker("Group the Library by", selection: model.defaultGrouping.binding) {
+                    Text("Nothing").tag("none")
+                    Text("Date").tag("date")
+                    Text("Folder").tag("folder")
+                    Text("Type").tag("type")
+                    Text("Language").tag("language")
+                    Text("Tag").tag("tag")
+                }
+                .accessibilityIdentifier("settings.general.grouping")
+            } header: {
+                Text("Library and sidebar")
+            } footer: {
+                Text("Pin a folder or a transcript from its menu to keep it under Library in the sidebar.")
+            }
             Section("Welcome") {
                 Button("Show Welcome Again") { Task { await model.showWelcomeAgain() } }
                     .accessibilityIdentifier("settings.general.showWelcome")

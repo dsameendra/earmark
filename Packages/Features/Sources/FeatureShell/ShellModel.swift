@@ -81,6 +81,14 @@ public final class ShellModel {
     /// The section the recording indicator row opens.
     public var recordingSection: AppSection { meetings.isRecording ? .meetings : .live }
 
+    /// Opens a pinned sidebar entry: the folder in the Library, or the transcript.
+    public func openPinned(_ item: PinnedItem) {
+        switch item {
+        case .folder(let folder, _): openFolder(folder.id)
+        case .transcript(let transcript): openTranscript(transcript.id)
+        }
+    }
+
     /// Opens Library narrowed to `folder` (sidebar folders).
     public func openFolder(_ folder: FolderID) {
         library.filters.folderID = folder

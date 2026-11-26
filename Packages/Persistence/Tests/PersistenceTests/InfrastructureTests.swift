@@ -41,7 +41,7 @@ struct InfrastructureTests {
         let reopened = try AppDatabase.open(at: url)
         #expect(try await reopened.transcripts.transcript(t.id)?.title == "persisted")
         #expect(try await reopened.transcripts.search("durable", limit: 5).count == 1)
-        #expect(AppDatabase.migrationIdentifiers == ["v1-initial", "v2-segment-manual-ignore", "v3-segment-user-edited"])
+        #expect(AppDatabase.migrationIdentifiers == ["v1-initial", "v2-segment-manual-ignore", "v3-segment-user-edited", "v4-workspace"])
         // No backup is taken when nothing is pending.
         #expect(!FileManager.default.fileExists(atPath: url.appendingPathExtension("premigration.bak").path))
     }

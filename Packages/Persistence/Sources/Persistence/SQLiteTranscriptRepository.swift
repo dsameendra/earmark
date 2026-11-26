@@ -17,7 +17,7 @@ public struct SQLiteTranscriptRepository: TranscriptRepository {
                 let (clauses, filterArgs) = Self.filters(for: query)
                 var args = filterArgs
                 var sql =
-                    "SELECT t.* FROM transcript t WHERE \(clauses.joined(separator: " AND ")) ORDER BY \(Self.orderBy(query.sort))"
+                    "SELECT t.* FROM transcript t WHERE \(clauses.joined(separator: " AND ")) ORDER BY \(query.pinnedOnly ? "t.pinOrder, t.id" : Self.orderBy(query.sort))"
                 if let limit = query.limit {
                     sql += " LIMIT ?"
                     args += [max(0, limit)]
@@ -49,19 +49,19 @@ public struct SQLiteTranscriptRepository: TranscriptRepository {
                 try db.execute(
                     sql: """
                         INSERT INTO transcript (id, title, source, duration, languages, speakers, tags, folderID, mediaAssetID,
-                          meetingID, revisionOf, createdAt, modifiedAt, deletedAt)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          meetingID, revisionOf, createdAt, modifiedAt, deletedAt, pinOrder)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT(id) DO UPDATE SET title = excluded.title, source = excluded.source,
                           duration = excluded.duration, languages = excluded.languages, speakers = excluded.speakers,
                           tags = excluded.tags, folderID = excluded.folderID, mediaAssetID = excluded.mediaAssetID,
                           meetingID = excluded.meetingID, revisionOf = excluded.revisionOf, createdAt = excluded.createdAt,
-                          modifiedAt = excluded.modifiedAt, deletedAt = excluded.deletedAt
+                          modifiedAt = excluded.modifiedAt, deletedAt = excluded.deletedAt, pinOrder = excluded.pinOrder
                         """,
                     arguments: [
                         transcript.id.key, transcript.title, transcript.source.rawValue, transcript.duration,
                         languages, speakers, tags, transcript.folderID.idKey(), transcript.mediaAssetID.idKey(),
                         transcript.meetingID.idKey(), transcript.revisionOf.idKey(), transcript.createdAt.epoch,
-                        transcript.modifiedAt.epoch, transcript.deletedAt?.epoch,
+                        transcript.modifiedAt.epoch, transcript.deletedAt?.epoch, transcript.pinOrder,
                     ])
             }
         }
@@ -227,6 +227,7 @@ public struct SQLiteTranscriptRepository: TranscriptRepository {
                 "EXISTS (SELECT 1 FROM json_each(t.languages) WHERE value IN (\(placeholders(query.languages.count))))")
             args += StatementArguments(query.languages.map(\.rawValue).sorted())
         }
+        if query.pinnedOnly { clauses.append("t.pinOrder IS NOT NULL") }
         if let folder = query.folderID {
             clauses.append("t.folderID = ?")
             args += [folder.key]
@@ -256,6 +257,13 @@ public struct SQLiteTranscriptRepository: TranscriptRepository {
             var sub = "t.title LIKE ? ESCAPE '\\'"
             args += ["%" + Self.escapeLike(text) + "%"]
             if let match = Self.ftsQuery(text) {
+                // Notes and summaries, and the text of attached slides and files, are searched too (SCR-019, SCR-020).
+                sub += " OR t.id IN (SELECT n.transcriptID FROM transcriptNotes n WHERE n.rowid IN "
+                sub += "(SELECT rowid FROM notesFTS WHERE notesFTS MATCH ?))"
+                args += [match]
+                sub += " OR t.id IN (SELECT a.transcriptID FROM attachment a WHERE a.deletedAt IS NULL AND a.usedInContext = 1 AND a.id IN "
+                sub += "(SELECT p.attachmentID FROM attachmentPage p WHERE p.rowid IN (SELECT rowid FROM attachmentPageFTS WHERE attachmentPageFTS MATCH ?)))"
+                args += [match]
                 sub += " OR t.id IN (SELECT s.transcriptID FROM segment s WHERE s.rowid IN "
                 sub += "(SELECT rowid FROM segmentFTS WHERE segmentFTS MATCH ?) AND s.isIgnored = 0)"
                 args += [match]
@@ -303,7 +311,7 @@ public struct SQLiteTranscriptRepository: TranscriptRepository {
             mediaAssetID: row.optionalUUID("mediaAssetID").map { MediaAssetID($0) },
             meetingID: row.optionalUUID("meetingID").map { MeetingID($0) },
             revisionOf: row.optionalUUID("revisionOf").map { TranscriptID($0) }, createdAt: row.date("createdAt"),
-            modifiedAt: row.date("modifiedAt"), deletedAt: row.optionalDate("deletedAt"))
+            modifiedAt: row.date("modifiedAt"), deletedAt: row.optionalDate("deletedAt"), pinOrder: row["pinOrder"])
     }
 
     struct EncodedSegment: Sendable {

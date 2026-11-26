@@ -16,6 +16,8 @@ public struct LibraryQuery: Sendable, Hashable {
     /// `true` lists only soft-deleted items (Recently Deleted).
     public var deletedOnly: Bool
     public var limit: Int?
+    /// Only pinned transcripts, ordered by their pin position (SCR-018).
+    public var pinnedOnly: Bool = false
     public init(
         text: String? = nil, sources: Set<TranscriptSource> = [], languages: Set<LanguageCode> = [], folderID: FolderID? = nil,
         tags: Set<String> = [], dateRange: ClosedRange<Date>? = nil, durationRange: ClosedRange<TimeInterval>? = nil,

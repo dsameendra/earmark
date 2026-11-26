@@ -36,7 +36,112 @@ enum Schema {
         migrator.registerMigration("v3-segment-user-edited") { db in
             try db.execute(sql: "ALTER TABLE segment ADD COLUMN isUserEdited INTEGER NOT NULL DEFAULT 0")
         }
+        // SCR-018 to SCR-021 (Earmark 1.2.0): folders and pins, notes, attachments, chat. Existing folders move out of settings.
+        migrator.registerMigration("v4-workspace") { db in
+            try createWorkspaceTables(db)
+            try migrateFoldersFromSettings(db)
+        }
         return migrator
+    }
+
+    private static func createWorkspaceTables(_ db: GRDB.Database) throws {
+        try db.execute(
+            sql: """
+                ALTER TABLE transcript ADD COLUMN pinOrder INTEGER;
+                CREATE INDEX transcript_pinned ON transcript(pinOrder) WHERE pinOrder IS NOT NULL;
+
+                CREATE TABLE folder (
+                  id TEXT PRIMARY KEY NOT NULL,
+                  name TEXT NOT NULL,
+                  colorIndex INTEGER NOT NULL DEFAULT 0,
+                  parentID TEXT,
+                  pinOrder INTEGER,
+                  createdAt DOUBLE NOT NULL
+                );
+
+                CREATE TABLE transcriptNotes (
+                  transcriptID TEXT PRIMARY KEY NOT NULL,
+                  markdown TEXT NOT NULL DEFAULT '',
+                  updatedAt DOUBLE NOT NULL,
+                  summarizedAt DOUBLE,
+                  summaryStyle TEXT
+                );
+                CREATE TABLE notesVersion (
+                  id TEXT PRIMARY KEY NOT NULL,
+                  transcriptID TEXT NOT NULL,
+                  markdown TEXT NOT NULL,
+                  reason TEXT NOT NULL,
+                  createdAt DOUBLE NOT NULL
+                );
+                CREATE INDEX notesVersion_transcript ON notesVersion(transcriptID, createdAt);
+
+                CREATE TABLE attachment (
+                  id TEXT PRIMARY KEY NOT NULL,
+                  transcriptID TEXT NOT NULL,
+                  role TEXT NOT NULL,
+                  kind TEXT NOT NULL,
+                  title TEXT NOT NULL,
+                  relativePath TEXT NOT NULL,
+                  pageCount INTEGER NOT NULL DEFAULT 0,
+                  recognizedPageCount INTEGER NOT NULL DEFAULT 0,
+                  usedInContext INTEGER NOT NULL DEFAULT 1,
+                  summary TEXT,
+                  summarizedAt DOUBLE,
+                  createdAt DOUBLE NOT NULL,
+                  deletedAt DOUBLE
+                );
+                CREATE INDEX attachment_transcript ON attachment(transcriptID, createdAt);
+                CREATE TABLE attachmentPage (
+                  attachmentID TEXT NOT NULL,
+                  idx INTEGER NOT NULL,
+                  text TEXT NOT NULL,
+                  PRIMARY KEY (attachmentID, idx)
+                );
+                CREATE TABLE slideLink (
+                  attachmentID TEXT NOT NULL,
+                  page INTEGER NOT NULL,
+                  time DOUBLE NOT NULL,
+                  PRIMARY KEY (attachmentID, time)
+                );
+
+                CREATE TABLE chatMessage (
+                  id TEXT PRIMARY KEY NOT NULL,
+                  transcriptID TEXT NOT NULL,
+                  role TEXT NOT NULL,
+                  text TEXT NOT NULL,
+                  sources TEXT NOT NULL DEFAULT '[]',
+                  scope TEXT NOT NULL DEFAULT 'everything',
+                  createdAt DOUBLE NOT NULL
+                );
+                CREATE INDEX chatMessage_transcript ON chatMessage(transcriptID, createdAt);
+                """)
+        try db.create(virtualTable: "notesFTS", using: FTS5()) { t in
+            t.synchronize(withTable: "transcriptNotes")
+            t.tokenizer = .unicode61(diacritics: .remove, categories: "", tokenCharacters: FTSConfig.tokenCharacters)
+            t.column("markdown")
+        }
+        try db.create(virtualTable: "attachmentPageFTS", using: FTS5()) { t in
+            t.synchronize(withTable: "attachmentPage")
+            t.tokenizer = .unicode61(diacritics: .remove, categories: "", tokenCharacters: FTSConfig.tokenCharacters)
+            t.column("text")
+        }
+    }
+
+    /// Folders used to live in settings as `[{id, name}]` (key `library.folders`); they become rows, in the same order.
+    private static func migrateFoldersFromSettings(_ db: GRDB.Database) throws {
+        struct Legacy: Decodable {
+            var id: UUID
+            var name: String
+        }
+        guard let data = try Data.fetchOne(db, sql: "SELECT value FROM setting WHERE key = 'library.folders'"),
+            let folders = try? JSONDecoder().decode([Legacy].self, from: data)
+        else { return }
+        let now = Date().timeIntervalSince1970
+        for (index, folder) in folders.enumerated() {
+            try db.execute(
+                sql: "INSERT OR IGNORE INTO folder (id, name, colorIndex, createdAt) VALUES (?, ?, ?, ?)",
+                arguments: [folder.id.uuidString, folder.name, index, now + Double(index) * 0.001])
+        }
     }
 
     private static func createLibraryTables(_ db: GRDB.Database) throws {

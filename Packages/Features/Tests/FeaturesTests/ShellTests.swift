@@ -135,7 +135,7 @@ import Testing
     }
 
     @Test func settingsCoverAllSectionsAndDockPreferenceDefaultsOn() async {  // SET-AC-01, MENU-AC-08
-        #expect(SettingsSection.allCases.count == 15)
+        #expect(SettingsSection.allCases.count == 16)
         let store = InMemorySettingsStore()
         #expect(await GeneralSettingsModel.loadShowDockIcon(from: store))
         let general = GeneralSettingsModel(store: store)

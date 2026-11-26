@@ -150,6 +150,6 @@ Notes and summaries can be included in Export (TXT, Markdown, DOCX, PDF) behind 
 2. **Notes replacement.** Plan: Summarise replaces the page but keeps an undo and version history. Alternative: Summarise writes below your notes. (Recommended: the plan above.)
 3. **Folders**: one level now, nesting later (recommended), or nested from the start.
 4. **Chat scope**: per transcript now (recommended); chat across a folder or the whole Library as a later phase.
-5. **Slides formats**: PDF and images now, "export Keynote/PowerPoint as PDF first" guidance (recommended). Native Keynote and PowerPoint import is not possible without those apps.
+5. **Slides formats: DECIDED by the owner. PDF and images only.** Users convert PowerPoint or Keynote to PDF first (the Files tab says how). No PPTX or Keynote reader in this release.
 6. **Standalone documents**: a PDF can only be attached to a transcript in this release (recommended). The alternative is PDFs as their own Library items to summarise and chat with.
 7. **Auto-summarise after a meeting**: off by default (recommended).

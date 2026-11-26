@@ -23,7 +23,8 @@ struct AboutView: View {
 struct AboutCommands: Commands {
     @Environment(\.openWindow) private var openWindow
     var body: some Commands {
-        CommandGroup(replacing: .appInfo) {
+        CommandGroup(replacing: .appInfo) {}  // About lives in the Help menu
+        CommandGroup(before: .help) {
             Button("About Earmark") { openWindow(id: "about") }
         }
     }

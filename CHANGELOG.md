@@ -14,7 +14,7 @@ Releases are listed newest first. The website carries the same history: https://
 - Speaker colours match between the inspector, the transcript and the Library.
 - Replacements has visible text fields and clear option checkboxes.
 - The Export sheet opens on its main action, not inside the preset field.
-- Smaller touches: the Dictation card explains how to set it up, colour swatches are easier to hit, Storage shows 0 KB instead of Zero KB, and the Settings window no longer shows a white strip at the top.
+- Smaller touches: the Dictation card explains how to set it up, colour swatches are easier to hit, Storage shows 0 KB instead of Zero KB, the Settings window no longer shows a bar at the top, and About Earmark moved to the Help menu.
 
 ## 1.1.0
 

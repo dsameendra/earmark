@@ -155,7 +155,7 @@ struct DetectionBanner: View {
             Button("Transcribe") { Task { await model.startCapture(app, mode: .transcribeOnly) } }
                 .accessibilityIdentifier("meetings.banner.\(app.rawValue).transcribe")
             Button("Transcribe and record") { Task { await model.startCapture(app, mode: .transcribeAndRecord) } }
-                .buttonStyle(.borderedProminent).tint(DSColor.recording)
+                .dsProminentButton().tint(DSColor.recording)
                 .accessibilityIdentifier("meetings.banner.\(app.rawValue).record")
         }
         .padding(DSSpacing.md)
@@ -262,7 +262,7 @@ struct CurrentMeetingCard: View {
             Button("Transcribe") { Task { await model.startCapture(current.app, mode: .transcribeOnly) } }
                 .accessibilityIdentifier("meetings.current.transcribe")
             Button("Record") { Task { await model.startCapture(current.app, mode: .transcribeAndRecord) } }
-                .buttonStyle(.borderedProminent).tint(DSColor.recording)
+                .dsProminentButton().tint(DSColor.recording)
                 .accessibilityIdentifier("meetings.current.record")
         case .capturing:
             Button("Stop", systemImage: MeetingsSymbol.stop) { Task { await model.stopCapture() } }

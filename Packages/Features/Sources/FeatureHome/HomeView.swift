@@ -32,6 +32,7 @@ public struct HomeActions {
 public struct HomeView: View {
     @State private var dropIsTargeted = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.openSettings) private var openSettings
     @Environment(\.accessibilityPolicyOverride) private var policyOverride
     private let model: HomeModel
     private let actions: HomeActions
@@ -103,11 +104,11 @@ public struct HomeView: View {
             action(
                 "Capture a meeting", detail: "Zoom and Teams, ask first", symbol: .record, id: "home.meeting", run: actions.captureMeeting)
             action(
-                "Dictation", detail: "Speak into the focused app", symbol: .dictation, id: "home.dictation",
-                run: actions.toggleDictation ?? {}
+                "Dictation", detail: actions.toggleDictation == nil ? "Set up in Settings" : "Speak into the focused app",
+                symbol: .dictation, id: "home.dictation",
+                run: actions.toggleDictation ?? { openSettings() }
             )
-            .disabled(actions.toggleDictation == nil)
-            .help(actions.toggleDictation == nil ? "Configure dictation in Settings" : "Start or finish dictation")
+            .help(actions.toggleDictation == nil ? "Open Settings to set up dictation" : "Start or finish dictation")
         }
     }
 

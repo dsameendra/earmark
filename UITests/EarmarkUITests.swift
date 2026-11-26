@@ -307,9 +307,9 @@ final class EarmarkUITests: XCTestCase {
             capture(app, "popover-\(name)", window: window)
             let button = anchor.frame, pop = popover.frame, win = window.frame
             // Toolbar popovers centre on their button, so one near the trailing edge may overhang the window by a few points
-            // (it stays on screen); vertically it must stay inside the window.
+            // (at most 16, still on screen); vertically it must stay inside the window.
             XCTAssertTrue(
-                win.insetBy(dx: -100, dy: -2).contains(pop), "\(name) popover \(pop) must stay inside the window \(win)")
+                win.insetBy(dx: -16, dy: -2).contains(pop), "\(name) popover \(pop) must stay inside the window \(win)")
             let horizontalGap = max(button.minX - pop.maxX, pop.minX - button.maxX, 0)
             let verticalGap = max(button.minY - pop.maxY, pop.minY - button.maxY, 0)
             XCTAssertLessThanOrEqual(horizontalGap, 8, "\(name) popover must overlap its button horizontally (\(pop) vs \(button))")

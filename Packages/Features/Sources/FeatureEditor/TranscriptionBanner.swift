@@ -40,7 +40,7 @@ struct TranscriptionBanner: View {
                 .help("Stop transcribing. What was transcribed so far is kept.")
                 .accessibilityIdentifier("editor.transcribing.cancel")
         }
-        .buttonStyle(.link).font(DSTypography.caption)
+        .buttonStyle(.dsLink).font(DSTypography.caption)
         .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.xs).background(DSColor.solidChrome)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Transcription progress")
@@ -79,7 +79,7 @@ struct TranscriptionBanner: View {
                 Text(error).font(DSTypography.caption).foregroundStyle(DSColor.danger)
             }
         }
-        .buttonStyle(.link).font(DSTypography.caption)
+        .buttonStyle(.dsLink).font(DSTypography.caption)
         .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.xs).background(DSColor.solidChrome)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("editor.transcribing.stopped")

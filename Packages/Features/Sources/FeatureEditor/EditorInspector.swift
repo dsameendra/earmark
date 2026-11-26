@@ -22,7 +22,8 @@ struct EditorInspector: View {
                                 HStack(spacing: DSSpacing.sm) {
                                     SpeakerChip(
                                         name: String(speaker.name.prefix(1)),
-                                        slot: model.speakers.firstIndex(where: { $0.id == speaker.id }) ?? 0)
+                                        slot: SpeakerPalette.slot(
+                                            forHex: speaker.colorHex, fallback: model.speakers.firstIndex(where: { $0.id == speaker.id }) ?? 0))
                                     Text(speaker.name).font(DSTypography.body.weight(.medium)).lineLimit(2)
                                     Spacer(minLength: 0)
                                     Text("\(model.segmentCount(for: speaker.id))").font(DSTypography.timestamp).foregroundStyle(

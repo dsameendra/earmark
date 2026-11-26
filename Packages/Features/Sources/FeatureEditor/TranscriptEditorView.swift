@@ -99,6 +99,22 @@ private struct EditorContent: View {
                 Task { await model.flush() }
             }
             .sheet(isPresented: $showExport) { ExportSheet(export: export) { showExport = false }.dsEntrance() }
+            // The More menu sits at the trailing window edge, where a popover centred on it would hang outside the window. Its panels
+            // open from an anchor just inside the edge instead, directly under the toolbar button.
+            .overlay(alignment: .topTrailing) {
+                Color.clear.frame(width: 1, height: 1).allowsHitTesting(false).accessibilityHidden(true)
+                    .popover(
+                        isPresented: Binding(
+                            get: { (activeTool == .bookmarks || activeTool == .options) && toolAnchor == .more },
+                            set: { if !$0 && toolAnchor == .more { activeTool = nil } }),
+                        arrowEdge: .bottom
+                    ) {
+                        if let tool = activeTool {
+                            toolContent(tool).dsEntrance().presentationBackground(DSColor.contentBackground).presentationSizing(.fitted)
+                        }
+                    }
+                    .padding(.trailing, 200)  // after the popover, so the anchor is the point itself, not the padded box
+            }
             // Fallback anchor for the collapsed inspector (its button lives in the shell toolbar): top-trailing corner.
             .overlay(alignment: .topTrailing) {
                 Color.clear.frame(width: 1, height: 1).allowsHitTesting(false).accessibilityHidden(true)
@@ -123,7 +139,7 @@ private struct EditorContent: View {
                 HStack {
                     Label(message, systemImage: "exclamationmark.triangle").font(DSTypography.caption).foregroundStyle(DSColor.danger)
                     Spacer()
-                    Button("Dismiss") { model.dismissLanguageError() }.buttonStyle(.link)
+                    Button("Dismiss") { model.dismissLanguageError() }.buttonStyle(.dsLink)
                 }
                 .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.xs).background(DSColor.solidChrome)
             }
@@ -135,7 +151,7 @@ private struct EditorContent: View {
                     Text("Re-transcribing. The transcript is read-only until this finishes.")
                         .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                     Spacer()
-                    Button("Cancel") { Task { await model.cancelRerun() } }.buttonStyle(.link).font(DSTypography.caption)
+                    Button("Cancel") { Task { await model.cancelRerun() } }.buttonStyle(.dsLink).font(DSTypography.caption)
                         .accessibilityIdentifier("editor.rerun.banner.cancel")
                 }
                 .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.xs).background(DSColor.solidChrome)
@@ -235,8 +251,6 @@ private struct EditorContent: View {
             }
             .labelStyle(.iconOnly)
             .dsToolbarControl()
-            .toolPopover(.bookmarks, from: .more, active: $activeTool, anchor: toolAnchor, edge: .bottom) { toolContent($0) }
-            .toolPopover(.options, from: .more, active: $activeTool, anchor: toolAnchor, edge: .bottom) { toolContent($0) }
             .accessibilityIdentifier("editor.more")
         }
         ToolbarSpacer(.fixed)
@@ -244,7 +258,7 @@ private struct EditorContent: View {
             // System prominent capsule: padding, height and pressed/disabled behaviour come from the toolbar.
             Button { showExport = true } label: { DSToolbarLabel("Export", symbol: .export) }
                 .labelStyle(.titleAndIcon)
-                .buttonStyle(.borderedProminent).tint(DSColor.accent)
+                .dsProminentButton().tint(DSColor.accent)
                 .dsToolbarControl()
                 .disabled(model.isLockedByJob)
                 .help(model.lockedHelp ?? "Export this transcript")

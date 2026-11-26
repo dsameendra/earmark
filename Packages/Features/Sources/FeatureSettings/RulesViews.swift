@@ -182,14 +182,16 @@ struct ReplacementsView: View {
     var body: some View {
         Form {
             Section("Add a rule") {
-                TextField("Find", text: $draft.find)
-                TextField("Replace with", text: $draft.replacement)
-                HStack {
+                TextField("Find", text: $draft.find, prompt: Text("Text to find")).textFieldStyle(.roundedBorder)
+                TextField("Replace with", text: $draft.replacement, prompt: Text("Replacement")).textFieldStyle(.roundedBorder)
+                HStack(spacing: DSSpacing.lg) {
                     Toggle("Match case", isOn: $draft.matchCase)
                     Toggle("Whole word", isOn: $draft.wholeWord)
                     Toggle("Regex", isOn: $draft.isRegex)
+                    Spacer(minLength: 0)
                 }
-                TextField("Test on sample text", text: $testText)
+                .toggleStyle(.checkbox)
+                TextField("Test on sample text", text: $testText, prompt: Text("Type a sample")).textFieldStyle(.roundedBorder)
                 if !testText.isEmpty, ReplacementsModel.validate(draft) == nil {
                     Text(ReplacementsModel.test(draft, on: testText)).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                 }
@@ -205,7 +207,8 @@ struct ReplacementsView: View {
             }
             Section {
                 Toggle("Apply replacements to new jobs", isOn: model.applyByDefault.binding)
-                TextField("Search", text: Binding(get: { model.searchText }, set: { model.searchText = $0 }))
+                TextField("Search", text: Binding(get: { model.searchText }, set: { model.searchText = $0 }), prompt: Text("Search"))
+                    .textFieldStyle(.roundedBorder)
                 ForEach(model.visibleRules) { rule in
                     HStack {
                         Toggle(
@@ -244,7 +247,7 @@ struct ReplacementsView: View {
             }
             Section {
                 HStack {
-                    TextField("Add a name or term", text: $newTerm).onSubmit(addTerm)
+                    TextField("Add a name or term", text: $newTerm, prompt: Text("Name or term")).textFieldStyle(.roundedBorder).onSubmit(addTerm)
                     Button("Add", action: addTerm).disabled(newTerm.isEmpty)
                 }
                 ForEach(model.vocabulary, id: \.self) { term in

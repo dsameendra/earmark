@@ -5,7 +5,12 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 enum ModelFormat {
-    static func bytes(_ value: Int64) -> String { ByteCountFormatter.string(fromByteCount: value, countStyle: .file) }
+    static func bytes(_ value: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        formatter.allowsNonnumericFormatting = false  // "0 KB", not "Zero KB"
+        return formatter.string(fromByteCount: value)
+    }
 
     static func warningText(_ warning: DownloadWarning) -> String {
         switch warning {

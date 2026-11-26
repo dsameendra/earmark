@@ -272,7 +272,7 @@ public struct LanguageMultiSelectView: View {
                     .accessibilityIdentifier("\(idPrefix).count")
                 Spacer()
                 if let onClear, !chips.isEmpty {
-                    Button("Clear", action: onClear).buttonStyle(.link).font(DSTypography.caption)
+                    Button("Clear", action: onClear).buttonStyle(.dsLink).font(DSTypography.caption)
                         .accessibilityIdentifier("\(idPrefix).clear")
                 }
             }

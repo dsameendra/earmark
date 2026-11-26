@@ -158,9 +158,15 @@ struct RerunPanel: View {
     }
 
     var body: some View {
-        PopoverScroll { panelContent }
-            .frame(width: LanguageSelectorLayout.minPopoverWidth)  // Narrow enough to stay inside the window from the trailing toolbar.
-            .task { await panel.prepare() }
+        VStack(spacing: 0) {
+            PopoverScroll(maxHeight: 440) { panelContent }
+            if !model.isRerunning {
+                Divider()
+                startRow.padding(DSSpacing.lg)
+            }
+        }
+        .frame(width: LanguageSelectorLayout.minPopoverWidth)  // Narrow enough to stay inside the window from the trailing toolbar.
+        .task { await panel.prepare() }
     }
 
     private var panelContent: some View {
@@ -258,22 +264,28 @@ struct RerunPanel: View {
             .accessibilityIdentifier("editor.rerun.voiceProcessing")
             .help(VoiceProcessingText.explanation)
         }
-        if let reason = panel.startBlockedReason {
-            Text(reason).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
-                .accessibilityIdentifier("editor.rerun.blockedReason")
-        }
-        HStack {
-            Spacer()
-            Button(panel.needsReplaceConfirmation ? "Replace Everything…" : "Start") {
-                if panel.needsReplaceConfirmation { confirmsReplace = true } else { Task { await panel.start() } }
+    }
+
+    /// Pinned below the scrolling options so the primary action is always visible.
+    private var startRow: some View {
+        VStack(alignment: .trailing, spacing: DSSpacing.sm) {
+            if let reason = panel.startBlockedReason {
+                Text(reason).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    .accessibilityIdentifier("editor.rerun.blockedReason")
             }
-            .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
-            .disabled(!panel.canStart)
-            .accessibilityIdentifier("editor.rerun.start")
-            .confirmationDialog("Replace everything?", isPresented: $confirmsReplace) {
-                Button("Replace Everything", role: .destructive) { Task { await panel.start() } }
-            } message: {
-                Text("The whole transcript is rebuilt. Edits, ignore choices and speaker names are lost, and this cannot be undone.")
+            HStack {
+                Spacer()
+                Button(panel.needsReplaceConfirmation ? "Replace Everything…" : "Start") {
+                    if panel.needsReplaceConfirmation { confirmsReplace = true } else { Task { await panel.start() } }
+                }
+                .dsProminentButton().keyboardShortcut(.defaultAction)
+                .disabled(!panel.canStart)
+                .accessibilityIdentifier("editor.rerun.start")
+                .confirmationDialog("Replace everything?", isPresented: $confirmsReplace) {
+                    Button("Replace Everything", role: .destructive) { Task { await panel.start() } }
+                } message: {
+                    Text("The whole transcript is rebuilt. Edits, ignore choices and speaker names are lost, and this cannot be undone.")
+                }
             }
         }
     }

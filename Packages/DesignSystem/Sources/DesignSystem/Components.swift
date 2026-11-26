@@ -127,7 +127,7 @@ public struct GlassToolbarButton: View {
             let button = Button(action: action) { buttonLabel }
                 .labelStyle(.iconOnly).help(Text(title)).dsIconContext(.toolbar)
             if policy.usesSolidSurface {
-                if prominent { button.buttonStyle(.borderedProminent) } else { button.buttonStyle(.bordered) }
+                if prominent { button.dsProminentButton() } else { button.buttonStyle(.bordered) }
             } else {
                 if prominent { button.buttonStyle(.glassProminent) } else { button.buttonStyle(.glass) }
             }

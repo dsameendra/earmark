@@ -162,6 +162,8 @@ public struct SettingsRootView: View {
         .background(DSColor.paper)
         .navigationTitle("Settings")
         .toolbar(removing: .sidebarToggle)
+        // The empty unified toolbar painted a white strip over the paper detail pane.
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .dsIconContext(.sidebar)
         .dsAnimation(.glide, value: selection)
         .frame(minWidth: 900, minHeight: 620)

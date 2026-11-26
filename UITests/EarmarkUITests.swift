@@ -698,7 +698,7 @@ final class EarmarkUITests: XCTestCase {
         let app = launch(appearance: "light")
         defer { app.terminate() }
         openWeeklySync(app)
-        let tabs = app.descendants(matching: .any)["workspace.tabs"]
+        let tabs = app.descendants(matching: .any)["workspace.tabBar"]
         XCTAssertTrue(tabs.waitForExistence(timeout: 5))
         for name in ["Transcript", "Notes", "Chat", "Files"] { XCTAssertTrue(app.buttons[name].exists, "\(name) tab") }
         app.buttons["Notes"].click()
@@ -741,12 +741,12 @@ final class EarmarkUITests: XCTestCase {
         app.buttons["Slides"].click()  // the stage switch
         let position = app.staticTexts["slides.position"]
         XCTAssertTrue(position.waitForExistence(timeout: 8))
-        XCTAssertEqual(position.label, "Slide 1 of 3")
+        XCTAssertEqual(position.value as? String, "Slide 1 of 3")
         app.buttons["slides.next"].click()
-        XCTAssertEqual(position.label, "Slide 2 of 3")
+        XCTAssertEqual(position.value as? String, "Slide 2 of 3")
         capture(app, "slides-stage")
         app.buttons["slides.thumb.2"].click()
-        XCTAssertEqual(position.label, "Slide 3 of 3")
+        XCTAssertEqual(position.value as? String, "Slide 3 of 3")
         app.buttons["Files · 1"].click()
         XCTAssertTrue(app.descendants(matching: .any)["files.page"].waitForExistence(timeout: 5))
     }

@@ -85,6 +85,7 @@ struct NotesView: View {
                     .accessibilityIdentifier("notes.undoSummary")
                 Button("Dismiss", systemImage: "xmark") { notes.dismissSummaryNotice() }.labelStyle(.iconOnly).buttonStyle(.dsHoverIcon)
             }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("notes.summaryNotice")
         }
         if !notes.skippedParts.isEmpty {
@@ -190,6 +191,7 @@ struct SummarizeSheet: View {
         .padding(DSSpacing.xl)
         .frame(width: 420)
         .background(DSColor.contentBackground)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("summarize.sheet")
     }
 

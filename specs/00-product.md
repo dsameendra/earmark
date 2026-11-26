@@ -23,7 +23,7 @@ A privacy-first native macOS app that turns speech into accurate, editable, expo
 
 ## 4. Scope
 ### In scope (v1)
-Files & batch transcription · Meetings (Zoom, Teams, Google Meet, Discord) · Live Captions overlay · Dictation · diarization · multilingual/code-switching · translation · ignored segments · find/replace & global replacements · synced player/editor · rich export · Library with soft delete · menu bar app · Model Manager · onboarding · Developer ID distribution with Sparkle.
+Files & batch transcription · Meetings (Zoom, Teams, Google Meet, Discord) · Live Captions overlay · Dictation · diarization · multilingual/code-switching · translation · ignored segments · find/replace & global replacements · synced player/editor · rich export · Library with folders, pins and grouping · notes, on-device summaries, slides and chat (Apple Foundation Models) · Library with soft delete · menu bar app · Model Manager · onboarding · Developer ID distribution with Sparkle.
 
 ### Out of scope (v1)
 Mac App Store (non-sandboxed by necessity); cloud sync; iOS/iPadOS; Webex detection (architecture should allow later); LLM summarization; collaborative editing; voice cloning.
@@ -39,6 +39,7 @@ Mac App Store (non-sandboxed by necessity); cloud sync; iOS/iPadOS; Webex detect
 | `ENG` | Engines & models | "Auto" picks the right engine per language/use case; I download, verify, delete, import custom CoreML models |
 | `LANG` | Languages | I pick single / auto-detect / multilingual sets; segments carry language badges and can be re-transcribed |
 | `DIA` | Diarization | I toggle speaker labels, rename/merge/reassign speakers, optionally save local voice profiles |
+| `WRK` | Workspace | Folders and pinned sidebar items; per-transcript Notes, Summarise, Files (PDF/images) with a Slides stage, and grounded Chat, all on device, also during a live meeting (specs/releases/workspace-plan.md) |
 | `MTG` | Meetings | Zoom/Teams/Meet/Discord detection and Detect meetings → notify / auto-transcribe / auto-record; dual-track; finalization pass |
 | `LIVE` | Live captions | A click-through, non-activating glass overlay captions mic, system audio, or both |
 | `DICT` | Dictation | Hold/toggle a global hotkey, see a HUD, text is inserted into the focused app |

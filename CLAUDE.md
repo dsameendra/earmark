@@ -42,5 +42,8 @@ Read this first in every session. It records decisions the owner has made and le
 - Do not run `pkill swiftpm-testing-helper` while other agents test; it kills their runs.
 - Agent worktrees can start from an old base: check that a task's prerequisites exist in the worktree and merge by cherry-pick, resolving conflicts deliberately.
 
+- **Intelligence (1.2.0):** Apple Foundation Models have an 8192-token window (4096 on older 26.x) and no Sinhala. `Packages/Intelligence` summarises in stages, bounds every digest with `.maximumCount` (unbounded digests grew past the window), retrieves for chat, and computes chat sources itself (the model's own timestamps were wrong 3 times in 8). The real-model gate is `EARMARK_EVAL_INTELLIGENCE=1 swift test --no-parallel --filter AccuracyEval` in `Packages/Intelligence`; the lecture case takes a few minutes. Every FoundationModels symbol stays behind `#if canImport` and `#if compiler(>=6.4)` for `contextSize`. Hosted CI uses `ScriptedIntelligence`.
+- UI tests can stop with "Timed out while enabling automation mode": macOS is showing "XCTest is trying to Enable UI Automation" and needs Touch ID or the password. Approve it and rerun.
+
 ## Where things are
 `specs/` product, architecture, ADRs, change requests, design (`specs/design/m8-*`) and QA records (`specs/qa/README.md`). `scripts/` build, check and release tooling. `docs/` is the GitHub Pages site (deployed from `main`). `Brand/` app icon and brand assets.

@@ -652,4 +652,127 @@ final class EarmarkUITests: XCTestCase {
         XCTAssertEqual(colors[0].greenComponent, colors[1].greenComponent, accuracy: 0.02)
         XCTAssertEqual(colors[0].blueComponent, colors[1].blueComponent, accuracy: 0.02)
     }
+
+    // MARK: Workspace (1.2.0)
+
+    /// Library, then the pinned folder, then Recently Deleted, then the compact model line, then Settings: top to bottom.
+    func testSidebarListsPinnedFoldersUnderLibraryAndTheyOpenTheFolder() throws {
+        let app = launch(appearance: "light", arguments: ["-EarmarkTestFolders", "YES"])
+        defer { app.terminate() }
+        let library = app.buttons["sidebar.library"]
+        XCTAssertTrue(library.waitForExistence(timeout: 8))
+        let pinned = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "sidebar.pinned.folder-")).firstMatch
+        XCTAssertTrue(pinned.waitForExistence(timeout: 8), "a pinned folder must be listed in the sidebar")
+        let trash = app.buttons["sidebar.recentlyDeleted"]
+        XCTAssertLessThan(library.frame.minY, pinned.frame.minY)
+        XCTAssertLessThan(pinned.frame.minY, trash.frame.minY)
+        XCTAssertLessThan(trash.frame.minY, app.buttons["sidebar.settings"].frame.minY)
+        let modelChip = app.buttons["sidebar.modelChip"]
+        if modelChip.exists {
+            XCTAssertLessThan(trash.frame.minY, modelChip.frame.minY)
+            XCTAssertLessThan(modelChip.frame.height, 60, "the model picker is one compact line")
+        }
+        capture(app, "sidebar-pinned")
+        pinned.click()
+        XCTAssertTrue(app.descendants(matching: .any)["library.breadcrumb"].waitForExistence(timeout: 5), "opening a pinned folder shows it in the Library")
+    }
+
+    func testLibraryShowsFolderCardsAndGroupsByType() throws {
+        let app = launch(appearance: "dark", arguments: ["-EarmarkTestFolders", "YES"])
+        defer { app.terminate() }
+        app.typeKey("5", modifierFlags: .command)
+        XCTAssertTrue(app.descendants(matching: .any)["library.folders"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "library.folder.")).firstMatch.exists)
+        let group = app.menuButtons["library.group"]
+        XCTAssertTrue(group.waitForExistence(timeout: 5))
+        group.click()
+        app.menuItems["Type"].click()
+        XCTAssertTrue(app.buttons["library.group.type.meeting"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["library.group.type.file"].exists)
+        capture(app, "library-grouped-by-type")
+        app.buttons["library.group.type.file"].click()  // collapse
+        XCTAssertTrue(app.buttons["library.group.type.file"].exists)
+    }
+
+    func testTranscriptPageHasTabsAndNotesCanBeSummarisedAndUndone() throws {
+        let app = launch(appearance: "light")
+        defer { app.terminate() }
+        openWeeklySync(app)
+        let tabs = app.descendants(matching: .any)["workspace.tabs"]
+        XCTAssertTrue(tabs.waitForExistence(timeout: 5))
+        for name in ["Transcript", "Notes", "Chat", "Files"] { XCTAssertTrue(app.buttons[name].exists, "\(name) tab") }
+        app.buttons["Notes"].click()
+        let editor = app.textViews["notes.editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.click()
+        editor.typeText("Ask Elena about staging")
+        app.buttons["notes.summarize"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["summarize.sheet"].waitForExistence(timeout: 5))
+        capture(app, "summarize-sheet")
+        app.buttons["summarize.run"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["notes.summaryNotice"].waitForExistence(timeout: 8))
+        XCTAssertTrue((editor.value as? String)?.contains("## Summary") == true, "the page is replaced by the summary")
+        XCTAssertTrue((editor.value as? String)?.contains("Ask Elena about staging") == true, "the user's notes are part of the summary")
+        capture(app, "notes-summary")
+        app.buttons["notes.undoSummary"].click()
+        XCTAssertEqual((editor.value as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), "Ask Elena about staging")
+    }
+
+    func testChatAnswersWithSourcesAndTheSourceJumpsBack() throws {
+        let app = launch(appearance: "dark")
+        defer { app.terminate() }
+        openWeeklySync(app)
+        app.buttons["Chat"].click()
+        let suggestion = app.buttons.matching(identifier: "chat.suggestion").firstMatch
+        XCTAssertTrue(suggestion.waitForExistence(timeout: 5))
+        suggestion.click()
+        XCTAssertTrue(app.descendants(matching: .any)["chat.message.assistant"].waitForExistence(timeout: 8))
+        let source = app.buttons.matching(identifier: "chat.source").firstMatch
+        XCTAssertTrue(source.waitForExistence(timeout: 5), "an answer shows where it came from")
+        capture(app, "chat-answer")
+        source.click()
+        XCTAssertTrue(app.buttons["Transcript"].waitForExistence(timeout: 5))
+    }
+
+    func testSlidesCanBeViewedInsteadOfTheVideoAndPaged() throws {
+        let app = launch(appearance: "light", arguments: ["-EarmarkTestSlides", "YES"])
+        defer { app.terminate() }
+        openWeeklySync(app)
+        app.buttons["Slides"].click()  // the stage switch
+        let position = app.staticTexts["slides.position"]
+        XCTAssertTrue(position.waitForExistence(timeout: 8))
+        XCTAssertEqual(position.label, "Slide 1 of 3")
+        app.buttons["slides.next"].click()
+        XCTAssertEqual(position.label, "Slide 2 of 3")
+        capture(app, "slides-stage")
+        app.buttons["slides.thumb.2"].click()
+        XCTAssertEqual(position.label, "Slide 3 of 3")
+        app.buttons["Files · 1"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["files.page"].waitForExistence(timeout: 5))
+    }
+
+    func testWhenAppleIntelligenceIsOffSummariseAndChatExplainWhy() throws {
+        let app = launch(appearance: "light", arguments: ["-EarmarkTestIntelligence", "off"])
+        defer { app.terminate() }
+        openWeeklySync(app)
+        XCTAssertFalse(app.buttons["editor.summarize"].isEnabled)
+        app.buttons["Chat"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["chat.unavailable"].waitForExistence(timeout: 5))
+        capture(app, "chat-unavailable")
+        app.buttons["Notes"].click()
+        let editor = app.textViews["notes.editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5), "notes work without Apple Intelligence")
+    }
+
+    func testIntelligenceSettingsPaneShowsStatusAndOptions() throws {
+        let app = launch(appearance: "dark")
+        defer { app.terminate() }
+        app.typeKey(",", modifierFlags: .command)
+        let section = app.buttons["settings.section.intelligence"]
+        XCTAssertTrue(section.waitForExistence(timeout: 8))
+        section.click()
+        XCTAssertTrue(app.descendants(matching: .any)["settings.intelligence.status"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.checkBoxes["settings.intelligence.auto"].exists || app.switches["settings.intelligence.auto"].exists)
+        capture(app, "settings-intelligence")
+    }
 }

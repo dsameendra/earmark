@@ -158,6 +158,12 @@ struct RerunPanel: View {
     }
 
     var body: some View {
+        PopoverScroll { panelContent }
+            .frame(width: LanguageSelectorLayout.minPopoverWidth)  // Narrow enough to stay inside the window from the trailing toolbar.
+            .task { await panel.prepare() }
+    }
+
+    private var panelContent: some View {
         VStack(alignment: .leading, spacing: DSSpacing.lg) {
             Text("Re-transcribe").font(DSTypography.headline)
             if model.isRerunning {
@@ -173,8 +179,6 @@ struct RerunPanel: View {
             transcriptLanguageSection
         }
         .padding(DSSpacing.lg)
-        .frame(minWidth: LanguageSelectorLayout.minPopoverWidth, idealWidth: 400)
-        .task { await panel.prepare() }
     }
 
     private var runningRow: some View {

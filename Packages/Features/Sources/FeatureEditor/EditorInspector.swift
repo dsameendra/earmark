@@ -7,6 +7,9 @@ struct EditorInspector: View {
     let model: TranscriptEditorModel
     let onSpeakers: () -> Void
     let onBookmarks: () -> Void
+    /// Wraps the control a panel opens from, so the popover hangs off that control.
+    let speakersPopover: (AnyView) -> AnyView
+    let bookmarksPopover: (AnyView) -> AnyView
 
     var body: some View {
         ScrollView {
@@ -31,10 +34,12 @@ struct EditorInspector: View {
                             .help(model.lockedHelp ?? "")
                             .accessibilityLabel("Edit speaker \(speaker.name), \(model.segmentCount(for: speaker.id)) segments")
                         }
-                        Button(model.speakers.isEmpty ? "Add speakers…" : "Edit speakers…", action: onSpeakers)
-                            .buttonStyle(.plain).foregroundStyle(DSColor.accentText)
-                            .disabled(model.isLockedByJob)
-                            .help(model.lockedHelp ?? "")
+                        speakersPopover(
+                            AnyView(
+                                Button(model.speakers.isEmpty ? "Add speakers…" : "Edit speakers…", action: onSpeakers)
+                                    .buttonStyle(.plain).foregroundStyle(DSColor.accentText)
+                                    .disabled(model.isLockedByJob)
+                                    .help(model.lockedHelp ?? "")))
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -55,8 +60,10 @@ struct EditorInspector: View {
                             }
                             .buttonStyle(.plain)
                         }
-                        Button(model.bookmarks.isEmpty ? "Add an earmark…" : "All bookmarks and highlights…", action: onBookmarks)
-                            .buttonStyle(.plain).foregroundStyle(DSColor.accentText)
+                        bookmarksPopover(
+                            AnyView(
+                                Button(model.bookmarks.isEmpty ? "Add an earmark…" : "All bookmarks and highlights…", action: onBookmarks)
+                                    .buttonStyle(.plain).foregroundStyle(DSColor.accentText)))
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }

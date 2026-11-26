@@ -78,7 +78,7 @@ public struct HomeView: View {
                         dropZone
                     }
                 }
-                .padding(layout.inset)
+                .dsPanelInset()  // Same outer margins as Queue, Meetings, Live and Library.
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             .background(DSColor.paper)
@@ -269,7 +269,8 @@ public struct WorkbenchLayout: Equatable, Sendable {
         self.height = max(0, height)
     }
 
-    public var inset: CGFloat { width >= 1500 ? DSSpacing.xl : DSSpacing.md }
+    /// Outer margin, identical to `dsPanelInset()` on every other page (the top edge is thinner because the toolbar already insets).
+    public var inset: CGFloat { DSSpacing.md }
     public var actionColumns: Int { width >= 1000 ? 4 : (width >= 560 ? 2 : 1) }
     public var showsSidePanel: Bool { width >= 1000 }
     public var sidePanelWidth: CGFloat { min(400, max(280, width * 0.28)) }
@@ -277,5 +278,5 @@ public struct WorkbenchLayout: Equatable, Sendable {
         let available = width - 2 * inset - (showsSidePanel ? sidePanelWidth + DSSpacing.md : 0) - 2 * DSSpacing.xl
         return max(1, min(4, Int(available / (280 + DSSpacing.md))))
     }
-    public var bodyMinimumHeight: CGFloat { max(360, height - 2 * inset - 112 - 2 * DSSpacing.lg - DSSpacing.md) }
+    public var bodyMinimumHeight: CGFloat { max(360, height - (DSSpacing.xs + inset) - 112 - 2 * DSSpacing.lg - DSSpacing.md) }
 }

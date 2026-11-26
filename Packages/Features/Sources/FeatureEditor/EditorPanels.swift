@@ -498,3 +498,18 @@ private struct FormatChipStyle: ButtonStyle {
         }
     }
 }
+
+/// Keeps a tall popover panel inside the window: the panel takes its natural height up to `maxHeight`, then scrolls.
+struct PopoverScroll<Content: View>: View {
+    var maxHeight: CGFloat = 520
+    @ViewBuilder var content: Content
+    @State private var contentHeight: CGFloat = 0
+
+    var body: some View {
+        ScrollView {
+            content.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(height: contentHeight > 0 ? min(contentHeight, maxHeight) : nil)
+    }
+}

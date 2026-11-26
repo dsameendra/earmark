@@ -433,7 +433,17 @@ final class AppEnvironment {
                 transcript.duration = asset.duration
                 services.media = InMemoryMedia(items: [asset])
             }
-            let segments = lines.enumerated().map { index, text in
+            var allLines = lines
+            if UITestConfiguration.value("-EarmarkTestLongTranscript") == "YES" {
+                // Long, uneven rows so the scroll view's lazily measured height is exercised down to the last line.
+                let filler =
+                    "This is a long paragraph of transcript text that wraps over several lines so rows have different heights. "
+                    + "Every prediction here is a sum of these curves, so that can show why a price is either high or low. "
+                allLines += (1...30).map { index in String(repeating: filler, count: 1 + index % 3) + "Line \(index)." }
+                allLines.append("FINAL LINE ONE has to stay visible.")
+                allLines.append("FINAL LINE TWO has to stay visible.")
+            }
+            let segments = allLines.enumerated().map { index, text in
                 Segment(
                     start: Double(index * 12), end: Double(index * 12 + 10), text: text, speakerID: speakers[index % 2].id,
                     languageCode: index == 3 ? "fr" : .english)

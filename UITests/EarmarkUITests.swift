@@ -253,6 +253,84 @@ final class EarmarkUITests: XCTestCase {
         }
     }
 
+    private func openWeeklySync(_ app: XCUIApplication) {
+        let recent = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@", "home.recent.", "Weekly sync")
+        ).firstMatch
+        XCTAssertTrue(recent.waitForExistence(timeout: 5))
+        recent.click()
+        XCTAssertTrue(app.buttons["editor.export"].waitForExistence(timeout: 10))
+    }
+
+    /// Regression: the last transcript lines were cut off even when the list was scrolled to its end (audio and video layouts).
+    func testLastTranscriptLinesAreVisibleAtTheEnd() throws {
+        for (appearance, video) in [("light", false), ("dark", true), ("light", true)] {
+            let app = launch(
+                appearance: appearance, arguments: ["-EarmarkTestLongTranscript", "YES"] + (video ? ["-EarmarkTestVideo", "YES"] : []))
+            defer { app.terminate() }
+            openWeeklySync(app)
+            let window = app.windows.firstMatch
+            Thread.sleep(forTimeInterval: video ? 2 : 0.5)
+            // The transcript list is the scroll view that covers the lower middle of the window.
+            let probe = CGPoint(x: window.frame.midX - 100, y: window.frame.minY + window.frame.height * 0.85)
+            let lists = app.scrollViews.allElementsBoundByIndex.filter { $0.frame.contains(probe) }
+            let list = try XCTUnwrap(lists.min { $0.frame.height < $1.frame.height }, "transcript list not found")
+            for _ in 0..<14 {
+                list.scroll(byDeltaX: 0, deltaY: -4000)
+                Thread.sleep(forTimeInterval: 0.2)
+            }
+            capture(app, "transcript-end-\(video ? "video" : "audio")-\(appearance)", window: window)
+            // The final row starts at 7:24; its speaker and time block must end inside the list, not under its clipped edge.
+            let last = app.descendants(matching: .any).matching(NSPredicate(format: "value CONTAINS %@ OR label CONTAINS %@", "7:24", "7:24")).firstMatch
+            XCTAssertTrue(last.waitForExistence(timeout: 3), "the last transcript row must exist")
+            // The list's own frame can extend under the player bar, so measure against the bar's top instead.
+            let bar = app.buttons["editor.player.play"]
+            XCTAssertTrue(bar.waitForExistence(timeout: 3))
+            XCTAssertLessThanOrEqual(last.frame.maxY, bar.frame.minY, "the last row (\(last.frame)) must end above the player bar (\(bar.frame))")
+            XCTAssertLessThanOrEqual(list.frame.maxY, bar.frame.minY + 1, "the list (\(list.frame)) must not run under the player bar (\(bar.frame))")
+        }
+    }
+
+    /// Every editor tool opens a popover that hangs off the control that asked for it, inside the window.
+    func testEditorToolPopoversOpenNextToTheirButtons() throws {
+        let app = launch(appearance: "light")
+        defer { app.terminate() }
+        openWeeklySync(app)
+        let window = app.windows.firstMatch
+        func check(_ trigger: XCUIElement, _ name: String, menuItem: String? = nil, from owner: XCUIElement? = nil) {
+            let anchor = owner ?? trigger
+            XCTAssertTrue(anchor.waitForExistence(timeout: 5), "\(name) button")
+            trigger.click()
+            if let menuItem { app.menuItems[menuItem].click() }
+            let popover = app.popovers.firstMatch
+            XCTAssertTrue(popover.waitForExistence(timeout: 5), "\(name) must open a popover")
+            capture(app, "popover-\(name)", window: window)
+            let button = anchor.frame, pop = popover.frame, win = window.frame
+            // Toolbar popovers centre on their button, so one near the trailing edge may overhang the window by a few points
+            // (it stays on screen); vertically it must stay inside the window.
+            XCTAssertTrue(
+                win.insetBy(dx: -100, dy: -2).contains(pop), "\(name) popover \(pop) must stay inside the window \(win)")
+            let horizontalGap = max(button.minX - pop.maxX, pop.minX - button.maxX, 0)
+            let verticalGap = max(button.minY - pop.maxY, pop.minY - button.maxY, 0)
+            XCTAssertLessThanOrEqual(horizontalGap, 8, "\(name) popover must overlap its button horizontally (\(pop) vs \(button))")
+            XCTAssertLessThanOrEqual(verticalGap, 40, "\(name) popover must sit right by its button (\(pop) vs \(button))")
+            app.typeKey(.escape, modifierFlags: [])
+            XCTAssertTrue(
+                XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: popover)], timeout: 4)
+                    == .completed, "\(name) must close on Escape")
+        }
+        check(app.buttons["editor.speakers"], "speakers")
+        check(app.buttons["editor.translation"], "translate")
+        check(app.buttons["editor.retranscribe"], "retranscribe")
+        let more = app.menuButtons["editor.more"]
+        check(more, "bookmarks", menuItem: "Bookmarks and highlights")
+        check(more, "options", menuItem: "View options")
+        let inspector = app.descendants(matching: .any)["editor.inspector"]
+        XCTAssertTrue(inspector.waitForExistence(timeout: 5))
+        check(app.buttons["Edit speakers…"], "inspector-speakers")
+        check(app.buttons["Add an earmark…"], "inspector-earmark")
+    }
+
     func testSettingsSectionsRemainAvailable() throws {
         let app = launch(appearance: "light")
         defer { app.terminate() }

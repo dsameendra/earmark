@@ -59,6 +59,18 @@ public enum SpeakerPalette {
         Entry(light: RGB(0.72, 0.15, 0.25), dark: RGB(1.00, 0.50, 0.55)),  // crimson
     ]
 
+    /// Palette slot whose light colour is `hex` (`#RRGGBB`), or `fallback` for a custom colour. Lets every surface colour a speaker by its
+    /// stored colour instead of its list position.
+    public static func slot(forHex hex: String, fallback: Int) -> Int {
+        let wanted = hex.trimmingCharacters(in: .whitespaces).uppercased().replacingOccurrences(of: "#", with: "")
+        for (index, entry) in entries.enumerated() {
+            func byte(_ value: Double) -> Int { Int((value * 255).rounded()) }
+            let candidate = String(format: "%02X%02X%02X", byte(entry.light.r), byte(entry.light.g), byte(entry.light.b))
+            if candidate == wanted { return index }
+        }
+        return fallback
+    }
+
     /// Entry for a zero-based speaker slot; wraps for slots beyond the palette size.
     public static func entry(forSlot slot: Int) -> Entry {
         let n = entries.count

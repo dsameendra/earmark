@@ -92,8 +92,8 @@ struct LibraryRow: View {
             }
             if !layout.droppedLibraryColumns.contains("Speakers") {
                 HStack(spacing: 3) {
-                    ForEach(Array(item.speakers.prefix(3).enumerated()), id: \.element.id) { index, _ in
-                        Circle().fill(SpeakerPalette.color(forSlot: index)).frame(width: 8, height: 8)
+                    ForEach(Array(item.speakers.prefix(3).enumerated()), id: \.element.id) { index, speaker in
+                        Circle().fill(SpeakerPalette.color(forSlot: SpeakerPalette.slot(forHex: speaker.colorHex, fallback: index))).frame(width: 8, height: 8)
                     }
                     Text("\(item.speakers.count)").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                 }.frame(width: 80, alignment: .leading)

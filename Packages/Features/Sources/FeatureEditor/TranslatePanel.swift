@@ -124,6 +124,13 @@ struct TranslatePanel: View {
     var body: some View {
         // A plain stack (not a grouped Form) so the popover sizes to its full content instead of a scroll-backed height.
         VStack(alignment: .leading, spacing: DSSpacing.lg) {
+            if model.translationLanguages.isEmpty && !model.canTranslate {
+                // Nothing to show or switch: say so instead of a disabled control.
+                Text("Translation is not available for this transcript yet.")
+                    .font(DSTypography.body).foregroundStyle(DSColor.secondaryText)
+                    .accessibilityIdentifier("editor.translation.unavailable")
+            }
+            if !model.translationLanguages.isEmpty {
             VStack(alignment: .leading, spacing: DSSpacing.sm) {
                 SectionCaption("View")
                 Picker(
@@ -148,9 +155,7 @@ struct TranslatePanel: View {
                     }
                     .pickerStyle(.menu)
                 }
-                if model.translationLanguages.isEmpty {
-                    Text("This transcript has no translations yet.").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
-                }
+            }
             }
             if model.canTranslate {
                 Divider()
@@ -228,7 +233,7 @@ struct TranslatePanel: View {
             Button { Task { await panel.translate() } } label: {
                 Label("Translate", symbol: .translate).frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent).tint(DSColor.accent).controlSize(.large)
+            .dsProminentButton().tint(DSColor.accent).controlSize(.large)
             .keyboardShortcut(.defaultAction)
             .disabled(model.isTranslating).accessibilityIdentifier("editor.translation.start")
         case .needsModel:
@@ -246,7 +251,7 @@ struct TranslatePanel: View {
                 Button { Task { await panel.downloadModel() } } label: {
                     Label("Download model", symbol: .download).frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent).tint(DSColor.accent).controlSize(.large)
+                .dsProminentButton().tint(DSColor.accent).controlSize(.large)
             }
         case .needsApplePack:
             Text("Apple's on-device language pack for this pair is not installed yet.")
@@ -254,7 +259,7 @@ struct TranslatePanel: View {
             Button { Task { await panel.installApplePack() } } label: {
                 Label("Install language pack…", symbol: .download).frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent).tint(DSColor.accent).controlSize(.large)
+            .dsProminentButton().tint(DSColor.accent).controlSize(.large)
             .disabled(panel.isPreparingPack)
         case .unavailable(let reason):
             Label(reason, systemImage: "exclamationmark.circle").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)

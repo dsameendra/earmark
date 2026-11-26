@@ -75,7 +75,7 @@ public struct BatchSettingsSheet: View {
                     .accessibilityIdentifier("batch.cancel")
                 Button("Transcribe", action: onAdd)
                     .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
+                    .dsProminentButton()
                     .disabled(!model.canSubmit)
                     .help(model.submitBlockReason ?? "Add the files to the queue")
                     .accessibilityIdentifier("batch.add")

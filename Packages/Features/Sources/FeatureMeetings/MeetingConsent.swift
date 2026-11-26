@@ -55,7 +55,7 @@ public struct RecordingConsentNotice: View {
                     Button("Cancel", action: onCancel).accessibilityIdentifier("meetings.consent.cancel")
                 }
                 Button(MeetingConsentModel.acknowledgeTitle, action: onAcknowledge)
-                    .buttonStyle(.borderedProminent).tint(DSColor.accent)
+                    .dsProminentButton().tint(DSColor.accent)
                     .keyboardShortcut(.defaultAction).accessibilityIdentifier("meetings.consent.acknowledge")
             }
         }

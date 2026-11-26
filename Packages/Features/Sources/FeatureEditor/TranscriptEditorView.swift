@@ -29,6 +29,9 @@ private enum EditorTool: String, Identifiable {
     var id: String { rawValue }
 }
 
+/// The control a tool panel opens from. A popover must hang off the control that asked for it, never the whole editor.
+private enum ToolAnchor { case toolbar, more, inspector, corner }
+
 private struct EditorContent: View {
     @Environment(\.shellLayout) private var layout
     @Environment(\.inspectorPresented) private var inspectorPresented
@@ -37,6 +40,7 @@ private struct EditorContent: View {
     @State private var find: FindReplaceModel
     @State private var export: EditorExportModel
     @State private var activeTool: EditorTool?
+    @State private var toolAnchor: ToolAnchor = .toolbar
     @State private var showExport = false
     @State private var playerWindow: PlayerWindowController?
     @FocusState private var findFocused: Bool
@@ -77,7 +81,7 @@ private struct EditorContent: View {
             }
             .onChange(of: inspectorPresented, initial: true) {
                 guard layout.inspectorCollapsed else { return }
-                if inspectorPresented { activeTool = .inspector } else if activeTool == .inspector { activeTool = nil }
+                if inspectorPresented { toolAnchor = .corner; activeTool = .inspector } else if activeTool == .inspector { activeTool = nil }
             }
             .onChange(of: showExport) { if showExport { export.adoptViewState() } else { listFocused = true } }
             .onChange(of: model.translationChoice) { find.refresh() }
@@ -95,8 +99,36 @@ private struct EditorContent: View {
                 Task { await model.flush() }
             }
             .sheet(isPresented: $showExport) { ExportSheet(export: export) { showExport = false }.dsEntrance() }
-            .popover(item: $activeTool) { tool in
-                toolContent(tool).dsEntrance().presentationBackground(DSColor.contentBackground).presentationSizing(.fitted)
+            // The More menu sits at the trailing window edge, where a popover centred on it would hang outside the window. Its panels
+            // open from an anchor just inside the edge instead, directly under the toolbar button.
+            .overlay(alignment: .topTrailing) {
+                Color.clear.frame(width: 1, height: 1).allowsHitTesting(false).accessibilityHidden(true)
+                    .popover(
+                        isPresented: Binding(
+                            get: { (activeTool == .bookmarks || activeTool == .options) && toolAnchor == .more },
+                            set: { if !$0 && toolAnchor == .more { activeTool = nil } }),
+                        arrowEdge: .bottom
+                    ) {
+                        if let tool = activeTool {
+                            toolContent(tool).dsEntrance().presentationBackground(DSColor.contentBackground).presentationSizing(.fitted)
+                        }
+                    }
+                    .padding(.trailing, 200)  // after the popover, so the anchor is the point itself, not the padded box
+            }
+            // Fallback anchor for the collapsed inspector (its button lives in the shell toolbar): top-trailing corner.
+            .overlay(alignment: .topTrailing) {
+                Color.clear.frame(width: 1, height: 1).allowsHitTesting(false).accessibilityHidden(true)
+                    // One popover for everything opened from the corner, so the inspector panel can swap to Speakers or Bookmarks in place.
+                    .popover(
+                        isPresented: Binding(
+                            get: { activeTool != nil && toolAnchor == .corner },
+                            set: { if !$0 && toolAnchor == .corner { activeTool = nil } }),
+                        arrowEdge: .bottom
+                    ) {
+                        if let tool = activeTool {
+                            toolContent(tool).dsEntrance().presentationBackground(DSColor.contentBackground).presentationSizing(.fitted)
+                        }
+                    }
             }
     }
 
@@ -107,7 +139,7 @@ private struct EditorContent: View {
                 HStack {
                     Label(message, systemImage: "exclamationmark.triangle").font(DSTypography.caption).foregroundStyle(DSColor.danger)
                     Spacer()
-                    Button("Dismiss") { model.dismissLanguageError() }.buttonStyle(.link)
+                    Button("Dismiss") { model.dismissLanguageError() }.buttonStyle(.dsLink)
                 }
                 .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.xs).background(DSColor.solidChrome)
             }
@@ -119,7 +151,7 @@ private struct EditorContent: View {
                     Text("Re-transcribing. The transcript is read-only until this finishes.")
                         .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                     Spacer()
-                    Button("Cancel") { Task { await model.cancelRerun() } }.buttonStyle(.link).font(DSTypography.caption)
+                    Button("Cancel") { Task { await model.cancelRerun() } }.buttonStyle(.dsLink).font(DSTypography.caption)
                         .accessibilityIdentifier("editor.rerun.banner.cancel")
                 }
                 .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.xs).background(DSColor.solidChrome)
@@ -128,14 +160,16 @@ private struct EditorContent: View {
             }
             if let report = model.reconciliation { ReconciliationBanner(report: report) { model.acknowledgeReconciliation() } }
             HStack(alignment: .top, spacing: DSSpacing.md) {
-                content
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: DSRadius.panel))
-                    .safeAreaInset(edge: .bottom, spacing: 0) {
-                        TransportBar(model: model).padding(DSSpacing.md)
-                    }
+                // The transport bar is laid out below the transcript, not as a safe-area inset: the video layout's AppKit split
+                // view ignores that inset, so the list ran underneath the bar and its last lines could never be scrolled into view.
+                VStack(spacing: 0) {
+                    content
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: DSRadius.panel))
+                    TransportBar(model: model).padding(DSSpacing.md)
+                }
                 if !layout.inspectorCollapsed {
-                    inspector.frame(width: 260)
+                    makeInspector(inline: true).frame(width: 260)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -172,18 +206,21 @@ private struct EditorContent: View {
                 .dsToolbarControl()
                 .disabled(model.isLockedByJob)
                 .help(model.lockedHelp ?? "Name, add or merge speakers")
+                .toolPopover(.speakers, from: .toolbar, active: $activeTool, anchor: toolAnchor, edge: .bottom) { toolContent($0) }
                 .accessibilityIdentifier("editor.speakers")
             Button { presentTool(.translation) } label: { DSToolbarLabel("Translate", symbol: .translate) }
                 .labelStyle(.titleAndIcon)
                 .dsToolbarControl()
                 .disabled(model.isLockedByJob)
                 .help(model.lockedHelp ?? "Translate this transcript")
+                .toolPopover(.translation, from: .toolbar, active: $activeTool, anchor: toolAnchor, edge: .bottom) { toolContent($0) }
                 .accessibilityIdentifier("editor.translation")
             Button { presentTool(.retranscribe) } label: { DSToolbarLabel("Re-transcribe", symbol: .retry, iconOnly: true) }
                 .labelStyle(.iconOnly)
                 .help(model.lockedHelp ?? "Re-transcribe, identify speakers again, or set the transcript language")
                 .dsToolbarControl()
                 .disabled(model.isLockedByJob)
+                .toolPopover(.retranscribe, from: .toolbar, active: $activeTool, anchor: toolAnchor, edge: .bottom) { toolContent($0) }
                 .accessibilityIdentifier("editor.retranscribe")
         }
         ToolbarSpacer(.fixed)
@@ -207,8 +244,8 @@ private struct EditorContent: View {
                 Button("Redo \(model.redoActionName)") { model.redo() }
                     .disabled(!model.canRedo || model.editingSegmentID != nil).keyboardShortcut("z", modifiers: [.command, .shift])
                 Divider()
-                Button("Bookmarks and highlights", symbol: .earmark) { presentTool(.bookmarks) }
-                Button("View options", systemImage: "textformat.size") { presentTool(.options) }
+                Button("Bookmarks and highlights", symbol: .earmark) { presentTool(.bookmarks, from: .more) }
+                Button("View options", systemImage: "textformat.size") { presentTool(.options, from: .more) }
             } label: {
                 DSToolbarLabel("More", systemImage: "ellipsis", iconOnly: true)
             }
@@ -221,7 +258,7 @@ private struct EditorContent: View {
             // System prominent capsule: padding, height and pressed/disabled behaviour come from the toolbar.
             Button { showExport = true } label: { DSToolbarLabel("Export", symbol: .export) }
                 .labelStyle(.titleAndIcon)
-                .buttonStyle(.borderedProminent).tint(DSColor.accent)
+                .dsProminentButton().tint(DSColor.accent)
                 .dsToolbarControl()
                 .disabled(model.isLockedByJob)
                 .help(model.lockedHelp ?? "Export this transcript")
@@ -229,23 +266,44 @@ private struct EditorContent: View {
         }
     }
 
-    private var inspector: some View {
-        EditorInspector(model: model, onSpeakers: { presentTool(.speakers) }, onBookmarks: { presentTool(.bookmarks) })
+    /// The inspector cards. Inline, their panels hang off the card's own button; inside the collapsed-inspector popover they
+    /// open from the window corner instead, because that popover closes as soon as another tool is presented.
+    private func makeInspector(inline: Bool) -> EditorInspector {
+        let source: ToolAnchor = inline ? .inspector : .corner
+        return EditorInspector(
+            model: model,
+            onSpeakers: { presentTool(.speakers, from: source) }, onBookmarks: { presentTool(.bookmarks, from: source) },
+            speakersPopover: { anchorView in
+                guard inline else { return anchorView }
+                return AnyView(
+                    anchorView.toolPopover(.speakers, from: .inspector, active: $activeTool, anchor: toolAnchor, edge: .leading) {
+                        toolContent($0)
+                    })
+            },
+            bookmarksPopover: { anchorView in
+                guard inline else { return anchorView }
+                return AnyView(
+                    anchorView.toolPopover(.bookmarks, from: .inspector, active: $activeTool, anchor: toolAnchor, edge: .leading) {
+                        toolContent($0)
+                    })
+            })
     }
 
-    private func presentTool(_ tool: EditorTool) {
+    private func presentTool(_ tool: EditorTool, from source: ToolAnchor = .toolbar) {
+        toolAnchor = source
         activeTool = tool
         inspectorToggle.wrappedValue = false
     }
 
-    @ViewBuilder private func toolContent(_ tool: EditorTool) -> some View {
+
+    fileprivate func toolContent(_ tool: EditorTool) -> AnyView {
         switch tool {
-        case .inspector: inspector.frame(width: 300).padding(DSSpacing.md)
-        case .speakers: SpeakersPanel(model: model)
-        case .bookmarks: BookmarksPanel(model: model)
-        case .options: ViewOptionsPanel(model: model)
-        case .translation: TranslatePanel(model: model)
-        case .retranscribe: RerunPanel(model: model)
+        case .inspector: AnyView(makeInspector(inline: false).frame(width: 300).padding(DSSpacing.md))
+        case .speakers: AnyView(SpeakersPanel(model: model))
+        case .bookmarks: AnyView(BookmarksPanel(model: model))
+        case .options: AnyView(ViewOptionsPanel(model: model))
+        case .translation: AnyView(TranslatePanel(model: model))
+        case .retranscribe: AnyView(RerunPanel(model: model))
         }
     }
 
@@ -326,5 +384,23 @@ private struct EditorContent: View {
         panel.message = "Choose the audio or video file for this transcript."
         guard panel.runModal() == .OK, let url = panel.url else { return }
         Task { await model.relink(to: url) }
+    }
+}
+
+private extension View {
+    /// Presents `tool` as a popover from this view, only while that tool was opened from `source`, so two controls that can open
+    /// the same panel never present it twice.
+    func toolPopover<Content: View>(
+        _ tool: EditorTool, from source: ToolAnchor, active: Binding<EditorTool?>, anchor: ToolAnchor, edge: Edge,
+        @ViewBuilder content: @escaping (EditorTool) -> Content
+    ) -> some View {
+        popover(
+            isPresented: Binding(
+                get: { active.wrappedValue == tool && anchor == source },
+                set: { if !$0 && active.wrappedValue == tool { active.wrappedValue = nil } }),
+            arrowEdge: edge
+        ) {
+            content(tool).dsEntrance().presentationBackground(DSColor.contentBackground).presentationSizing(.fitted)
+        }
     }
 }

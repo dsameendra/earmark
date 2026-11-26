@@ -237,10 +237,10 @@ public struct PermissionGateBanner: View {
                     Button("Re-check") { Task { await model.recheck(kind) } }.accessibilityIdentifier("\(base).recheck")
                 }
                 Button("Open System Settings") { openURL(model.settingsURL(for: kind)) }
-                    .buttonStyle(.link).accessibilityIdentifier("\(base).openSettings")
+                    .buttonStyle(.dsLink).accessibilityIdentifier("\(base).openSettings")
                 if status == .denied {
                     Button(showsReset ? "Hide reset hint" : "Reset and re-request") { showsReset.toggle() }
-                        .buttonStyle(.link).accessibilityIdentifier("\(base).resetToggle")
+                        .buttonStyle(.dsLink).accessibilityIdentifier("\(base).resetToggle")
                 }
             }
             if status == .denied, let stale = kind.staleEntryHint {

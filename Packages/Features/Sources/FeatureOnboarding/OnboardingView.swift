@@ -224,7 +224,7 @@ private struct LanguageStep: View {
                 if model.showsMoreLanguages { ForEach(model.moreOptions) { languageRow($0) } }
                 if !model.moreOptions.isEmpty {
                     Button(model.showsMoreLanguages ? "Fewer languages" : "More languages…") { model.showsMoreLanguages.toggle() }
-                        .buttonStyle(.link)
+                        .buttonStyle(.dsLink)
                         .padding(.vertical, DSSpacing.sm)
                         .accessibilityIdentifier("onboarding.language.more")
                 }
@@ -300,7 +300,7 @@ private struct LanguageStep: View {
                 Button("Cancel") { Task { await model.cancel() } }.accessibilityIdentifier("onboarding.download.cancel")
             } else if model.hasPendingDownload {
                 Button("Download \(model.totalSizeText)") { Task { await model.startDownload() } }
-                    .buttonStyle(.borderedProminent)
+                    .dsProminentButton()
                     .disabled(model.isOffline)
                     .help(model.isOffline ? "You are offline. Connect to download, or continue and download later." : "")
                     .accessibilityIdentifier("onboarding.download.start")

@@ -1,9 +1,11 @@
+import AVFoundation
 import AppCore
+import CoreVideo
 import Foundation
 
 #if DEBUG
     /// A silent, local WAV lets UI tests exercise the real media player without capture permissions or user recordings.
-    enum MockPlaybackMedia {
+    @MainActor enum MockPlaybackMedia {
         static func makeAsset() throws -> MediaAsset {
             let folder = FileManager.default.temporaryDirectory.appendingPathComponent("EarmarkUITestMedia", isDirectory: true)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -41,7 +43,48 @@ import Foundation
                 data.append(samples)
                 try data.write(to: url, options: .atomic)
             }
+            if UITestConfiguration.value("-EarmarkTestVideo") == "YES", let video = try? makeVideoAsset(in: folder) { return video }
             return MediaAsset(kind: .audio, bookmark: try url.bookmarkData(options: .withSecurityScope), duration: 72)
+        }
+    
+        /// A tiny generated H.264 clip (one frame per second) so UI tests exercise the video player layout.
+        private static func makeVideoAsset(in folder: URL) throws -> MediaAsset {
+            let seconds = 72
+            let url = folder.appendingPathComponent("playback-demo-video.mp4")
+            if !FileManager.default.fileExists(atPath: url.path) {
+                let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
+                let input = AVAssetWriterInput(
+                    mediaType: .video,
+                    outputSettings: [AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: 640, AVVideoHeightKey: 360])
+                let adaptor = AVAssetWriterInputPixelBufferAdaptor(
+                    assetWriterInput: input,
+                    sourcePixelBufferAttributes: [
+                        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA, kCVPixelBufferWidthKey as String: 640,
+                        kCVPixelBufferHeightKey as String: 360,
+                    ])
+                writer.add(input)
+                writer.startWriting()
+                writer.startSession(atSourceTime: .zero)
+                for second in 0..<seconds {
+                    while !input.isReadyForMoreMediaData { Thread.sleep(forTimeInterval: 0.005) }
+                    var buffer: CVPixelBuffer?
+                    CVPixelBufferCreate(nil, 640, 360, kCVPixelFormatType_32BGRA, nil, &buffer)
+                    guard let buffer else { continue }
+                    CVPixelBufferLockBaseAddress(buffer, [])
+                    if let base = CVPixelBufferGetBaseAddress(buffer) {
+                        let shade = UInt8(40 + (second * 3) % 160)
+                        memset(base, Int32(shade), CVPixelBufferGetBytesPerRow(buffer) * 360)
+                    }
+                    CVPixelBufferUnlockBaseAddress(buffer, [])
+                    adaptor.append(buffer, withPresentationTime: CMTime(value: CMTimeValue(second), timescale: 1))
+                }
+                input.markAsFinished()
+                let done = DispatchSemaphore(value: 0)
+                writer.finishWriting { done.signal() }
+                done.wait()
+                guard writer.status == .completed else { throw writer.error ?? CocoaError(.fileWriteUnknown) }
+            }
+            return MediaAsset(kind: .video, bookmark: try url.bookmarkData(options: .withSecurityScope), duration: Double(seconds))
         }
     }
 #endif

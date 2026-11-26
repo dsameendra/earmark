@@ -101,7 +101,7 @@ struct SpeakerRow: View {
                     } label: {
                         Circle().fill(EditorColors.color(.hex(hex, fallbackSlot: 0))).frame(width: 16, height: 16)
                             .overlay { if speaker.colorHex.uppercased() == hex { Circle().stroke(DSColor.primaryText, lineWidth: 2) } }
-                            .padding(DSSpacing.xxs + 1)  // a 22 pt hit target around the 16 pt swatch
+                            .padding(DSSpacing.xs + 2)  // a 28 pt hit target around the 16 pt swatch
                             .contentShape(Circle())
                     }
                     .buttonStyle(.plain).help("Use this colour")
@@ -144,7 +144,7 @@ struct BookmarksPanel: View {
                 Button {
                     model.addBookmark()
                 } label: {
-                    Label("Bookmark Playhead", symbol: .earmark)
+                    Label("Add Bookmark", symbol: .earmark)
                 }
             }
             if model.bookmarks.isEmpty && model.highlights.isEmpty {
@@ -177,7 +177,7 @@ struct BookmarksPanel: View {
             }
         }
         .padding(DSSpacing.lg)
-        .frame(minWidth: 380, idealWidth: 400, minHeight: 280, idealHeight: 320, maxHeight: 480)
+        .frame(minWidth: 360, idealWidth: 360, minHeight: 280, idealHeight: 320, maxHeight: 480, alignment: .top)
     }
 }
 
@@ -261,7 +261,7 @@ struct ViewOptionsPanel: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-        .frame(minWidth: 380, idealWidth: 400)
+        .frame(minWidth: 360, idealWidth: 360)
         .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -276,6 +276,8 @@ struct ExportSheet: View {
     var onClose: () -> Void
     @State private var presetName = ""
     @State private var shareURL: URL?
+    /// The sheet opens on its default action, not in the preset text field (which scrolled the form under the title).
+    @FocusState private var exportFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: DSSpacing.lg) {
@@ -337,14 +339,16 @@ struct ExportSheet: View {
                     .buttonStyle(.bordered).controlSize(.large).keyboardShortcut(.cancelAction)
                     .accessibilityIdentifier("export.cancel")
                 Button("Export \(export.options.format.rawValue.uppercased())…") { save() }
-                    .buttonStyle(.borderedProminent).tint(DSColor.accent).controlSize(.large)
+                    .dsProminentButton().tint(DSColor.accent).controlSize(.large)
                     .keyboardShortcut(.defaultAction).disabled(export.isWorking)
+                    .focused($exportFocused)
                     .accessibilityIdentifier("export.save")
             }
         }
         .padding(DSSpacing.xl)
         .frame(minWidth: 720, idealWidth: 760)
         .background(DSColor.contentBackground)
+        .defaultFocus($exportFocused, true)
         .task { await export.loadPresets() }
         .task(id: export.options) { await export.refreshPreview() }
         .onChange(of: export.options) { shareURL = nil }
@@ -496,5 +500,20 @@ private struct FormatChipStyle: ButtonStyle {
                 .contentShape(Capsule())
                 .onHover { hovering = $0 }
         }
+    }
+}
+
+/// Keeps a tall popover panel inside the window: the panel takes its natural height up to `maxHeight`, then scrolls.
+struct PopoverScroll<Content: View>: View {
+    var maxHeight: CGFloat = 520
+    @ViewBuilder var content: Content
+    @State private var contentHeight: CGFloat = 0
+
+    var body: some View {
+        ScrollView {
+            content.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(height: contentHeight > 0 ? min(contentHeight, maxHeight) : nil)
     }
 }

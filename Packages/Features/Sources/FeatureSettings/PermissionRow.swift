@@ -133,7 +133,7 @@ public struct PermissionRow: View {
                 }
                 if state.showsSettingsLink {
                     Button("Open System Settings", action: onOpenSettings)
-                        .buttonStyle(.link)
+                        .buttonStyle(.dsLink)
                         .accessibilityIdentifier("\(state.identifierBase).openSettings")
                 }
             }

@@ -83,7 +83,7 @@ struct TranscriptListView: View {
                         } label: {
                             Label("Return to playhead", systemImage: "scope")
                         }
-                        .buttonStyle(.borderedProminent)
+                        .dsProminentButton()
                         .controlSize(.regular)
                         .dsTransition(.glide)
                     }
@@ -93,7 +93,7 @@ struct TranscriptListView: View {
                         } label: {
                             Label("Follow latest", systemImage: "arrow.down.to.line")
                         }
-                        .buttonStyle(.borderedProminent)
+                        .dsProminentButton()
                         .controlSize(.regular)
                         .dsTransition(.glide)
                         .help("Jump to the newest transcribed text and keep following it")
@@ -281,7 +281,7 @@ struct SegmentRowView: View {
                 }
                 if segment.isIgnored {
                     Button("Stop ignoring") { model.setIgnored(false, for: [segment.id]) }
-                        .buttonStyle(.link).font(DSTypography.caption).disabled(model.isLockedByJob)
+                        .buttonStyle(.dsLink).font(DSTypography.caption).disabled(model.isLockedByJob)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -448,7 +448,7 @@ struct ParagraphRowView: View {
                 }
                 if allIgnored {
                     Button("Stop ignoring") { model.setIgnored(false, for: ids) }.disabled(model.isLockedByJob)
-                        .buttonStyle(.link).font(DSTypography.caption)
+                        .buttonStyle(.dsLink).font(DSTypography.caption)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

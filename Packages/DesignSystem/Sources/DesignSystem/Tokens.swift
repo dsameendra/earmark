@@ -162,6 +162,9 @@ public enum DSPalette {
     public static let emberTint = DSColorToken(
         light: DSRGBA(hex: 0xF7E4D8), dark: DSRGBA(hex: 0xF28A57, alpha: 0.16))
     public static let recording = DSColorToken(light: 0xD1352B, dark: 0xFF6B5E)
+    /// Label on an ember or recording fill: white on the light fills (4.8:1), near-black on the lighter dark fills (about 7:1;
+    /// white on dark ember is only 2.5:1).
+    public static let onAccent = DSColorToken(light: 0xFFFFFF, dark: 0x1C1B18)
     /// Ember for small text (links, labels, badge numerals): 4.5:1 on paper, sheet, inset and emberTint in light
     /// (4.63 to 5.99). `ember` (#C44B16) stays for fills, icons and text at 24 pt and above. Dark equals `ember`.
     public static let accentText = DSColorToken(light: 0xA83E10, dark: 0xF28A57)
@@ -203,6 +206,8 @@ public enum DSColor {
     // MARK: Accent and status
     /// Ember, the fixed brand accent. Apply with `.tint(DSColor.accent)` at the root.
     public static let accent = DSPalette.ember.color
+    /// Label colour for text and glyphs drawn on an accent or recording fill (see ``DSPalette/onAccent``).
+    public static let onAccent = DSPalette.onAccent.color
     /// Alias for ``accent``.
     public static let ember = DSPalette.ember.color
     /// Selected row / chip / karaoke background.

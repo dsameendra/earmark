@@ -174,7 +174,7 @@ struct DetectionBanner: View {
         HStack(spacing: DSSpacing.md) {
             DSIcon(app.symbol)
             VStack(alignment: .leading, spacing: DSSpacing.xxs) {
-                Text("\(app.badgeTitle) meeting detected").font(DSTypography.headline)
+                Text("\(app.occurrenceName) detected").font(DSTypography.headline)
                 Text("Started \(detection.startedAt, style: .relative) ago · nothing is recorded until you choose")
                     .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
             }
@@ -191,7 +191,7 @@ struct DetectionBanner: View {
         .background(DSColor.contentBackground, in: RoundedRectangle(cornerRadius: DSRadius.medium))
         .overlay(RoundedRectangle(cornerRadius: DSRadius.medium).stroke(DSColor.hairline))
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(app.badgeTitle) meeting detected")
+        .accessibilityLabel("\(app.occurrenceName) detected")
         .accessibilityIdentifier("meetings.banner.\(app.rawValue)")
     }
 }
@@ -260,7 +260,7 @@ struct CurrentMeetingCard: View {
         HStack(spacing: DSSpacing.md) {
             DSIcon(current.app.symbol)
             VStack(alignment: .leading, spacing: DSSpacing.xxs) {
-                Text("\(current.app.title) meeting").font(DSTypography.headline)
+                Text(current.app.occurrenceName).font(DSTypography.headline)
                 status
             }
             Spacer()
@@ -415,8 +415,8 @@ struct AvailableNowSection: View {
     let model: MeetingsModel
 
     var body: some View {
-        let items = model.available
-        if !items.isEmpty || model.detectFoundNothing {
+        let items = model.availableNow
+        if !items.isEmpty || (model.detectFoundNothing && model.available.isEmpty) {
             VStack(alignment: .leading, spacing: DSSpacing.sm) {
                 HStack {
                     Text("Available now").font(DSTypography.headline).accessibilityAddTraits(.isHeader)

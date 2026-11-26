@@ -46,7 +46,7 @@ public enum MenuBarStatus: Sendable, Equatable {
         switch self {
         case .idle: "Idle"
         case .liveCaptions: "Live captions on"
-        case .meetingDetected(let app): "\(app.title) \(app == .meet || app == .browser ? "call" : "meeting") detected"
+        case .meetingDetected(let app): "\(app.occurrenceName) detected"
         case .meetingRecording: "Recording meeting"
         case .meetingTranscribing: "Transcribing meeting"
         case .dictationArmed: "Dictation armed"

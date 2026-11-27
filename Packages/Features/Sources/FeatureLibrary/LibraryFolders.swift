@@ -74,9 +74,11 @@ struct FolderCard: View {
     private var card: some View {
         Button { model.openFolder(folder.id) } label: { label }
             .buttonStyle(.plain)
-            .dropDestination(for: DraggedTranscripts.self) { dropped, _ in
-                guard let ids = dropped.first?.ids, !ids.isEmpty else { return false }
+            .draggable(WorkspaceDragState.shared.begin(WorkspaceDrag(folder: folder.id))) { label.opacity(0.9) }
+            .dropDestination(for: WorkspaceDrag.self) { dropped, _ in
+                guard let ids = dropped.first?.transcripts, !ids.isEmpty else { return false }
                 Task { await model.move(ids, to: folder.id) }
+                WorkspaceDragState.shared.end()
                 return true
             } isTargeted: { isTargeted = $0 }
     }
@@ -117,9 +119,9 @@ public struct FolderMenu: View {
         }
         Button("Rename…", systemImage: "pencil", action: onRename)
         Menu("Colour", systemImage: "paintpalette") {
-            ForEach(0..<8, id: \.self) { index in
+            ForEach(0..<SpeakerPalette.names.count, id: \.self) { index in
                 Button { Task { await model.setFolderColor(folder.id, index: index) } } label: {
-                    Label("Colour \(index + 1)", systemImage: folder.colorIndex == index ? "checkmark.circle.fill" : "circle.fill")
+                    Label(SpeakerPalette.name(forSlot: index), systemImage: folder.colorIndex == index ? "checkmark.circle.fill" : "circle.fill")  // stock-chrome: colour choice
                 }
             }
         }
@@ -190,17 +192,20 @@ struct GroupHeader: View {
         let collapsed = model.isCollapsed(group.id)
         Button { Task { await model.toggleCollapsed(group.id) } } label: {
             HStack(spacing: DSSpacing.xs) {
-                Image(systemName: collapsed ? "chevron.right" : "chevron.down").font(DSTypography.caption).frame(width: 12)
+                Image(systemName: "chevron.right").font(DSTypography.caption.weight(.semibold)).frame(width: 12)  // stock-chrome: disclosure
+                    .rotationEffect(.degrees(collapsed ? 0 : 90))
                 Text(group.title).font(DSTypography.label.weight(.semibold))
                 Text("\(group.items.count)").font(DSTypography.caption).foregroundStyle(DSColor.tertiaryText)
                 Spacer()
             }
             .foregroundStyle(DSColor.secondaryText)
+            .padding(.horizontal, DSSpacing.lg + DSSpacing.sm).padding(.vertical, DSSpacing.xs + 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(DSColor.contentBackground)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .listRowSeparator(.hidden)
-        .listRowBackground(DSColor.contentBackground)
+        .dsAnimation(.glide, value: collapsed)
         .accessibilityLabel("\(group.title), \(group.items.count) items, \(collapsed ? "collapsed" : "expanded")")
         .accessibilityHint("Shows or hides this group")
         .accessibilityIdentifier("library.group.\(group.id)")

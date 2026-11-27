@@ -186,11 +186,52 @@ public struct ScriptedIntelligence: IntelligenceServicing {
 import CoreTransferable
 import UniformTypeIdentifiers
 
-/// Transcripts dragged from the Library onto a folder (Library cards, sidebar).
-public struct DraggedTranscripts: Codable, Sendable, Transferable {
-    public var ids: [TranscriptID]
-    public init(ids: [TranscriptID]) { self.ids = ids }
+/// What is being dragged inside Earmark: transcripts (Library rows, the transcript page), a folder (Library cards) or a pinned
+/// sidebar row. One payload type, so every drop target decodes it the same way (two JSON payload types are ambiguous).
+public struct WorkspaceDrag: Codable, Sendable, Transferable {
+    public var transcripts: [TranscriptID]
+    public var folder: FolderID?
+    /// A pinned sidebar row (`folder-…` or `transcript-…`) being reordered.
+    public var pinnedRow: String?
+
+    public init(transcripts: [TranscriptID] = [], folder: FolderID? = nil, pinnedRow: String? = nil) {
+        self.transcripts = transcripts
+        self.folder = folder
+        self.pinnedRow = pinnedRow
+    }
+
     public static var transferRepresentation: some TransferRepresentation { CodableRepresentation(contentType: .json) }
+}
+
+/// The drag in progress, set when a drag starts, so drop targets can show what dropping would do while the pointer is over them
+/// (SwiftUI gives a target no payload before the drop).
+@MainActor @Observable
+public final class WorkspaceDragState {
+    public static let shared = WorkspaceDragState()
+
+    public enum Kind: Equatable, Sendable {
+        case transcripts(Int)
+        case folder
+        case pinnedRow
+    }
+
+    public private(set) var kind: Kind?
+    private init() {}
+
+    /// Called as a drag starts; returns the payload for `draggable`.
+    public func begin(_ drag: WorkspaceDrag) -> WorkspaceDrag {
+        if drag.folder != nil {
+            kind = .folder
+        } else if drag.pinnedRow != nil {
+            kind = .pinnedRow
+        } else {
+            kind = .transcripts(drag.transcripts.count)
+        }
+        return drag
+    }
+
+    public func end() { kind = nil }
+
 }
 
 

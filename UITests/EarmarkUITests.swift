@@ -268,7 +268,8 @@ final class EarmarkUITests: XCTestCase {
             let window = app.windows.firstMatch
             Thread.sleep(forTimeInterval: video ? 2 : 0.5)
             // The transcript list is the scroll view that covers the lower middle of the window.
-            let probe = CGPoint(x: window.frame.midX - 100, y: window.frame.minY + window.frame.height * 0.85)
+            // With a video the page has two columns (stage left, transcript right): probe the right column.
+            let probe = CGPoint(x: window.frame.maxX - 160, y: window.frame.minY + window.frame.height * 0.7)
             let lists = app.scrollViews.allElementsBoundByIndex.filter { $0.frame.contains(probe) }
             let list = try XCTUnwrap(lists.min { $0.frame.height < $1.frame.height }, "transcript list not found")
             for _ in 0..<14 {
@@ -279,11 +280,16 @@ final class EarmarkUITests: XCTestCase {
             // The final row starts at 7:24; its speaker and time block must end inside the list, not under its clipped edge.
             let last = app.descendants(matching: .any).matching(NSPredicate(format: "value CONTAINS %@ OR label CONTAINS %@", "7:24", "7:24")).firstMatch
             XCTAssertTrue(last.waitForExistence(timeout: 3), "the last transcript row must exist")
-            // The list's own frame can extend under the player bar, so measure against the bar's top instead.
+            // With the player bar under the list (no stage column) the last row must end above the bar; beside the stage column
+            // the list runs to the bottom edge, so the row must end inside the list.
             let bar = app.buttons["editor.player.play"]
             XCTAssertTrue(bar.waitForExistence(timeout: 3))
-            XCTAssertLessThanOrEqual(last.frame.maxY, bar.frame.minY, "the last row (\(last.frame)) must end above the player bar (\(bar.frame))")
-            XCTAssertLessThanOrEqual(list.frame.maxY, bar.frame.minY + 1, "the list (\(list.frame)) must not run under the player bar (\(bar.frame))")
+            if bar.frame.minX > list.frame.minX && bar.frame.maxX < list.frame.maxX {
+                XCTAssertLessThanOrEqual(last.frame.maxY, bar.frame.minY, "the last row (\(last.frame)) must end above the player bar (\(bar.frame))")
+                XCTAssertLessThanOrEqual(list.frame.maxY, bar.frame.minY + 1, "the list (\(list.frame)) must not run under the player bar (\(bar.frame))")
+            } else {
+                XCTAssertLessThanOrEqual(last.frame.maxY, list.frame.maxY, "the last row (\(last.frame)) must end inside the list (\(list.frame))")
+            }
         }
     }
 
@@ -667,6 +673,72 @@ final class EarmarkUITests: XCTestCase {
         capture(app, "sidebar-pinned")
         pinned.click()
         XCTAssertTrue(app.descendants(matching: .any)["library.breadcrumb"].waitForExistence(timeout: 5), "opening a pinned folder shows it in the Library")
+    }
+
+    /// One click opens a transcript, in the list and in the grid.
+    func testLibraryItemsOpenWithASingleClickInListAndGrid() throws {
+        let app = launch(appearance: "light")
+        defer { app.terminate() }
+        app.buttons["sidebar.library"].click()
+        let items = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "library.item."))
+        XCTAssertTrue(items.firstMatch.waitForExistence(timeout: 8))
+        items.firstMatch.click()
+        XCTAssertTrue(app.buttons["editor.export"].waitForExistence(timeout: 8), "a single click in the list opens the transcript")
+        app.buttons["toolbar.back"].click()
+        app.buttons["library.layout.grid"].click()
+        XCTAssertTrue(items.firstMatch.waitForExistence(timeout: 8))
+        items.firstMatch.click()
+        XCTAssertTrue(app.buttons["editor.export"].waitForExistence(timeout: 8), "a single click in the grid opens the transcript")
+    }
+
+    /// Select mode: checkmarks appear, a selection reveals Delete, Delete offers Undo. Same in list and grid.
+    func testSelectModeShowsActionsAndDeleteCanBeUndone() throws {
+        let app = launch(appearance: "light")
+        defer { app.terminate() }
+        app.buttons["sidebar.library"].click()
+        let items = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "library.item."))
+        XCTAssertTrue(items.firstMatch.waitForExistence(timeout: 8))
+        XCTAssertFalse(app.buttons["library.delete"].exists, "no Delete button outside Select mode")
+        for grid in [false, true] {
+            if grid { app.buttons["library.layout.grid"].click() }
+            let before = items.count
+            let select = app.buttons["library.select"]
+            XCTAssertTrue(select.waitForExistence(timeout: 5))
+            select.click()
+            XCTAssertTrue(app.staticTexts["library.selectionCount"].waitForExistence(timeout: 5))
+            XCTAssertFalse(app.buttons["library.delete"].exists, "Delete appears once something is selected")
+            items.firstMatch.click()
+            XCTAssertTrue(app.buttons["library.delete"].waitForExistence(timeout: 5), "selecting an item reveals Delete")
+            XCTAssertFalse(app.buttons["editor.export"].exists, "a click in Select mode does not open the transcript")
+            capture(app, "library-select-\(grid ? "grid" : "list")")
+            app.buttons["library.delete"].click()
+            XCTAssertTrue(app.buttons["library.undoDelete"].waitForExistence(timeout: 5), "Delete offers Undo")
+            XCTAssertEqual(items.count, before - 1)
+            app.buttons["library.undoDelete"].click()
+            let restored = NSPredicate(format: "count == %d", before)
+            XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: restored, object: items)], timeout: 6), .completed, "Undo brings the item back")
+            app.buttons["library.select"].click()  // Done
+        }
+    }
+
+    /// Grouping works in the grid: headers by date, collapsible.
+    func testGridGroupsByDateAndGroupsCollapse() throws {
+        let app = launch(appearance: "light")
+        defer { app.terminate() }
+        app.buttons["sidebar.library"].click()
+        app.buttons["library.layout.grid"].click()
+        let group = app.menuButtons["library.group"]
+        XCTAssertTrue(group.waitForExistence(timeout: 8))
+        group.click()
+        app.menuItems["Date"].click()
+        let header = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "library.group.date.")).firstMatch
+        XCTAssertTrue(header.waitForExistence(timeout: 5), "the grid shows date group headers")
+        capture(app, "library-grid-grouped-by-date")
+        let items = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "library.item."))
+        let before = items.count
+        header.click()
+        let collapsed = NSPredicate { _, _ in items.count < before }
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: collapsed, object: nil)], timeout: 5), .completed, "a header collapses its group")
     }
 
     func testLibraryShowsFolderCardsAndGroupsByType() throws {

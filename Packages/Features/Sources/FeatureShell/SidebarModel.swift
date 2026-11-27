@@ -254,6 +254,30 @@ public final class SidebarModel {
         await reloadPinned()
     }
 
+    /// Pins a folder (dropped on the sidebar), optionally before an existing pinned row.
+    public func pin(folder id: FolderID, before target: String? = nil) async {
+        guard var folder = ((try? await services.workspace.folders.folders()) ?? []).first(where: { $0.id == id }) else { return }
+        if folder.pinOrder == nil {
+            folder.pinOrder = await PinOrder.next(services: services)
+            try? await services.workspace.folders.save(folder)
+            services.workspace.events.send(.foldersChanged)
+            await reloadPinned()
+        }
+        if let target { await movePinned("folder-\(id)", before: target) }
+    }
+
+    /// Pins transcripts (dropped on the sidebar), optionally before an existing pinned row.
+    public func pin(transcripts ids: [TranscriptID], before target: String? = nil) async {
+        for id in ids {
+            guard var transcript = try? await services.transcripts.transcript(id), transcript.pinOrder == nil else { continue }
+            transcript.pinOrder = await PinOrder.next(services: services)  // pinning is not an edit: modifiedAt stays
+            try? await services.transcripts.save(transcript)
+        }
+        services.workspace.events.send(.libraryChanged)
+        await reloadPinned()
+        if let target { for id in ids { await movePinned("transcript-\(id)", before: target) } }
+    }
+
     /// Puts `dragged` before `target` (the end when `target` is nil) and saves the new positions.
     public func movePinned(_ dragged: String, before target: String?) async {
         var order = pinned

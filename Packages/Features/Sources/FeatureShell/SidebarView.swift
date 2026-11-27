@@ -27,6 +27,10 @@ struct SidebarView: View {
     @Bindable var model: ShellModel
     @Namespace private var pillSpace
     @FocusState private var navigationFocused: Bool
+    /// The row a drag is over (a pinned row id, `library` or `trash`), for the drop highlight and insertion line.
+    @State private var targetedRow: String?
+    /// A compatible drag is somewhere over the sidebar.
+    @State private var sidebarTargeted = false
     @State private var isModelPickerPresented = false
     @Environment(\.openSettings) private var openSettings
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -41,12 +45,19 @@ struct SidebarView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: DSSpacing.xs) {
                     ForEach(AppSection.topSections) { section in row(section) }
+                    SidebarDivider()
                     row(.library)
-                    if !model.sidebar.pinned.isEmpty { pinnedList }
+                        .dropTarget(id: "library", targeted: $targetedRow, tint: .accent, accepts: { _ in true }) { drag in dropOnLibrary(drag) }
+                    if !model.sidebar.pinned.isEmpty { pinnedList } else if showsPinHint { pinHint }
+                    SidebarDivider()
                     row(.recentlyDeleted)
+                        .dropTarget(id: "trash", targeted: $targetedRow, tint: .danger, accepts: { _ in true }) { drag in dropOnTrash(drag) }
                 }
                 .compositingGroup()
+                .dsAnimation(.glide, value: model.sidebar.pinned.map(\.id))
+                .dsAnimation(.glide, value: showsPinHint)
             }
+            .dropDestination(for: WorkspaceDrag.self) { dropped, _ in dropOnSidebar(dropped.first) } isTargeted: { sidebarTargeted = $0 }
             .scrollIndicators(.hidden)
             if let chip = model.sidebar.modelChip {
                 Button { isModelPickerPresented.toggle() } label: { CompactModelChipView(chip: chip) }
@@ -172,7 +183,13 @@ struct SidebarView: View {
 
     private var pinnedList: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(model.sidebar.pinned) { item in pinnedRow(item) }
+            ForEach(model.sidebar.pinned) { item in
+                pinnedRow(item).transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .top)), removal: .opacity))
+            }
+            // Below the last row: dropping here pins at the end.
+            Color.clear.frame(height: 10).contentShape(Rectangle())
+                .overlay(alignment: .top) { if targetedRow == "tail" { InsertionLine() } }
+                .dropDestination(for: WorkspaceDrag.self) { dropped, _ in dropOnSidebar(dropped.first) } isTargeted: { setTargeted("tail", $0) }
         }
         .padding(.leading, DSSpacing.sm)
         .accessibilityElement(children: .contain)
@@ -211,17 +228,18 @@ struct SidebarView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .draggable(PinnedDrag(id: item.id))
-        .dropDestination(for: PinnedDrag.self) { dropped, _ in
-            guard let id = dropped.first?.id, id != item.id else { return false }
-            Task { await model.sidebar.movePinned(id, before: item.id) }
-            return true
+        .overlay(alignment: .top) { if targetedRow == item.id, !movesIntoFolder(item) { InsertionLine() } }
+        .background {
+            if targetedRow == item.id, movesIntoFolder(item) {
+                RoundedRectangle(cornerRadius: DSRadius.medium, style: .continuous).fill(DSColor.accent.opacity(0.14))
+                    .overlay(RoundedRectangle(cornerRadius: DSRadius.medium, style: .continuous).strokeBorder(DSColor.accent, lineWidth: 1.5))
+            }
         }
-        .dropDestination(for: DraggedTranscripts.self) { dropped, _ in
-            guard case .folder(let folder, _) = item, let ids = dropped.first?.ids else { return false }
-            Task { await model.library.move(ids, to: folder.id) }
-            return true
+        .draggable(WorkspaceDragState.shared.begin(WorkspaceDrag(pinnedRow: item.id))) {
+            Text(item.title).font(.system(size: 13)).padding(.horizontal, 10).padding(.vertical, 6)
+                .background(DSColor.contentBackground, in: Capsule())
         }
+        .dropDestination(for: WorkspaceDrag.self) { dropped, _ in dropOnPinned(dropped.first, item: item) } isTargeted: { setTargeted(item.id, $0) }
         .contextMenu {
             Button("Unpin from Sidebar", systemImage: "pin.slash") { Task { await model.sidebar.unpin(item) } }
             Button("Move Up", systemImage: "arrow.up") { Task { await model.sidebar.movePinned(item.id, by: -1) } }
@@ -250,6 +268,108 @@ struct SidebarView: View {
         case .folder(let folder, let count): "Pinned folder \(folder.name), \(count) items"
         case .transcript(let transcript): "Pinned transcript \(transcript.title)"
         }
+    }
+
+    // MARK: Drag and drop
+
+    private var dragKind: WorkspaceDragState.Kind? { WorkspaceDragState.shared.kind }
+
+    /// The "Drop to pin" hint: only while a transcript or folder is dragged over the sidebar and nothing is pinned yet.
+    private var showsPinHint: Bool {
+        guard sidebarTargeted else { return false }
+        switch dragKind {
+        case .transcripts, .folder: return true
+        default: return false
+        }
+    }
+
+    private var pinHint: some View {
+        HStack(spacing: 9) {
+            Image(systemName: "pin").font(.system(size: 12)).frame(width: 14)  // stock-chrome: pin hint
+            Text("Drop here to pin").font(.system(size: 13))
+        }
+        .foregroundStyle(DSColor.accentText)
+        .padding(.horizontal, 10).padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: DSRadius.medium, style: .continuous)
+                .strokeBorder(DSColor.accent.opacity(targetedRow == "tail" ? 1 : 0.55), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                .background(DSColor.accent.opacity(targetedRow == "tail" ? 0.12 : 0.04), in: RoundedRectangle(cornerRadius: DSRadius.medium, style: .continuous))
+        )
+        .padding(.leading, DSSpacing.sm)
+        .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .top)))
+        .dropDestination(for: WorkspaceDrag.self) { dropped, _ in dropOnSidebar(dropped.first) } isTargeted: { setTargeted("tail", $0) }
+        .accessibilityHidden(true)
+    }
+
+    private func setTargeted(_ id: String, _ targeted: Bool) {
+        if targeted {
+            guard targetedRow != id else { return }
+            targetedRow = id
+            NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)
+        } else if targetedRow == id {
+            targetedRow = nil
+        }
+    }
+
+    /// A folder row accepts transcripts to move into it; everything else dropped on a pinned row is placed before it.
+    private func movesIntoFolder(_ item: PinnedItem) -> Bool {
+        guard case .folder = item, case .transcripts = dragKind else { return false }
+        return true
+    }
+
+    private func dropOnPinned(_ drag: WorkspaceDrag?, item: PinnedItem) -> Bool {
+        guard let drag else { return false }
+        defer { WorkspaceDragState.shared.end() }
+        if let row = drag.pinnedRow {
+            guard row != item.id else { return false }
+            Task { await model.sidebar.movePinned(row, before: item.id) }
+            return true
+        }
+        if let folder = drag.folder {
+            Task { await model.sidebar.pin(folder: folder, before: item.id) }
+            return true
+        }
+        guard !drag.transcripts.isEmpty else { return false }
+        if case .folder(let folder, _) = item {
+            Task { await model.library.move(drag.transcripts, to: folder.id) }
+        } else {
+            Task { await model.sidebar.pin(transcripts: drag.transcripts, before: item.id) }
+        }
+        return true
+    }
+
+    /// Dropped on the empty part of the sidebar or the tail of the pinned list: pin at the end.
+    private func dropOnSidebar(_ drag: WorkspaceDrag?) -> Bool {
+        guard let drag else { return false }
+        defer { WorkspaceDragState.shared.end() }
+        if let row = drag.pinnedRow {
+            Task { await model.sidebar.movePinned(row, before: nil) }
+            return true
+        }
+        if let folder = drag.folder {
+            Task { await model.sidebar.pin(folder: folder) }
+            return true
+        }
+        guard !drag.transcripts.isEmpty else { return false }
+        Task { await model.sidebar.pin(transcripts: drag.transcripts) }
+        return true
+    }
+
+    /// Dropped on Library: the transcripts leave their folder.
+    private func dropOnLibrary(_ drag: WorkspaceDrag) -> Bool {
+        defer { WorkspaceDragState.shared.end() }
+        guard !drag.transcripts.isEmpty else { return false }
+        Task { await model.library.move(drag.transcripts, to: nil) }
+        return true
+    }
+
+    /// Dropped on Recently Deleted: the transcripts move there (and can be restored).
+    private func dropOnTrash(_ drag: WorkspaceDrag) -> Bool {
+        defer { WorkspaceDragState.shared.end() }
+        guard !drag.transcripts.isEmpty else { return false }
+        Task { await model.library.delete(drag.transcripts) }
+        return true
     }
 
     // MARK: Settings
@@ -376,8 +496,57 @@ struct CompactModelChipView: View {
     }
 }
 
-/// Reordering a pinned entry by dragging it onto another one.
-struct PinnedDrag: Codable, Transferable {
-    var id: String
-    static var transferRepresentation: some TransferRepresentation { CodableRepresentation(contentType: .json) }
+/// A hairline between sidebar groups.
+private struct SidebarDivider: View {
+    var body: some View {
+        Rectangle().fill(DSColor.hairline).frame(height: 1)
+            .padding(.horizontal, 6).padding(.vertical, 6)
+            .accessibilityHidden(true)
+    }
+}
+
+/// The accent line that shows where a dropped item will land.
+private struct InsertionLine: View {
+    var body: some View {
+        HStack(spacing: 0) {
+            Circle().fill(DSColor.accent).frame(width: 6, height: 6)
+            Capsule().fill(DSColor.accent).frame(height: 2)
+        }
+        .padding(.horizontal, 4)
+        .offset(y: -1)
+        .transition(.opacity)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+private enum DropTint { case accent, danger }
+
+private extension View {
+    /// Makes a sidebar row a drop target that rings itself while a compatible drag is over it.
+    func dropTarget(
+        id: String, targeted: Binding<String?>, tint: DropTint, accepts: @escaping (WorkspaceDrag) -> Bool, action: @escaping (WorkspaceDrag) -> Bool
+    ) -> some View {
+        let color = tint == .danger ? DSColor.danger : DSColor.accent
+        let shape = RoundedRectangle(cornerRadius: DSRadius.medium + 4, style: .continuous)
+        return background {
+            if targeted.wrappedValue == id {
+                shape.fill(color.opacity(0.12)).overlay(shape.strokeBorder(color, lineWidth: 1.5)).transition(.opacity)
+            }
+        }
+        .dsAnimation(.glide, value: targeted.wrappedValue == id)
+        .dropDestination(for: WorkspaceDrag.self) { dropped, _ in
+            guard let drag = dropped.first, accepts(drag) else { return false }
+            return action(drag)
+        } isTargeted: { inside in
+            if inside {
+                if targeted.wrappedValue != id {
+                    targeted.wrappedValue = id
+                    NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)
+                }
+            } else if targeted.wrappedValue == id {
+                targeted.wrappedValue = nil
+            }
+        }
+    }
 }

@@ -115,16 +115,7 @@ public enum LibraryGrouper {
         case .none:
             return items.isEmpty ? [] : [LibraryGroup(id: "all", title: "", items: items)]
         case .date:
-            let start = calendar.startOfDay(for: now)
-            let week = calendar.date(byAdding: .day, value: -6, to: start) ?? start
-            let month = calendar.date(byAdding: .day, value: -29, to: start) ?? start
-            func bucket(_ date: Date) -> (Int, String, String) {
-                if date >= start { return (0, "date.today", "Today") }
-                if date >= week { return (1, "date.week", "This week") }
-                if date >= month { return (2, "date.month", "This month") }
-                return (3, "date.older", "Older")
-            }
-            return ordered(items, key: { let b = bucket($0.createdAt); return (b.0, b.1, b.2) })
+            return ordered(items, key: { dateBucket($0.createdAt, now: now, calendar: calendar) })
         case .folder:
             let names = Dictionary(uniqueKeysWithValues: folders.map { ($0.id, $0.name) })
             return ordered(items, key: { item in
@@ -151,6 +142,35 @@ public enum LibraryGrouper {
             if !untagged.isEmpty { result.append(LibraryGroup(id: "tag.none", title: "Untagged", items: untagged)) }
             return result
         }
+    }
+
+    /// Today, Yesterday, This week, Last week, This month, Last month; then a group per earlier month of this year, then a group
+    /// per earlier year. Boundaries follow the calendar (its first weekday and time zone). The first match wins, so every date
+    /// falls in exactly one bucket, and a future date counts as today.
+    static func dateBucket(_ date: Date, now: Date, calendar: Calendar) -> (Int, String, String) {
+        let today = calendar.startOfDay(for: now)
+        if date >= today { return (0, "date.today", "Today") }
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
+        if date >= yesterday { return (1, "date.yesterday", "Yesterday") }
+        let thisWeek = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? today
+        if date >= thisWeek { return (2, "date.thisWeek", "This week") }
+        let lastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: thisWeek) ?? thisWeek
+        if date >= lastWeek { return (3, "date.lastWeek", "Last week") }
+        let thisMonth = calendar.dateInterval(of: .month, for: now)?.start ?? today
+        if date >= thisMonth { return (4, "date.thisMonth", "This month") }
+        let lastMonth = calendar.date(byAdding: .month, value: -1, to: thisMonth) ?? thisMonth
+        if date >= lastMonth { return (5, "date.lastMonth", "Last month") }
+        let parts = calendar.dateComponents([.year, .month], from: date)
+        let year = parts.year ?? calendar.component(.year, from: now)
+        let month = parts.month ?? 1
+        if year == calendar.component(.year, from: now) {
+            let formatter = DateFormatter()
+            formatter.calendar = calendar
+            formatter.timeZone = calendar.timeZone
+            formatter.setLocalizedDateFormatFromTemplate("LLLL")
+            return (100 + (12 - month), "date.month.\(year)-\(month)", formatter.string(from: date))
+        }
+        return (1000 + (9999 - year), "date.year.\(year)", String(year))
     }
 
     /// Groups in the order of the rank (then title when `tieBreak`), keeping each group's items in list order.

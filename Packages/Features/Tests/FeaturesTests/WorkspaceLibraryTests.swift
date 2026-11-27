@@ -15,15 +15,75 @@ private func transcript(_ title: String, source: TranscriptSource = .file, daysA
 
 @Suite("Library grouping")
 struct LibraryGroupingTests {
-    @Test func dateGroupsComeInTimeOrderAndKeepListOrder() {
-        let items = [transcript("a", daysAgo: 0.1), transcript("b", daysAgo: 3), transcript("c", daysAgo: 12), transcript("d", daysAgo: 90), transcript("e", daysAgo: 0.2)]
-        let groups = LibraryGrouper.groups(items, by: .date, folders: [], now: now, calendar: .current)
-        #expect(groups.map(\.title).count == groups.count)
-        let titles = groups.map(\.title)
-        #expect(titles.first == "Today" || titles.first == "This week")  // start-of-day dependent, but never reordered
-        #expect(groups.flatMap(\.items).count == 5)
-        #expect(titles.last == "Older")
-        #expect(groups.last?.items.map(\.title) == ["d"])
+    /// A fixed calendar so the buckets do not depend on the machine: Gregorian, UTC, weeks start on Monday.
+    private static var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+        calendar.firstWeekday = 2
+        calendar.locale = Locale(identifier: "en_US")
+        return calendar
+    }
+
+    private static func date(_ y: Int, _ m: Int, _ d: Int, _ h: Int = 12, _ min: Int = 0) -> Date {
+        Self.calendar.date(from: DateComponents(year: y, month: m, day: d, hour: h, minute: min)) ?? Date()
+    }
+
+    private static func bucket(_ date: Date, now: Date) -> String {
+        let groups = LibraryGrouper.groups(
+            [Transcript(title: "t", source: .file, createdAt: date, modifiedAt: date)], by: .date, folders: [], now: now, calendar: calendar)
+        return groups.first?.title ?? "?"
+    }
+
+    @Test func datesFallInTodayYesterdayThisWeekLastWeekThisMonthLastMonth() {
+        // Thursday 19 November 2026, mid-afternoon.
+        let now = Self.date(2026, 11, 19, 15)
+        #expect(Self.bucket(Self.date(2026, 11, 19, 0, 0), now: now) == "Today")  // midnight belongs to the new day
+        #expect(Self.bucket(Self.date(2026, 11, 18, 23, 59), now: now) == "Yesterday")
+        #expect(Self.bucket(Self.date(2026, 11, 17, 9), now: now) == "This week")  // Tuesday
+        #expect(Self.bucket(Self.date(2026, 11, 16, 0, 0), now: now) == "This week")  // Monday 00:00 starts the week
+        #expect(Self.bucket(Self.date(2026, 11, 15, 23, 59), now: now) == "Last week")  // Sunday
+        #expect(Self.bucket(Self.date(2026, 11, 9, 0, 0), now: now) == "Last week")
+        #expect(Self.bucket(Self.date(2026, 11, 8, 23, 59), now: now) == "This month")
+        #expect(Self.bucket(Self.date(2026, 11, 1, 0, 0), now: now) == "This month")
+        #expect(Self.bucket(Self.date(2026, 10, 31, 23, 59), now: now) == "Last month")
+        #expect(Self.bucket(Self.date(2026, 10, 1, 0, 0), now: now) == "Last month")
+        #expect(Self.bucket(Self.date(2026, 9, 30, 23, 59), now: now) == "September")
+        #expect(Self.bucket(Self.date(2026, 1, 1, 0, 0), now: now) == "January")
+        #expect(Self.bucket(Self.date(2025, 12, 31, 23, 59), now: now) == "2025")
+        #expect(Self.bucket(Self.date(2019, 6, 1), now: now) == "2019")
+        #expect(Self.bucket(Self.date(2026, 11, 25), now: now) == "Today")  // a future date (clock skew) counts as today
+    }
+
+    @Test func aWeekThatStartsInTheLastMonthStillCountsAsThisWeek() {
+        // Wednesday 2 December 2026: the week began on Monday 30 November, in the previous month.
+        let now = Self.date(2026, 12, 2, 10)
+        #expect(Self.bucket(Self.date(2026, 11, 30, 8), now: now) == "This week")
+        #expect(Self.bucket(Self.date(2026, 11, 29, 8), now: now) == "Last week")
+        #expect(Self.bucket(Self.date(2026, 11, 20, 8), now: now) == "Last month")
+        #expect(Self.bucket(Self.date(2026, 10, 20, 8), now: now) == "October")
+    }
+
+    @Test func aSundayStartCalendarMovesTheWeekBoundary() {
+        var sunday = Self.calendar
+        sunday.firstWeekday = 1
+        let now = Self.date(2026, 11, 19, 15)  // Thursday; this week began on Sunday the 15th
+        let groups = LibraryGrouper.groups(
+            [Transcript(title: "t", source: .file, createdAt: Self.date(2026, 11, 15, 10), modifiedAt: Self.date(2026, 11, 15, 10))],
+            by: .date, folders: [], now: now, calendar: sunday)
+        #expect(groups.first?.title == "This week")
+    }
+
+    @Test func dateGroupsComeNewestFirstAndEmptyOnesAreHidden() {
+        let now = Self.date(2026, 11, 19, 15)
+        let items = [
+            Transcript(title: "old", source: .file, createdAt: Self.date(2024, 3, 3), modifiedAt: Self.date(2024, 3, 3)),
+            Transcript(title: "today", source: .file, createdAt: Self.date(2026, 11, 19, 9), modifiedAt: Self.date(2026, 11, 19, 9)),
+            Transcript(title: "march", source: .file, createdAt: Self.date(2026, 3, 3), modifiedAt: Self.date(2026, 3, 3)),
+            Transcript(title: "june", source: .file, createdAt: Self.date(2026, 6, 3), modifiedAt: Self.date(2026, 6, 3)),
+            Transcript(title: "older", source: .file, createdAt: Self.date(2022, 1, 1), modifiedAt: Self.date(2022, 1, 1)),
+        ]
+        let groups = LibraryGrouper.groups(items, by: .date, folders: [], now: now, calendar: Self.calendar)
+        #expect(groups.map(\.title) == ["Today", "June", "March", "2024", "2022"])
     }
 
     @Test func folderGroupsPutUnfiledLast() {
@@ -128,6 +188,24 @@ struct FoldersAndPinsTests {
         await sidebar.unpin(try #require(sidebar.pinned.first))
         #expect(sidebar.pinned.map(\.title) == ["Folder"])
         #expect(try await services.transcripts.transcript(a.id)?.pinOrder == nil)
+    }
+
+    @Test func droppingOnTheSidebarPinsAtTheEndOrBeforeARow() async throws {
+        var a = transcript("A")
+        a.pinOrder = 0
+        let b = transcript("B"), c = transcript("C")
+        let folder = Folder(name: "Folder")
+        var services = AppServices.preview(transcripts: [a, b, c])
+        services.workspace.folders = InMemoryFolders(items: [folder])
+        let sidebar = SidebarModel(services: services)
+        await sidebar.reloadPinned()
+        await sidebar.pin(transcripts: [b.id])  // dropped on the empty sidebar: pinned at the end
+        #expect(sidebar.pinned.map(\.title) == ["A", "B"])
+        await sidebar.pin(folder: folder.id, before: "transcript-\(a.id)")  // dropped on a row: placed before it
+        #expect(sidebar.pinned.map(\.title) == ["Folder", "A", "B"])
+        await sidebar.pin(transcripts: [c.id, b.id])  // already pinned items are left where they are
+        #expect(sidebar.pinned.map(\.title) == ["Folder", "A", "B", "C"])
+        #expect(try await services.transcripts.transcript(c.id)?.modifiedAt == c.modifiedAt)  // pinning is not an edit
     }
 
     @Test func sidebarHidesPinnedItemsWhenTheSettingIsOff() async {

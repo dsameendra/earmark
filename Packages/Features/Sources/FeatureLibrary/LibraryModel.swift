@@ -1,4 +1,5 @@
 import AppCore
+import DesignSystem
 import FeatureSupport
 import Foundation
 import Observation
@@ -24,6 +25,18 @@ public final class LibraryModel {
     public private(set) var errorMessage: String?
     public var searchText = ""
     public var selection: Set<TranscriptID> = []
+    /// Select mode: rows and cards show checkmarks and a click toggles instead of opening.
+    public private(set) var isSelecting = false
+    @ObservationIgnored private var selectionAnchor: TranscriptID?
+    /// The last delete, offered for Undo in a toast.
+    public private(set) var undoDelete: UndoDelete?
+    @ObservationIgnored private var undoTask: Task<Void, Never>?
+
+    /// A delete the user can still take back.
+    public struct UndoDelete: Equatable, Sendable {
+        public var ids: [TranscriptID]
+        public var message: String
+    }
     public var filters = LibraryFilters()
     public var sort: LibrarySort = .createdDesc {
         didSet {
@@ -290,6 +303,90 @@ public final class LibraryModel {
     public func delete(_ ids: [TranscriptID]) async {
         onTranscriptsRemoved?(ids)
         await apply { try await $0.softDelete(ids, at: self.now()) }
+        if mode == .library, !ids.isEmpty, errorMessage == nil { offerUndo(for: ids) }
+    }
+
+    private func offerUndo(for ids: [TranscriptID]) {
+        undoTask?.cancel()
+        undoDelete = UndoDelete(ids: ids, message: ids.count == 1 ? "Moved to Recently Deleted" : "Moved \(ids.count) to Recently Deleted")
+        undoTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(8))
+            guard !Task.isCancelled else { return }
+            self?.undoDelete = nil
+        }
+    }
+
+    /// Takes back the last delete.
+    public func undoLastDelete() async {
+        guard let undo = undoDelete else { return }
+        undoTask?.cancel()
+        undoDelete = nil
+        await restore(undo.ids)
+    }
+
+    public func dismissUndo() {
+        undoTask?.cancel()
+        undoDelete = nil
+    }
+
+    // MARK: Select mode
+
+    public func setSelecting(_ on: Bool) {
+        guard on != isSelecting else { return }
+        isSelecting = on
+        if !on {
+            selection = []
+            selectionAnchor = nil
+        }
+    }
+
+    public func toggleSelecting() { setSelecting(!isSelecting) }
+
+    /// Adds or removes one item (entering Select mode if needed).
+    public func toggleSelection(_ id: TranscriptID) {
+        setSelecting(true)
+        if selection.contains(id) { selection.remove(id) } else { selection.insert(id) }
+        selectionAnchor = id
+    }
+
+    /// Selects everything between the last toggled item and `id`, in the order shown.
+    public func selectRange(to id: TranscriptID) {
+        setSelecting(true)
+        let order = groups.filter { !isCollapsed($0.id) }.flatMap(\.items).map(\.id)
+        guard let anchor = selectionAnchor, let from = order.firstIndex(of: anchor), let to = order.firstIndex(of: id) else {
+            toggleSelection(id)
+            return
+        }
+        selection.formUnion(order[min(from, to)...max(from, to)])
+    }
+
+    public func selectAll() {
+        setSelecting(true)
+        selection = Set(visibleItems.map(\.id))
+    }
+
+    /// Pins the selection to the sidebar, or unpins it when everything selected is already pinned.
+    public func pinSelected() async {
+        var chosen: [Transcript] = []
+        for id in selection { if let item = try? await transcripts.transcript(id) { chosen.append(item) } }
+        let pinning = chosen.contains { $0.pinOrder == nil }
+        for var item in chosen {
+            if pinning {
+                guard item.pinOrder == nil else { continue }
+                item.pinOrder = await PinOrder.next(services: services)
+            } else {
+                item.pinOrder = nil
+            }
+            try? await transcripts.save(item)
+        }
+        services.workspace.events.send(.libraryChanged)
+        await reload()
+    }
+
+    /// Whether every selected item is already pinned (the Pin button then reads Unpin).
+    public var selectionIsPinned: Bool {
+        let chosen = visibleItems.filter { selection.contains($0.id) }
+        return !chosen.isEmpty && chosen.allSatisfy { $0.pinOrder != nil }
     }
 
     public func restore(_ ids: [TranscriptID]) async { await apply { try await $0.restore(ids) } }
@@ -370,7 +467,7 @@ public final class LibraryModel {
     public func createFolder(named name: String) async -> Folder? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
-        let folder = Folder(name: trimmed, colorIndex: folders.count)
+        let folder = Folder(name: trimmed, colorIndex: nextFolderColor())
         await saveFolder(folder)
         return folder
     }
@@ -423,6 +520,13 @@ public final class LibraryModel {
         let pinnedTranscripts = ((try? await transcripts.list(query)) ?? []).compactMap(\.pinOrder)
         let pinnedFolders = ((try? await services.workspace.folders.folders()) ?? []).compactMap(\.pinOrder)
         return (pinnedTranscripts + pinnedFolders).max().map { $0 + 1 } ?? 0
+    }
+
+    /// The first palette colour no folder uses yet (then the palette repeats), so new folders look different from each other.
+    private func nextFolderColor() -> Int {
+        let used = Set(folders.map(\.colorIndex))
+        let count = SpeakerPalette.names.count
+        return (0..<count).first { !used.contains($0) } ?? folders.count % count
     }
 
     public func togglePin(folder id: FolderID) async {

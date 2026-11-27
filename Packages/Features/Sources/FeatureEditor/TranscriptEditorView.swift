@@ -40,6 +40,7 @@ private enum EditorTool: String, Identifiable {
 private enum ToolAnchor { case toolbar, more }
 
 private struct EditorContent: View {
+    @Environment(\.shellLayout) private var layout
     @AppStorage("editor.stageFraction") private var stageFraction = 0.42
     @State private var editorWidth: CGFloat = 1200
     @State private var model: TranscriptEditorModel
@@ -235,6 +236,9 @@ private struct EditorContent: View {
 
     // MARK: Header
 
+    /// Below this window width the secondary toolbar buttons show icons only, so Summarise and More stay on screen.
+    private var compactToolbar: Bool { layout.width < 1280 }
+
     @ToolbarContentBuilder private var editorToolbar: some ToolbarContent {
         // Left to right: [Find] | [Speakers, Translate] | [Pin, Folder] | [Export] | [Summarise] | [More]. The page's one primary
         // action (Summarise, orange) sits next to the end; rarely used actions (Re-transcribe, view options, ignored segments)
@@ -244,24 +248,24 @@ private struct EditorContent: View {
                 find.open()
                 findFocused = true
             } label: {
-                DSToolbarLabel("Find", symbol: .find)
+                DSToolbarLabel("Find", symbol: .find, iconOnly: compactToolbar)
             }
-            .labelStyle(.titleAndIcon)
+            .toolbarLabelStyle(iconOnly: compactToolbar)
             .dsToolbarControl()
             .keyboardShortcut("f", modifiers: .command)
             .accessibilityIdentifier("editor.find")
         }
         ToolbarSpacer(.fixed)
         ToolbarItemGroup {
-            Button { presentTool(.speakers) } label: { DSToolbarLabel("Speakers", symbol: .speaker) }
-                .labelStyle(.titleAndIcon)
+            Button { presentTool(.speakers) } label: { DSToolbarLabel("Speakers", symbol: .speaker, iconOnly: compactToolbar) }
+                .toolbarLabelStyle(iconOnly: compactToolbar)
                 .dsToolbarControl()
                 .disabled(model.isLockedByJob)
                 .help(model.lockedHelp ?? "Name, add or merge speakers")
                 .toolPopover(.speakers, from: .toolbar, active: $activeTool, anchor: toolAnchor, edge: .bottom) { toolContent($0) }
                 .accessibilityIdentifier("editor.speakers")
-            Button { presentTool(.translation) } label: { DSToolbarLabel("Translate", symbol: .translate) }
-                .labelStyle(.titleAndIcon)
+            Button { presentTool(.translation) } label: { DSToolbarLabel("Translate", symbol: .translate, iconOnly: compactToolbar) }
+                .toolbarLabelStyle(iconOnly: compactToolbar)
                 .dsToolbarControl()
                 .disabled(model.isLockedByJob)
                 .help(model.lockedHelp ?? "Translate this transcript")
@@ -271,7 +275,7 @@ private struct EditorContent: View {
         ToolbarSpacer(.fixed)
         ToolbarItemGroup {
             EditorPinButton(model: model, services: services)
-            EditorFolderMenu(model: model, services: services)
+            EditorFolderMenu(model: model, services: services, iconOnly: compactToolbar)
         }
         ToolbarSpacer(.fixed)
         trailingToolbar
@@ -281,8 +285,8 @@ private struct EditorContent: View {
     @ToolbarContentBuilder private var trailingToolbar: some ToolbarContent {
         ToolbarItem {
             // An ordinary toolbar button: Export is common but not the page's primary action.
-            Button { showExport = true } label: { DSToolbarLabel("Export", symbol: .export) }
-                .labelStyle(.titleAndIcon)
+            Button { showExport = true } label: { DSToolbarLabel("Export", symbol: .export, iconOnly: compactToolbar) }
+                .toolbarLabelStyle(iconOnly: compactToolbar)
                 .dsToolbarControl()
                 .disabled(model.isLockedByJob)
                 .help(model.lockedHelp ?? "Export this transcript")
@@ -441,6 +445,10 @@ private struct EditorContent: View {
 }
 
 private extension View {
+    @ViewBuilder func toolbarLabelStyle(iconOnly: Bool) -> some View {
+        if iconOnly { labelStyle(.iconOnly) } else { labelStyle(.titleAndIcon) }
+    }
+
     /// Presents `tool` as a popover from this view, only while that tool was opened from `source`, so two controls that can open
     /// the same panel never present it twice.
     func toolPopover<Content: View>(
@@ -488,6 +496,7 @@ private struct EditorPinButton: View {
 private struct EditorFolderMenu: View {
     let model: TranscriptEditorModel
     let services: AppServices
+    var iconOnly = false
     @State private var folders: [Folder] = []
 
     var body: some View {
@@ -501,9 +510,9 @@ private struct EditorFolderMenu: View {
                 }
             }
         } label: {
-            DSToolbarLabel(current?.name ?? "Folder", systemImage: "folder")  // stock-chrome: folder chip
+            DSToolbarLabel(current?.name ?? "Folder", systemImage: "folder", iconOnly: iconOnly)  // stock-chrome: folder chip
         }
-        .labelStyle(.titleAndIcon)
+        .toolbarLabelStyle(iconOnly: iconOnly)
         .dsToolbarControl()
         .help("Move this transcript to a folder")
         .accessibilityIdentifier("editor.folder")

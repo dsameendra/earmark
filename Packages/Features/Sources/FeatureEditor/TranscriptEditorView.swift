@@ -183,6 +183,9 @@ private struct EditorContent: View {
 
     // MARK: Two columns
 
+    /// What the non-slides side of the stage is called.
+    private var mediaTitle: String { model.playback.isVideo ? "Video" : (model.playback.canPlay ? "Audio" : "Hide slides") }
+
     /// The video or slides stage is on screen (not in the pop-out window).
     private var hasStage: Bool { workspace.showsSlides || (!model.playback.isDetached && model.playback.isVideo) }
     /// Stage left, tabs right: when there is a stage and the page is wide enough. Narrower, the stage stacks over the tabs.
@@ -222,7 +225,7 @@ private struct EditorContent: View {
     private var stageColumn: some View {
         VStack(spacing: DSSpacing.sm) {
             if workspace.deck != nil {
-                WorkspaceStageSwitch(workspace: workspace, hasMedia: model.playback.canPlay)
+                WorkspaceStageSwitch(workspace: workspace, mediaTitle: mediaTitle)
                     .padding(.vertical, DSSpacing.sm)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -293,7 +296,7 @@ private struct EditorContent: View {
                 .accessibilityIdentifier("editor.export")
         }
         ToolbarSpacer(.fixed)
-        ToolbarItem(placement: .primaryAction) { WorkspaceSummarizeButton(workspace: workspace) }
+        ToolbarItem(placement: .primaryAction) { WorkspaceSummarizeButton(workspace: workspace, iconOnly: compactToolbar) }
         ToolbarSpacer(.fixed)
         ToolbarItem { EditorMoreMenu(model: model, find: find, findFocused: $findFocused, present: { presentTool($0, from: .more) }) }
     }
@@ -334,14 +337,19 @@ private struct EditorContent: View {
     private var workspaceContent: some View {
         VStack(spacing: 0) {
             if model.loadState == .loaded {
-                WorkspaceTabBar(workspace: workspace, hasMedia: model.playback.canPlay, showsStageSwitch: !usesColumns)
+                WorkspaceTabBar(workspace: workspace, mediaTitle: mediaTitle, showsStageSwitch: !usesColumns)
                 WorkspaceFinalizingBanner(workspace: workspace)
             }
-            switch workspace.tab {
-            case .transcript: content
-            default: stagedLayout { WorkspaceTabContent(workspace: workspace) }
+            Group {
+                switch workspace.tab {
+                case .transcript: content
+                default: stagedLayout { WorkspaceTabContent(workspace: workspace) }
+                }
             }
+            .id(workspace.tab)
+            .transition(.opacity)
         }
+        .dsAnimation(.glide, value: workspace.tab)
     }
 
     /// Stage on top (slides, or the video player), `body` below. Audio-only recordings show the compact player strip.

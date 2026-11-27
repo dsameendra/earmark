@@ -58,8 +58,13 @@ struct ChatView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: DSSpacing.md) {
                     if chat.messages.isEmpty && !chat.isAnswering { starter }
-                    ForEach(chat.messages) { message in Bubble(message: message, workspace: workspace).id(message.id) }
-                    if chat.isAnswering { thinking.id("answering") }
+                    ForEach(chat.messages) { message in
+                        Bubble(message: message, workspace: workspace).id(message.id)
+                            .transition(.asymmetric(
+                                insertion: .opacity.combined(with: .offset(y: 10)).combined(with: .scale(scale: 0.98, anchor: .bottom)),
+                                removal: .opacity))
+                    }
+                    if chat.isAnswering { thinking.id("answering").transition(.opacity) }
                     if let error = chat.errorMessage {
                         HStack {
                             Label(error, systemImage: "exclamationmark.triangle").font(DSTypography.caption).foregroundStyle(DSColor.danger)  // stock-chrome: error glyph
@@ -74,6 +79,8 @@ struct ChatView: View {
                         .font(DSTypography.caption).foregroundStyle(DSColor.tertiaryText)
                     Color.clear.frame(height: 1).id("end")
                 }
+                .dsAnimation(.settle, value: chat.messages.count)
+                .dsAnimation(.glide, value: chat.isAnswering)
                 .padding(DSSpacing.md)
             }
             .onChange(of: chat.messages.count) { withAnimation { proxy.scrollTo("end") } }

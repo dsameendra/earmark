@@ -6,17 +6,18 @@ import SwiftUI
 /// The Video / Slides switch. Shown only once a slide deck is attached.
 public struct WorkspaceStageSwitch: View {
     private let workspace: WorkspaceModel
-    private let hasMedia: Bool
-    public init(workspace: WorkspaceModel, hasMedia: Bool) {
+    private let mediaTitle: String
+    /// - Parameter mediaTitle: what the non-slides side is called: "Video", "Audio", or "Hide slides" when there is no recording.
+    public init(workspace: WorkspaceModel, mediaTitle: String) {
         self.workspace = workspace
-        self.hasMedia = hasMedia
+        self.mediaTitle = mediaTitle
     }
 
     public var body: some View {
         if workspace.deck != nil {
             DSSegmentedControl(
                 selection: Binding(get: { workspace.stage }, set: { $0 == .slides ? workspace.showSlides() : workspace.showVideo() }),
-                options: [.init(hasMedia ? "Video" : "Hide slides", value: WorkspaceModel.Stage.video), .init("Slides", value: WorkspaceModel.Stage.slides)],
+                options: [.init(mediaTitle, value: WorkspaceModel.Stage.video), .init("Slides", value: WorkspaceModel.Stage.slides)],
                 identifier: "stage.switch")
                 .frame(height: 30)
                 .help("Show the slides instead of the video")
@@ -28,13 +29,13 @@ public struct WorkspaceStageSwitch: View {
 /// The tabs above the transcript page: Transcript, Notes, Chat, Files, with the Video / Slides switch and a live badge.
 public struct WorkspaceTabBar: View {
     private let workspace: WorkspaceModel
-    private let hasMedia: Bool
+    private let mediaTitle: String
     private let showsStageSwitch: Bool
 
     /// - Parameter showsStageSwitch: `false` in the two-column layout, where the Video / Slides switch sits above the stage.
-    public init(workspace: WorkspaceModel, hasMedia: Bool, showsStageSwitch: Bool = true) {
+    public init(workspace: WorkspaceModel, mediaTitle: String, showsStageSwitch: Bool = true) {
         self.workspace = workspace
-        self.hasMedia = hasMedia
+        self.mediaTitle = mediaTitle
         self.showsStageSwitch = showsStageSwitch
     }
 
@@ -51,7 +52,7 @@ public struct WorkspaceTabBar: View {
                     .accessibilityIdentifier("workspace.live")
             }
             Spacer(minLength: DSSpacing.sm)
-            if showsStageSwitch { WorkspaceStageSwitch(workspace: workspace, hasMedia: hasMedia) }
+            if showsStageSwitch { WorkspaceStageSwitch(workspace: workspace, mediaTitle: mediaTitle) }
         }
         .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.sm)
         .background(DSColor.paper)
@@ -97,8 +98,13 @@ public struct WorkspaceSlideStage: View {
 /// button) until a summary exists; after that it is an ordinary button that offers to summarise again.
 public struct WorkspaceSummarizeButton: View {
     private let workspace: WorkspaceModel
+    private let iconOnly: Bool
     @State private var showsSheet = false
-    public init(workspace: WorkspaceModel) { self.workspace = workspace }
+    /// - Parameter iconOnly: in a narrow window the button keeps its place as an icon, so it is never pushed into the overflow.
+    public init(workspace: WorkspaceModel, iconOnly: Bool = false) {
+        self.workspace = workspace
+        self.iconOnly = iconOnly
+    }
 
     public var body: some View {
         let reason = workspace.summarizeUnavailableReason()
@@ -118,9 +124,9 @@ public struct WorkspaceSummarizeButton: View {
             workspace.tab = .notes
             showsSheet = true
         } label: {
-            DSToolbarLabel(again ? "Summarise again" : "Summarise", systemImage: "sparkles")
+            DSToolbarLabel(again ? "Summarise again" : "Summarise", systemImage: "sparkles", iconOnly: iconOnly)
         }
-        .labelStyle(.titleAndIcon)
+        .labelStyle(iconOnly ? AnyLabelStyle.iconOnly : AnyLabelStyle.titleAndIcon)
         .dsToolbarControl()
         .disabled(reason != nil || workspace.notes.isSummarizing)
         .help(reason ?? "Write a summary of this recording into the notes")
@@ -143,5 +149,16 @@ public struct WorkspaceFinalizingBanner: View {
             .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.xs).background(DSColor.solidChrome)
             .accessibilityIdentifier("workspace.finalizing")
         }
+    }
+}
+
+/// Picks the icon-only or the title-and-icon label style at run time (the two styles are different types).
+private struct AnyLabelStyle: LabelStyle {
+    let iconOnly: Bool
+    static let iconOnly = AnyLabelStyle(iconOnly: true)
+    static let titleAndIcon = AnyLabelStyle(iconOnly: false)
+
+    func makeBody(configuration: Configuration) -> some View {
+        if iconOnly { configuration.icon } else { Label(configuration).labelStyle(.titleAndIcon) }
     }
 }

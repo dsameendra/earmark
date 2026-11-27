@@ -187,7 +187,7 @@ struct SidebarView: View {
                 pinnedRow(item).transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .top)), removal: .opacity))
             }
             // Below the last row: dropping here pins at the end.
-            Color.clear.frame(height: 10).contentShape(Rectangle())
+            Color.clear.frame(minHeight: 10).contentShape(Rectangle())
                 .overlay(alignment: .top) { if targetedRow == "tail" { InsertionLine() } }
                 .dropDestination(for: WorkspaceDrag.self) { dropped, _ in dropOnSidebar(dropped.first) } isTargeted: { setTargeted("tail", $0) }
         }

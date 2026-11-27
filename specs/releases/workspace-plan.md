@@ -1,6 +1,6 @@
 # Workspace: folders, pinned items, notes, summaries, slides and chat
 
-Status: **approved by the owner and implemented in Earmark 1.2.0.** Departures from the plan: one `FeatureWorkspace` module holds Notes, Chat and Files instead of three; the stage sits above the tabs (as the video does today) rather than beside them; the notes editor is a live-styled Markdown editor, not a WYSIWYG one.
+Status: **approved by the owner and implemented in Earmark 1.2.0.** Departures from the plan: one `FeatureWorkspace` module holds Notes, Chat and Files instead of three; the stage sits beside the tabs after the owner's review (the right-hand inspector was removed to make room); the notes editor is a live-styled Markdown editor, not a WYSIWYG one.
 Design mock-ups: `specs/design/workspace/mockups.html` (also published as an artifact).
 
 ## 1. Goal

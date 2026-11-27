@@ -675,6 +675,36 @@ final class EarmarkUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["library.breadcrumb"].waitForExistence(timeout: 5), "opening a pinned folder shows it in the Library")
     }
 
+    /// Captures the redesigned pages for visual review (light and dark, narrow and wide). Asserts only that each state is reachable.
+    func testWorkspaceScreensForVisualReview() throws {
+        for (appearance, width, height) in [("light", 960, 640), ("dark", 1440, 900)] {
+            let app = launch(appearance: appearance, width: width, height: height, arguments: ["-EarmarkTestSlides", "YES", "-EarmarkTestFolders", "YES"])
+            defer { app.terminate() }
+            openWeeklySync(app)
+            let tag = "\(appearance)-\(width)"
+            capture(app, "review-transcript-\(tag)")
+            app.buttons["Slides"].click()
+            Thread.sleep(forTimeInterval: 0.8)
+            capture(app, "review-transcript-slides-\(tag)")
+            XCTAssertTrue(app.buttons["Audio"].exists, "an audio recording's slides switch says Audio, not Video")
+            for name in ["Notes", "Chat", "Files"] {
+                app.buttons[name == "Files" ? "Files · 1" : name].click()
+                Thread.sleep(forTimeInterval: 0.6)
+                capture(app, "review-\(name.lowercased())-\(tag)")
+            }
+            app.buttons["toolbar.back"].click()
+            app.buttons["sidebar.library"].click()
+            XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "library.item.")).firstMatch.waitForExistence(timeout: 8))
+            capture(app, "review-library-\(tag)")
+            app.buttons["library.layout.grid"].click()
+            Thread.sleep(forTimeInterval: 0.5)
+            capture(app, "review-library-grid-\(tag)")
+            app.buttons["library.select"].click()
+            Thread.sleep(forTimeInterval: 0.5)
+            capture(app, "review-library-select-\(tag)")
+        }
+    }
+
     /// One click opens a transcript, in the list and in the grid.
     func testLibraryItemsOpenWithASingleClickInListAndGrid() throws {
         let app = launch(appearance: "light")

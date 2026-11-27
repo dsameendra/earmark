@@ -167,6 +167,7 @@ public struct LibraryView: View {
                 }
             }
             .padding(.bottom, DSSpacing.lg)
+            .dsAnimation(.glide, value: model.collapsedGroups)
         }
         .accessibilityLabel(Text(title))
     }
@@ -207,6 +208,7 @@ public struct LibraryView: View {
                 }
             }
             .padding(DSSpacing.lg)
+            .dsAnimation(.glide, value: model.collapsedGroups)
         }
     }
 

@@ -17,14 +17,17 @@ struct NotesView: View {
             formattingBar
             Divider()
             notices
+                .dsAnimation(.glide, value: notes.showsSummaryNotice)
+                .dsAnimation(.glide, value: notes.skippedParts.count)
             ZStack(alignment: .topLeading) {
                 MarkdownTextEditor(
                     text: Binding(get: { notes.markdown }, set: { notes.markdown = $0 }), commands: commands,
                     onSeek: { workspace.seek($0) }, isEditable: !notes.isSummarizing)
                     .opacity(notes.isSummarizing ? 0.45 : 1)
                 if notes.markdown.isEmpty && notes.isLoaded && !notes.isSummarizing { placeholder }
-                if notes.isSummarizing { SummaryProgressCard(notes: notes) }
+                if notes.isSummarizing { SummaryProgressCard(notes: notes).transition(.opacity.combined(with: .scale(scale: 0.98))) }
             }
+            .dsAnimation(.glide, value: notes.isSummarizing)
         }
         .background(DSColor.contentBackground)
         .clipShape(RoundedRectangle(cornerRadius: DSRadius.panel))
@@ -112,6 +115,7 @@ struct NotesView: View {
         .font(DSTypography.caption)
         .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.sm)
         .background(tint)
+        .transition(.move(edge: .top).combined(with: .opacity))
     }
 
     private var placeholder: some View {

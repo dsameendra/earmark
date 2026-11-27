@@ -111,13 +111,9 @@ final class EarmarkUITests: XCTestCase {
         XCTAssertTrue(recent.waitForExistence(timeout: 5))
         recent.click()
         Thread.sleep(forTimeInterval: 1)
-        capture(app, "editor-narrow-before-inspector")
-        let inspector = app.descendants(matching: .any)["toolbar.inspector"]
-        XCTAssertTrue(inspector.waitForExistence(timeout: 5))
-        inspector.click()
-        XCTAssertTrue(app.descendants(matching: .any)["editor.inspector"].waitForExistence(timeout: 5))
-        capture(app, "editor-narrow-inspector")
-        app.buttons["Edit speakers…"].click()
+        capture(app, "editor-narrow")
+        XCTAssertFalse(app.descendants(matching: .any)["editor.inspector"].exists, "the inspector column is gone")
+        app.buttons["editor.speakers"].click()
         XCTAssertTrue(app.textFields["editor.speakers.newName"].waitForExistence(timeout: 5))
         app.typeKey(.escape, modifierFlags: [])
         app.menuBars.menuBarItems["Help"].click()
@@ -321,14 +317,10 @@ final class EarmarkUITests: XCTestCase {
         }
         check(app.buttons["editor.speakers"], "speakers")
         check(app.buttons["editor.translation"], "translate")
-        check(app.buttons["editor.retranscribe"], "retranscribe")
         let more = app.menuButtons["editor.more"]
+        check(more, "retranscribe", menuItem: "Re-transcribe…")
         check(more, "bookmarks", menuItem: "Bookmarks and highlights")
         check(more, "options", menuItem: "View options")
-        let inspector = app.descendants(matching: .any)["editor.inspector"]
-        XCTAssertTrue(inspector.waitForExistence(timeout: 5))
-        check(app.buttons["Edit speakers…"], "inspector-speakers")
-        check(app.buttons["Add an earmark…"], "inspector-earmark")
     }
 
     func testSettingsSectionsRemainAvailable() throws {
@@ -732,6 +724,21 @@ final class EarmarkUITests: XCTestCase {
         capture(app, "chat-answer")
         source.click()
         XCTAssertTrue(app.buttons["Transcript"].waitForExistence(timeout: 5))
+    }
+
+    /// Notes are Markdown with a live preview: typing builds the note, Return continues lists, and the saved text stays the Markdown.
+    func testNotesTypedAsMarkdownKeepTheTextAndContinueLists() throws {
+        let app = launch(appearance: "light")
+        defer { app.terminate() }
+        openWeeklySync(app)
+        app.buttons["Notes"].click()
+        let editor = app.textViews["notes.editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.click()
+        editor.typeText("# Plan\nWe **agreed** to ship *Friday*, see `build 4` and [the doc](https://example.com).\n- first\nsecond\n\n\n1. one\ntwo\n\n\n- [ ] send notes\n\n\n> a quote\n")
+        let expected = "# Plan\nWe **agreed** to ship *Friday*, see `build 4` and [the doc](https://example.com).\n- first\n- second\n\n1. one\n2. two\n\n- [ ] send notes\n\n> a quote\n"
+        XCTAssertEqual(editor.value as? String, expected, "Return continues bullets and numbers, and ends the list on an empty item")
+        capture(app, "notes-markdown")
     }
 
     func testSlidesCanBeViewedInsteadOfTheVideoAndPaged() throws {

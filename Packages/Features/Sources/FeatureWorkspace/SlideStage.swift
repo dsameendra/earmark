@@ -39,7 +39,11 @@ final class SlideSource {
             let files = imageFiles
             image = files.indices.contains(index) ? NSImage(contentsOf: files[index]) : nil
         }
-        if let image { cache[index] = image }
+        if let image {
+            cache[index] = image
+            // Keep memory flat for long decks: hold only the pages nearest the one being read.
+            if cache.count > 24, let farthest = cache.keys.max(by: { abs($0 - index) < abs($1 - index) }) { cache[farthest] = nil }
+        }
         return image
     }
 }
@@ -50,19 +54,30 @@ struct SlideStageView: View {
     let showsVideoSwitch: Bool
     @State private var source: SlideSource?
 
+    private static let controlsHeight: CGFloat = 36
+    private static let thumbsHeight: CGFloat = 62
+
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            ZStack {
-                DSColor.paper
+        // The slide, its controls and the thumbnails form one block, centred in the column, so the controls sit right under the
+        // slide whatever the column's shape.
+        GeometryReader { proxy in
+            let available = CGSize(
+                width: max(120, proxy.size.width - DSSpacing.md * 2),
+                height: max(80, proxy.size.height - Self.controlsHeight - Self.thumbsHeight - DSSpacing.md * 3))
+            VStack(spacing: DSSpacing.sm) {
                 if let source, workspace.page < source.pageCount {
-                    SlideImage(source: source, page: workspace.page)
-                        .padding(DSSpacing.md)
+                    SlideImage(source: source, page: workspace.page, available: available)
+                        .id(workspace.page)
+                        .transition(.opacity)
                 } else {
-                    ProgressView()
+                    ProgressView().frame(width: available.width, height: available.height)
                 }
+                controls.frame(height: Self.controlsHeight)
+                if let source { ThumbnailStrip(source: source, workspace: workspace).clipShape(RoundedRectangle(cornerRadius: DSRadius.small)) }
             }
-            if let source { ThumbnailStrip(source: source, workspace: workspace) }
+            .padding(.horizontal, DSSpacing.md)
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .dsAnimation(.glide, value: workspace.page)
         }
         .background(DSColor.paper)
         .clipShape(RoundedRectangle(cornerRadius: DSRadius.panel))
@@ -76,15 +91,8 @@ struct SlideStageView: View {
         .accessibilityIdentifier("slides.stage")
     }
 
-    private var header: some View {
+    private var controls: some View {
         HStack(spacing: DSSpacing.sm) {
-            if showsVideoSwitch {
-                DSSegmentedControl(
-                    selection: Binding(get: { workspace.stage }, set: { $0 == .slides ? workspace.showSlides() : workspace.showVideo() }),
-                    options: [.init("Video", value: WorkspaceModel.Stage.video), .init("Slides", value: WorkspaceModel.Stage.slides)],
-                    identifier: "stage.switch")
-                    .frame(height: 28)
-            }
             if workspace.files.slideDecks.count > 1 {
                 Menu(workspace.deck?.title ?? "Deck") {
                     ForEach(workspace.files.slideDecks) { deck in Button(deck.title) { Task { await workspace.select(deck: deck) } } }
@@ -112,8 +120,6 @@ struct SlideStageView: View {
                 .help("Link slides to moments in the recording so playback follows the deck")
                 .accessibilityIdentifier("slides.timing")
         }
-        .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.xs)
-        .background(DSColor.solidChrome)
     }
 
     private func loadSource() async {
@@ -128,15 +134,19 @@ struct SlideStageView: View {
 private struct SlideImage: View {
     let source: SlideSource
     let page: Int
+    /// The largest area the slide may fill.
+    let available: CGSize
 
     var body: some View {
-        GeometryReader { proxy in
-            if let image = source.image(at: page, size: CGSize(width: proxy.size.width * 2, height: proxy.size.height * 2)) {
-                Image(nsImage: image).resizable().interpolation(.high).scaledToFit()
-                    .frame(width: proxy.size.width, height: proxy.size.height)
-                    .shadow(color: DSColor.shadow.opacity(0.2), radius: 8, y: 2)
-                    .accessibilityLabel("Slide \(page + 1)")
-            }
+        if let image = source.image(at: page, size: CGSize(width: available.width * 2, height: available.height * 2)) {
+            let ratio = max(image.size.width, 1) / max(image.size.height, 1)
+            let width = min(available.width, available.height * ratio)
+            Image(nsImage: image).resizable().interpolation(.high)
+                .frame(width: width, height: width / ratio)
+                .shadow(color: DSColor.shadow.opacity(0.2), radius: 8, y: 2)
+                .accessibilityLabel("Slide \(page + 1)")
+        } else {
+            Color.clear.frame(width: available.width, height: available.height)
         }
     }
 }

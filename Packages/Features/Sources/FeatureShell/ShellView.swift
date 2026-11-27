@@ -62,8 +62,6 @@ public struct ShellView: View {
             model.updateWindowWidth($0)
         }
         .environment(\.shellLayout, model.layout)
-        .environment(\.inspectorPresented, model.isInspectorPresented)
-        .environment(\.inspectorToggle, $model.isInspectorToggledOn)
         .dropDestination(for: URL.self) { urls, _ in model.handleDrop(urls) }
         .fileImporter(
             isPresented: $model.isImporterPresented, allowedContentTypes: [.audiovisualContent, .folder], allowsMultipleSelection: true
@@ -92,7 +90,7 @@ public struct ShellView: View {
 
     // MARK: Toolbar
 
-    /// Two floating groups: search (and the inspector toggle when the window is narrow), then the primary action.
+    /// Two floating groups: search, then the primary action.
     @ToolbarContentBuilder private var shellToolbar: some ToolbarContent {
         if model.openedTranscript != nil {
             ToolbarItem(placement: .navigation) {
@@ -119,15 +117,6 @@ public struct ShellView: View {
                         )
                         .presentationBackground(DSColor.contentBackground)
                     }
-            }
-        }
-        if model.openedTranscript != nil && model.layout.inspectorCollapsed {
-            ToolbarItem {
-                Toggle(isOn: $model.isInspectorToggledOn) { DSToolbarLabel("Inspector", systemImage: "sidebar.trailing", iconOnly: true) }
-                    .labelStyle(.iconOnly)
-                    .dsToolbarControl()
-                    .help("Show or hide the inspector")
-                    .accessibilityIdentifier("toolbar.inspector")
             }
         }
         if model.selection == .home && model.openedTranscript == nil {

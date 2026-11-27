@@ -3,14 +3,39 @@ import DesignSystem
 import FeatureSupport
 import SwiftUI
 
+/// The Video / Slides switch. Shown only once a slide deck is attached.
+public struct WorkspaceStageSwitch: View {
+    private let workspace: WorkspaceModel
+    private let hasMedia: Bool
+    public init(workspace: WorkspaceModel, hasMedia: Bool) {
+        self.workspace = workspace
+        self.hasMedia = hasMedia
+    }
+
+    public var body: some View {
+        if workspace.deck != nil {
+            DSSegmentedControl(
+                selection: Binding(get: { workspace.stage }, set: { $0 == .slides ? workspace.showSlides() : workspace.showVideo() }),
+                options: [.init(hasMedia ? "Video" : "Hide slides", value: WorkspaceModel.Stage.video), .init("Slides", value: WorkspaceModel.Stage.slides)],
+                identifier: "stage.switch")
+                .frame(height: 30)
+                .help("Show the slides instead of the video")
+                .transition(.opacity)
+        }
+    }
+}
+
 /// The tabs above the transcript page: Transcript, Notes, Chat, Files, with the Video / Slides switch and a live badge.
 public struct WorkspaceTabBar: View {
     private let workspace: WorkspaceModel
     private let hasMedia: Bool
+    private let showsStageSwitch: Bool
 
-    public init(workspace: WorkspaceModel, hasMedia: Bool) {
+    /// - Parameter showsStageSwitch: `false` in the two-column layout, where the Video / Slides switch sits above the stage.
+    public init(workspace: WorkspaceModel, hasMedia: Bool, showsStageSwitch: Bool = true) {
         self.workspace = workspace
         self.hasMedia = hasMedia
+        self.showsStageSwitch = showsStageSwitch
     }
 
     public var body: some View {
@@ -26,14 +51,7 @@ public struct WorkspaceTabBar: View {
                     .accessibilityIdentifier("workspace.live")
             }
             Spacer(minLength: DSSpacing.sm)
-            if workspace.deck != nil {
-                DSSegmentedControl(
-                    selection: Binding(get: { workspace.stage }, set: { $0 == .slides ? workspace.showSlides() : workspace.showVideo() }),
-                    options: [.init(hasMedia ? "Video" : "Hide slides", value: WorkspaceModel.Stage.video), .init("Slides", value: WorkspaceModel.Stage.slides)],
-                    identifier: "stage.switch")
-                    .frame(height: 30)
-                    .help("Show the slides instead of the video")
-            }
+            if showsStageSwitch { WorkspaceStageSwitch(workspace: workspace, hasMedia: hasMedia) }
         }
         .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.sm)
         .background(DSColor.paper)
@@ -75,7 +93,8 @@ public struct WorkspaceSlideStage: View {
     public var body: some View { SlideStageView(workspace: workspace, showsVideoSwitch: false) }
 }
 
-/// The toolbar's Summarise button: opens Notes with the options sheet.
+/// The toolbar's Summarise button: opens Notes with the options sheet. It is the page's primary action (the orange prominent
+/// button) until a summary exists; after that it is an ordinary button that offers to summarise again.
 public struct WorkspaceSummarizeButton: View {
     private let workspace: WorkspaceModel
     @State private var showsSheet = false
@@ -83,18 +102,29 @@ public struct WorkspaceSummarizeButton: View {
 
     public var body: some View {
         let reason = workspace.summarizeUnavailableReason()
+        let again = workspace.notes.summarizedAt != nil
+        Group {
+            if again {
+                button(again: true, reason: reason)
+            } else {
+                button(again: false, reason: reason).dsProminentButton().tint(DSColor.accent)
+            }
+        }
+        .sheet(isPresented: $showsSheet) { SummarizeSheet(workspace: workspace) { showsSheet = false } }
+    }
+
+    private func button(again: Bool, reason: String?) -> some View {
         Button {
             workspace.tab = .notes
             showsSheet = true
         } label: {
-            DSToolbarLabel("Summarise", systemImage: "sparkles")
+            DSToolbarLabel(again ? "Summarise again" : "Summarise", systemImage: "sparkles")
         }
         .labelStyle(.titleAndIcon)
         .dsToolbarControl()
         .disabled(reason != nil || workspace.notes.isSummarizing)
         .help(reason ?? "Write a summary of this recording into the notes")
         .accessibilityIdentifier("editor.summarize")
-        .sheet(isPresented: $showsSheet) { SummarizeSheet(workspace: workspace) { showsSheet = false } }
     }
 }
 

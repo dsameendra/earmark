@@ -32,17 +32,16 @@ public struct TranscriptEditorView: View {
 }
 
 private enum EditorTool: String, Identifiable {
-    case inspector, speakers, bookmarks, options, translation, retranscribe
+    case speakers, bookmarks, options, translation, retranscribe
     var id: String { rawValue }
 }
 
 /// The control a tool panel opens from. A popover must hang off the control that asked for it, never the whole editor.
-private enum ToolAnchor { case toolbar, more, inspector, corner }
+private enum ToolAnchor { case toolbar, more }
 
 private struct EditorContent: View {
-    @Environment(\.shellLayout) private var layout
-    @Environment(\.inspectorPresented) private var inspectorPresented
-    @Environment(\.inspectorToggle) private var inspectorToggle
+    @AppStorage("editor.stageFraction") private var stageFraction = 0.42
+    @State private var editorWidth: CGFloat = 1200
     @State private var model: TranscriptEditorModel
     @State private var workspace: WorkspaceModel
     @State private var wasLive = false
@@ -98,19 +97,7 @@ private struct EditorContent: View {
             .onChange(of: find.isVisible) { if !find.isVisible { listFocused = true } }
             .onChange(of: model.listFocusToken) { listFocused = true }
             .onChange(of: model.editingSegmentID) { if model.editingSegmentID == nil { listFocused = true } }
-            .onChange(of: activeTool) {
-                if activeTool == nil {
-                    inspectorToggle.wrappedValue = false
-                    listFocused = true
-                }
-            }
-            .onChange(of: layout.inspectorCollapsed) {
-                if !layout.inspectorCollapsed && activeTool == .inspector { activeTool = nil }
-            }
-            .onChange(of: inspectorPresented, initial: true) {
-                guard layout.inspectorCollapsed else { return }
-                if inspectorPresented { toolAnchor = .corner; activeTool = .inspector } else if activeTool == .inspector { activeTool = nil }
-            }
+            .onChange(of: activeTool) { if activeTool == nil { listFocused = true } }
             .onChange(of: showExport) { if showExport { export.adoptViewState() } else { listFocused = true } }
             .onChange(of: model.translationChoice) { find.refresh() }
             .onAppear { PlayerZoomRegistry.shared.activate(model.playback.zoom) }
@@ -141,7 +128,7 @@ private struct EditorContent: View {
                 Color.clear.frame(width: 1, height: 1).allowsHitTesting(false).accessibilityHidden(true)
                     .popover(
                         isPresented: Binding(
-                            get: { (activeTool == .bookmarks || activeTool == .options) && toolAnchor == .more },
+                            get: { (activeTool == .bookmarks || activeTool == .options || activeTool == .retranscribe) && toolAnchor == .more },
                             set: { if !$0 && toolAnchor == .more { activeTool = nil } }),
                         arrowEdge: .bottom
                     ) {
@@ -150,21 +137,6 @@ private struct EditorContent: View {
                         }
                     }
                     .padding(.trailing, 200)  // after the popover, so the anchor is the point itself, not the padded box
-            }
-            // Fallback anchor for the collapsed inspector (its button lives in the shell toolbar): top-trailing corner.
-            .overlay(alignment: .topTrailing) {
-                Color.clear.frame(width: 1, height: 1).allowsHitTesting(false).accessibilityHidden(true)
-                    // One popover for everything opened from the corner, so the inspector panel can swap to Speakers or Bookmarks in place.
-                    .popover(
-                        isPresented: Binding(
-                            get: { activeTool != nil && toolAnchor == .corner },
-                            set: { if !$0 && toolAnchor == .corner { activeTool = nil } }),
-                        arrowEdge: .bottom
-                    ) {
-                        if let tool = activeTool {
-                            toolContent(tool).dsEntrance().presentationBackground(DSColor.contentBackground).presentationSizing(.fitted)
-                        }
-                    }
             }
     }
 
@@ -195,21 +167,9 @@ private struct EditorContent: View {
                 .accessibilityIdentifier("editor.rerun.banner")
             }
             if let report = model.reconciliation { ReconciliationBanner(report: report) { model.acknowledgeReconciliation() } }
-            HStack(alignment: .top, spacing: DSSpacing.md) {
-                // The transport bar is laid out below the transcript, not as a safe-area inset: the video layout's AppKit split
-                // view ignores that inset, so the list ran underneath the bar and its last lines could never be scrolled into view.
-                VStack(spacing: 0) {
-                    workspaceContent
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .clipShape(RoundedRectangle(cornerRadius: DSRadius.panel))
-                    TransportBar(model: model).padding(DSSpacing.md)
-                }
-                if !layout.inspectorCollapsed {
-                    makeInspector(inline: true).frame(width: 260)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(DSSpacing.md)
+            mainArea
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(DSSpacing.md)
         }
         .background(DSColor.paper)
         .dsAnimation(.glide, value: find.isVisible)
@@ -217,12 +177,68 @@ private struct EditorContent: View {
         .dsAnimation(.glide, value: model.transcriptionJob?.state)
         .navigationTitle(model.transcript?.title ?? "Transcript")
         .toolbar { editorToolbar }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { editorWidth = $0 }
+    }
+
+    // MARK: Two columns
+
+    /// The video or slides stage is on screen (not in the pop-out window).
+    private var hasStage: Bool { workspace.showsSlides || (!model.playback.isDetached && model.playback.isVideo) }
+    /// Stage left, tabs right: when there is a stage and the page is wide enough. Narrower, the stage stacks over the tabs.
+    private var usesColumns: Bool { hasStage && editorWidth >= DSLayout.stageColumnsMinWidth }
+
+    @ViewBuilder
+    private var mainArea: some View {
+        if usesColumns {
+            let gap = DSSpacing.md
+            let stageWidth = min(max(editorWidth * stageFraction, 300), max(300, editorWidth - 420 - gap * 2))
+            HStack(spacing: 0) {
+                VStack(spacing: DSSpacing.md) {
+                    stageColumn.clipShape(RoundedRectangle(cornerRadius: DSRadius.panel))
+                    TransportBar(model: model)
+                }
+                .frame(width: stageWidth)
+                .transition(.move(edge: .leading).combined(with: .opacity))
+                StageDivider(width: editorWidth, fraction: $stageFraction)
+                workspaceContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: DSRadius.panel))
+            }
+            .dsAnimation(.glide, value: usesColumns)
+        } else {
+            // The transport bar is laid out below the transcript, not as a safe-area inset: the video layout's AppKit split
+            // view ignores that inset, so the list ran underneath the bar and its last lines could never be scrolled into view.
+            VStack(spacing: 0) {
+                workspaceContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: DSRadius.panel))
+                TransportBar(model: model).padding(.top, DSSpacing.md)
+            }
+        }
+    }
+
+    /// Left column: the Video / Slides switch (once slides exist) over the stage.
+    private var stageColumn: some View {
+        VStack(spacing: DSSpacing.sm) {
+            if workspace.deck != nil {
+                WorkspaceStageSwitch(workspace: workspace, hasMedia: model.playback.canPlay)
+                    .padding(.vertical, DSSpacing.sm)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if workspace.showsSlides {
+                WorkspaceSlideStage(workspace: workspace)
+            } else {
+                PlayerPanelView(model: model, onRelink: relink)
+            }
+        }
     }
 
     // MARK: Header
 
     @ToolbarContentBuilder private var editorToolbar: some ToolbarContent {
-        // Groups: [Find] | [Speakers, Translate] | [More]; icon-only, system-sized, with fixed spacers.
+        // Left to right: [Find] | [Speakers, Translate] | [Pin, Folder] | [Export] | [Summarise] | [More]. The page's one primary
+        // action (Summarise, orange) sits next to the end; rarely used actions (Re-transcribe, view options, ignored segments)
+        // live in More.
         ToolbarItem {
             Button {
                 find.open()
@@ -251,96 +267,41 @@ private struct EditorContent: View {
                 .help(model.lockedHelp ?? "Translate this transcript")
                 .toolPopover(.translation, from: .toolbar, active: $activeTool, anchor: toolAnchor, edge: .bottom) { toolContent($0) }
                 .accessibilityIdentifier("editor.translation")
-            Button { presentTool(.retranscribe) } label: { DSToolbarLabel("Re-transcribe", symbol: .retry, iconOnly: true) }
-                .labelStyle(.iconOnly)
-                .help(model.lockedHelp ?? "Re-transcribe, identify speakers again, or set the transcript language")
-                .dsToolbarControl()
-                .disabled(model.isLockedByJob)
-                .toolPopover(.retranscribe, from: .toolbar, active: $activeTool, anchor: toolAnchor, edge: .bottom) { toolContent($0) }
-                .accessibilityIdentifier("editor.retranscribe")
         }
         ToolbarSpacer(.fixed)
+        ToolbarItemGroup {
+            EditorPinButton(model: model, services: services)
+            EditorFolderMenu(model: model, services: services)
+        }
+        ToolbarSpacer(.fixed)
+        trailingToolbar
+    }
+
+    /// [Export] | [Summarise] | [More]. A separate builder: a toolbar builder takes at most ten children.
+    @ToolbarContentBuilder private var trailingToolbar: some ToolbarContent {
         ToolbarItem {
-            Menu {
-                Toggle(
-                    "Show ignored (\(model.hiddenIgnoredCount))",
-                    isOn: Binding(get: { model.showIgnored }, set: { model.setShowIgnored($0) }))
-                Button("Find and Replace", symbol: .replace) {
-                    find.open(replace: true)
-                    findFocused = true
-                }
-                .keyboardShortcut("f", modifiers: [.command, .option])
-                .disabled(model.isLockedByJob)
-                .help(model.lockedHelp ?? "")
-                Button("Next Match") { find.next() }.keyboardShortcut("g", modifiers: .command)
-                Button("Previous Match") { find.previous() }.keyboardShortcut("g", modifiers: [.command, .shift])
-                Divider()
-                Button("Undo \(model.undoActionName)") { model.undo() }
-                    .disabled(!model.canUndo || model.editingSegmentID != nil).keyboardShortcut("z", modifiers: .command)
-                Button("Redo \(model.redoActionName)") { model.redo() }
-                    .disabled(!model.canRedo || model.editingSegmentID != nil).keyboardShortcut("z", modifiers: [.command, .shift])
-                Divider()
-                Button("Bookmarks and highlights", symbol: .earmark) { presentTool(.bookmarks, from: .more) }
-                Button("View options", systemImage: "textformat.size") { presentTool(.options, from: .more) }
-            } label: {
-                DSToolbarLabel("More", systemImage: "ellipsis", iconOnly: true)
-            }
-            .labelStyle(.iconOnly)
-            .dsToolbarControl()
-            .accessibilityIdentifier("editor.more")
-        }
-        ToolbarSpacer(.fixed)
-        ToolbarItem(placement: .primaryAction) {
-            // System prominent capsule: padding, height and pressed/disabled behaviour come from the toolbar.
+            // An ordinary toolbar button: Export is common but not the page's primary action.
             Button { showExport = true } label: { DSToolbarLabel("Export", symbol: .export) }
                 .labelStyle(.titleAndIcon)
-                .dsProminentButton().tint(DSColor.accent)
                 .dsToolbarControl()
                 .disabled(model.isLockedByJob)
                 .help(model.lockedHelp ?? "Export this transcript")
                 .accessibilityIdentifier("editor.export")
         }
         ToolbarSpacer(.fixed)
-        ToolbarItemGroup {
-            EditorPinButton(model: model, services: services)
-            EditorFolderMenu(model: model, services: services)
-            WorkspaceSummarizeButton(workspace: workspace)
-        }
-    }
-
-    /// The inspector cards. Inline, their panels hang off the card's own button; inside the collapsed-inspector popover they
-    /// open from the window corner instead, because that popover closes as soon as another tool is presented.
-    private func makeInspector(inline: Bool) -> EditorInspector {
-        let source: ToolAnchor = inline ? .inspector : .corner
-        return EditorInspector(
-            model: model,
-            onSpeakers: { presentTool(.speakers, from: source) }, onBookmarks: { presentTool(.bookmarks, from: source) },
-            speakersPopover: { anchorView in
-                guard inline else { return anchorView }
-                return AnyView(
-                    anchorView.toolPopover(.speakers, from: .inspector, active: $activeTool, anchor: toolAnchor, edge: .leading) {
-                        toolContent($0)
-                    })
-            },
-            bookmarksPopover: { anchorView in
-                guard inline else { return anchorView }
-                return AnyView(
-                    anchorView.toolPopover(.bookmarks, from: .inspector, active: $activeTool, anchor: toolAnchor, edge: .leading) {
-                        toolContent($0)
-                    })
-            })
+        ToolbarItem(placement: .primaryAction) { WorkspaceSummarizeButton(workspace: workspace) }
+        ToolbarSpacer(.fixed)
+        ToolbarItem { EditorMoreMenu(model: model, find: find, findFocused: $findFocused, present: { presentTool($0, from: .more) }) }
     }
 
     private func presentTool(_ tool: EditorTool, from source: ToolAnchor = .toolbar) {
         toolAnchor = source
         activeTool = tool
-        inspectorToggle.wrappedValue = false
     }
 
 
     fileprivate func toolContent(_ tool: EditorTool) -> AnyView {
         switch tool {
-        case .inspector: AnyView(makeInspector(inline: false).frame(width: 300).padding(DSSpacing.md))
         case .speakers: AnyView(SpeakersPanel(model: model))
         case .bookmarks: AnyView(BookmarksPanel(model: model))
         case .options: AnyView(ViewOptionsPanel(model: model))
@@ -369,7 +330,7 @@ private struct EditorContent: View {
     private var workspaceContent: some View {
         VStack(spacing: 0) {
             if model.loadState == .loaded {
-                WorkspaceTabBar(workspace: workspace, hasMedia: model.playback.canPlay)
+                WorkspaceTabBar(workspace: workspace, hasMedia: model.playback.canPlay, showsStageSwitch: !usesColumns)
                 WorkspaceFinalizingBanner(workspace: workspace)
             }
             switch workspace.tab {
@@ -382,7 +343,9 @@ private struct EditorContent: View {
     /// Stage on top (slides, or the video player), `body` below. Audio-only recordings show the compact player strip.
     @ViewBuilder
     private func stagedLayout<Body: View>(@ViewBuilder _ body: () -> Body) -> some View {
-        if workspace.showsSlides {
+        if usesColumns {
+            body().frame(minHeight: 160)
+        } else if workspace.showsSlides {
             VSplitView {
                 WorkspaceSlideStage(workspace: workspace).frame(minHeight: 140, idealHeight: 300)
                 body().frame(minHeight: 160)
@@ -556,5 +519,97 @@ private struct EditorFolderMenu: View {
             try? await Task.sleep(for: .milliseconds(400))
             services.workspace.events.send(.libraryChanged)
         }
+    }
+}
+
+
+/// The More menu: find and replace, undo and redo, ignored segments, Bookmarks and highlights, View options and Re-transcribe.
+/// Its own view so the menu tracks the model (toolbar closures are not observation-tracked).
+private struct EditorMoreMenu: View {
+    let model: TranscriptEditorModel
+    let find: FindReplaceModel
+    var findFocused: FocusState<Bool>.Binding
+    let present: (EditorTool) -> Void
+
+    var body: some View {
+        Menu {
+            Toggle(
+                "Show ignored (\(model.hiddenIgnoredCount))",
+                isOn: Binding(get: { model.showIgnored }, set: { model.setShowIgnored($0) }))
+            Button("Find and Replace", symbol: .replace) {
+                find.open(replace: true)
+                findFocused.wrappedValue = true
+            }
+            .keyboardShortcut("f", modifiers: [.command, .option])
+            .disabled(model.isLockedByJob)
+            .help(model.lockedHelp ?? "")
+            Button("Next Match") { find.next() }.keyboardShortcut("g", modifiers: .command)
+            Button("Previous Match") { find.previous() }.keyboardShortcut("g", modifiers: [.command, .shift])
+            Divider()
+            Button("Undo \(model.undoActionName)") { model.undo() }
+                .disabled(!model.canUndo || model.editingSegmentID != nil).keyboardShortcut("z", modifiers: .command)
+            Button("Redo \(model.redoActionName)") { model.redo() }
+                .disabled(!model.canRedo || model.editingSegmentID != nil).keyboardShortcut("z", modifiers: [.command, .shift])
+            Divider()
+            Button("Bookmarks and highlights", symbol: .earmark) { present(.bookmarks) }
+            Button("View options", systemImage: "textformat.size") { present(.options) }  // stock-chrome: view options
+            Button("Re-transcribe…", symbol: .retry) { present(.retranscribe) }
+                .disabled(model.isLockedByJob)
+        } label: {
+            DSToolbarLabel("More", systemImage: "ellipsis", iconOnly: true)  // stock-chrome: overflow
+        }
+        .labelStyle(.iconOnly)
+        .dsToolbarControl()
+        .help(model.hiddenIgnoredCount > 0 && !model.showIgnored ? "More (\(model.hiddenIgnoredCount) ignored segments hidden)" : "More")
+        .accessibilityIdentifier("editor.more")
+    }
+}
+
+/// The draggable divider between the stage and the tabs. Drag to resize, double-click to reset, arrow keys when focused.
+/// The width is remembered across transcripts.
+private struct StageDivider: View {
+    let width: CGFloat
+    @Binding var fraction: Double
+    @State private var dragStart: Double?
+    @State private var hovering = false
+
+    private static let range = 0.28...0.62
+    private static let standard = 0.42
+
+    private func nudge(_ delta: Double) {
+        let proposed = fraction + delta
+        fraction = min(max(proposed, Self.range.lowerBound), Self.range.upperBound)
+    }
+
+    var body: some View {
+        Color.clear
+            .frame(width: DSSpacing.md)
+            .overlay {
+                Capsule().fill(hovering || dragStart != nil ? DSColor.accent.opacity(0.7) : DSColor.hairlineStrong)
+                    .frame(width: hovering || dragStart != nil ? 3 : 1, height: hovering || dragStart != nil ? 44 : 28)
+                    .dsAnimation(.glide, value: hovering)
+            }
+            .contentShape(Rectangle())
+            .onHover { inside in
+                hovering = inside
+                if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 2, coordinateSpace: .global)
+                    .onChanged { value in
+                        let start = dragStart ?? fraction
+                        dragStart = start
+                        guard width > 0 else { return }
+                        fraction = min(max(start + value.translation.width / width, Self.range.lowerBound), Self.range.upperBound)
+                    }
+                    .onEnded { _ in dragStart = nil }
+            )
+            .onTapGesture(count: 2) { fraction = Self.standard }
+            .accessibilityElement()
+            .accessibilityLabel("Resize video and transcript")
+            .accessibilityValue("\(Int((fraction * 100).rounded())) percent video")
+            .accessibilityAdjustableAction { direction in nudge(direction == .increment ? 0.04 : -0.04) }
+            .accessibilityIdentifier("editor.stageDivider")
+            .help("Drag to resize, double-click to reset")
     }
 }

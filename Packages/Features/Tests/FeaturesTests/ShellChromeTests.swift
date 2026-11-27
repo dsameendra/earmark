@@ -39,9 +39,9 @@ import Testing
     @Test func layoutThresholdsAt799_800_1099_1100() {
         #expect(ShellLayout(width: 799).widthClass == .compact && ShellLayout(width: 799).sidebarCollapsed)
         #expect(ShellLayout(width: 800).widthClass == .narrow && !ShellLayout(width: 800).sidebarCollapsed)
-        #expect(ShellLayout(width: 1099).inspectorCollapsed)
-        #expect(!ShellLayout(width: 1100).inspectorCollapsed && ShellLayout(width: 1100).widthClass == .regular)
-        #expect(ShellLayout(width: 960).inspectorCollapsed && !ShellLayout(width: 960).sidebarCollapsed)  // the minimum window
+        #expect(ShellLayout(width: 1099).widthClass == .narrow)
+        #expect(ShellLayout(width: 1100).widthClass == .regular)
+        #expect(ShellLayout(width: 960).widthClass == .narrow && !ShellLayout(width: 960).sidebarCollapsed)  // the minimum window
     }
 
     @Test func homeColumnsAndLibraryColumnsFollowWidthClass() {
@@ -93,18 +93,6 @@ import Testing
         #expect(summary.finalCount == 3 && summary.wordCount == 5 && summary.translatedCount == 1)
         #expect(summary.speakers.map(\.label) == ["Ann", "Bob"] && summary.speakers.first?.lineCount == 2)
         #expect(LiveSessionSummary(lines: []).speakers.isEmpty)
-    }
-
-    @Test func inspectorHidesBelow1100AndToggleResetsWhenWide() {
-        let model = ShellModel(services: .preview())
-        model.updateWindowWidth(1440)
-        #expect(model.isInspectorPresented)
-        model.updateWindowWidth(1000)
-        #expect(!model.isInspectorPresented)
-        model.isInspectorToggledOn = true
-        #expect(model.isInspectorPresented)
-        model.updateWindowWidth(1200)
-        #expect(!model.isInspectorToggledOn && model.isInspectorPresented)
     }
 
     // MARK: Sidebar selection state

@@ -67,7 +67,7 @@ struct NotesView: View {
     private var summarizeButton: some View {
         let reason = workspace.summarizeUnavailableReason()
         return Button { showsSummarizeSheet = true } label: { Label("Summarise", systemImage: "sparkles") }  // stock-chrome: AI action glyph
-            .labelStyle(.titleAndIcon).dsProminentButton().controlSize(.small)
+            .labelStyle(.titleAndIcon).buttonStyle(.bordered).controlSize(.small)  // the toolbar owns the one orange Summarise
             .disabled(reason != nil)
             .help(reason ?? "Write a summary of this recording into the notes")
             .accessibilityHint(reason ?? "Replaces the page with a summary. The page as it is now is kept as a version.")

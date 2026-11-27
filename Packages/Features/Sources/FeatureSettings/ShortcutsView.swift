@@ -122,11 +122,15 @@ struct ShortcutsSettingsView: View {
                     HStack {
                         KeyRecorderField(combo: model.combo(for: action)) { combo in Task { await model.record(combo, for: action) } }
                             .frame(width: 130, height: 24)
-                        if action == .dictation {
-                            Button("Fn") { Task { await model.useFunctionKey(for: action) } }
-                                .buttonStyle(.borderless).help("Use the Fn / Globe key on its own (hold to talk)")
-                                .accessibilityLabel("Use the Fn Globe key for dictation")
+                        // A fixed slot keeps every row's recorder aligned, whether or not the row offers the Fn key.
+                        ZStack {
+                            if action == .dictation {
+                                Button("Fn") { Task { await model.useFunctionKey(for: action) } }
+                                    .buttonStyle(.borderless).help("Use the Fn / Globe key on its own (hold to talk)")
+                                    .accessibilityLabel("Use the Fn Globe key for dictation")
+                            }
                         }
+                        .frame(width: 28)
                         Button("Clear", systemImage: "xmark.circle") { Task { await model.clear(action) } }
                             .labelStyle(.iconOnly).buttonStyle(.borderless).disabled(model.combo(for: action) == nil)
                             .accessibilityLabel("Clear \(action.title) shortcut")

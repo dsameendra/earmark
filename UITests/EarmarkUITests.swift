@@ -349,6 +349,82 @@ final class EarmarkUITests: XCTestCase {
         }
     }
 
+    /// Marketing screenshots of Settings (General pane), light and dark, for the site.
+    func testSiteSettingsScreenshots() throws {
+        for appearance in ["light", "dark"] {
+            let app = launch(appearance: appearance, width: 1440, height: 900)
+            defer { app.terminate() }
+            app.typeKey(",", modifierFlags: .command)
+            XCTAssertTrue(app.buttons["settings.section.general"].waitForExistence(timeout: 5))
+            app.buttons["settings.section.general"].click()
+            Thread.sleep(forTimeInterval: 0.8)
+            capture(app, "site-settings-\(appearance)", window: app.windows.containing(.button, identifier: "settings.section.general").firstMatch)
+        }
+    }
+
+    /// Every switch in every Settings pane responds to a click and shows the new state (a Meetings switch used to stay off).
+    func testEverySettingsSwitchRespondsToAClick() throws {
+        let app = launch(appearance: "light", width: 1440, height: 900)
+        defer { app.terminate() }
+        app.typeKey(",", modifierFlags: .command)
+        XCTAssertTrue(app.buttons["settings.section.general"].waitForExistence(timeout: 5))
+        let window = app.windows.containing(.button, identifier: "settings.section.general").firstMatch
+        let sections = [
+            "general", "intelligence", "languages", "audio", "meetings", "liveCaptions", "dictation", "transcriptAppearance",
+            "ignoredSegments", "replacements", "translation", "exportDefaults", "storage", "keyboardShortcuts", "privacyPermissions",
+        ]
+        var failures: [String] = []
+        var checked = 0
+        for section in sections {
+            let button = app.buttons["settings.section.\(section)"]
+            if !button.isHittable { while !button.isHittable { app.typeKey(.downArrow, modifierFlags: []); if !button.exists { break } } }
+            button.click()
+            Thread.sleep(forTimeInterval: 0.8)
+            let switches = window.switches
+            let count = min(switches.count, 12)
+            for index in 0..<count {
+                let toggle = switches.element(boundBy: index)
+                guard toggle.exists, toggle.isHittable, toggle.isEnabled else { continue }
+                let before = "\(toggle.value ?? "nil")"
+                toggle.click()
+                Thread.sleep(forTimeInterval: 0.4)
+                let after = "\(toggle.value ?? "nil")"
+                checked += 1
+                if after == before { failures.append("\(section)#\(index) stayed \(before)") }
+                toggle.click()
+                Thread.sleep(forTimeInterval: 0.3)
+            }
+        }
+        print("DEBUG switches checked=\(checked) failures=\(failures)")
+        XCTAssertTrue(failures.isEmpty, "switches that did not respond: \(failures)")
+    }
+
+    /// Meetings settings: Record video, behaviour and quiet hours respond and read back per app.
+    func testMeetingsSettingsRespondPerApp() throws {
+        let app = launch(appearance: "light", width: 1440, height: 900)
+        defer { app.terminate() }
+        app.typeKey(",", modifierFlags: .command)
+        XCTAssertTrue(app.buttons["settings.section.meetings"].waitForExistence(timeout: 5))
+        app.buttons["settings.section.meetings"].click()
+        let window = app.windows.containing(.button, identifier: "settings.section.general").firstMatch
+        let video = window.switches["settings.meetings.zoom.recordVideo"]
+        XCTAssertTrue(video.waitForExistence(timeout: 5), "Record video has an identifier")
+        XCTAssertEqual("\(video.value ?? "")", "0")
+        video.click()
+        let on = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == 1"), object: video)
+        XCTAssertEqual(XCTWaiter.wait(for: [on], timeout: 3), .completed, "Record video turns on")
+        // Switch panes and come back: the setting is still on (the models are not rebuilt).
+        app.buttons["settings.section.general"].click()
+        app.buttons["settings.section.meetings"].click()
+        let still = window.switches["settings.meetings.zoom.recordVideo"]
+        XCTAssertTrue(still.waitForExistence(timeout: 3))
+        XCTAssertEqual("\(still.value ?? "")", "1", "the setting persists across panes")
+        let quiet = window.switches["settings.meetings.zoom.quietHours"]
+        quiet.click()
+        XCTAssertTrue(window.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@ OR value BEGINSWITH %@", "From", "From")).firstMatch.waitForExistence(timeout: 3), "Quiet hours reveals its range")
+        capture(app, "settings-meetings-after", window: window)
+    }
+
     /// The navigation pane is persistent: no sidebar toggle in the main window or in Settings, including after Settings is closed
     /// and opened again (SwiftUI rebuilds the window toolbar on reopen and used to bring the toggle back).
     func testNavigationPaneHasNoToggleInMainOrReopenedSettings() throws {

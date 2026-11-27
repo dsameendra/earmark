@@ -196,6 +196,7 @@ public struct PermissionGateBanner: View {
                     ForEach(blocked, id: \.self) { kind in row(kind) }
                 }
                 .padding(DSSpacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .background(DSColor.insetBackground, in: RoundedRectangle(cornerRadius: DSRadius.large))
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(identifierBase)

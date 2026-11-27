@@ -278,6 +278,18 @@ public final class MeetingsSettingsModel {
         await store.set(policy, for: SettingsKey.meetingPolicy(app.rawValue))
     }
 
+    /// Applies a change immediately and saves it in the background. SwiftUI bindings need the value to change in the same
+    /// call (the async `update` returned before the model changed, so the control snapped back and never refreshed).
+    public func apply(_ app: MeetingApp, _ change: (inout MeetingPolicy) -> Void) {
+        var policy = policy(for: app)
+        change(&policy)
+        policy.autoStopGraceSeconds = min(max(policy.autoStopGraceSeconds, 0), 300)
+        policies[app] = policy
+        let store = store
+        let key = SettingsKey.meetingPolicy(app.rawValue)
+        Task { await store.set(policy, for: key) }
+    }
+
     public func setBehavior(_ behavior: MeetingBehavior, for app: MeetingApp) async {
         await update(app) { $0.behavior = behavior }
     }

@@ -2,6 +2,15 @@
 
 Releases are listed newest first. The website carries the same history: https://dsameendra.github.io/earmark/changelog.html
 
+## 1.2.2
+
+### Settings fixes
+- **Settings switches work again.** In Settings, Meetings (Record video, Quiet hours, the policy picker and the stop timer) could not be turned on: the screen rebuilt its settings every time the app updated and showed the defaults. Settings now keeps its state for as long as the window is open, so every control shows what you chose and keeps it.
+- **Per-app meeting settings.** Zoom, Teams, Google Meet and Discord each keep their own Record video, behaviour, quiet hours and excluded words, and each control now has a clear name for VoiceOver.
+- **Cleaner permission rows.** Allow and Open System Settings sit side by side instead of stacked, and the microphone and accessibility notices in Audio and Dictation fill the width without a card inside a card.
+- **Translation target as a list.** Default target language is now a menu of languages instead of a box that wanted a language code.
+- **Keyboard Shortcuts line up.** Every shortcut field is aligned, whether or not the row offers the Fn key.
+
 ## 1.2.1
 
 ### Performance and fluidity

@@ -81,16 +81,38 @@ public final class SettingsEnvironment {
     }
 }
 
+/// Builds the Settings models once. The Settings scene re-creates `SettingsRootView` whenever the app's state changes, and each
+/// re-creation used to build a fresh set of models that showed their defaults until reloaded: a switch you had just turned on
+/// snapped back. State keeps this box (and so the models) alive for as long as the window exists.
+@MainActor
+final class SettingsEnvironmentBox {
+    private var make: (() -> SettingsEnvironment)?
+    private var built: SettingsEnvironment?
+
+    init(_ make: @escaping () -> SettingsEnvironment) { self.make = make }
+
+    var environment: SettingsEnvironment {
+        if let built { return built }
+        let value = make?() ?? SettingsEnvironment(.standalone(store: InMemorySettingsStore()))
+        built = value
+        make = nil
+        return value
+    }
+}
+
 /// Content of the separate Settings scene: a section list with a detail pane (SET-AC-01).
 public struct SettingsRootView: View {
     @State private var selection: SettingsSection = .general
-    private let environment: SettingsEnvironment
+    @State private var box: SettingsEnvironmentBox
+    private var environment: SettingsEnvironment { box.environment }
 
     /// Full wiring from the composition root.
-    public init(dependencies: SettingsDependencies) { environment = SettingsEnvironment(dependencies) }
+    public init(dependencies: SettingsDependencies) { _box = State(initialValue: SettingsEnvironmentBox { SettingsEnvironment(dependencies) }) }
 
     /// Store-only wiring: model, rule and permission sections use placeholders until the app supplies real services.
-    public init(store: any SettingsStore) { environment = SettingsEnvironment(.standalone(store: store)) }
+    public init(store: any SettingsStore) {
+        _box = State(initialValue: SettingsEnvironmentBox { SettingsEnvironment(.standalone(store: store)) })
+    }
 
     @Namespace private var selectionSpace
     @FocusState private var focusedSection: SettingsSection?

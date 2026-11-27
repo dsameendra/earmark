@@ -44,8 +44,10 @@ public enum DSLayout {
     public static let windowInset: CGFloat = 12
     public static let contentMaxWidth: CGFloat = 1120
     public static let minWindowSize = CGSize(width: 960, height: 600)
-    /// Below this window width the Editor inspector hides behind a toolbar toggle.
+    /// Below this window width the shell counts as narrow (two Home columns, one fewer Library column).
     public static let inspectorCollapseWidth: CGFloat = 1100
+    /// The transcript page puts the video or slides beside the tabs when its own width is at least this; narrower, they stack.
+    public static let stageColumnsMinWidth: CGFloat = 820
     /// Below this window width the sidebar collapses.
     public static let sidebarCollapseWidth: CGFloat = 800
 }

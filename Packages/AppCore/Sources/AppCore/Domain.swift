@@ -128,13 +128,16 @@ public struct Transcript: Hashable, Codable, Sendable, Identifiable {
     public var modifiedAt: Date
     /// Non-nil means soft-deleted (Recently Deleted).
     public var deletedAt: Date?
+    /// Non-nil means pinned to the sidebar; the value is the position among pinned items (SCR-018).
+    public var pinOrder: Int?
 
     public init(
         id: TranscriptID = TranscriptID(), title: String, source: TranscriptSource, duration: TimeInterval = 0,
         languages: Set<LanguageCode> = [], speakers: [Speaker] = [], tags: [String] = [], folderID: FolderID? = nil,
         mediaAssetID: MediaAssetID? = nil, meetingID: MeetingID? = nil, revisionOf: TranscriptID? = nil,
-        createdAt: Date = Date(), modifiedAt: Date = Date(), deletedAt: Date? = nil
+        createdAt: Date = Date(), modifiedAt: Date = Date(), deletedAt: Date? = nil, pinOrder: Int? = nil
     ) {
+        self.pinOrder = pinOrder
         self.id = id
         self.title = title
         self.source = source

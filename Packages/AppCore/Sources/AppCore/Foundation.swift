@@ -29,6 +29,9 @@ public enum TagTag: Sendable {}
 public enum RuleTag: Sendable {}
 public enum PresetTag: Sendable {}
 public enum BookmarkTag: Sendable {}
+public enum AttachmentTag: Sendable {}
+public enum ChatMessageTag: Sendable {}
+public enum NotesVersionTag: Sendable {}
 
 public typealias TranscriptID = ID<TranscriptTag>
 public typealias SegmentID = ID<SegmentTag>
@@ -42,6 +45,9 @@ public typealias LabelID = ID<TagTag>
 public typealias RuleID = ID<RuleTag>
 public typealias PresetID = ID<PresetTag>
 public typealias BookmarkID = ID<BookmarkTag>
+public typealias AttachmentID = ID<AttachmentTag>
+public typealias ChatMessageID = ID<ChatMessageTag>
+public typealias NotesVersionID = ID<NotesVersionTag>
 
 /// Stable string identifier for an engine implementation (e.g. `"apple.speech"`, `"whisperkit"`).
 public struct EngineID: Hashable, Codable, Sendable, ExpressibleByStringLiteral, CustomStringConvertible {

@@ -13,12 +13,14 @@ public struct MenuBarActions {
     public var openMeetings: () -> Void
     /// Opens Meetings and looks for calls that can be transcribed right now.
     public var detectMeetings: () -> Void
+    /// Opens the running meeting or live session's transcript (notes, slides and chat).
+    public var openLiveWorkspace: () -> Void
     public var openMainWindow: () -> Void
     public var openSettings: () -> Void
     public var quit: () -> Void
     public init(
         transcribeFile: @escaping () -> Void = {}, openQueue: @escaping () -> Void = {}, openLibrary: @escaping () -> Void = {},
-        openMeetings: @escaping () -> Void = {}, detectMeetings: @escaping () -> Void = {}, openMainWindow: @escaping () -> Void = {}, openSettings: @escaping () -> Void = {},
+        openMeetings: @escaping () -> Void = {}, detectMeetings: @escaping () -> Void = {}, openLiveWorkspace: @escaping () -> Void = {}, openMainWindow: @escaping () -> Void = {}, openSettings: @escaping () -> Void = {},
         quit: @escaping () -> Void = {}
     ) {
         self.transcribeFile = transcribeFile
@@ -26,6 +28,7 @@ public struct MenuBarActions {
         self.openLibrary = openLibrary
         self.openMeetings = openMeetings
         self.detectMeetings = detectMeetings
+        self.openLiveWorkspace = openLiveWorkspace
         self.openMainWindow = openMainWindow
         self.openSettings = openSettings
         self.quit = quit
@@ -255,6 +258,9 @@ public struct MenuBarContentView: View {
 
     private var navigation: some View {
         VStack(spacing: DSSpacing.xxs) {
+            if model.status == .meetingRecording || model.status == .meetingTranscribing || model.status == .liveCaptions {
+                navigationRow("Notes and chat for this session", symbol: .meetings, identifier: "menuBar.liveWorkspace", action: actions.openLiveWorkspace)
+            }
             navigationRow("Open Earmark", symbol: .home, identifier: "menuBar.open", action: actions.openMainWindow)
             navigationRow("Library", symbol: .library, identifier: "menuBar.library", action: actions.openLibrary)
             navigationRow("Queue", symbol: .queue, identifier: "menuBar.queue", action: actions.openQueue, count: model.inputs.runningJobs)

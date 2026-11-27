@@ -62,8 +62,6 @@ public struct ShellView: View {
             model.updateWindowWidth($0)
         }
         .environment(\.shellLayout, model.layout)
-        .environment(\.inspectorPresented, model.isInspectorPresented)
-        .environment(\.inspectorToggle, $model.isInspectorToggledOn)
         .dropDestination(for: URL.self) { urls, _ in model.handleDrop(urls) }
         .fileImporter(
             isPresented: $model.isImporterPresented, allowedContentTypes: [.audiovisualContent, .folder], allowsMultipleSelection: true
@@ -92,7 +90,7 @@ public struct ShellView: View {
 
     // MARK: Toolbar
 
-    /// Two floating groups: search (and the inspector toggle when the window is narrow), then the primary action.
+    /// Two floating groups: search, then the primary action.
     @ToolbarContentBuilder private var shellToolbar: some ToolbarContent {
         if model.openedTranscript != nil {
             ToolbarItem(placement: .navigation) {
@@ -121,15 +119,6 @@ public struct ShellView: View {
                     }
             }
         }
-        if model.openedTranscript != nil && model.layout.inspectorCollapsed {
-            ToolbarItem {
-                Toggle(isOn: $model.isInspectorToggledOn) { DSToolbarLabel("Inspector", systemImage: "sidebar.trailing", iconOnly: true) }
-                    .labelStyle(.iconOnly)
-                    .dsToolbarControl()
-                    .help("Show or hide the inspector")
-                    .accessibilityIdentifier("toolbar.inspector")
-            }
-        }
         if model.selection == .home && model.openedTranscript == nil {
             ToolbarSpacer(.fixed)
             ToolbarItem(placement: .primaryAction) {
@@ -147,7 +136,7 @@ public struct ShellView: View {
 
     @ViewBuilder private var detail: some View {
         if let id = model.openedTranscript {
-            TranscriptEditorView(transcriptID: id, services: model.services, playbackCenter: model.playback)
+            TranscriptEditorView(transcriptID: id, services: model.services, playbackCenter: model.playback, onNavigate: { model.openTranscript($0) })
                 .id(id)
         } else {
             sectionDetail
@@ -177,7 +166,7 @@ public struct ShellView: View {
     }
 }
 
-/// App-wide keyboard commands: ⌘1…⌘6 section switching and ⌘K quick open.
+/// App-wide keyboard commands: ⌘1…⌘6 section switching, ⌘⌥1…⌘⌥9 pinned items and ⌘K quick open.
 public struct ShellCommands: Commands {
     private let model: ShellModel
 
@@ -192,6 +181,13 @@ public struct ShellCommands: Commands {
             ForEach(AppSection.allCases) { section in
                 Button(section.title) { model.select(section) }
                     .keyboardShortcut(KeyEquivalent(section.shortcutKey), modifiers: [.command])
+            }
+            if !model.sidebar.pinned.isEmpty {
+                Divider()
+                ForEach(Array(model.sidebar.pinned.prefix(9).enumerated()), id: \.element.id) { index, item in
+                    Button(item.title) { model.openPinned(item) }
+                        .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: [.command, .option])
+                }
             }
             Divider()
             Button("Quick Open…") { model.presentQuickOpen() }

@@ -9,7 +9,7 @@ mkdir -p "$report_root"
 python3 "$repo_root/scripts/check-dependencies.py"
 python3 "$repo_root/scripts/verify-language-profiles.py"
 if [ "$mode" = all ] || [ "$mode" = unit ]; then
-    for package in NativeWorkerKit ModelFormats AppCore Persistence DesignSystem ModelStore AudioCapture Processing Export Permissions Meetings Translation Transcription Diarization LiveCaptions Dictation Jobs QwenASR Features NLLBNative SpeechNative TextGenerationNative; do
+    for package in NativeWorkerKit ModelFormats AppCore Persistence DesignSystem ModelStore AudioCapture Processing Export Permissions Meetings Translation Intelligence Transcription Diarization LiveCaptions Dictation Jobs QwenASR Features NLLBNative SpeechNative TextGenerationNative; do
         printf 'Testing %s\n' "$package"
         if ! swift test --no-parallel --package-path "$repo_root/Packages/$package" > "$report_root/$package.log" 2>&1; then
             printf '%s\n' "--- failing tests and errors in $package ---"

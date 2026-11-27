@@ -2,6 +2,20 @@
 
 Releases are listed newest first. The website carries the same history: https://dsameendra.github.io/earmark/changelog.html
 
+## 1.2.0
+
+### Workspace: notes, summaries, slides, chat and folders
+- **Folders and pinned items.** Folders are now real: create, rename, give them a named colour (Ember, Teal, Indigo, Amber, Plum, Slate, Blue, Crimson), drag transcripts onto them, and pin a folder or a transcript to keep it under Library in the sidebar. Drag a transcript or a folder onto the sidebar to pin it, drag pinned rows to reorder them, drop a transcript on Library to take it out of its folder or on Recently Deleted to remove it.
+- **A new transcript page.** Every transcript now has Transcript, Notes, Chat and Files tabs on the right, with the video or the slides on the left (drag the divider to resize it). Summarise is the one orange button; Export is an ordinary button. The side panel is gone: speakers are in Speakers, and bookmarks, view options, ignored segments and Re-transcribe are in the More menu, so the transcript has the full width.
+- **Notes.** Write notes by hand next to the transcript in Markdown: type # for a title, ** for bold, - for a list, - [ ] for a checklist. Lines show formatted as soon as you move off them, Return continues a list, and timestamps jump the recording. Summaries are formatted the same way. Notes autosave and keep a version history.
+- **Library.** One click opens a transcript. Select turns on checkmarks (list or grid): pick items, then Delete, Move to folder or Pin, with Undo after a delete. Grouping now works in the grid too, and Date groups read Today, Yesterday, This week, Last week, This month, Last month, then by month and year.
+- **Summaries on your Mac.** Summarise writes a structured summary into the notes with Apple Intelligence: for meetings, discussion points, decisions, action items and risks; for lectures, key concepts, definitions, deadlines and review questions. Your own notes are read as part of it, the page as it was is kept in History, and Undo is one click. Nothing leaves your Mac.
+- **Slides and files.** Attach a PDF or images, view the slides instead of the video, page with the arrow keys, link slides to moments in the recording, and summarise each file. For PowerPoint or Keynote, export to PDF first.
+- **Chat.** Ask questions about a recording, its notes, summary and attached files. Answers say where they came from, with sources you can click, and say so when something is not stated. Choose Everything or Summary and notes only.
+- **During a meeting.** While a meeting is being transcribed or recorded you can open Notes and chat from the Meetings page or the menu bar, write notes, add slides and ask about what was said so far. Summarise unlocks when the meeting ends. Everything you add moves to the final transcript.
+- **Menu bar and Settings.** Detect meetings is in the menu bar. A new Intelligence pane in Settings shows whether Apple Intelligence is ready and sets summary style, language, automatic summaries and chat history.
+- Note: after this update an older version of Earmark cannot open your library, so do not downgrade. Summaries and chat need a Mac with Apple Intelligence turned on and a language it supports (Sinhala and some others are not supported yet); everything else works without it.
+
 ## 1.1.3
 
 ### Fixes

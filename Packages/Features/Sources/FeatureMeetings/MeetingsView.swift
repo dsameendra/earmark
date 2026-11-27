@@ -294,6 +294,11 @@ struct CurrentMeetingCard: View {
                 .dsProminentButton().tint(DSColor.recording)
                 .accessibilityIdentifier("meetings.current.record")
         case .capturing:
+            Button("Notes and chat", systemImage: "note.text") {  // stock-chrome: workspace glyph
+                Task { if let id = await model.liveTranscriptID() { onOpenTranscript(id) } }
+            }
+            .help("Write notes, add slides or ask about what was said so far, while the meeting runs")
+            .accessibilityIdentifier("meetings.current.workspace")
             Button("Stop", systemImage: MeetingsSymbol.stop) { Task { await model.stopCapture() } }
                 .accessibilityIdentifier("meetings.current.stop")
         case .failed:

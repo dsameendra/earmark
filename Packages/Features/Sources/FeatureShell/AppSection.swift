@@ -9,6 +9,9 @@ public enum AppSection: String, CaseIterable, Identifiable, Sendable {
 
     public var id: String { rawValue }
 
+    /// The four rows above Library.
+    public static var topSections: [AppSection] { [.home, .queue, .meetings, .live] }
+
     public var title: String {
         switch self {
         case .home: "Home"

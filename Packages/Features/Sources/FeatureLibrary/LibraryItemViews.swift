@@ -63,7 +63,7 @@ struct LibraryRow: View {
             DSIcon(sourceSymbol(item.source)).dsSymbolStyle(.monochrome).foregroundStyle(DSColor.secondaryText).frame(width: 22)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: DSSpacing.xxs) {
-                Text(item.title).lineLimit(1)
+                Text(item.title).lineLimit(1).foregroundStyle(DSColor.primaryText)
                 if let hit = model.snippets[item.id] {
                     Text("\(durationText(hit.time))  \(hit.snippet)")
                         .font(DSTypography.caption)
@@ -151,16 +151,68 @@ struct LibraryCard: View {
 /// Column labels follow the same responsive rules as each row.
 struct LibraryColumnsHeader: View {
     @Environment(\.shellLayout) private var layout
+    var isSelecting = false
     var body: some View {
         HStack(spacing: DSSpacing.md) {
+            if isSelecting { Color.clear.frame(width: 22, height: 1) }
             SectionCaption("Title").frame(maxWidth: .infinity, alignment: .leading)
             SectionCaption("Date").frame(width: 70, alignment: .leading)
             SectionCaption("Length").frame(width: 64, alignment: .trailing)
             if !layout.droppedLibraryColumns.contains("Language") { SectionCaption("Language").frame(width: 80) }
             if !layout.droppedLibraryColumns.contains("Speakers") { SectionCaption("Speakers").frame(width: 80, alignment: .leading) }
         }
-        .padding(.horizontal, DSSpacing.lg).padding(.vertical, DSSpacing.sm)
+        .padding(.horizontal, DSSpacing.lg + DSSpacing.sm).padding(.vertical, DSSpacing.sm)
         .overlay(alignment: .bottom) { Divider() }
+        .dsAnimation(.glide, value: isSelecting)
         .accessibilityHidden(true)
+    }
+}
+
+
+/// The round checkmark shown in Select mode (list rows and grid cards).
+struct SelectionMark: View {
+    let selected: Bool
+
+    var body: some View {
+        Image(systemName: selected ? "checkmark.circle.fill" : "circle")  // stock-chrome: selection mark
+            .font(.system(size: 18))
+            .symbolRenderingMode(.palette)
+            .foregroundStyle(selected ? DSColor.onAccent : DSColor.tertiaryText, selected ? DSColor.accent : DSColor.tertiaryText)
+            .frame(width: 22)
+            .contentTransition(.symbolEffect(.replace))
+            .accessibilityHidden(true)
+    }
+}
+
+/// A list row as a button: a hover wash, the selected tint, and a soft press. A single click activates it.
+struct LibraryRowButtonStyle: ButtonStyle {
+    let selected: Bool
+    @State private var hovering = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        let shape = RoundedRectangle(cornerRadius: DSRadius.medium, style: .continuous)
+        let wash: Color = selected ? DSColor.accentTint : (configuration.isPressed ? DSColor.primaryText.opacity(0.09) : (hovering ? DSColor.primaryText.opacity(0.05) : .clear))
+        return configuration.label
+            .padding(.horizontal, DSSpacing.md)
+            .background(wash, in: shape)
+            .padding(.horizontal, DSSpacing.sm)
+            .contentShape(Rectangle())
+            .onHover { hovering = $0 }
+            .dsAnimation(.glide, value: hovering)
+            .dsAnimation(.glide, value: selected)
+    }
+}
+
+/// A grid card as a button: lifts slightly on hover, presses in.
+struct LibraryCardButtonStyle: ButtonStyle {
+    @State private var hovering = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.985 : (hovering ? 1.012 : 1))
+            .shadow(color: DSColor.shadow.opacity(hovering ? 0.16 : 0), radius: hovering ? 10 : 0, y: hovering ? 4 : 0)
+            .onHover { hovering = $0 }
+            .dsAnimation(.glide, value: hovering)
+            .dsAnimation(.glide, value: configuration.isPressed)
     }
 }

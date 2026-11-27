@@ -12,6 +12,7 @@ public final class SettingsEnvironment {
     public let automaticUpdateChecks: (@MainActor @Sendable () -> Bool)?
     public let setAutomaticUpdateChecks: (@MainActor @Sendable (Bool) -> Void)?
     public let general: GeneralSettingsModel
+    public let intelligence: IntelligenceSettingsModel
     public let modelManager: ModelManagerModel
     public let languages: LanguageSelectionModel
     public let audio: AudioSettingsModel
@@ -48,6 +49,7 @@ public final class SettingsEnvironment {
         automaticUpdateChecks = deps.automaticUpdateChecks
         setAutomaticUpdateChecks = deps.setAutomaticUpdateChecks
         general = GeneralSettingsModel(store: deps.store, loginItem: deps.launchAtLogin)
+        intelligence = IntelligenceSettingsModel(store: deps.store, intelligence: deps.intelligence, clearAllChats: deps.clearAllChats)
         modelManager = ModelManagerModel(
             manager: deps.models, hardware: deps.hardware, store: deps.store,
             reviewedHuggingFaceModels: deps.reviewedHuggingFaceModels)
@@ -222,6 +224,7 @@ public struct SettingsRootView: View {
                 model: environment.general, checkForUpdates: environment.checkForUpdates,
                 automaticUpdateChecks: environment.automaticUpdateChecks, setAutomaticUpdateChecks: environment.setAutomaticUpdateChecks)
         case .models: ModelsSettingsView(model: environment.modelManager)
+        case .intelligence: IntelligenceSettingsView(model: environment.intelligence)
         case .languages: LanguagesSettingsView(model: environment.languages)
         case .audio: AudioSettingsView(model: environment.audio)
         case .meetings: MeetingsSettingsView(model: environment.meetings, diagnostics: environment.meetingDiagnostics)

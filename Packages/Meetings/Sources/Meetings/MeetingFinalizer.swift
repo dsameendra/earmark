@@ -111,12 +111,15 @@ public struct FinalizerDependencies: Sendable {
     public var media: any MediaRepository
     public var voiceProfiles: (any VoiceProfileRepository)?
     public var models: (any ModelManaging)?
+    /// Notes, files and chat a user added to the live draft move to the final transcript (SCR-019).
+    public var workspace: (any NotesRepository)?
     public init(
         engine: any TranscriptionEngine, diarizer: (any Diarizer)? = nil, embeddings: (any SpeakerEmbeddingProvider)? = nil,
         matcher: any VoiceProfileMatching = DistanceVoiceProfileMatcher(), transcripts: any TranscriptRepository,
         meetings: any MeetingRepository, media: any MediaRepository, voiceProfiles: (any VoiceProfileRepository)? = nil,
-        models: (any ModelManaging)? = nil
+        models: (any ModelManaging)? = nil, workspace: (any NotesRepository)? = nil
     ) {
+        self.workspace = workspace
         self.engine = engine
         self.diarizer = diarizer
         self.embeddings = embeddings
@@ -374,6 +377,8 @@ public actor MeetingFinalizer {
             revisionOf: input.live?.transcriptID.flatMap { $0 == finalID ? nil : $0 }, createdAt: meeting.startedAt, modifiedAt: Date())
         try await deps.transcripts.save(transcript)
         try await deps.transcripts.replaceSegments(assembly.segments, for: finalID)
+        // Notes, slides and chat written during the meeting belong to the final transcript now; the live draft is hidden.
+        if let draft = input.live?.transcriptID, draft != finalID { try? await deps.workspace?.moveWorkspace(from: draft, to: finalID) }
         for bookmark in input.bookmarks {
             try await deps.transcripts.save(TranscriptBookmark(transcriptID: finalID, time: bookmark.time, note: bookmark.note))
         }

@@ -35,8 +35,6 @@ public final class ShellModel {
 
     /// Window width as last measured; drives ``layout``.
     public private(set) var windowWidth: CGFloat = 1440
-    /// Editor inspector toolbar toggle (only meaningful when the window is below 1100 pt).
-    public var isInspectorToggledOn = false
 
     @ObservationIgnored public let services: AppServices
     @ObservationIgnored private let persistence: SectionPersistence
@@ -66,13 +64,9 @@ public final class ShellModel {
     public var usesLibrarySearch: Bool { openedTranscript == nil && (selection == .library || selection == .recentlyDeleted) }
     public var searchableLibrary: LibraryModel { selection == .recentlyDeleted ? recentlyDeleted : library }
 
-    /// `true` when the Editor inspector should be on screen: always when wide, else only while toggled on.
-    public var isInspectorPresented: Bool { !layout.inspectorCollapsed || isInspectorToggledOn }
-
     /// Records the window width and applies the responsive rules. The navigation pane is persistent and never collapses.
     public func updateWindowWidth(_ width: CGFloat) {
         windowWidth = width
-        if !layout.inspectorCollapsed { isInspectorToggledOn = false }
     }
 
     /// Recording is always visible (handoff 5): a live session or a meeting recording is running.
@@ -80,6 +74,14 @@ public final class ShellModel {
 
     /// The section the recording indicator row opens.
     public var recordingSection: AppSection { meetings.isRecording ? .meetings : .live }
+
+    /// Opens a pinned sidebar entry: the folder in the Library, or the transcript.
+    public func openPinned(_ item: PinnedItem) {
+        switch item {
+        case .folder(let folder, _): openFolder(folder.id)
+        case .transcript(let transcript): openTranscript(transcript.id)
+        }
+    }
 
     /// Opens Library narrowed to `folder` (sidebar folders).
     public func openFolder(_ folder: FolderID) {
@@ -98,7 +100,7 @@ public final class ShellModel {
         isQuickOpenPresented = false
         selection = section
         openedTranscript = nil
-        if section == .library { Task { await sidebar.reloadFolders() } }
+        if section == .library { Task { await sidebar.reloadPinned() } }
         let persistence = persistence
         Task { await persistence.save(section) }
     }

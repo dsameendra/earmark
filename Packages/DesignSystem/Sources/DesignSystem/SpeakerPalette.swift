@@ -59,6 +59,14 @@ public enum SpeakerPalette {
         Entry(light: RGB(0.72, 0.15, 0.25), dark: RGB(1.00, 0.50, 0.55)),  // crimson
     ]
 
+    /// Plain names for the slots, in order, for menus and VoiceOver (folders are coloured from the same palette).
+    public static let names = ["Ember", "Teal", "Indigo", "Amber", "Plum", "Slate", "Blue", "Crimson"]
+
+    public static func name(forSlot slot: Int) -> String {
+        let n = names.count
+        return names[((slot % n) + n) % n]
+    }
+
     /// Palette slot whose light colour is `hex` (`#RRGGBB`), or `fallback` for a custom colour. Lets every surface colour a speaker by its
     /// stored colour instead of its list position.
     public static func slot(forHex hex: String, fallback: Int) -> Int {

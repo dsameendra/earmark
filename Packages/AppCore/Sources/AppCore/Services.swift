@@ -192,6 +192,12 @@ public protocol LiveSessionControlling: Sendable {
     func state() -> AsyncStream<LiveSessionState>
     /// Caption lines; volatile lines finalize in place (same `id`) without jitter.
     func lines() -> AsyncStream<[CaptionLine]>
+    /// The transcript the running session is writing, or nil when none is running (SCR-021: the workspace opens next to it).
+    func activeTranscriptID() async -> TranscriptID?
+}
+
+extension LiveSessionControlling {
+    public func activeTranscriptID() async -> TranscriptID? { nil }
 }
 
 public protocol OverlayControlling: Sendable {

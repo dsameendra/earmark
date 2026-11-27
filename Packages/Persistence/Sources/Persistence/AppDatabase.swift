@@ -73,6 +73,14 @@ public struct AppDatabase: Sendable {
     public var meetings: SQLiteMeetingRepository { SQLiteMeetingRepository(writer: writer) }
     /// Dictation history.
     public var dictationHistory: SQLiteDictationHistoryRepository { SQLiteDictationHistoryRepository(writer: writer) }
+    /// Folders and pins (SCR-018).
+    public var folders: SQLiteFolderRepository { SQLiteFolderRepository(writer: writer) }
+    /// Notes and versions (SCR-019).
+    public var notes: SQLiteNotesRepository { SQLiteNotesRepository(writer: writer) }
+    /// Attached slides and files (SCR-020).
+    public var attachments: SQLiteAttachmentRepository { SQLiteAttachmentRepository(writer: writer) }
+    /// Chat conversations (SCR-021).
+    public var chat: SQLiteChatRepository { SQLiteChatRepository(writer: writer) }
     /// Key-value settings. Hold on to this instance: change streams are tied to it.
     public func makeSettingsStore() -> SQLiteSettingsStore { SQLiteSettingsStore(writer: writer) }
 }

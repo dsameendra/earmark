@@ -23,6 +23,7 @@ let package = Package(
         .library(name: "FeatureSettings", targets: ["FeatureSettings"]),
         .library(name: "FeatureEditor", targets: ["FeatureEditor"]),
         .library(name: "FeatureOnboarding", targets: ["FeatureOnboarding"]),
+        .library(name: "FeatureWorkspace", targets: ["FeatureWorkspace"]),
     ],
     dependencies: [
         .package(path: "../AppCore"),
@@ -51,8 +52,9 @@ let package = Package(
         .target(
             name: "FeatureEditor",
             dependencies: base + [
-                .product(name: "Processing", package: "Processing"), .product(name: "Export", package: "Export"),
+                .product(name: "Processing", package: "Processing"), .product(name: "Export", package: "Export"), "FeatureWorkspace",
             ], swiftSettings: strict),
+        .target(name: "FeatureWorkspace", dependencies: base, swiftSettings: strict),
         .target(name: "FeatureOnboarding", dependencies: base + ["FeatureSettings"], swiftSettings: strict),
         .target(
             name: "FeatureShell",
@@ -63,7 +65,7 @@ let package = Package(
             dependencies: base + [
                 .product(name: "AppCoreTesting", package: "AppCore"),
                 "FeatureShell", "FeatureHome", "FeatureQueue", "FeatureLibrary", "FeatureMeetings", "FeatureLive", "FeatureMenuBar",
-                "FeatureSettings", "FeatureEditor", "FeatureOnboarding", .product(name: "Processing", package: "Processing"),
+                "FeatureSettings", "FeatureEditor", "FeatureOnboarding", "FeatureWorkspace", .product(name: "Processing", package: "Processing"),
                 .product(name: "LiveCaptions", package: "LiveCaptions"),
             ]),
     ],

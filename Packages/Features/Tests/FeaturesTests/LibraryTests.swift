@@ -24,10 +24,12 @@ private func item(
 
 @MainActor private func makeModel(
     _ items: [Transcript], mode: LibraryMode = .library, segments: [TranscriptID: [Segment]] = [:],
-    store: InMemorySettingsStore = InMemorySettingsStore(), media: InMemoryMedia? = nil, access: FakeMediaAccess = FakeMediaAccess()
+    store: InMemorySettingsStore = InMemorySettingsStore(), media: InMemoryMedia? = nil, access: FakeMediaAccess = FakeMediaAccess(),
+    folders: [Folder] = []
 ) -> (LibraryModel, InMemoryTranscripts) {
     let repo = InMemoryTranscripts(items: items, segments: segments)
     var services = AppServices.preview()
+    services.workspace.folders = InMemoryFolders(items: folders)
     services.transcripts = repo
     services.settings = store
     services.media = media
@@ -184,11 +186,9 @@ private func item(
     }
 
     @Test func deletingFolderMovesItemsToRoot() async throws {  // folder deleted -> Library root
-        let folder = LibraryFolder(name: "Temp")
+        let folder = Folder(name: "Temp")
         let member = item("member", folder: folder.id)
-        let store = InMemorySettingsStore()
-        await store.set([folder], for: SettingsKey.libraryFolders)
-        let (library, repo) = makeModel([member], store: store)
+        let (library, repo) = makeModel([member], folders: [folder])
         await library.start()
         #expect(library.folders == [folder])
         await library.deleteFolder(folder.id)
@@ -268,5 +268,59 @@ private func item(
         #expect(empty.isLoading)
         await empty.start()
         #expect(!empty.isLoading && empty.items.isEmpty && !empty.isNarrowed && empty.errorMessage == nil)
+    }
+}
+
+
+@Suite @MainActor struct LibrarySelectModeTests {
+    @Test func selectingAnItemEntersSelectModeAndDoneClearsTheSelection() async {
+        let a = item("a"), b = item("b")
+        let (library, _) = makeModel([a, b])
+        await library.start()
+        #expect(!library.isSelecting)
+        library.toggleSelection(a.id)
+        #expect(library.isSelecting && library.selection == [a.id])
+        library.toggleSelection(b.id)
+        library.toggleSelection(a.id)
+        #expect(library.selection == [b.id])
+        library.setSelecting(false)
+        #expect(!library.isSelecting && library.selection.isEmpty)
+    }
+
+    @Test func shiftSelectsTheRangeInTheOrderShown() async {
+        let items = (0..<5).map { item("item \($0)", created: epoch.addingTimeInterval(Double(-$0))) }
+        let (library, _) = makeModel(items)
+        await library.start()
+        let order = library.items.map(\.id)
+        library.toggleSelection(order[1])
+        library.selectRange(to: order[3])
+        #expect(library.selection == Set(order[1...3]))
+        library.selectAll()
+        #expect(library.selection.count == 5)
+    }
+
+    @Test func deleteOffersUndoThatRestoresTheItems() async {
+        let a = item("a"), b = item("b")
+        let (library, _) = makeModel([a, b])
+        await library.start()
+        library.toggleSelection(a.id)
+        await library.deleteSelected()
+        #expect(library.items.map(\.id) == [b.id])
+        #expect(library.undoDelete?.message == "Moved to Recently Deleted")
+        await library.undoLastDelete()
+        #expect(Set(library.items.map(\.id)) == [a.id, b.id] && library.undoDelete == nil)
+    }
+
+    @Test func pinSelectedPinsThenUnpins() async {
+        let a = item("a"), b = item("b")
+        let (library, repo) = makeModel([a, b])
+        await library.start()
+        library.toggleSelection(a.id)
+        library.toggleSelection(b.id)
+        await library.pinSelected()
+        #expect(library.selectionIsPinned)
+        #expect(((try? await repo.transcript(a.id))?.pinOrder) != nil)
+        await library.pinSelected()
+        #expect(!library.selectionIsPinned)
     }
 }

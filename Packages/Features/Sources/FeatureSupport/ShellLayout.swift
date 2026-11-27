@@ -4,7 +4,7 @@ import SwiftUI
 /// Responsive window rules of the M8 handoff (section 5), as a pure function of the window width.
 ///
 /// - Window minimum 960 x 600 (`DSLayout.minWindowSize`).
-/// - Below 1100 pt the Editor inspector hides behind a toolbar toggle and opens as a solid popover.
+/// - Below 1100 pt the window counts as narrow (Home shows two action columns, the Library drops the Language column).
 /// - Below 800 pt the sidebar collapses (a toolbar button reveals it as an overlay). With a 960 pt window minimum this
 ///   only applies to a window that is narrower than the minimum for a moment (live resize, Stage Manager tiles).
 /// - Workspace surfaces fill the detail column. Long-form prose may set a local reading width.
@@ -32,8 +32,6 @@ public struct ShellLayout: Equatable, Sendable {
 
     /// `true` below 800 pt.
     public var sidebarCollapsed: Bool { width < DSLayout.sidebarCollapseWidth }
-    /// `true` below 1100 pt: the Editor inspector is behind a toolbar toggle.
-    public var inspectorCollapsed: Bool { width < DSLayout.inspectorCollapseWidth }
     /// Available workspace width. The user's full-window refinement supersedes the old global 1120 pt cap.
     public var contentMaxWidth: CGFloat { .infinity }
     /// Home quick-action cards across.
@@ -62,32 +60,13 @@ private struct ShellLayoutKey: EnvironmentKey {
     static let defaultValue = ShellLayout(width: 1440)
 }
 
-private struct InspectorPresentedKey: EnvironmentKey {
-    static let defaultValue = true
-}
-
-private struct InspectorToggleKey: EnvironmentKey {
-    static let defaultValue: Binding<Bool> = .constant(false)
-}
-
 extension EnvironmentValues {
-    /// The narrow-window inspector toggle, shared with the popover so dismissing it updates the toolbar.
-    public var inspectorToggle: Binding<Bool> {
-        get { self[InspectorToggleKey.self] }
-        set { self[InspectorToggleKey.self] = newValue }
-    }
     /// The shell's current responsive layout (set by `ShellView` from the window width).
     public var shellLayout: ShellLayout {
         get { self[ShellLayoutKey.self] }
         set { self[ShellLayoutKey.self] = newValue }
     }
 
-    /// Whether the Editor inspector should be shown: always when the window is wide, otherwise only while the toolbar
-    /// toggle is on. The Editor reads this (T36); the shell owns the toggle.
-    public var inspectorPresented: Bool {
-        get { self[InspectorPresentedKey.self] }
-        set { self[InspectorPresentedKey.self] = newValue }
-    }
 }
 
 extension View {

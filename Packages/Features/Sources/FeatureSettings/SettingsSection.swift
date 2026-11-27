@@ -3,7 +3,7 @@ import Foundation
 
 /// Sections of the Settings window (SET-AC-01). Only General is functional in the shell task.
 public enum SettingsSection: String, CaseIterable, Identifiable, Sendable {
-    case general, models, languages, audio, meetings, liveCaptions, dictation, transcriptAppearance
+    case general, models, intelligence, languages, audio, meetings, liveCaptions, dictation, transcriptAppearance
     case ignoredSegments, replacements, translation, exportDefaults, storage, keyboardShortcuts, privacyPermissions
 
     public var id: String { rawValue }
@@ -12,6 +12,7 @@ public enum SettingsSection: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .general: "General"
         case .models: "Models"
+        case .intelligence: "Intelligence"
         case .languages: "Languages"
         case .audio: "Audio"
         case .meetings: "Meetings"
@@ -41,7 +42,7 @@ public enum SettingsSection: String, CaseIterable, Identifiable, Sendable {
         case .ignoredSegments: .hidden
         case .translation: .translate
         case .exportDefaults: .export
-        case .transcriptAppearance, .replacements, .storage, .keyboardShortcuts, .privacyPermissions: nil
+        case .intelligence, .transcriptAppearance, .replacements, .storage, .keyboardShortcuts, .privacyPermissions: nil
         }
     }
 
@@ -49,6 +50,7 @@ public enum SettingsSection: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .general: DSSymbol.settings.systemImageName
         case .models: DSSymbol.models.systemImageName
+        case .intelligence: "sparkles"  // stock-chrome: AI glyph, no custom symbol yet
         case .languages: DSSymbol.language.systemImageName
         case .audio: DSSymbol.systemAudio.systemImageName
         case .meetings: DSSymbol.meetings.systemImageName
@@ -80,7 +82,7 @@ public enum SettingsSectionGroup: String, CaseIterable, Identifiable, Sendable {
     }
     public var sections: [SettingsSection] {
         switch self {
-        case .app: [.general, .models, .languages, .audio]
+        case .app: [.general, .models, .intelligence, .languages, .audio]
         case .capture: [.meetings, .liveCaptions, .dictation]
         case .transcripts: [.transcriptAppearance, .ignoredSegments, .replacements, .translation, .exportDefaults]
         case .system: [.storage, .keyboardShortcuts, .privacyPermissions]
@@ -94,6 +96,7 @@ extension SettingsSection {
         switch self {
         case .general: "Make Earmark feel at home on your Mac. Changes are saved automatically."
         case .models: "Choose the local engines you need. Models download only when you ask."
+        case .intelligence: "Summaries and chat run on this Mac with Apple Intelligence. Nothing is sent anywhere."
         case .languages: "Choose your languages and the models that understand them."
         case .audio: "Choose microphones, test input and set the source for each kind of capture."
         case .meetings: "Decide what happens when a meeting starts. Ask first is the default."

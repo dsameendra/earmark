@@ -111,13 +111,9 @@ final class EarmarkUITests: XCTestCase {
         XCTAssertTrue(recent.waitForExistence(timeout: 5))
         recent.click()
         Thread.sleep(forTimeInterval: 1)
-        capture(app, "editor-narrow-before-inspector")
-        let inspector = app.descendants(matching: .any)["toolbar.inspector"]
-        XCTAssertTrue(inspector.waitForExistence(timeout: 5))
-        inspector.click()
-        XCTAssertTrue(app.descendants(matching: .any)["editor.inspector"].waitForExistence(timeout: 5))
-        capture(app, "editor-narrow-inspector")
-        app.buttons["Edit speakers…"].click()
+        capture(app, "editor-narrow")
+        XCTAssertFalse(app.descendants(matching: .any)["editor.inspector"].exists, "the inspector column is gone")
+        app.buttons["editor.speakers"].click()
         XCTAssertTrue(app.textFields["editor.speakers.newName"].waitForExistence(timeout: 5))
         app.typeKey(.escape, modifierFlags: [])
         app.menuBars.menuBarItems["Help"].click()
@@ -272,7 +268,8 @@ final class EarmarkUITests: XCTestCase {
             let window = app.windows.firstMatch
             Thread.sleep(forTimeInterval: video ? 2 : 0.5)
             // The transcript list is the scroll view that covers the lower middle of the window.
-            let probe = CGPoint(x: window.frame.midX - 100, y: window.frame.minY + window.frame.height * 0.85)
+            // With a video the page has two columns (stage left, transcript right): probe the right column.
+            let probe = CGPoint(x: window.frame.maxX - 160, y: window.frame.minY + window.frame.height * 0.7)
             let lists = app.scrollViews.allElementsBoundByIndex.filter { $0.frame.contains(probe) }
             let list = try XCTUnwrap(lists.min { $0.frame.height < $1.frame.height }, "transcript list not found")
             for _ in 0..<14 {
@@ -283,11 +280,16 @@ final class EarmarkUITests: XCTestCase {
             // The final row starts at 7:24; its speaker and time block must end inside the list, not under its clipped edge.
             let last = app.descendants(matching: .any).matching(NSPredicate(format: "value CONTAINS %@ OR label CONTAINS %@", "7:24", "7:24")).firstMatch
             XCTAssertTrue(last.waitForExistence(timeout: 3), "the last transcript row must exist")
-            // The list's own frame can extend under the player bar, so measure against the bar's top instead.
+            // With the player bar under the list (no stage column) the last row must end above the bar; beside the stage column
+            // the list runs to the bottom edge, so the row must end inside the list.
             let bar = app.buttons["editor.player.play"]
             XCTAssertTrue(bar.waitForExistence(timeout: 3))
-            XCTAssertLessThanOrEqual(last.frame.maxY, bar.frame.minY, "the last row (\(last.frame)) must end above the player bar (\(bar.frame))")
-            XCTAssertLessThanOrEqual(list.frame.maxY, bar.frame.minY + 1, "the list (\(list.frame)) must not run under the player bar (\(bar.frame))")
+            if bar.frame.minX > list.frame.minX && bar.frame.maxX < list.frame.maxX {
+                XCTAssertLessThanOrEqual(last.frame.maxY, bar.frame.minY, "the last row (\(last.frame)) must end above the player bar (\(bar.frame))")
+                XCTAssertLessThanOrEqual(list.frame.maxY, bar.frame.minY + 1, "the list (\(list.frame)) must not run under the player bar (\(bar.frame))")
+            } else {
+                XCTAssertLessThanOrEqual(last.frame.maxY, list.frame.maxY, "the last row (\(last.frame)) must end inside the list (\(list.frame))")
+            }
         }
     }
 
@@ -321,14 +323,10 @@ final class EarmarkUITests: XCTestCase {
         }
         check(app.buttons["editor.speakers"], "speakers")
         check(app.buttons["editor.translation"], "translate")
-        check(app.buttons["editor.retranscribe"], "retranscribe")
         let more = app.menuButtons["editor.more"]
+        check(more, "retranscribe", menuItem: "Re-transcribe…")
         check(more, "bookmarks", menuItem: "Bookmarks and highlights")
         check(more, "options", menuItem: "View options")
-        let inspector = app.descendants(matching: .any)["editor.inspector"]
-        XCTAssertTrue(inspector.waitForExistence(timeout: 5))
-        check(app.buttons["Edit speakers…"], "inspector-speakers")
-        check(app.buttons["Add an earmark…"], "inspector-earmark")
     }
 
     func testSettingsSectionsRemainAvailable() throws {
@@ -338,7 +336,7 @@ final class EarmarkUITests: XCTestCase {
         XCTAssertTrue(app.buttons["settings.section.general"].waitForExistence(timeout: 5))
         app.buttons["settings.section.general"].click()
         let sections = [
-            "general", "models", "languages", "audio", "meetings", "liveCaptions", "dictation", "transcriptAppearance",
+            "general", "models", "intelligence", "languages", "audio", "meetings", "liveCaptions", "dictation", "transcriptAppearance",
             "ignoredSegments", "replacements", "translation", "exportDefaults", "storage", "keyboardShortcuts", "privacyPermissions",
         ]
         for (index, section) in sections.enumerated() {
@@ -651,5 +649,252 @@ final class EarmarkUITests: XCTestCase {
         XCTAssertEqual(colors[0].redComponent, colors[1].redComponent, accuracy: 0.02)
         XCTAssertEqual(colors[0].greenComponent, colors[1].greenComponent, accuracy: 0.02)
         XCTAssertEqual(colors[0].blueComponent, colors[1].blueComponent, accuracy: 0.02)
+    }
+
+    // MARK: Workspace (1.2.0)
+
+    /// Library, then the pinned folder, then Recently Deleted, then the compact model line, then Settings: top to bottom.
+    func testSidebarListsPinnedFoldersUnderLibraryAndTheyOpenTheFolder() throws {
+        let app = launch(appearance: "light", arguments: ["-EarmarkTestFolders", "YES"])
+        defer { app.terminate() }
+        let library = app.buttons["sidebar.library"]
+        XCTAssertTrue(library.waitForExistence(timeout: 8))
+        let pinned = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "sidebar.pinned.folder-")).firstMatch
+        XCTAssertTrue(pinned.waitForExistence(timeout: 8), "a pinned folder must be listed in the sidebar")
+        let trash = app.buttons["sidebar.recentlyDeleted"]
+        XCTAssertLessThan(library.frame.minY, pinned.frame.minY)
+        XCTAssertLessThan(pinned.frame.minY, trash.frame.minY)
+        XCTAssertLessThan(trash.frame.minY, app.buttons["sidebar.settings"].frame.minY)
+        let modelChip = app.buttons["sidebar.modelChip"]
+        if modelChip.exists {
+            XCTAssertLessThan(trash.frame.minY, modelChip.frame.minY)
+            XCTAssertLessThan(modelChip.frame.height, 60, "the model picker is one compact line")
+        }
+        capture(app, "sidebar-pinned")
+        pinned.click()
+        XCTAssertTrue(app.descendants(matching: .any)["library.breadcrumb"].waitForExistence(timeout: 5), "opening a pinned folder shows it in the Library")
+    }
+
+    /// Captures the redesigned pages for visual review (light and dark, narrow and wide). Asserts only that each state is reachable.
+    func testWorkspaceScreensForVisualReview() throws {
+        for (appearance, width, height) in [("light", 960, 640), ("dark", 1440, 900)] {
+            let app = launch(appearance: appearance, width: width, height: height, arguments: ["-EarmarkTestSlides", "YES", "-EarmarkTestFolders", "YES"])
+            defer { app.terminate() }
+            openWeeklySync(app)
+            let tag = "\(appearance)-\(width)"
+            capture(app, "review-transcript-\(tag)")
+            app.buttons["Slides"].click()
+            Thread.sleep(forTimeInterval: 0.8)
+            capture(app, "review-transcript-slides-\(tag)")
+            XCTAssertTrue(app.buttons["Audio"].exists, "an audio recording's slides switch says Audio, not Video")
+            for name in ["Notes", "Chat", "Files"] {
+                app.buttons[name == "Files" ? "Files · 1" : name].click()
+                Thread.sleep(forTimeInterval: 0.6)
+                capture(app, "review-\(name.lowercased())-\(tag)")
+            }
+            app.buttons["toolbar.back"].click()
+            app.buttons["sidebar.library"].click()
+            XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "library.item.")).firstMatch.waitForExistence(timeout: 8))
+            capture(app, "review-library-\(tag)")
+            app.buttons["library.layout.grid"].click()
+            Thread.sleep(forTimeInterval: 0.5)
+            capture(app, "review-library-grid-\(tag)")
+            app.buttons["library.select"].click()
+            Thread.sleep(forTimeInterval: 0.5)
+            capture(app, "review-library-select-\(tag)")
+        }
+    }
+
+    /// Regression: with a file attached, leaving a transcript and coming back to its Files tab must not hang.
+    func testFilesTabSurvivesLeavingAndReturning() throws {
+        let app = launch(appearance: "dark", width: 1440, height: 900, arguments: ["-EarmarkTestSlides", "YES"])
+        defer { app.terminate() }
+        for round in 0..<3 {
+            openWeeklySync(app)
+            XCTAssertTrue(app.buttons["Files · 1"].waitForExistence(timeout: 8), "round \(round): files tab")
+            app.buttons["Files · 1"].click()
+            XCTAssertTrue(app.descendants(matching: .any)["files.page"].waitForExistence(timeout: 8), "round \(round): the Files page opens")
+            app.buttons["toolbar.back"].click()
+        }
+    }
+
+    /// One click opens a transcript, in the list and in the grid.
+    func testLibraryItemsOpenWithASingleClickInListAndGrid() throws {
+        let app = launch(appearance: "light")
+        defer { app.terminate() }
+        app.buttons["sidebar.library"].click()
+        let items = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "library.item."))
+        XCTAssertTrue(items.firstMatch.waitForExistence(timeout: 8))
+        items.firstMatch.click()
+        XCTAssertTrue(app.buttons["editor.export"].waitForExistence(timeout: 8), "a single click in the list opens the transcript")
+        app.buttons["toolbar.back"].click()
+        app.buttons["library.layout.grid"].click()
+        XCTAssertTrue(items.firstMatch.waitForExistence(timeout: 8))
+        items.firstMatch.click()
+        XCTAssertTrue(app.buttons["editor.export"].waitForExistence(timeout: 8), "a single click in the grid opens the transcript")
+    }
+
+    /// Select mode: checkmarks appear, a selection reveals Delete, Delete offers Undo. Same in list and grid.
+    func testSelectModeShowsActionsAndDeleteCanBeUndone() throws {
+        let app = launch(appearance: "light")
+        defer { app.terminate() }
+        app.buttons["sidebar.library"].click()
+        let items = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "library.item."))
+        XCTAssertTrue(items.firstMatch.waitForExistence(timeout: 8))
+        XCTAssertFalse(app.buttons["library.delete"].exists, "no Delete button outside Select mode")
+        for grid in [false, true] {
+            if grid { app.buttons["library.layout.grid"].click() }
+            let before = items.count
+            let select = app.buttons["library.select"]
+            XCTAssertTrue(select.waitForExistence(timeout: 5))
+            select.click()
+            XCTAssertTrue(app.staticTexts["library.selectionCount"].waitForExistence(timeout: 5))
+            XCTAssertFalse(app.buttons["library.delete"].exists, "Delete appears once something is selected")
+            items.firstMatch.click()
+            XCTAssertTrue(app.buttons["library.delete"].waitForExistence(timeout: 5), "selecting an item reveals Delete")
+            XCTAssertFalse(app.buttons["editor.export"].exists, "a click in Select mode does not open the transcript")
+            capture(app, "library-select-\(grid ? "grid" : "list")")
+            app.buttons["library.delete"].click()
+            XCTAssertTrue(app.buttons["library.undoDelete"].waitForExistence(timeout: 5), "Delete offers Undo")
+            XCTAssertEqual(items.count, before - 1)
+            app.buttons["library.undoDelete"].click()
+            let restored = NSPredicate(format: "count == %d", before)
+            XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: restored, object: items)], timeout: 6), .completed, "Undo brings the item back")
+            app.buttons["library.select"].click()  // Done
+        }
+    }
+
+    /// Grouping works in the grid: headers by date, collapsible.
+    func testGridGroupsByDateAndGroupsCollapse() throws {
+        let app = launch(appearance: "light")
+        defer { app.terminate() }
+        app.buttons["sidebar.library"].click()
+        app.buttons["library.layout.grid"].click()
+        let group = app.menuButtons["library.group"]
+        XCTAssertTrue(group.waitForExistence(timeout: 8))
+        group.click()
+        app.menuItems["Date"].click()
+        let header = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "library.group.date.")).firstMatch
+        XCTAssertTrue(header.waitForExistence(timeout: 5), "the grid shows date group headers")
+        capture(app, "library-grid-grouped-by-date")
+        let items = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "library.item."))
+        let before = items.count
+        header.click()
+        let collapsed = NSPredicate { _, _ in items.count < before }
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: collapsed, object: nil)], timeout: 5), .completed, "a header collapses its group")
+    }
+
+    func testLibraryShowsFolderCardsAndGroupsByType() throws {
+        let app = launch(appearance: "dark", arguments: ["-EarmarkTestFolders", "YES"])
+        defer { app.terminate() }
+        app.typeKey("5", modifierFlags: .command)
+        XCTAssertTrue(app.descendants(matching: .any)["library.folders"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "library.folder.")).firstMatch.exists)
+        let group = app.menuButtons["library.group"]
+        XCTAssertTrue(group.waitForExistence(timeout: 5))
+        group.click()
+        app.menuItems["Type"].click()
+        XCTAssertTrue(app.buttons["library.group.type.meeting"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["library.group.type.file"].exists)
+        capture(app, "library-grouped-by-type")
+        app.buttons["library.group.type.file"].click()  // collapse
+        XCTAssertTrue(app.buttons["library.group.type.file"].exists)
+    }
+
+    func testTranscriptPageHasTabsAndNotesCanBeSummarisedAndUndone() throws {
+        let app = launch(appearance: "light")
+        defer { app.terminate() }
+        openWeeklySync(app)
+        let tabs = app.descendants(matching: .any)["workspace.tabBar"]
+        XCTAssertTrue(tabs.waitForExistence(timeout: 5))
+        for name in ["Transcript", "Notes", "Chat", "Files"] { XCTAssertTrue(app.buttons[name].exists, "\(name) tab") }
+        app.buttons["Notes"].click()
+        let editor = app.textViews["notes.editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.click()
+        editor.typeText("Ask Elena about staging")
+        app.buttons["notes.summarize"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["summarize.sheet"].waitForExistence(timeout: 5))
+        capture(app, "summarize-sheet")
+        app.buttons["summarize.run"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["notes.summaryNotice"].waitForExistence(timeout: 8))
+        XCTAssertTrue((editor.value as? String)?.contains("## Summary") == true, "the page is replaced by the summary")
+        XCTAssertTrue((editor.value as? String)?.contains("Ask Elena about staging") == true, "the user's notes are part of the summary")
+        capture(app, "notes-summary")
+        app.buttons["notes.undoSummary"].click()
+        XCTAssertEqual((editor.value as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), "Ask Elena about staging")
+    }
+
+    func testChatAnswersWithSourcesAndTheSourceJumpsBack() throws {
+        let app = launch(appearance: "dark")
+        defer { app.terminate() }
+        openWeeklySync(app)
+        app.buttons["Chat"].click()
+        let suggestion = app.buttons.matching(identifier: "chat.suggestion").firstMatch
+        XCTAssertTrue(suggestion.waitForExistence(timeout: 5))
+        suggestion.click()
+        XCTAssertTrue(app.descendants(matching: .any)["chat.message.assistant"].waitForExistence(timeout: 8))
+        let source = app.buttons.matching(identifier: "chat.source").firstMatch
+        XCTAssertTrue(source.waitForExistence(timeout: 5), "an answer shows where it came from")
+        capture(app, "chat-answer")
+        source.click()
+        XCTAssertTrue(app.buttons["Transcript"].waitForExistence(timeout: 5))
+    }
+
+    /// Notes are Markdown with a live preview: typing builds the note, Return continues lists, and the saved text stays the Markdown.
+    func testNotesTypedAsMarkdownKeepTheTextAndContinueLists() throws {
+        let app = launch(appearance: "light")
+        defer { app.terminate() }
+        openWeeklySync(app)
+        app.buttons["Notes"].click()
+        let editor = app.textViews["notes.editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.click()
+        editor.typeText("# Plan\nWe **agreed** to ship *Friday*, see `build 4` and [the doc](https://example.com).\n- first\nsecond\n\n\n1. one\ntwo\n\n\n- [ ] send notes\n\n\n> a quote\n")
+        let expected = "# Plan\nWe **agreed** to ship *Friday*, see `build 4` and [the doc](https://example.com).\n- first\n- second\n\n1. one\n2. two\n\n- [ ] send notes\n\n> a quote\n"
+        XCTAssertEqual(editor.value as? String, expected, "Return continues bullets and numbers, and ends the list on an empty item")
+        capture(app, "notes-markdown")
+    }
+
+    func testSlidesCanBeViewedInsteadOfTheVideoAndPaged() throws {
+        let app = launch(appearance: "light", arguments: ["-EarmarkTestSlides", "YES"])
+        defer { app.terminate() }
+        openWeeklySync(app)
+        app.buttons["Slides"].click()  // the stage switch
+        let position = app.staticTexts["slides.position"]
+        XCTAssertTrue(position.waitForExistence(timeout: 8))
+        XCTAssertEqual(position.value as? String, "Slide 1 of 3")
+        app.buttons["slides.next"].click()
+        XCTAssertEqual(position.value as? String, "Slide 2 of 3")
+        capture(app, "slides-stage")
+        app.buttons["slides.thumb.2"].click()
+        XCTAssertEqual(position.value as? String, "Slide 3 of 3")
+        app.buttons["Files · 1"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["files.page"].waitForExistence(timeout: 5))
+    }
+
+    func testWhenAppleIntelligenceIsOffSummariseAndChatExplainWhy() throws {
+        let app = launch(appearance: "light", arguments: ["-EarmarkTestIntelligence", "off"])
+        defer { app.terminate() }
+        openWeeklySync(app)
+        XCTAssertFalse(app.buttons["editor.summarize"].isEnabled)
+        app.buttons["Chat"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["chat.unavailable"].waitForExistence(timeout: 5))
+        capture(app, "chat-unavailable")
+        app.buttons["Notes"].click()
+        let editor = app.textViews["notes.editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5), "notes work without Apple Intelligence")
+    }
+
+    func testIntelligenceSettingsPaneShowsStatusAndOptions() throws {
+        let app = launch(appearance: "dark")
+        defer { app.terminate() }
+        app.typeKey(",", modifierFlags: .command)
+        let section = app.buttons["settings.section.intelligence"]
+        XCTAssertTrue(section.waitForExistence(timeout: 8))
+        section.click()
+        XCTAssertTrue(app.descendants(matching: .any)["settings.intelligence.status"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.checkBoxes["settings.intelligence.auto"].exists || app.switches["settings.intelligence.auto"].exists)
+        capture(app, "settings-intelligence")
     }
 }

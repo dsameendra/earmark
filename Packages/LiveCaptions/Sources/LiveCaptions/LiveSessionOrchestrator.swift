@@ -125,6 +125,11 @@ public actor LiveSessionOrchestrator: LiveSessionControlling {
         }
     }
 
+    public func activeTranscriptID() async -> TranscriptID? {
+        guard let session, session.phase == .running || session.phase == .starting else { return nil }
+        return session.transcriptID
+    }
+
     public func stop() async -> TranscriptID? {
         guard let ctx = session else {
             defer { completedTranscriptID = nil }

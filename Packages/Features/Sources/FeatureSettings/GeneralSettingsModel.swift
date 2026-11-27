@@ -18,6 +18,12 @@ public final class GeneralSettingsModel {
     public let askBeforeAdding: Pref<Bool>
     /// "Voice processing default" (a `VoiceProcessingLevel` raw value; SCR-014). Also what the Transcribe sheet remembers.
     public let voiceProcessing: Pref<String>
+    /// List pinned folders and transcripts under Library in the sidebar (SCR-018).
+    public let showPinned: Pref<Bool>
+    /// Show the folders row at the top of the Library.
+    public let showFolders: Pref<Bool>
+    /// The grouping the Library starts with (`LibraryGrouping` raw value).
+    public let defaultGrouping: Pref<String>
 
     @ObservationIgnored private let store: any SettingsStore
     @ObservationIgnored private let loginItem: any LaunchAtLoginControlling
@@ -31,6 +37,9 @@ public final class GeneralSettingsModel {
         languageMode = Pref(SettingsKey.languageMode, default: .default, store: store)
         askBeforeAdding = Pref(SettingsKey.askBeforeAdding, default: true, store: store)
         voiceProcessing = Pref(SettingsKey.filesVoiceProcessing, default: VoiceProcessingLevel.off.rawValue, store: store)
+        showPinned = Pref(SettingsKey.sidebarShowPinned, default: true, store: store)
+        showFolders = Pref(SettingsKey.libraryShowFolders, default: true, store: store)
+        defaultGrouping = Pref(SettingsKey.libraryGrouping, default: "none", store: store)
     }
 
     public func load() async {
@@ -43,6 +52,9 @@ public final class GeneralSettingsModel {
         await languageMode.load()
         await askBeforeAdding.load()
         await voiceProcessing.load()
+        await showPinned.load()
+        await showFolders.load()
+        await defaultGrouping.load()
     }
 
     public func setShowDockIcon(_ value: Bool) async {

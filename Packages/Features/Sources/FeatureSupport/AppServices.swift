@@ -37,6 +37,8 @@ public struct AppServices: Sendable {
     public var segmentRetranscriber: (any SegmentRetranscriptionService)?
     /// Translation readiness and language-pack preparation; `nil` hides the Translate controls.
     public var translation: (any TranslationPreparing)?
+    /// Folders, pins, notes, attachments, summaries and chat (SCR-018 to SCR-021).
+    public var workspace: WorkspaceServices = .inMemory()
 
     public init(
         jobQueue: any JobQueue, transcripts: any TranscriptRepository, meetings: any MeetingRepository, models: any ModelManaging,

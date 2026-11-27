@@ -3,6 +3,7 @@ import AppKit
 import AudioCapture
 import Diarization
 import Dictation
+import EarmarkIntelligence
 import EarmarkTranslation
 import FeatureMenuBar
 import FeatureSettings
@@ -265,7 +266,7 @@ final class AppEnvironment {
         let meetings = MeetingRuntimeFactory.make(
             database: database, settings: settings, permissions: permissions, jobs: queue, live: live.session, prompts: meetingPrompter)
         let explicitModel: @Sendable () async -> ModelID? = { await PreferredModel.explicitID(for: .file, settings: settings) }
-        let services = AppServices(
+        var services = AppServices(
             jobQueue: queue, transcripts: database.transcripts, meetings: database.meetings, models: models, live: live.session,
             meetingDetector: meetings.detector, hardware: hardware, permissions: permissions, audioDevices: audioDevices,
             settings: settings, media: database.media, presets: database.presets, liveExtras: live.extras, dictation: dictationControl,
@@ -275,6 +276,7 @@ final class AppEnvironment {
                 router: DefaultEngineRouter(), hardware: hardware, models: models, engines: engines, explicitModel: explicitModel),
             translation: translation.service,
             mediaRoots: { [recordings = meetings.recordingsRoot] in [await recordings()] + MediaFiles.defaultRoots })
+        services.workspace = makeWorkspace(database: database, settings: settings)
         var settingsDependencies = SettingsDependencies(
             store: settings, models: models, hardware: hardware, audioDevices: audioDevices, permissions: permissions,
             rules: database.rules, presets: database.presets, transcripts: database.transcripts,
@@ -285,10 +287,29 @@ final class AppEnvironment {
         settingsDependencies.mediaPurger = MediaPurger(
             transcripts: database.transcripts, media: database.media, meetings: database.meetings, roots: services.mediaRoots)
         settingsDependencies.reviewedHuggingFaceModels = { try ReviewedHuggingFaceModels.resolve($0) }
+        settingsDependencies.intelligence = services.workspace.intelligence
+        settingsDependencies.clearAllChats = { try? await database.chat.clearAll() }
         settingsDependencies.meetingDiagnostics = MeetingDiagnosticsAdapter(detector: meetings.detector, prompter: meetingPrompter)
         return Composition(
             services: services, settingsDependencies: settingsDependencies, live: live, dictation: dictation, meetings: meetings,
             translationPacks: translation.packs, engineRouter: router)
+    }
+
+    /// Folders, notes, attachments, chat and the on-device model (Apple Foundation Models), all local.
+    private static func makeWorkspace(database: AppDatabase, settings: any SettingsStore) -> WorkspaceServices {
+        let attachments = database.attachments
+        let root: @Sendable () async -> URL = {
+            LibraryLocation.attachmentsRoot(base: LibraryLocation.base(custom: await settings.value(for: SettingsKey.libraryLocation, as: String.self)))
+        }
+        let language: @Sendable () async -> String? = {
+            // "transcript" (default) writes in the material's language; "app" writes in the app's language.
+            guard await settings.value(for: SettingsKey.intelligenceSummaryLanguage, as: String.self) == "app" else { return nil }
+            return Locale(identifier: "en").localizedString(forLanguageCode: Locale.current.language.languageCode?.identifier ?? "en")
+        }
+        return WorkspaceServices(
+            folders: database.folders, notes: database.notes, attachments: attachments, chat: database.chat,
+            intelligence: IntelligenceService(transcripts: database.transcripts, attachments: attachments, outputLanguage: language),
+            files: AttachmentFiles(root: root, repository: attachments))
     }
 
     /// Live captions: the orchestrator over the `AudioCapture` sources, the router-chosen engine, LS-EEND streaming
@@ -449,6 +470,7 @@ final class AppEnvironment {
                     languageCode: index == 3 ? "fr" : .english)
             }
             services.transcripts = InMemoryTranscripts(items: [transcript, sample[1]], segments: [transcript.id: segments])
+            services.workspace = MockWorkspace.make(for: transcript.id)
             services.models = MockModelManager(descriptors: [model])
             if let scenario = UITestConfiguration.value("-EarmarkTestMeetingScan") {
                 services.meetingScanner = MockMeetingScanner(scenario: scenario)

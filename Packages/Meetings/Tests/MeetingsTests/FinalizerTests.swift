@@ -28,7 +28,7 @@ private struct Rig {
 
     func finalizer(
         engine: ScriptedEngine? = nil, diarizer: FakeDiarizer? = nil, embeddings: FakeEmbeddings? = nil, profiles: [VoiceProfile] = [],
-        models: (any ModelManaging)? = nil, config: FinalizationConfig = FinalizationConfig()
+        models: (any ModelManaging)? = nil, config: FinalizationConfig = FinalizationConfig(), workspace: (any NotesRepository)? = nil
     ) -> MeetingFinalizer {
         let eng =
             engine
@@ -38,7 +38,7 @@ private struct Rig {
         return MeetingFinalizer(
             dependencies: FinalizerDependencies(
                 engine: eng, diarizer: diarizer, embeddings: embeddings, transcripts: transcripts, meetings: meetings, media: media,
-                voiceProfiles: InMemoryProfiles(profiles), models: models),
+                voiceProfiles: InMemoryProfiles(profiles), models: models, workspace: workspace),
             config: config)
     }
 
@@ -152,6 +152,20 @@ struct FinalizerTests {
         #expect(result.warnings.contains { if case .diarizationFailed = $0 { true } else { false } })
         let header = try #require(await rig.transcripts.transcript(result.transcriptID))
         #expect(header.speakers.map(\.name).sorted() == ["Speaker 1", "You"])
+    }
+
+    @Test("notes, files and chat written on the live draft move to the final transcript")
+    func workspaceMovesToTheFinalTranscript() async throws {
+        let rig = Rig()
+        let liveID = TranscriptID()
+        await rig.transcripts.seed(liveID, segments: [segment(0, 2, "live words")])
+        let notes = MovingNotes()
+        var input = rig.input
+        input.live = LiveContext(transcriptID: liveID)
+        let result = try await rig.finalizer(workspace: notes).finalize(input)
+        let moves = await notes.moves
+        #expect(moves.count == 1)
+        #expect(moves.first?.0 == liveID && moves.first?.1 == result.transcriptID)
     }
 
     @Test("one failing track still produces a transcript from the other")
@@ -402,4 +416,14 @@ struct FinalizationHelperTests {
         deleted.deletedAt = Date()
         #expect(matcher.match([SpeakerSlotEvidence(slot: 0, embedding: profile.embedding, speechSeconds: 10)], profiles: [deleted]).isEmpty)
     }
+}
+
+
+private actor MovingNotes: NotesRepository {
+    var moves: [(TranscriptID, TranscriptID)] = []
+    func notes(for transcript: TranscriptID) async throws -> TranscriptNotes? { nil }
+    func save(_ notes: TranscriptNotes) async throws {}
+    func versions(for transcript: TranscriptID) async throws -> [NotesVersion] { [] }
+    func save(_ version: NotesVersion) async throws {}
+    func moveWorkspace(from: TranscriptID, to: TranscriptID) async throws { moves.append((from, to)) }
 }

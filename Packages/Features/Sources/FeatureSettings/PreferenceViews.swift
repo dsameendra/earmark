@@ -122,8 +122,7 @@ struct AudioSettingsView: View {
         Form {
             if let gate = model.permissionGate, gate.isBlocked {
                 Section {
-                    PermissionGateBanner(model: gate, feature: "The microphone", identifier: "settings.audio.permission")
-                        .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
+                    PermissionGateBanner(model: gate, feature: "The microphone", identifier: "settings.audio.permission", embedded: true)
                 }
             }
             Section {
@@ -459,8 +458,7 @@ struct DictationSettingsView: View {
         Form {
             if let gate = model.permissionGate, gate.isBlocked {
                 Section {
-                    PermissionGateBanner(model: gate, feature: "Dictation", identifier: "settings.dictation.permission")
-                        .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
+                    PermissionGateBanner(model: gate, feature: "Dictation", identifier: "settings.dictation.permission", embedded: true)
                 }
             }
             Section {

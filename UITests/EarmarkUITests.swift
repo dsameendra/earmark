@@ -705,6 +705,19 @@ final class EarmarkUITests: XCTestCase {
         }
     }
 
+    /// Regression: with a file attached, leaving a transcript and coming back to its Files tab must not hang.
+    func testFilesTabSurvivesLeavingAndReturning() throws {
+        let app = launch(appearance: "dark", width: 1440, height: 900, arguments: ["-EarmarkTestSlides", "YES"])
+        defer { app.terminate() }
+        for round in 0..<3 {
+            openWeeklySync(app)
+            XCTAssertTrue(app.buttons["Files · 1"].waitForExistence(timeout: 8), "round \(round): files tab")
+            app.buttons["Files · 1"].click()
+            XCTAssertTrue(app.descendants(matching: .any)["files.page"].waitForExistence(timeout: 8), "round \(round): the Files page opens")
+            app.buttons["toolbar.back"].click()
+        }
+    }
+
     /// One click opens a transcript, in the list and in the grid.
     func testLibraryItemsOpenWithASingleClickInListAndGrid() throws {
         let app = launch(appearance: "light")

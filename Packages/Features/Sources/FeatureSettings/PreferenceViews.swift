@@ -121,7 +121,9 @@ struct AudioSettingsView: View {
     var body: some View {
         Form {
             if let gate = model.permissionGate, gate.isBlocked {
-                Section { PermissionGateBanner(model: gate, feature: "The microphone", identifier: "settings.audio.permission") }
+                Section {
+                    PermissionGateBanner(model: gate, feature: "The microphone", identifier: "settings.audio.permission", embedded: true)
+                }
             }
             Section {
                 devicePicker("Microphone", pref: model.globalDevice, allowGlobal: false)
@@ -225,36 +227,15 @@ struct AudioSettingsView: View {
 struct MeetingsSettingsView: View {
     let model: MeetingsSettingsModel
     var diagnostics: MeetingDiagnosticsModel?
-    @State private var keyword: [MeetingApp: String] = [:]
 
     var body: some View {
         Form {
             ForEach(MeetingApp.allCases, id: \.self) { app in
-                Section(app.title) {
-                    Picker(
-                        "When a meeting starts",
-                        selection: Binding(
-                            get: { model.policy(for: app).behavior }, set: { value in Task { await model.setBehavior(value, for: app) } })
-                    ) {
-                        ForEach(MeetingBehavior.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                    Stepper(
-                        "Stop \(Int(model.policy(for: app).autoStopGraceSeconds)) seconds after the meeting ends",
-                        value: Binding(
-                            get: { model.policy(for: app).autoStopGraceSeconds },
-                            set: { value in Task { await model.update(app) { $0.autoStopGraceSeconds = value } } }),
-                        in: 0...300, step: 5)
-                    Toggle(
-                        "Record video",
-                        isOn: Binding(
-                            get: { model.policy(for: app).recordVideo },
-                            set: { value in Task { await model.update(app) { $0.recordVideo = value } } }))
-                    quietHours(app)
-                    exclusions(app)
-                }
+                MeetingAppSection(model: model, app: app)
             }
             Section {
                 Toggle("Show a one-time recording consent notice", isOn: model.consentNotice.binding)
+                    .accessibilityIdentifier("settings.meetings.consent")
                 LabeledContent("Recordings folder") {
                     Text(model.storageLocation.value.isEmpty ? "Library default" : model.storageLocation.value).foregroundStyle(
                         DSColor.secondaryText)
@@ -269,56 +250,94 @@ struct MeetingsSettingsView: View {
         .formStyle(.grouped)
         .task { await model.load() }
     }
+}
 
-    private func quietHours(_ app: MeetingApp) -> some View {
-        let range = model.policy(for: app).quietHours
+/// One meeting app's settings. It is its own view so it reads the policy in its own body and redraws when it changes.
+private struct MeetingAppSection: View {
+    let model: MeetingsSettingsModel
+    let app: MeetingApp
+    @State private var keyword = ""
+
+    var body: some View {
+        let policy = model.policy(for: app)
+        let id = app.rawValue
+        Section(app.title) {
+            Picker(
+                "When a meeting starts",
+                selection: Binding(get: { policy.behavior }, set: { value in model.apply(app) { $0.behavior = value } })
+            ) {
+                ForEach(MeetingBehavior.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .accessibilityIdentifier("settings.meetings.\(id).behavior")
+            Stepper(
+                "Stop \(Int(policy.autoStopGraceSeconds)) seconds after the meeting ends",
+                value: Binding(get: { policy.autoStopGraceSeconds }, set: { value in model.apply(app) { $0.autoStopGraceSeconds = value } }),
+                in: 0...300, step: 5
+            )
+            .accessibilityIdentifier("settings.meetings.\(id).grace")
+            Toggle("Record video", isOn: Binding(get: { policy.recordVideo }, set: { value in model.apply(app) { $0.recordVideo = value } }))
+                .accessibilityLabel("Record video for \(app.title)")
+                .accessibilityIdentifier("settings.meetings.\(id).recordVideo")
+            quietHours(policy)
+            exclusions(policy)
+        }
+    }
+
+    private func quietHours(_ policy: MeetingPolicy) -> some View {
+        let range = policy.quietHours
+        let id = app.rawValue
         return VStack(alignment: .leading) {
             Toggle(
                 "Quiet hours (no automatic recording)",
-                isOn: Binding(get: { range != nil }, set: { on in Task { await model.setQuietHours(on ? 22...24 : nil, for: app) } }))
+                isOn: Binding(get: { range != nil }, set: { on in model.apply(app) { $0.quietHours = on ? 22...24 : nil } })
+            )
+            .accessibilityLabel("Quiet hours for \(app.title)")
+            .accessibilityIdentifier("settings.meetings.\(id).quietHours")
             if let range {
                 HStack {
                     Stepper(
                         "From \(range.lowerBound):00",
                         value: Binding(
                             get: { range.lowerBound },
-                            set: { value in
-                                Task { await model.setQuietHours(value...max(value, range.upperBound), for: app) }
-                            }), in: 0...23)
+                            set: { value in model.apply(app) { $0.quietHours = value...max(value, range.upperBound) } }), in: 0...23)
                     Stepper(
                         "To \(range.upperBound):00",
                         value: Binding(
                             get: { range.upperBound },
-                            set: { value in
-                                Task { await model.setQuietHours(min(range.lowerBound, value)...value, for: app) }
-                            }), in: 0...24)
+                            set: { value in model.apply(app) { $0.quietHours = min(range.lowerBound, value)...value } }), in: 0...24)
                 }
             }
         }
     }
 
-    private func exclusions(_ app: MeetingApp) -> some View {
-        VStack(alignment: .leading) {
+    private func exclusions(_ policy: MeetingPolicy) -> some View {
+        let id = app.rawValue
+        return VStack(alignment: .leading) {
             HStack {
-                TextField("Exclude meetings whose title contains…", text: Binding(get: { keyword[app] ?? "" }, set: { keyword[app] = $0 }))
-                    .onSubmit { add(app) }
-                Button("Add") { add(app) }.disabled((keyword[app] ?? "").isEmpty)
+                TextField("Exclude meetings whose title contains…", text: $keyword)
+                    .onSubmit { add() }
+                    .accessibilityIdentifier("settings.meetings.\(id).keyword")
+                Button("Add") { add() }.disabled(keyword.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .accessibilityIdentifier("settings.meetings.\(id).addKeyword")
             }
-            ForEach(model.policy(for: app).excludedKeywords, id: \.self) { word in
+            ForEach(policy.excludedKeywords, id: \.self) { word in
                 HStack {
                     Text(word)
                     Spacer()
-                    Button("Remove", systemImage: "minus.circle") { Task { await model.removeExclusion(word, for: app) } }
-                        .labelStyle(.iconOnly).buttonStyle(.borderless)
+                    Button("Remove", systemImage: "minus.circle") { model.apply(app) { $0.excludedKeywords.removeAll { $0 == word } } }
+                        .labelStyle(.iconOnly).buttonStyle(.borderless).help("Remove \u{201C}\(word)\u{201D}")
                 }
             }
         }
     }
 
-    private func add(_ app: MeetingApp) {
-        let word = keyword[app] ?? ""
-        keyword[app] = ""
-        Task { await model.addExclusion(word, for: app) }
+    private func add() {
+        let word = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
+        keyword = ""
+        guard !word.isEmpty else { return }
+        model.apply(app) { policy in
+            if !policy.excludedKeywords.contains(where: { $0.caseInsensitiveCompare(word) == .orderedSame }) { policy.excludedKeywords.append(word) }
+        }
     }
 }
 
@@ -438,7 +457,9 @@ struct DictationSettingsView: View {
     var body: some View {
         Form {
             if let gate = model.permissionGate, gate.isBlocked {
-                Section { PermissionGateBanner(model: gate, feature: "Dictation", identifier: "settings.dictation.permission") }
+                Section {
+                    PermissionGateBanner(model: gate, feature: "Dictation", identifier: "settings.dictation.permission", embedded: true)
+                }
             }
             Section {
                 Picker("Hotkey behavior", selection: model.mode.binding) {
@@ -490,6 +511,19 @@ struct AppearanceSettingsView: View {
 }
 
 struct TranslationSettingsView: View {
+    /// Common translation targets by their display name, plus a previously typed code that is not in the list.
+    private static func targetChoices(including stored: String) -> [(code: String, name: String)] {
+        let codes = [
+            "ar", "bn", "zh", "cs", "da", "nl", "en", "fi", "fr", "de", "el", "he", "hi", "hu", "id", "it", "ja", "ko", "ms", "no",
+            "fa", "pl", "pt", "ro", "ru", "si", "es", "sv", "ta", "th", "tr", "uk", "ur", "vi",
+        ]
+        var all = codes
+        if !stored.isEmpty, !codes.contains(stored) { all.append(stored) }
+        let locale = Locale.current
+        return all.map { code in (code, locale.localizedString(forLanguageCode: code) ?? code) }
+            .sorted { $0.1.localizedCaseInsensitiveCompare($1.1) == .orderedAscending }
+    }
+
     let model: TranslationSettingsModel
     let models: ModelManagerModel
 
@@ -497,8 +531,14 @@ struct TranslationSettingsView: View {
         VStack(spacing: 0) {
             Form {
                 Section("Defaults") {
-                    TextField("Default target language", text: model.targetLanguage.binding, prompt: Text("Language code, such as es or si"))
-                        .help("Leave blank to choose the language each time you translate")
+                    Picker("Default target language", selection: model.targetLanguage.binding) {
+                        Text("Ask each time").tag("")
+                        ForEach(Self.targetChoices(including: model.targetLanguage.value), id: \.code) { choice in
+                            Text(choice.name).tag(choice.code)
+                        }
+                    }
+                    .help("The language translations default to. Choose Ask each time to pick it whenever you translate.")
+                    .accessibilityIdentifier("settings.translation.target")
                     Picker("Engine", selection: model.engine.binding) {
                         ForEach(model.engineChoices) { choice in Text(choice.title).tag(choice.id).disabled(choice.isUnavailable) }
                     }.accessibilityIdentifier("settings.translation.engine")

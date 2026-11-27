@@ -251,6 +251,7 @@ public final class MeetingsSettingsModel {
     public let storageLocation: Pref<String>
 
     @ObservationIgnored private let store: any SettingsStore
+    @ObservationIgnored private var lastSave: Task<Void, Never>?
 
     public init(store: any SettingsStore) {
         self.store = store
@@ -276,6 +277,23 @@ public final class MeetingsSettingsModel {
         policy.autoStopGraceSeconds = min(max(policy.autoStopGraceSeconds, 0), 300)
         policies[app] = policy
         await store.set(policy, for: SettingsKey.meetingPolicy(app.rawValue))
+    }
+
+    /// Applies a change immediately and saves it in the background. SwiftUI bindings need the value to change in the same
+    /// call (the async `update` returned before the model changed, so the control snapped back and never refreshed).
+    public func apply(_ app: MeetingApp, _ change: (inout MeetingPolicy) -> Void) {
+        var policy = policy(for: app)
+        change(&policy)
+        policy.autoStopGraceSeconds = min(max(policy.autoStopGraceSeconds, 0), 300)
+        policies[app] = policy
+        let store = store
+        let key = SettingsKey.meetingPolicy(app.rawValue)
+        // Saves run in order, so a quick second change is never overwritten by the first.
+        let previous = lastSave
+        lastSave = Task {
+            await previous?.value
+            await store.set(policy, for: key)
+        }
     }
 
     public func setBehavior(_ behavior: MeetingBehavior, for app: MeetingApp) async {

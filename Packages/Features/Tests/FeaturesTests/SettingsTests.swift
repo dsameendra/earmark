@@ -347,6 +347,22 @@ private func descriptor(
         #expect(model.consentNotice.value == true)
     }
 
+    /// A binding's setter must change the model in the same call (a control reads it straight back), and the change is saved.
+    @Test func applyChangesPolicySynchronouslyAndPersists() async throws {
+        let store = InMemorySettingsStore()
+        let model = MeetingsSettingsModel(store: store)
+        model.apply(.zoom) { $0.recordVideo = true }
+        #expect(model.policy(for: .zoom).recordVideo)
+        #expect(!model.policy(for: .teams).recordVideo)
+        model.apply(.zoom) { $0.autoStopGraceSeconds = 9_999 }
+        #expect(model.policy(for: .zoom).autoStopGraceSeconds == 300)
+        try await Task.sleep(for: .milliseconds(200))
+        let reloaded = MeetingsSettingsModel(store: store)
+        await reloaded.load()
+        #expect(reloaded.policy(for: .zoom).recordVideo)
+        #expect(reloaded.policy(for: .zoom).autoStopGraceSeconds == 300)
+    }
+
     @Test func meetingPolicyPersistsAndClampsGrace() async {
         let store = InMemorySettingsStore()
         let model = MeetingsSettingsModel(store: store)

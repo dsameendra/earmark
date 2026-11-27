@@ -9,6 +9,7 @@ public final class Pref<Value: Codable & Sendable & Equatable> {
     @ObservationIgnored private let key: String
     @ObservationIgnored private let store: any SettingsStore
     @ObservationIgnored private let fallback: Value
+    @ObservationIgnored private var lastSave: Task<Void, Never>?
 
     public init(_ key: String, default fallback: Value, store: any SettingsStore) {
         self.key = key
@@ -32,7 +33,12 @@ public final class Pref<Value: Codable & Sendable & Equatable> {
         value = newValue
         let store = store
         let key = key
-        Task { await store.set(newValue, for: key) }
+        // Saves run in order: dragging a slider must not let an older value land after a newer one.
+        let previous = lastSave
+        lastSave = Task {
+            await previous?.value
+            await store.set(newValue, for: key)
+        }
     }
 
     public var binding: Binding<Value> {

@@ -176,11 +176,13 @@ public struct PermissionGateBanner: View {
     private let feature: String
     private let identifierBase: String
     private let relevant: [PermissionKind]?
+    private let embedded: Bool
     @Environment(\.openURL) private var openURL
     @State private var showsReset = false
 
     /// - Parameter relevant: limits the banner to these permissions (default: every permission the model tracks).
-    public init(model: PermissionGateModel, feature: String, identifier: String = "permissionGate", relevant: [PermissionKind]? = nil) {
+    public init(model: PermissionGateModel, feature: String, identifier: String = "permissionGate", relevant: [PermissionKind]? = nil, embedded: Bool = false) {
+        self.embedded = embedded
         self.model = model
         self.feature = feature
         self.identifierBase = identifier
@@ -195,8 +197,9 @@ public struct PermissionGateBanner: View {
                 VStack(alignment: .leading, spacing: DSSpacing.md) {
                     ForEach(blocked, id: \.self) { kind in row(kind) }
                 }
-                .padding(DSSpacing.md)
-                .background(DSColor.insetBackground, in: RoundedRectangle(cornerRadius: DSRadius.large))
+                .padding(embedded ? 0 : DSSpacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(embedded ? Color.clear : DSColor.insetBackground, in: RoundedRectangle(cornerRadius: DSRadius.large))
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(identifierBase)
             }

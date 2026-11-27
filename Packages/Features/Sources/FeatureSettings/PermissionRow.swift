@@ -123,21 +123,29 @@ public struct PermissionRow: View {
                     LocalizedStringKey(state.chipLabel), systemImage: state.status.chipSystemImage, tone: state.status.chipTone
                 )
                 .accessibilityIdentifier("\(state.identifierBase).status")
-                if state.action == .request {
-                    Button(state.actionTitle, action: onRequest)
-                        .accessibilityIdentifier("\(state.identifierBase).request")
-                }
-                if state.showsRecheck, let onRecheck {
-                    Button("Re-check", action: onRecheck)
-                        .accessibilityIdentifier("\(state.identifierBase).recheck")
-                }
-                if state.showsSettingsLink {
-                    Button("Open System Settings", action: onOpenSettings)
-                        .buttonStyle(.dsLink)
-                        .accessibilityIdentifier("\(state.identifierBase).openSettings")
+                // Buttons sit side by side when there is room and stack when there is not.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: DSSpacing.sm) { actionButtons }
+                    VStack(alignment: .trailing, spacing: DSSpacing.xs) { actionButtons }
                 }
             }
         }
         .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder private var actionButtons: some View {
+        if state.action == .request {
+            Button(state.actionTitle, action: onRequest)
+                .accessibilityIdentifier("\(state.identifierBase).request")
+        }
+        if state.showsRecheck, let onRecheck {
+            Button("Re-check", action: onRecheck)
+                .accessibilityIdentifier("\(state.identifierBase).recheck")
+        }
+        if state.showsSettingsLink {
+            Button("Open System Settings", action: onOpenSettings)
+                .buttonStyle(.dsLink)
+                .accessibilityIdentifier("\(state.identifierBase).openSettings")
+        }
     }
 }

@@ -409,7 +409,7 @@ struct LibrarySelectToolbar: View {
             if model.isSelecting {
                 Text(model.selection.isEmpty ? "No items selected" : "\(model.selection.count) selected")
                     .font(DSTypography.caption).foregroundStyle(DSColor.secondaryText).monospacedDigit()
-                    .padding(.horizontal, DSSpacing.xs)
+                    .padding(.leading, DSSpacing.md).padding(.trailing, DSSpacing.xs)
                     .accessibilityIdentifier("library.selectionCount")
                 if !model.selection.isEmpty { actions.transition(.opacity.combined(with: .scale(scale: 0.9))) }
             }

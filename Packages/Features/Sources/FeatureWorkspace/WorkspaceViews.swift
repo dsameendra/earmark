@@ -54,7 +54,7 @@ public struct WorkspaceTabBar: View {
             Spacer(minLength: DSSpacing.sm)
             if showsStageSwitch { WorkspaceStageSwitch(workspace: workspace, mediaTitle: mediaTitle) }
         }
-        .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.sm)
+        .padding(.horizontal, DSSpacing.md).padding(.top, DSSpacing.xxs).padding(.bottom, DSSpacing.sm)
         .background(DSColor.paper)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("workspace.tabBar")

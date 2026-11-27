@@ -28,7 +28,7 @@ struct FilesView: View {
                     .disabled(!files.canAdd || files.isImporting)
                     .accessibilityIdentifier("files.add")
             }
-            .padding(.horizontal, DSSpacing.md).padding(.vertical, DSSpacing.sm)
+            .padding(.horizontal, DSSpacing.lg).padding(.vertical, DSSpacing.md)
             Divider()
             if let message = files.errorMessage {
                 HStack(alignment: .top, spacing: DSSpacing.sm) {
@@ -64,14 +64,11 @@ struct FilesView: View {
     }
 
     private var empty: some View {
-        VStack(spacing: DSSpacing.md) {
-            EmptyState(
-                systemImage: "doc.richtext", title: "Add slides or documents",  // stock-chrome: files glyph
-                message: "Attach a PDF or images to view slides instead of the video, summarise them and ask questions about them. For PowerPoint or Keynote, export to PDF first (File, Export To, PDF).")
-            if files.canAdd {
-                Button("Add slides…") { importerRole = .slides }.dsProminentButton().accessibilityIdentifier("files.addSlides")
-            }
-        }
+        EmptyState(
+            systemImage: "doc.richtext", title: "Add slides or documents",  // stock-chrome: files glyph
+            message: "Attach a PDF or images to view slides instead of the video, summarise them and ask questions about them. For PowerPoint or Keynote, export to PDF first (File, Export To, PDF).",
+            actionTitle: files.canAdd ? "Add slides…" : nil,
+            action: files.canAdd ? { importerRole = .slides } : nil)
     }
 
     private var list: some View {

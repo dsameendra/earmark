@@ -74,7 +74,12 @@ private struct EditorContent: View {
     }
 
     var body: some View {
-        editorSurface
+        withTools(lifecycle(editorSurface))
+    }
+
+    /// The load, follow and change handlers. Split from `body` so Swift 6.3 can type-check the chain.
+    private func lifecycle(_ content: some View) -> some View {
+        content
             .dsEntrance()
             .dsAnimation(.glide, value: find.isVisible)
             .background(
@@ -124,6 +129,11 @@ private struct EditorContent: View {
                     await workspace.stop()
                 }
             }
+    }
+
+    /// The export sheet and the tool popovers.
+    private func withTools(_ content: some View) -> some View {
+        content
             .sheet(isPresented: $showExport) { ExportSheet(export: export) { showExport = false }.dsEntrance() }
             // The More menu sits at the trailing window edge, where a popover centred on it would hang outside the window. Its panels
             // open from an anchor just inside the edge instead, directly under the toolbar button.

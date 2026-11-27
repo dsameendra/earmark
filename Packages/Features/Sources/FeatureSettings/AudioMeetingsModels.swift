@@ -251,6 +251,7 @@ public final class MeetingsSettingsModel {
     public let storageLocation: Pref<String>
 
     @ObservationIgnored private let store: any SettingsStore
+    @ObservationIgnored private var lastSave: Task<Void, Never>?
 
     public init(store: any SettingsStore) {
         self.store = store
@@ -287,7 +288,12 @@ public final class MeetingsSettingsModel {
         policies[app] = policy
         let store = store
         let key = SettingsKey.meetingPolicy(app.rawValue)
-        Task { await store.set(policy, for: key) }
+        // Saves run in order, so a quick second change is never overwritten by the first.
+        let previous = lastSave
+        lastSave = Task {
+            await previous?.value
+            await store.set(policy, for: key)
+        }
     }
 
     public func setBehavior(_ behavior: MeetingBehavior, for app: MeetingApp) async {

@@ -465,17 +465,31 @@ struct CompactModelChipView: View {
     let chip: SidebarModelChip
 
     var body: some View {
-        HStack(spacing: DSSpacing.xs) {
-            Circle().fill(statusColor).frame(width: 7, height: 7).accessibilityHidden(true)
-            Text(chip.name).font(.system(size: 12, weight: .medium)).foregroundStyle(DSColor.primaryText).lineLimit(1)
-            Spacer(minLength: DSSpacing.xs)
-            Text(shortStatus).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText).lineLimit(1)
+        // The status is shown only when it fits beside the whole name; otherwise the name wins and the status moves to the tooltip.
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: DSSpacing.xs) {
+                dot
+                name
+                Spacer(minLength: DSSpacing.xs)
+                Text(shortStatus).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText).lineLimit(1)
+            }
+            HStack(spacing: DSSpacing.xs) {
+                dot
+                name
+                Spacer(minLength: 0)
+            }
         }
+        .help("\(chip.name): \(chip.statusText)")
         .padding(.horizontal, 10)
         .frame(minHeight: DSLayout.minControlHeight)
         .dsSolidSurface(.inset, radius: DSRadius.medium)
         .padding(.horizontal, 4)
         .dsAnimation(.glide, value: chip)
+    }
+
+    private var dot: some View { Circle().fill(statusColor).frame(width: 7, height: 7).accessibilityHidden(true) }
+    private var name: some View {
+        Text(chip.name).font(DSTypography.caption.weight(.medium)).foregroundStyle(DSColor.primaryText).lineLimit(1)
     }
 
     private var shortStatus: String {

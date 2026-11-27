@@ -95,7 +95,9 @@ struct LibraryRow: View {
                     ForEach(Array(item.speakers.prefix(3).enumerated()), id: \.element.id) { index, speaker in
                         Circle().fill(SpeakerPalette.color(forSlot: SpeakerPalette.slot(forHex: speaker.colorHex, fallback: index))).frame(width: 8, height: 8)
                     }
-                    Text("\(item.speakers.count)").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    if !item.speakers.isEmpty {
+                        Text("\(item.speakers.count)").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                    }
                 }.frame(width: 80, alignment: .leading)
                     .accessibilityLabel("\(item.speakers.count) speakers")
             }

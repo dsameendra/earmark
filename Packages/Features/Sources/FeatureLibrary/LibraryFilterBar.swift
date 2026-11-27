@@ -8,6 +8,19 @@ struct LibraryFilterBar: View {
     let onNewFolder: () -> Void
 
     var body: some View {
+        HStack(spacing: 0) {
+            chips
+            if model.filters.isActive {
+                Button("Clear Filters", systemImage: "xmark.circle") { model.filters = LibraryFilters() }
+                    .buttonStyle(.borderless).padding(.trailing, DSSpacing.lg)
+                    .accessibilityIdentifier("library.filters.clear")
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Filters")
+    }
+
+    private var chips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: DSSpacing.sm) {
                 sourceMenu
@@ -17,16 +30,15 @@ struct LibraryFilterBar: View {
                 speakerMenu
                 tagMenu
                 folderMenu
-                if model.filters.isActive {
-                    Button("Clear Filters", systemImage: "xmark.circle") { model.filters = LibraryFilters() }
-                        .buttonStyle(.borderless)
-                }
             }
             .padding(.horizontal, DSSpacing.lg)
             .padding(.vertical, DSSpacing.sm)
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Filters")
+        .mask(
+            HStack(spacing: 0) {
+                Color.black
+                LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: DSSpacing.lg)
+            })
     }
 
     private func toggle<T: Hashable>(_ value: T, in keyPath: WritableKeyPath<LibraryFilters, Set<T>>) -> Binding<Bool> {

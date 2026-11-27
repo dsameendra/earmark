@@ -28,6 +28,7 @@ Earmark turns audio and video into searchable, editable transcripts on your Mac.
 - **Models that explain themselves.** Pick a model per use (files, live, dictation) from the sidebar. Each model lists what it supports, unsupported choices are greyed out with a reason, and the best option for your Mac is marked Recommended. Downloads check disk space and licences first.
 - **A useful library.** Search titles and transcript text, organize with folders and tags, restore recently deleted items and relink missing media. Ignore rules and replacements preserve the source.
 - **Flexible export.** Save documents, structured data and subtitles, including TXT, Markdown, DOCX, PDF, JSON, CSV, SRT and VTT, with reusable export presets.
+- **Smooth on long recordings (1.2.1).** The transcript page, playback, Notes, Chat, the Library and Live captions do less work on every frame, so hour-long recordings stay responsive.
 - **Notes, summaries, slides, chat and folders (1.2).** Write notes beside any transcript, attach PDF slides, summarise a meeting or lecture on your Mac with Apple Intelligence, and ask questions with sources. Pin folders and transcripts in the sidebar. Works during a live meeting too. Nothing leaves your Mac.
 - **More models, honestly labelled (1.1).** Speech: Apple Speech, Whisper, Qwen3-ASR, Parakeet (v3, Ultra, Redux, EOU), Nemotron 3.5, Voxtral Realtime, Cohere Transcribe and Canary. Translation: Apple Translation, NLLB-200, MADLAD-400, OPUS packs, Hy-MT2 and TranslateGemma. Live captions translate with their own switch. Most new models are experimental and list only the languages and directions that were verified. See the [changelog](CHANGELOG.md).
 - **Private by design.** Audio and transcripts stay on your Mac. No accounts, cloud transcription or analytics. Models download when you choose; automatic update checks require opt-in.
@@ -36,16 +37,20 @@ Earmark turns audio and video into searchable, editable transcripts on your Mac.
 
 <table>
   <tr>
-    <td width="50%" align="center"><img src="specs/design/m8-shots/final/home-dark.png" width="480" alt="Earmark Home in dark mode with quick actions and recent transcripts"><br><b>Your workbench</b><br><sub>Files, meetings, captions and recent work in one place.</sub></td>
-    <td width="50%" align="center"><img src="specs/design/m8-shots/final/editor-dark.png" width="480" alt="Transcript editor with speaker labels, earmarks and audio playback"><br><b>Listen and edit</b><br><sub>Transcript, speakers and playback stay together.</sub></td>
+    <td width="50%" align="center"><img src="docs/assets/screens/home-dark.webp" width="480" alt="Earmark Home in dark mode with quick actions and recent transcripts"><br><b>Your workbench</b><br><sub>Files, meetings, captions and recent work in one place.</sub></td>
+    <td width="50%" align="center"><img src="docs/assets/screens/workspace-dark.webp" width="480" alt="Transcript page with slides on the left and Transcript, Notes, Chat and Files tabs on the right"><br><b>A workspace for every recording</b><br><sub>Slides or video beside the transcript, notes, chat and files.</sub></td>
   </tr>
   <tr>
-    <td width="50%" align="center"><img src="specs/design/m8-shots/final/live-dark.png" width="480" alt="Live captions with source and language controls in their own side panel"><br><b>Follow live audio</b><br><sub>Choose a source, language and floating caption overlay.</sub></td>
-    <td width="50%" align="center"><img src="specs/design/m8-shots/final/settings-general.png" width="480" alt="Settings with grouped vertical navigation and the General pane"><br><b>Make it yours</b><br><sub>Models, languages, audio, shortcuts and appearance.</sub></td>
+    <td width="50%" align="center"><img src="docs/assets/screens/editor-dark.webp" width="480" alt="Transcript editor with speaker labels, earmarks and audio playback"><br><b>Listen and edit</b><br><sub>Transcript, speakers and playback stay together.</sub></td>
+    <td width="50%" align="center"><img src="docs/assets/screens/library-dark.webp" width="480" alt="Library with folders, date groups and search"><br><b>Keep it organised</b><br><sub>Folders, pins, Select mode and grouping by date.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><img src="docs/assets/screens/live-dark.webp" width="480" alt="Live captions with source and language controls in their own side panel"><br><b>Follow live audio</b><br><sub>Choose a source, language and floating caption overlay.</sub></td>
+    <td width="50%" align="center"><img src="docs/assets/screens/settings-dark.webp" width="480" alt="Settings with grouped vertical navigation and the General pane"><br><b>Make it yours</b><br><sub>Models, languages, audio, shortcuts and appearance.</sub></td>
   </tr>
 </table>
 
-Screenshots use demo content. More captures, light and dark, are in [`specs/design/m8-shots/final`](specs/design/m8-shots/final).
+Screenshots use demo content. The site has every screen in light and dark: https://dsameendra.github.io/earmark/.
 
 ## Privacy and permissions
 

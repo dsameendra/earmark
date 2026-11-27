@@ -705,6 +705,48 @@ final class EarmarkUITests: XCTestCase {
         }
     }
 
+    /// Marketing screenshots of the 1.2 workspace, light and dark at 1440 x 900 (exported by scripts/export-shots.sh, used by the site and README).
+    func testSiteWorkspaceScreenshots() throws {
+        for appearance in ["light", "dark"] {
+            let app = launch(appearance: appearance, arguments: ["-EarmarkTestSlides", "YES", "-EarmarkTestFolders", "YES"])
+            defer { app.terminate() }
+            openWeeklySync(app)
+            app.buttons["Slides"].click()
+            Thread.sleep(forTimeInterval: 0.8)
+            capture(app, "site-workspace-\(appearance)")
+            app.buttons["Chat"].click()
+            Thread.sleep(forTimeInterval: 0.6)
+            capture(app, "site-chat-\(appearance)")
+            app.buttons["toolbar.back"].click()
+            app.buttons["sidebar.library"].click()
+            XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "library.item.")).firstMatch.waitForExistence(timeout: 8))
+            capture(app, "site-library-\(appearance)")
+        }
+    }
+
+    /// Regression: switching Notes, Chat, Files and Transcript with the slide stage on screen (stacked and two-column) must not hang.
+    func testSwitchingTabsWithSlidesDoesNotHang() throws {
+        for width in [960, 1440] {
+            let app = launch(appearance: "dark", width: width, height: 800, arguments: ["-EarmarkTestSlides", "YES"])
+            defer { app.terminate() }
+            openWeeklySync(app)
+            app.buttons["Slides"].click()
+            for round in 0..<3 {
+                for name in ["Notes", "Chat", "Files · 1", "Transcript"] {
+                    let tab = app.buttons[name]
+                    XCTAssertTrue(tab.waitForExistence(timeout: 8), "width \(width) round \(round): \(name) tab")
+                    tab.click()
+                }
+            }
+            app.buttons["Chat"].click()
+            XCTAssertTrue(app.descendants(matching: .any)["chat.page"].waitForExistence(timeout: 8))
+            app.buttons["toolbar.back"].click()
+            openWeeklySync(app)
+            app.buttons["Chat"].click()
+            XCTAssertTrue(app.descendants(matching: .any)["chat.page"].waitForExistence(timeout: 8), "width \(width): chat after reopening")
+        }
+    }
+
     /// Regression: with a file attached, leaving a transcript and coming back to its Files tab must not hang.
     func testFilesTabSurvivesLeavingAndReturning() throws {
         let app = launch(appearance: "dark", width: 1440, height: 900, arguments: ["-EarmarkTestSlides", "YES"])

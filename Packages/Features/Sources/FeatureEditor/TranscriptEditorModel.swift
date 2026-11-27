@@ -61,7 +61,7 @@ public final class TranscriptEditorModel {
     public private(set) var listFocusToken = 0
     /// Speaker-coloured regions for the scrubber, rebuilt only when segments change.
     public private(set) var speakerRegions: [SpeakerRegion] = []
-    public internal(set) var bookmarks: [TranscriptBookmark] = [] { didSet { syncSessionRibbon() } }
+    public internal(set) var bookmarks: [TranscriptBookmark] = [] { didSet { bookmarkCache = nil; syncSessionRibbon() } }
     public internal(set) var highlights: [TextHighlight] = []
     public private(set) var persistenceError: String?
     /// Unseen live-to-offline speaker relabel (DIA-AC-06); `nil` once acknowledged or when nothing changed.
@@ -154,6 +154,9 @@ public final class TranscriptEditorModel {
     @ObservationIgnored public let playbackCenter: PlaybackCenter?
     @ObservationIgnored private let engineFactory: @MainActor @Sendable (URL) async -> (engine: any PlayerControlling, isVideo: Bool)?
     @ObservationIgnored private var indexByID: [SegmentID: Int] = [:]
+    /// The waveform ribbon, rebuilt only when segments, bookmarks or speakers change (the playhead redraws it several times a second).
+    @ObservationIgnored private var ribbonCache: (speakers: [Speaker], segments: [WaveformSegment])?
+    @ObservationIgnored private var bookmarkCache: [WaveformBookmark]?
     @ObservationIgnored private var dirtyIDs: Set<SegmentID> = []
     @ObservationIgnored private var needsFullWrite = false
     @ObservationIgnored private var needsHeaderWrite = false
@@ -374,6 +377,7 @@ public final class TranscriptEditorModel {
     // MARK: Derived state
 
     private func rebuildDerived() {
+        ribbonCache = nil
         visibleSegments = showIgnored ? segments : segments.filter { !$0.isIgnored }
         paragraphs = options.layout == .paragraphs ? ParagraphBuilder.make(from: visibleSegments) : []
         paragraphIDBySegment = Dictionary(
@@ -389,6 +393,25 @@ public final class TranscriptEditorModel {
         guard let session = playbackCenter?.session(for: transcriptID) else { return }
         session.updateRibbon(segments: waveformSegments, ids: segments.map(\.id), bookmarks: waveformBookmarks)
     }
+
+    /// The ribbon pieces, cached until the segments, speakers or their colours change.
+    func cachedRibbon() -> [WaveformSegment] {
+        let speakers = self.speakers
+        if let cache = ribbonCache, cache.speakers == speakers { return cache.segments }
+        let built = buildWaveformSegments()
+        ribbonCache = (speakers, built)
+        return built
+    }
+
+    func cachedBookmarks() -> [WaveformBookmark] {
+        if let bookmarkCache { return bookmarkCache }
+        let built = buildWaveformBookmarks()
+        bookmarkCache = built
+        return built
+    }
+
+    /// Position of a segment in `segments`, from the id index.
+    func segmentIndex(of id: SegmentID) -> Int? { indexByID[id] }
 
     public func segment(_ id: SegmentID) -> Segment? { indexByID[id].map { segments[$0] } }
     public func speaker(_ id: SpeakerID?) -> Speaker? { id.flatMap { id in transcript?.speakers.first { $0.id == id } } }

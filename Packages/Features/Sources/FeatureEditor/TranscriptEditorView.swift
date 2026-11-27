@@ -66,6 +66,10 @@ private struct EditorContent: View {
             if model.playback.canPlay { return model.playback.currentTime }
             return workspace.isLive ? model.segments.last?.end : nil
         }
+        workspace.hasClock = { [weak model] in
+            guard let model else { return false }
+            return model.playback.canPlay || workspace.isLive
+        }
         workspace.seek = { [weak model] time in _ = model?.playback.seek(to: time) }
         workspace.onSuperseded = { final in onNavigate(final) }
         _workspace = State(initialValue: workspace)
@@ -338,7 +342,16 @@ private struct EditorContent: View {
         case .failed(let message):
             ErrorState(message: message) { Task { await model.load() } }
         case .loaded:
-            stagedLayout { transcriptArea }
+            stagedLayout {
+                Group {
+                    switch workspace.tab {
+                    case .transcript: transcriptArea
+                    default: WorkspaceTabContent(workspace: workspace)
+                    }
+                }
+                .id(workspace.tab)
+                .transition(.opacity)
+            }
         }
     }
 
@@ -351,14 +364,8 @@ private struct EditorContent: View {
                 WorkspaceTabBar(workspace: workspace, mediaTitle: mediaTitle, showsStageSwitch: !usesColumns)
                 WorkspaceFinalizingBanner(workspace: workspace)
             }
-            Group {
-                switch workspace.tab {
-                case .transcript: content
-                default: stagedLayout { WorkspaceTabContent(workspace: workspace) }
-                }
-            }
-            .id(workspace.tab)
-            .transition(.opacity)
+            // The stage (slides or video) stays in place across tabs; only the body below it changes.
+            content
         }
         .dsAnimation(.glide, value: workspace.tab)
     }
@@ -371,12 +378,12 @@ private struct EditorContent: View {
         } else if workspace.showsSlides {
             VSplitView {
                 WorkspaceSlideStage(workspace: workspace).frame(minHeight: 140, idealHeight: 300)
-                body().frame(minHeight: 160)
+                body().frame(minHeight: 240)
             }
         } else if !model.playback.isDetached && model.playback.isVideo {
             VSplitView {
                 PlayerPanelView(model: model, onRelink: relink).frame(minHeight: 90, idealHeight: 240)
-                body().frame(minHeight: 160)
+                body().frame(minHeight: 240)
             }
         } else {
             VStack(spacing: 0) {
@@ -630,10 +637,8 @@ private struct StageDivider: View {
                     .dsAnimation(.glide, value: hovering)
             }
             .contentShape(Rectangle())
-            .onHover { inside in
-                hovering = inside
-                if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
-            }
+            .onHover { hovering = $0 }
+            .pointerStyle(.columnResize)
             .gesture(
                 DragGesture(minimumDistance: 2, coordinateSpace: .global)
                     .onChanged { value in
@@ -646,7 +651,7 @@ private struct StageDivider: View {
             )
             .onTapGesture(count: 2) { fraction = Self.standard }
             .accessibilityElement()
-            .accessibilityLabel("Resize video and transcript")
+            .accessibilityLabel("Resize stage and transcript")
             .accessibilityValue("\(Int((fraction * 100).rounded())) percent video")
             .accessibilityAdjustableAction { direction in nudge(direction == .increment ? 0.04 : -0.04) }
             .accessibilityIdentifier("editor.stageDivider")

@@ -63,6 +63,7 @@
     <h1>What changed in Earmark.</h1>
     <p class="lede">Every release, newest first. Earmark updates itself only if you turn update checks on in Settings.</p>
     <ul class="jump" aria-label="Releases">
+      <li><a href="#v1-2-1">1.2.1</a></li>
       <li><a href="#v1-2-0">1.2.0</a></li>
       <li><a href="#v1-1-3">1.1.3</a></li>
       <li><a href="#v1-1-2">1.1.2</a></li>
@@ -76,6 +77,24 @@
 
 <section class="log">
   <div class="wrap log-wrap">
+
+    <article class="release" id="v1-2-1">
+      <header>
+        <h2>Earmark 1.2.1</h2>
+        <p class="meta"><span class="tag">Performance and fluidity</span> <time datetime="2026-11-27">27 November 2026</time> <a href="https://github.com/dsameendra/earmark/releases/tag/v1.2.1">Release page</a></p>
+      </header>
+      <p>A general performance release: the transcript page, playback, Notes, Chat, the Library and the Live screen do less work and stay smooth on long recordings.</p>
+      <ul>
+        <li><strong>Fixes a freeze on the transcript page.</strong> The whole page (toolbar, menus, transcript) was being redrawn many times a second while a recording played, and switching to Notes, Chat or Files with slides showing rebuilt the slide stage each time. Both are fixed, so opening Chat or Files after leaving a transcript no longer hangs the app.</li>
+        <li><strong>Smoother playback and editing.</strong> The waveform ribbon, the slide thumbnails and the playhead no longer redo their work on every tick. The playhead redraws at 30 frames a second, and long transcripts, Notes and the Live screen stay responsive.</li>
+        <li><strong>Faster Notes.</strong> Typing and moving the cursor no longer restyle the whole page or recompile the formatting rules.</li>
+        <li><strong>Faster Library.</strong> Grouping by date no longer repeats the calendar work for every transcript.</li>
+        <li><strong>Live and Chat.</strong> The input meter on the Live screen and the streaming answer in Chat now redraw only themselves.</li>
+        <li><strong>Tidier layout.</strong> Chat's footnote is no longer cut off, the Library toolbar keeps Select visible in narrow windows, the filter row keeps Clear Filters in view, the sidebar model chip shows its name, and the Files card, folder cards and Files header have consistent spacing.</li>
+        <li><strong>Safer actions.</strong> Clearing a chat, removing an attached file and clearing slide timings now ask first. Reduce Motion is respected when the chat and thumbnails scroll.</li>
+      </ul>
+      <p class="fine-print">Existing installations can update through Settings, General, Check for Updates.</p>
+    </article>
 
     <article class="release" id="v1-2-0">
       <header>

@@ -11,7 +11,13 @@ final class SlideSource {
     let attachment: Attachment
     private let location: URL
     private var document: PDFDocument?
-    private var cache: [Int: NSImage] = [:]
+    /// Rendered pages keyed by page and kind (thumbnail or stage), with the size that was asked for: an aspect-fitted render is
+    /// narrower than the request, so comparing against the image's own width always missed for 4:3 decks.
+    private var cache: [Int: (image: NSImage, requested: CGFloat)] = [:]
+    private lazy var imageFileList: [URL] = {
+        let urls = (try? FileManager.default.contentsOfDirectory(at: location, includingPropertiesForKeys: nil)) ?? []
+        return urls.sorted { $0.lastPathComponent < $1.lastPathComponent }
+    }()
 
     init(attachment: Attachment, location: URL) {
         self.attachment = attachment
@@ -21,14 +27,13 @@ final class SlideSource {
 
     var pageCount: Int { attachment.kind == .pdf ? (document?.pageCount ?? 0) : imageFiles.count }
 
-    private var imageFiles: [URL] {
-        let urls = (try? FileManager.default.contentsOfDirectory(at: location, includingPropertiesForKeys: nil)) ?? []
-        return urls.sorted { $0.lastPathComponent < $1.lastPathComponent }
-    }
+    private var imageFiles: [URL] { imageFileList }
 
     /// A rendered page no larger than `size` (points), cached per page.
     func image(at index: Int, size: CGSize) -> NSImage? {
-        if let cached = cache[index], cached.size.width >= size.width * 0.9 { return cached }
+        let isThumbnail = size.width <= 400
+        let key = index * 2 + (isThumbnail ? 0 : 1)
+        if let cached = cache[key], cached.requested >= size.width * 0.9 { return cached.image }
         let image: NSImage?
         if attachment.kind == .pdf {
             guard let page = document?.page(at: index) else { return nil }
@@ -40,9 +45,9 @@ final class SlideSource {
             image = files.indices.contains(index) ? NSImage(contentsOf: files[index]) : nil
         }
         if let image {
-            cache[index] = image
-            // Keep memory flat for long decks: hold only the pages nearest the one being read.
-            if cache.count > 24, let farthest = cache.keys.max(by: { abs($0 - index) < abs($1 - index) }) { cache[farthest] = nil }
+            cache[key] = (image, size.width)
+            // Keep memory flat for long decks: hold only the entries nearest the page being read.
+            if cache.count > 24, let farthest = cache.keys.max(by: { abs($0 / 2 - index) < abs($1 / 2 - index) }) { cache[farthest] = nil }
         }
         return image
     }
@@ -53,6 +58,7 @@ struct SlideStageView: View {
     let workspace: WorkspaceModel
     let showsVideoSwitch: Bool
     @State private var source: SlideSource?
+    @State private var confirmClearTimings = false
 
     private static let controlsHeight: CGFloat = 36
     private static let thumbsHeight: CGFloat = 62
@@ -89,6 +95,11 @@ struct SlideStageView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Slides")
         .accessibilityIdentifier("slides.stage")
+        .confirmationDialog("Clear all slide timings?", isPresented: $confirmClearTimings) {
+            Button("Clear Timings", role: .destructive) { Task { await workspace.clearLinks() } }
+        } message: {
+            Text("Playback will stop following the slides. The slides themselves are kept.")
+        }
     }
 
     private var controls: some View {
@@ -110,11 +121,11 @@ struct SlideStageView: View {
                 .disabled(workspace.page >= (workspace.deck?.pageCount ?? 1) - 1).accessibilityIdentifier("slides.next")
             Menu {
                 Button("Slide changes here") { Task { await workspace.linkCurrentSlide() } }
-                    .disabled(workspace.currentTime() == nil)
+                    .disabled(!workspace.hasClock())
                 Toggle("Follow the recording", isOn: Binding(get: { workspace.followsPlayback }, set: { workspace.followsPlayback = $0 }))
                     .disabled(workspace.links.isEmpty)
                 Divider()
-                Button("Clear slide timings", role: .destructive) { Task { await workspace.clearLinks() } }.disabled(workspace.links.isEmpty)
+                Button("Clear slide timings…", role: .destructive) { confirmClearTimings = true }.disabled(workspace.links.isEmpty)
             } label: { Label("Timing", systemImage: "timer") }  // stock-chrome: slide timing
                 .menuStyle(.borderlessButton).fixedSize()
                 .help("Link slides to moments in the recording so playback follows the deck")
@@ -143,6 +154,7 @@ private struct SlideImage: View {
             let width = min(available.width, available.height * ratio)
             Image(nsImage: image).resizable().interpolation(.high)
                 .frame(width: width, height: width / ratio)
+                .overlay(Rectangle().strokeBorder(DSColor.hairline, lineWidth: 1))
                 .shadow(color: DSColor.shadow.opacity(0.2), radius: 8, y: 2)
                 .accessibilityLabel("Slide \(page + 1)")
         } else {
@@ -154,6 +166,7 @@ private struct SlideImage: View {
 private struct ThumbnailStrip: View {
     let source: SlideSource
     let workspace: WorkspaceModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -170,10 +183,11 @@ private struct ThumbnailStrip: View {
                             }
                             .frame(width: 72, height: 46)
                             .padding(2)
-                            .background(DSColor.contentBackground, in: RoundedRectangle(cornerRadius: 4))
-                            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(index == workspace.page ? DSColor.accent : DSColor.hairline, lineWidth: index == workspace.page ? 2 : 1))
+                            .background(DSColor.contentBackground, in: RoundedRectangle(cornerRadius: DSRadius.small))
+                            .overlay(RoundedRectangle(cornerRadius: DSRadius.small).strokeBorder(index == workspace.page ? DSColor.accent : DSColor.hairline, lineWidth: index == workspace.page ? 2 : 1))
                         }
                         .buttonStyle(.plain)
+                        .help("Slide \(index + 1)")
                         .id(index)
                         .accessibilityLabel("Slide \(index + 1)")
                         .accessibilityAddTraits(index == workspace.page ? .isSelected : [])
@@ -184,7 +198,7 @@ private struct ThumbnailStrip: View {
             }
             .scrollIndicators(.hidden)
             .background(DSColor.solidChrome)
-            .onChange(of: workspace.page) { withAnimation { proxy.scrollTo(workspace.page, anchor: .center) } }
+            .onChange(of: workspace.page) { withAnimation(reduceMotion ? nil : .smooth(duration: 0.25)) { proxy.scrollTo(workspace.page, anchor: .center) } }
         }
         .frame(height: 62)
     }

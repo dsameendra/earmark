@@ -67,7 +67,9 @@ public typealias LiveLanguageChoice = TranscriptionLanguageChoice
 @MainActor @Observable
 public final class LiveModel {
     public private(set) var state: LiveSessionState = .idle
-    public private(set) var lines: [CaptionLine] = []
+    public private(set) var lines: [CaptionLine] = [] { didSet { summary = LiveSessionSummary(lines: lines) } }
+    /// Counts for the side panel, kept here so the view does not walk every line each time it is drawn.
+    public private(set) var summary = LiveSessionSummary(lines: [])
     public private(set) var languageChoices: [LiveLanguageChoice] = [.auto, .english]
     public var source: LiveSourceChoice = .mic { didSet { if source != oldValue { persist(SettingsKey.liveSource, source.rawValue) } } }
     public var language: LiveLanguageChoice = .english {

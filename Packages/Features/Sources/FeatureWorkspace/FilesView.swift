@@ -11,6 +11,7 @@ struct FilesView: View {
     @State private var importerRole: Attachment.Role?
     @State private var isTargeted = false
     @State private var expanded: Set<AttachmentID> = []
+    @State private var pendingRemoval: Attachment?
 
     private var files: FilesModel { workspace.files }
 
@@ -61,6 +62,14 @@ struct FilesView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("files.page")
+        .confirmationDialog(
+            "Remove \(pendingRemoval?.title ?? "this file")?",
+            isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } }), presenting: pendingRemoval
+        ) { attachment in
+            Button("Remove File", role: .destructive) { Task { await files.remove(attachment) } }
+        } message: { _ in
+            Text("The copy in your library is deleted. The original file is not touched.")
+        }
     }
 
     private var empty: some View {
@@ -118,15 +127,17 @@ struct FilesView: View {
                         Task { await files.setRole(attachment, attachment.role == .slides ? .reference : .slides) }
                     }
                     Divider()
-                    Button("Remove", role: .destructive) { Task { await files.remove(attachment) } }
+                    Button("Remove…", role: .destructive) { pendingRemoval = attachment }
                 } label: { Image(systemName: "ellipsis.circle") }  // stock-chrome: more
-                    .menuStyle(.borderlessButton).fixedSize().accessibilityLabel("More actions")
+                    .menuStyle(.borderlessButton).fixedSize().accessibilityLabel("More actions").help("More actions")
+                    .accessibilityIdentifier("files.more.\(attachment.id)")
                 Spacer(minLength: 0)
             }
             .padding(.leading, 30 + DSSpacing.md)
             Toggle("Use in summaries and chat", isOn: Binding(
                 get: { attachment.usedInContext }, set: { value in Task { await files.setUsedInContext(attachment, value) } }))
                 .font(DSTypography.caption).toggleStyle(.switch).controlSize(.mini)
+                .accessibilityIdentifier("files.context.\(attachment.id)")
                 .padding(.leading, 30 + DSSpacing.md)
             if let summary = attachment.summary, !summary.isEmpty {
                 DisclosureGroup(

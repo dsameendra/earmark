@@ -184,7 +184,7 @@ public struct LiveView: View {
             }
             .defaultScrollAnchor(.bottom)
             .accessibilityIdentifier("live.transcript")
-            .dsAnimation(.settle, value: model.lines.map(\.id))
+            .dsAnimation(.settle, value: model.lines.count)
         }
     }
 
@@ -193,7 +193,7 @@ public struct LiveView: View {
     /// Solid inspector column: one InsetCard per concern (input, session, translation, speakers, overlay). The cards
     /// scroll as one column so nothing is clipped at small heights; controls always get the full card width.
     private var sidePanel: some View {
-        let summary = LiveSessionSummary(lines: model.lines)
+        let summary = model.summary
         return ScrollView {
             VStack(alignment: .leading, spacing: DSSpacing.lg) {
                 panelSection("Input") { inputCard }
@@ -268,10 +268,7 @@ public struct LiveView: View {
             .accessibilityIdentifier("live.language")
         }
         labeled("Level") {
-            LevelMeter(level: model.level)
-                .accessibilityLabel("Input level")
-                .accessibilityValue("\(Int(model.level * 100)) percent")
-                .accessibilityIdentifier("live.levelMeter")
+            LiveLevelMeter(model: model)
         }
     }
 
@@ -369,6 +366,18 @@ public struct LiveView: View {
 }
 
 /// Counts shown in the Live side panel, derived from the caption lines (pure, so it is unit tested).
+/// The input meter in its own view: the level changes many times a second and must not re-evaluate the whole Live screen.
+private struct LiveLevelMeter: View {
+    let model: LiveModel
+
+    var body: some View {
+        LevelMeter(level: model.level)
+            .accessibilityLabel("Input level")
+            .accessibilityValue("\(Int(model.level * 100)) percent")
+            .accessibilityIdentifier("live.levelMeter")
+    }
+}
+
 public struct LiveSessionSummary: Equatable, Sendable {
     public struct Speaker: Equatable, Sendable, Identifiable {
         public var label: String

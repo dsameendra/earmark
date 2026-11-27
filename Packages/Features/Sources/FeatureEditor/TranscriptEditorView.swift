@@ -226,7 +226,7 @@ private struct EditorContent: View {
         VStack(spacing: DSSpacing.sm) {
             if workspace.deck != nil {
                 WorkspaceStageSwitch(workspace: workspace, mediaTitle: mediaTitle)
-                    .padding(.vertical, DSSpacing.sm)
+                    .padding(.top, DSSpacing.xxs).padding(.bottom, DSSpacing.sm)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             if workspace.showsSlides {

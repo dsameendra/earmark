@@ -91,12 +91,13 @@ struct FilesView: View {
                     .foregroundStyle(DSColor.secondaryText).frame(width: 30).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: DSSpacing.xs) {
-                        Text(attachment.title).font(DSTypography.body.weight(.medium)).lineLimit(1)
+                        Text(attachment.title).font(DSTypography.body.weight(.medium)).lineLimit(2)
                         StatusPill(attachment.role == .slides ? "Slides" : "Reference")
                     }
                     Text(detail(attachment)).font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
                 }
-                Spacer(minLength: DSSpacing.sm)
+            }
+            HStack(spacing: DSSpacing.sm) {
                 if attachment.role == .slides {
                     Button("View") {
                         workspace.open(ChatSource(kind: .page, label: attachment.title, attachmentID: attachment.id, page: 0))
@@ -120,10 +121,13 @@ struct FilesView: View {
                     Button("Remove", role: .destructive) { Task { await files.remove(attachment) } }
                 } label: { Image(systemName: "ellipsis.circle") }  // stock-chrome: more
                     .menuStyle(.borderlessButton).fixedSize().accessibilityLabel("More actions")
+                Spacer(minLength: 0)
             }
+            .padding(.leading, 30 + DSSpacing.md)
             Toggle("Use in summaries and chat", isOn: Binding(
                 get: { attachment.usedInContext }, set: { value in Task { await files.setUsedInContext(attachment, value) } }))
                 .font(DSTypography.caption).toggleStyle(.switch).controlSize(.mini)
+                .padding(.leading, 30 + DSSpacing.md)
             if let summary = attachment.summary, !summary.isEmpty {
                 DisclosureGroup(
                     isExpanded: Binding(get: { expanded.contains(attachment.id) }, set: { if $0 { expanded.insert(attachment.id) } else { expanded.remove(attachment.id) } })

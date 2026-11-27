@@ -43,6 +43,7 @@ private struct EditorContent: View {
     @Environment(\.shellLayout) private var layout
     @AppStorage("editor.stageFraction") private var stageFraction = 0.42
     @State private var editorWidth: CGFloat = 1200
+    @State private var isWide = true
     @State private var model: TranscriptEditorModel
     @State private var workspace: WorkspaceModel
     @State private var wasLive = false
@@ -64,6 +65,10 @@ private struct EditorContent: View {
             guard let model else { return nil }
             if model.playback.canPlay { return model.playback.currentTime }
             return workspace.isLive ? model.segments.last?.end : nil
+        }
+        workspace.hasClock = { [weak model] in
+            guard let model else { return false }
+            return model.playback.canPlay || workspace.isLive
         }
         workspace.seek = { [weak model] time in _ = model?.playback.seek(to: time) }
         workspace.onSuperseded = { final in onNavigate(final) }
@@ -90,7 +95,7 @@ private struct EditorContent: View {
             .task { await model.load() }
             .task { await workspace.start() }
             .task(id: workspace.isLive) { await followLiveSession() }
-            .onChange(of: model.playback.currentTime) { workspace.follow(time: model.playback.currentTime) }
+            .background { SlideFollower(model: model, workspace: workspace) }
             .onChange(of: model.revision) { find.refresh() }
             .onChange(of: model.selection) { if find.scope == .selection { find.refresh() } }
             .onChange(of: model.showIgnored) { find.refresh() }
@@ -178,7 +183,7 @@ private struct EditorContent: View {
         .dsAnimation(.glide, value: model.transcriptionJob?.state)
         .navigationTitle(model.transcript?.title ?? "Transcript")
         .toolbar { editorToolbar }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { editorWidth = $0 }
+        .onGeometryChange(for: Int.self) { Int($0.size.width.rounded()) } action: { updateLayoutWidth(CGFloat($0)) }
     }
 
     // MARK: Two columns
@@ -189,7 +194,17 @@ private struct EditorContent: View {
     /// The video or slides stage is on screen (not in the pop-out window).
     private var hasStage: Bool { workspace.showsSlides || (!model.playback.isDetached && model.playback.isVideo) }
     /// Stage left, tabs right: when there is a stage and the page is wide enough. Narrower, the stage stacks over the tabs.
-    private var usesColumns: Bool { hasStage && editorWidth >= DSLayout.stageColumnsMinWidth }
+    private var usesColumns: Bool { hasStage && isWide }
+
+    /// Records the page width and decides one or two columns with a hysteresis band, so a width that sits near the threshold
+    /// (or that shifts a little when the layout changes) cannot flip the layout back and forth on every pass.
+    private func updateLayoutWidth(_ width: CGFloat) {
+        guard width > 0 else { return }
+        if abs(width - editorWidth) >= 1 { editorWidth = width }
+        let limit = isWide ? DSLayout.stageColumnsMinWidth - 40 : DSLayout.stageColumnsMinWidth + 40
+        let wide = width >= limit
+        if wide != isWide { isWide = wide }
+    }
 
     @ViewBuilder
     private var mainArea: some View {
@@ -327,7 +342,16 @@ private struct EditorContent: View {
         case .failed(let message):
             ErrorState(message: message) { Task { await model.load() } }
         case .loaded:
-            stagedLayout { transcriptArea }
+            stagedLayout {
+                Group {
+                    switch workspace.tab {
+                    case .transcript: transcriptArea
+                    default: WorkspaceTabContent(workspace: workspace)
+                    }
+                }
+                .id(workspace.tab)
+                .transition(.opacity)
+            }
         }
     }
 
@@ -340,14 +364,8 @@ private struct EditorContent: View {
                 WorkspaceTabBar(workspace: workspace, mediaTitle: mediaTitle, showsStageSwitch: !usesColumns)
                 WorkspaceFinalizingBanner(workspace: workspace)
             }
-            Group {
-                switch workspace.tab {
-                case .transcript: content
-                default: stagedLayout { WorkspaceTabContent(workspace: workspace) }
-                }
-            }
-            .id(workspace.tab)
-            .transition(.opacity)
+            // The stage (slides or video) stays in place across tabs; only the body below it changes.
+            content
         }
         .dsAnimation(.glide, value: workspace.tab)
     }
@@ -360,12 +378,12 @@ private struct EditorContent: View {
         } else if workspace.showsSlides {
             VSplitView {
                 WorkspaceSlideStage(workspace: workspace).frame(minHeight: 140, idealHeight: 300)
-                body().frame(minHeight: 160)
+                body().frame(minHeight: 240)
             }
         } else if !model.playback.isDetached && model.playback.isVideo {
             VSplitView {
                 PlayerPanelView(model: model, onRelink: relink).frame(minHeight: 90, idealHeight: 240)
-                body().frame(minHeight: 160)
+                body().frame(minHeight: 240)
             }
         } else {
             VStack(spacing: 0) {
@@ -501,6 +519,18 @@ private struct EditorPinButton: View {
 }
 
 /// Moves the transcript into a folder.
+/// Moves the slide stage with playback. It lives in its own view so the playback clock (which ticks many times a second) only
+/// re-evaluates this empty view, not the whole editor with its toolbar, menus and transcript.
+private struct SlideFollower: View {
+    let model: TranscriptEditorModel
+    let workspace: WorkspaceModel
+
+    var body: some View {
+        Color.clear.frame(width: 0, height: 0).allowsHitTesting(false).accessibilityHidden(true)
+            .onChange(of: model.playback.currentTime) { workspace.follow(time: model.playback.currentTime) }
+    }
+}
+
 private struct EditorFolderMenu: View {
     let model: TranscriptEditorModel
     let services: AppServices
@@ -607,10 +637,8 @@ private struct StageDivider: View {
                     .dsAnimation(.glide, value: hovering)
             }
             .contentShape(Rectangle())
-            .onHover { inside in
-                hovering = inside
-                if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
-            }
+            .onHover { hovering = $0 }
+            .pointerStyle(.columnResize)
             .gesture(
                 DragGesture(minimumDistance: 2, coordinateSpace: .global)
                     .onChanged { value in
@@ -623,7 +651,7 @@ private struct StageDivider: View {
             )
             .onTapGesture(count: 2) { fraction = Self.standard }
             .accessibilityElement()
-            .accessibilityLabel("Resize video and transcript")
+            .accessibilityLabel("Resize stage and transcript")
             .accessibilityValue("\(Int((fraction * 100).rounded())) percent video")
             .accessibilityAdjustableAction { direction in nudge(direction == .increment ? 0.04 : -0.04) }
             .accessibilityIdentifier("editor.stageDivider")

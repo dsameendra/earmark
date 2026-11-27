@@ -49,7 +49,7 @@ struct NotesView: View {
                 if let time = workspace.currentTime() { commands.insert(NotesModel.timestamp(time) + " ") }
             }
             .keyboardShortcut("t", modifiers: [.command, .shift])
-            .disabled(workspace.currentTime() == nil)
+            .disabled(!workspace.hasClock())
             Spacer(minLength: DSSpacing.sm)
             Button { showsHistory.toggle() } label: { Label("History", systemImage: "clock.arrow.circlepath") }  // stock-chrome: version history
                 .labelStyle(.titleAndIcon).buttonStyle(.bordered).controlSize(.small)

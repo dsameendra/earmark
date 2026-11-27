@@ -163,7 +163,7 @@
       <p class="eyebrow">Models</p>
       <h2 class="h2">Pick the engine that fits.</h2>
       <p class="lede">Earmark 1.1 adds a family of on-device speech and translation models. Each one downloads only when you choose it, runs offline, and shows what it can and cannot do before you install it.</p>
-      <p class="new-note"><a href="changelog.html#v1-2-0">New in 1.2.0: notes, summaries, slides, chat and folders</a></p>
+      <p class="new-note"><a href="changelog.html#v1-2-1">New in 1.2.1: a smoother, faster Earmark</a> · <a href="changelog.html#v1-2-0">1.2.0: notes, summaries, slides, chat and folders</a></p>
     </div>
     <div class="model-cols">
       <div class="panel-box reveal">
@@ -217,6 +217,7 @@
         <button role="tab" id="t-home" aria-controls="p-home" aria-selected="true">Home</button>
         <button role="tab" id="t-queue" aria-controls="p-queue" aria-selected="false" tabindex="-1">Queue</button>
         <button role="tab" id="t-editor" aria-controls="p-editor" aria-selected="false" tabindex="-1">Editor</button>
+        <button role="tab" id="t-workspace" aria-controls="p-workspace" aria-selected="false" tabindex="-1">Workspace</button>
         <button role="tab" id="t-live" aria-controls="p-live" aria-selected="false" tabindex="-1">Live</button>
         <button role="tab" id="t-library" aria-controls="p-library" aria-selected="false" tabindex="-1">Library</button>
         <button role="tab" id="t-settings" aria-controls="p-settings" aria-selected="false" tabindex="-1">Settings</button>
@@ -250,6 +251,13 @@
         </div>
         <figcaption>Editor. Listen, edit and label speakers.</figcaption>
       </figure>
+      <figure class="panel" id="p-workspace" role="tabpanel" aria-labelledby="t-workspace">
+        <div class="win">
+          <img class="shot-light" loading="lazy" src="assets/screens/workspace-light.webp" srcset="assets/screens/workspace-light-800.webp 800w, assets/screens/workspace-light.webp 1600w" sizes="(min-width: 1100px) 1100px, 100vw" width="1600" height="1000" alt="Transcript page in light appearance: slides on the left, Transcript, Notes, Chat and Files tabs on the right">
+          <img class="shot-dark" loading="lazy" src="assets/screens/workspace-dark.webp" srcset="assets/screens/workspace-dark-800.webp 800w, assets/screens/workspace-dark.webp 1600w" sizes="(min-width: 1100px) 1100px, 100vw" width="1600" height="1000" alt="Transcript page in dark appearance: slides on the left, Transcript, Notes, Chat and Files tabs on the right">
+        </div>
+        <figcaption>Workspace. Slides, transcript, notes and chat side by side.</figcaption>
+      </figure>
       <figure class="panel" id="p-live" role="tabpanel" aria-labelledby="t-live">
         <div class="win">
           <img class="shot-light" loading="lazy" src="assets/screens/live-light.webp" srcset="assets/screens/live-light-800.webp 800w, assets/screens/live-light.webp 1600w" sizes="(min-width: 1100px) 1100px, 100vw" width="1600" height="1000" alt="Live captions screen in light appearance with audio source and language controls">
@@ -259,7 +267,7 @@
       </figure>
       <figure class="panel" id="p-library" role="tabpanel" aria-labelledby="t-library">
         <div class="win">
-          <img class="shot-light" loading="lazy" src="assets/screens/library-light.webp" srcset="assets/screens/library-light-800.webp 800w, assets/screens/library-light.webp 1600w" sizes="(min-width: 1100px) 1100px, 100vw" width="1600" height="1000" alt="Library in light appearance with searchable transcripts, folders and tags">
+          <img class="shot-light" loading="lazy" src="assets/screens/library-light.webp" srcset="assets/screens/library-light-800.webp 800w, assets/screens/library-light.webp 1600w" sizes="(min-width: 1100px) 1100px, 100vw" width="1600" height="1000" alt="Library in light appearance with folders, grouped transcripts and search">
           <img class="shot-dark" loading="lazy" src="assets/screens/library-dark.webp" srcset="assets/screens/library-dark-800.webp 800w, assets/screens/library-dark.webp 1600w" sizes="(min-width: 1100px) 1100px, 100vw" width="1600" height="1000" alt="Library in dark appearance with searchable transcripts, folders and tags">
         </div>
         <figcaption>Library. Search everything you have kept.</figcaption>

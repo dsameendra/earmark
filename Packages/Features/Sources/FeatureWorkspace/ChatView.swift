@@ -7,6 +7,8 @@ import SwiftUI
 struct ChatView: View {
     let workspace: WorkspaceModel
     @FocusState private var inputFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var confirmClear = false
 
     private var chat: ChatModel { workspace.chat }
 
@@ -20,12 +22,23 @@ struct ChatView: View {
             } else {
                 conversation
                 composer
+                Text(workspace.isLive
+                     ? "Answered on this Mac from what has been said so far. Check important details at the sources."
+                     : "Answered on this Mac from the transcript, notes and files. Check important details at the sources.")
+                    .font(DSTypography.caption).foregroundStyle(DSColor.tertiaryText)
+                    .padding(.horizontal, DSSpacing.md).padding(.bottom, DSSpacing.sm)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .background(DSColor.contentBackground)
         .clipShape(RoundedRectangle(cornerRadius: DSRadius.panel))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.page")
+        .confirmationDialog("Clear this conversation?", isPresented: $confirmClear) {
+            Button("Clear Conversation", role: .destructive) { Task { await chat.clear() } }
+        } message: {
+            Text("The questions and answers for this recording are deleted. Your notes and summary are not affected.")
+        }
     }
 
     private var header: some View {
@@ -46,7 +59,7 @@ struct ChatView: View {
             if workspace.isLive, let upTo = chat.answeredUpTo {
                 Text("Up to \(clock(upTo)) of the live transcript").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
             }
-            Button("Clear", systemImage: "trash") { Task { await chat.clear() } }  // stock-chrome: clear chat
+            Button("Clear", systemImage: "trash") { confirmClear = true }  // stock-chrome: clear chat
                 .labelStyle(.titleAndIcon).buttonStyle(.dsHoverIcon).disabled(chat.messages.isEmpty && !chat.isAnswering)
                 .accessibilityIdentifier("chat.clear")
         }
@@ -64,7 +77,7 @@ struct ChatView: View {
                                 insertion: .opacity.combined(with: .offset(y: 10)).combined(with: .scale(scale: 0.98, anchor: .bottom)),
                                 removal: .opacity))
                     }
-                    if chat.isAnswering { thinking.id("answering").transition(.opacity) }
+                    if chat.isAnswering { StreamingAnswer(chat: chat, proxy: proxy).id("answering").transition(.opacity) }
                     if let error = chat.errorMessage {
                         HStack {
                             Label(error, systemImage: "exclamationmark.triangle").font(DSTypography.caption).foregroundStyle(DSColor.danger)  // stock-chrome: error glyph
@@ -73,18 +86,13 @@ struct ChatView: View {
                         }
                         .accessibilityIdentifier("chat.error")
                     }
-                    Text(workspace.isLive
-                         ? "Answered on this Mac from what has been said so far. Check important details at the sources."
-                         : "Answered on this Mac from the transcript, notes and files. Check important details at the sources.")
-                        .font(DSTypography.caption).foregroundStyle(DSColor.tertiaryText)
                     Color.clear.frame(height: 1).id("end")
                 }
                 .dsAnimation(.settle, value: chat.messages.count)
                 .dsAnimation(.glide, value: chat.isAnswering)
                 .padding(DSSpacing.md)
             }
-            .onChange(of: chat.messages.count) { withAnimation { proxy.scrollTo("end") } }
-            .onChange(of: chat.partial) { proxy.scrollTo("end") }
+            .onChange(of: chat.messages.count) { withAnimation(reduceMotion ? nil : .smooth(duration: 0.25)) { proxy.scrollTo("end") } }
         }
         .accessibilityIdentifier("chat.conversation")
     }
@@ -104,23 +112,6 @@ struct ChatView: View {
             }
         }
         .padding(.vertical, DSSpacing.md)
-    }
-
-    private var thinking: some View {
-        VStack(alignment: .leading, spacing: DSSpacing.xs) {
-            if chat.partial.isEmpty {
-                HStack(spacing: DSSpacing.xs) {
-                    ProgressView().controlSize(.small)
-                    Text("Reading the transcript…").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
-                }
-            } else {
-                Text(chat.partial).font(DSTypography.body).textSelection(.enabled)
-            }
-            Button("Stop") { chat.stop() }.controlSize(.small).accessibilityIdentifier("chat.stop")
-        }
-        .padding(DSSpacing.md)
-        .background(DSColor.paper, in: RoundedRectangle(cornerRadius: DSRadius.medium))
-        .accessibilityIdentifier("chat.answering")
     }
 
     private var composer: some View {
@@ -219,5 +210,30 @@ struct FlowLayout: Layout {
             maxX = max(maxX, x - spacing)
         }
         return (CGSize(width: maxX, height: y + rowHeight), origins)
+    }
+}
+
+
+/// The answer while it streams. It reads the growing text itself, so each token re-evaluates only this bubble, not the whole conversation.
+private struct StreamingAnswer: View {
+    let chat: ChatModel
+    let proxy: ScrollViewProxy
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DSSpacing.xs) {
+            if chat.partial.isEmpty {
+                HStack(spacing: DSSpacing.xs) {
+                    ProgressView().controlSize(.small)
+                    Text("Reading the transcript…").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                }
+            } else {
+                Text(chat.partial).font(DSTypography.body).textSelection(.enabled)
+            }
+            Button("Stop") { chat.stop() }.controlSize(.small).accessibilityIdentifier("chat.stop")
+        }
+        .padding(DSSpacing.md)
+        .background(DSColor.paper, in: RoundedRectangle(cornerRadius: DSRadius.medium))
+        .accessibilityIdentifier("chat.answering")
+        .onChange(of: chat.partial) { proxy.scrollTo("end") }
     }
 }

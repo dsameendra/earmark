@@ -9,6 +9,7 @@ public struct LibraryView: View {
     @Bindable private var model: LibraryModel
     private let searchFocusToken: Int
     @FocusState private var searchFocused: Bool
+    @Environment(\.shellLayout) private var shell
     private let onOpenTranscript: (TranscriptID) -> Void
 
     @State private var confirmPurge = false
@@ -330,7 +331,7 @@ public struct LibraryView: View {
                 } label: {
                     DSToolbarLabel("Sort", systemImage: "arrow.up.arrow.down")
                 }
-                .labelStyle(.titleAndIcon)
+                .toolbarLabelStyle(iconOnly: shell.width < 1100)
                 .dsToolbarControl()
                 .help("Choose how the library is ordered")
                 .accessibilityLabel("Sort by")
@@ -347,7 +348,7 @@ public struct LibraryView: View {
                 } label: {
                     DSToolbarLabel(model.grouping == .none ? "Group" : "Group: \(model.grouping.title)", systemImage: "rectangle.3.group")
                 }
-                .labelStyle(.titleAndIcon)
+                .toolbarLabelStyle(iconOnly: shell.width < 1100)
                 .dsToolbarControl()
                 .help("Group the library by date, folder, type, language or tag")
                 .accessibilityIdentifier("library.group")
@@ -492,4 +493,11 @@ private struct UndoToast: View {
 
 #Preview("Recently Deleted - empty") {
     LibraryView(model: LibraryModel(services: .preview(), mode: .recentlyDeleted)).frame(width: 640, height: 400)
+}
+
+
+private extension View {
+    @ViewBuilder func toolbarLabelStyle(iconOnly: Bool) -> some View {
+        if iconOnly { labelStyle(.iconOnly) } else { labelStyle(.titleAndIcon) }
+    }
 }

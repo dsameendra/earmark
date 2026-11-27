@@ -115,7 +115,8 @@ public enum LibraryGrouper {
         case .none:
             return items.isEmpty ? [] : [LibraryGroup(id: "all", title: "", items: items)]
         case .date:
-            return ordered(items, key: { dateBucket($0.createdAt, now: now, calendar: calendar) })
+            let buckets = DateBuckets(now: now, calendar: calendar)
+            return ordered(items, key: { buckets.bucket($0.createdAt) })
         case .folder:
             let names = Dictionary(uniqueKeysWithValues: folders.map { ($0.id, $0.name) })
             return ordered(items, key: { item in
@@ -148,29 +149,50 @@ public enum LibraryGrouper {
     /// per earlier year. Boundaries follow the calendar (its first weekday and time zone). The first match wins, so every date
     /// falls in exactly one bucket, and a future date counts as today.
     static func dateBucket(_ date: Date, now: Date, calendar: Calendar) -> (Int, String, String) {
-        let today = calendar.startOfDay(for: now)
-        if date >= today { return (0, "date.today", "Today") }
-        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
-        if date >= yesterday { return (1, "date.yesterday", "Yesterday") }
-        let thisWeek = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? today
-        if date >= thisWeek { return (2, "date.thisWeek", "This week") }
-        let lastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: thisWeek) ?? thisWeek
-        if date >= lastWeek { return (3, "date.lastWeek", "Last week") }
-        let thisMonth = calendar.dateInterval(of: .month, for: now)?.start ?? today
-        if date >= thisMonth { return (4, "date.thisMonth", "This month") }
-        let lastMonth = calendar.date(byAdding: .month, value: -1, to: thisMonth) ?? thisMonth
-        if date >= lastMonth { return (5, "date.lastMonth", "Last month") }
-        let parts = calendar.dateComponents([.year, .month], from: date)
-        let year = parts.year ?? calendar.component(.year, from: now)
-        let month = parts.month ?? 1
-        if year == calendar.component(.year, from: now) {
+        DateBuckets(now: now, calendar: calendar).bucket(date)
+    }
+
+    /// The bucket boundaries for one `now`, computed once and reused for every item (the calendar maths and the month formatter
+    /// used to run again for each of thousands of transcripts on every redraw).
+    struct DateBuckets {
+        let now: Date
+        let calendar: Calendar
+        let today, yesterday, thisWeek, lastWeek, thisMonth, lastMonth: Date
+        let currentYear: Int
+        let monthFormatter: DateFormatter
+
+        init(now: Date, calendar: Calendar) {
+            self.now = now
+            self.calendar = calendar
+            today = calendar.startOfDay(for: now)
+            yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
+            thisWeek = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? today
+            lastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: thisWeek) ?? thisWeek
+            thisMonth = calendar.dateInterval(of: .month, for: now)?.start ?? today
+            lastMonth = calendar.date(byAdding: .month, value: -1, to: thisMonth) ?? thisMonth
+            currentYear = calendar.component(.year, from: now)
             let formatter = DateFormatter()
             formatter.calendar = calendar
             formatter.timeZone = calendar.timeZone
             formatter.setLocalizedDateFormatFromTemplate("LLLL")
-            return (100 + (12 - month), "date.month.\(year)-\(month)", formatter.string(from: date))
+            monthFormatter = formatter
         }
-        return (1000 + (9999 - year), "date.year.\(year)", String(year))
+
+        func bucket(_ date: Date) -> (Int, String, String) {
+            if date >= today { return (0, "date.today", "Today") }
+            if date >= yesterday { return (1, "date.yesterday", "Yesterday") }
+            if date >= thisWeek { return (2, "date.thisWeek", "This week") }
+            if date >= lastWeek { return (3, "date.lastWeek", "Last week") }
+            if date >= thisMonth { return (4, "date.thisMonth", "This month") }
+            if date >= lastMonth { return (5, "date.lastMonth", "Last month") }
+            let parts = calendar.dateComponents([.year, .month], from: date)
+            let year = parts.year ?? currentYear
+            let month = parts.month ?? 1
+            if year == currentYear {
+                return (100 + (12 - month), "date.month.\(year)-\(month)", monthFormatter.string(from: date))
+            }
+            return (1000 + (9999 - year), "date.year.\(year)", String(year))
+        }
     }
 
     /// Groups in the order of the rank (then title when `tieBreak`), keeping each group's items in list order.

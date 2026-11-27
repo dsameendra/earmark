@@ -4,7 +4,7 @@
 # Usage: scripts/sync-site-assets.sh [SOURCE_DIR]
 #   SOURCE_DIR defaults to specs/design/m8-shots/polish.
 #
-# Screens: home queue editor live library settings. Appearances: dark light.
+# Screens: home queue editor workspace live library settings (EARMARK_SKIP_SCREENS="settings" keeps the current image of a screen). Appearances: dark light.
 # For each screen and appearance the first existing source PNG wins:
 #   <screen>-<appearance>.png
 #   <screen>-<appearance>-1440x900.png
@@ -34,7 +34,8 @@ find_src() { # screen appearance
   return 0
 }
 
-for s in home queue editor live library settings; do
+for s in home queue editor workspace live library settings; do
+  case " ${EARMARK_SKIP_SCREENS:-} " in *" $s "*) echo "skipped $s"; continue ;; esac
   for a in dark light; do
     f="$(find_src "$s" "$a")"
     if [ -z "$f" ]; then

@@ -45,6 +45,9 @@ public final class WorkspaceModel {
     public let transcriptID: TranscriptID
     @ObservationIgnored let services: AppServices
     @ObservationIgnored public var currentTime: @MainActor () -> TimeInterval? = { nil }
+    /// Whether `currentTime` can answer. It reads only slow-changing state, so views can disable buttons with it without
+    /// re-evaluating on every playback tick (reading `currentTime()` itself in a view body does).
+    @ObservationIgnored public var hasClock: @MainActor () -> Bool = { false }
     @ObservationIgnored public var seek: @MainActor (TimeInterval) -> Void = { _ in }
     /// Called when this live draft has been replaced by the meeting's final transcript (open that one instead).
     @ObservationIgnored public var onSuperseded: @MainActor (TranscriptID) -> Void = { _ in }

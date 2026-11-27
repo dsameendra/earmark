@@ -20,7 +20,7 @@ struct FolderCardsRow: View {
                 Button(action: onNewFolder) {
                     VStack(alignment: .leading, spacing: DSSpacing.xxs) {
                         Label("New folder", symbol: .folder).font(DSTypography.body.weight(.medium))
-                        Text("Drop transcripts on a folder to file them").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText)
+                        Text("Drag transcripts onto a folder").font(DSTypography.caption).foregroundStyle(DSColor.secondaryText).lineLimit(1)
                     }
                     .padding(DSSpacing.md)
                     .frame(width: 210, alignment: .leading)

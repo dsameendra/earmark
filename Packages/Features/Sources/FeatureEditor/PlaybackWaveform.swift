@@ -5,7 +5,9 @@ import SwiftUI
 /// Features adapter for the generic ``WaveformView``: maps the transcript's segments, speakers and bookmarks onto it.
 extension TranscriptEditorModel {
     /// Segment ribbon pieces, sorted by start. Ignored segments are included and dimmed.
-    public var waveformSegments: [WaveformSegment] {
+    public var waveformSegments: [WaveformSegment] { cachedRibbon() }
+
+    func buildWaveformSegments() -> [WaveformSegment] {
         let names = Dictionary(speakers.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
         let colors = Dictionary(
             speakers.map { ($0.id, EditorColors.color(color(for: $0.id))) }, uniquingKeysWith: { first, _ in first })
@@ -18,14 +20,16 @@ extension TranscriptEditorModel {
         }
     }
 
-    public var waveformBookmarks: [WaveformBookmark] {
+    public var waveformBookmarks: [WaveformBookmark] { cachedBookmarks() }
+
+    func buildWaveformBookmarks() -> [WaveformBookmark] {
         bookmarks.map { WaveformBookmark(time: $0.time, label: $0.note.isEmpty ? "Bookmark" : $0.note) }
     }
 
     /// Index into ``waveformSegments`` of the segment being spoken (or held in the gap just after it).
     public func waveformActiveIndex(_ id: SegmentID?) -> Int? {
         guard let id else { return nil }
-        return segments.firstIndex { $0.id == id }
+        return segmentIndex(of: id)
     }
 
     static func snippet(_ text: String, limit: Int = 90) -> String {

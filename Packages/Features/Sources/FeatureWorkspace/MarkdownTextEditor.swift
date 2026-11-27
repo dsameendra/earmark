@@ -123,6 +123,8 @@ struct MarkdownTextEditor: NSViewRepresentable {
         var parent: MarkdownTextEditor
         weak var textView: NSTextView?
         var isEditing = false
+        /// The lines the caret covered, and the text length, at the last restyle: a caret move inside the same lines needs none.
+        private var styled: (lines: NSRange, length: Int)?
 
         init(_ parent: MarkdownTextEditor) { self.parent = parent }
 
@@ -131,13 +133,24 @@ struct MarkdownTextEditor: NSViewRepresentable {
             isEditing = true
             parent.text = view.string
             MarkdownStyler.apply(to: view)
+            styled = caretLines(in: view)
             isEditing = false
         }
 
         /// The caret moved: the line it is on shows its markers, the line it left hides them.
         func textViewDidChangeSelection(_ notification: Notification) {
             guard let view = notification.object as? NSTextView, !view.hasMarkedText() else { return }
+            let now = caretLines(in: view)
+            if let styled, styled.lines == now.lines, styled.length == now.length { return }
             MarkdownStyler.apply(to: view)
+            styled = now
+        }
+
+        private func caretLines(in view: NSTextView) -> (lines: NSRange, length: Int) {
+            let text = view.string as NSString
+            let range = view.selectedRange()
+            let clamped = NSRange(location: min(range.location, text.length), length: min(range.length, max(0, text.length - range.location)))
+            return (text.lineRange(for: clamped), text.length)
         }
 
         func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
@@ -453,9 +466,18 @@ enum MarkdownStyler {
 
     // MARK: Inline
 
+    /// Compiled once per pattern: styling a page used to compile every inline pattern again for every line.
+    nonisolated(unsafe) private static var compiled: [String: NSRegularExpression] = [:]
+    private static func regex(for pattern: String) -> NSRegularExpression? {
+        if let cached = compiled[pattern] { return cached }
+        guard let made = try? NSRegularExpression(pattern: pattern) else { return nil }
+        compiled[pattern] = made
+        return made
+    }
+
     private static func inline(line: NSRange, content: String, revealed: Bool, storage: NSTextStorage, text: NSString, palette: Palette) {
         func each(_ pattern: String, _ body: (NSTextCheckingResult) -> Void) {
-            guard let regex = try? NSRegularExpression(pattern: pattern) else { return }
+            guard let regex = regex(for: pattern) else { return }
             regex.enumerateMatches(in: text as String, range: line) { match, _, _ in if let match { body(match) } }
         }
         func edge(_ match: NSTextCheckingResult, _ open: Int, _ close: Int) {

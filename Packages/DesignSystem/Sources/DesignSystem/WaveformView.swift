@@ -500,7 +500,7 @@ private struct WaveformPlayheadLayer: View {
         stamp.record(sample.time)
         let fraction = duration > 0 ? sample.time / duration : 0
         let outside = viewport.follows && viewport.isZoomed && !viewport.contains(fraction)
-        return TimelineView(.animation(paused: !sample.isPlaying)) { _ in
+        return TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !sample.isPlaying)) { _ in
             Canvas { context, size in draw(&context, size: size, sample: sample) }
         }
         .frame(width: metrics.size.width, height: metrics.size.height)
